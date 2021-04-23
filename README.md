@@ -27,7 +27,7 @@ Są to:
 
 Musimy stworzyć notatkę, która zawiera te pola w podanej kolejności. 
 To nie oznacza, że te wszystkie informacje będą wyświetlane na naszych kartach.
-Wszystkie pola podlegają naszej indywidualnej obróbce w Anki.
+Wszystkie pola podlegają indywidualnej obróbce w Anki.
 
 Dodanie notatki z tymi polami nie gwarantuje nam najlepszych doświadczeń z powtarzania kart.
 Aby ten słownikowy format został najlepiej wykorzystany potrzebujemy potężnej stylizacji, która dostarczy nam prawdziwej powtórkowej przyjemności.
