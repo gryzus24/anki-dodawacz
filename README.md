@@ -1,10 +1,10 @@
 # Anki-dodawacz
 
-Prosty i otwarty na własną konfigurację program do tworzenia monojęzycznych kart do Anki.
+Prosty i otwarty na konfigurację program do tworzenia monojęzycznych kart do Anki.
 Pozyskuje on informacje z American Heritage Dictionary i pozwala na szybki wybór definicji, części mowy, etymologii i audio.
 Możemy też natychmiastowo dodawać własne przykładowe zdania.
 
-Celem programu jest ułatwić i uprzyjemnić żmudny i zniechęcający proces dodawanie kart, który konwencjonalnie odbywa się za pomocą powtarzalnych ruchów myszką i przekopiowywania informacji do edytora kart. Z Anki-dodawaczem ten proces odbywa się prawie w stu procentach za pomocą klawiatury.
+Celem programu jest ułatwić i uprzyjemnić żmudny i zniechęcający proces dodawanie kart, który konwencjonalnie odbywa się za pomocą powtarzalnych ruchów myszką i przekopiowywania informacji do edytora kart. Z Anki-dodawaczem ten proces odbywa się w prawie stu procentach za pomocą klawiatury.
 
 Częstym powodem dla nieużywania Anki przez wiele osób jest trud robienia wysokiej jakości kart. Wierzę, że otwarty na konfigurację program 
 produkujący wysokiej jakości karty przekona do Anki większą ilość osób i sprawi, że docenią możliwości tego narzędzia.
@@ -13,7 +13,7 @@ produkujący wysokiej jakości karty przekona do Anki większą ilość osób i 
 # Konfiguracja i działanie programu
 
 Cykl dodawanie jest bardzo prosty.
-Wyszukujemy słowo i przechodzimy przez różne pola: przykładowego zdania, definicji, części mowy i etymologii
+Wyszukujemy słowo i przechodzimy przez różne pola: przykładowego zdania, definicji, części mowy i etymologii.
 Po przejściu przez wszystkie pola, program zapisuje nasz wybór w dokumencie tekstowym i pokazuje zawartość notatki i jej domyślną konfigurację.
 Po zakończonej sesji dodawania, program tworzy dokument "karty.txt", który od razu jest gotowy do zaimportowania do Anki.
 
@@ -24,7 +24,7 @@ Najlepiej zlokalizować folder "collection.media", aby audio było automatycznie
 ![image](https://user-images.githubusercontent.com/82805891/115930678-2fd71900-a48a-11eb-9163-4abfba9c1df9.png)
 
 
-# Konfiguracja w Anki i notatki
+# Konfiguracja Anki i notatki
 
 Program na chwilę obecną wykorzystuje sześć pól naszej notatki, aby prawidłowo dodawać karty.
 Są to:
@@ -55,7 +55,7 @@ Aby zaimportować karty do Anki, na górnym pasku klikami w "Plik" i "Importuj..
 - Nawigujemy do folderu z AnkiDodawaczem i wybieramy plik "karty.txt".
 - Wybieramy nasz typ notatki i talię
 - Klikamy w "Pola oddzielone o:" i wpisujemy "\t"
-- Możemy zaznaczyć "Ignoruj linie, których pierwsze pole pasuje do istniejącej notatki"
+- Możemy wybrać "Ignoruj linie, których pierwsze pole pasuje do istniejącej notatki"
 - I na końcu ważne, aby zaznaczyć "Zezwól na HTML w polach"
 
 ![image](https://user-images.githubusercontent.com/82805891/115931526-8c870380-a48b-11eb-9d74-f9415cce8ceb.png)
