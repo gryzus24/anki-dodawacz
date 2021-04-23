@@ -11,22 +11,22 @@ colorama.init(autoreset=True)
 config = ConfigParser()
 config.read('config.ini')
 
-dodaj_audio = config['dodawanie']['dodaj_audio']
-dodaj_wlasne_zdanie = config['dodawanie']['dodaj_wlasne_zdanie']
-dodaj_definicje = config['dodawanie']['dodaj_definicje']
-dodaj_czesci_mowy = config['dodawanie']['dodaj_czesci_mowy']
-dodaj_etymologie = config['dodawanie']['dodaj_etymologie']
-tworz_karte = config['dodawanie']['tworz_karte']
-ukryj_slowo_w_definicji = config['dodawanie']['ukryj_slowo_w_definicji']
-ukryj_slowo_w_zdaniu = config['dodawanie']['ukryj_slowo_w_zdaniu']
+dodaj_audio = config['dodawanie'].getboolean('dodaj_audio')
+dodaj_wlasne_zdanie = config['dodawanie'].getboolean('dodaj_wlasne_zdanie')
+dodaj_definicje = config['dodawanie'].getboolean('dodaj_definicje')
+dodaj_czesci_mowy = config['dodawanie'].getboolean('dodaj_czesci_mowy')
+dodaj_etymologie = config['dodawanie'].getboolean('dodaj_etymologie')
+tworz_karte = config['dodawanie'].getboolean('tworz_karte')
+ukryj_slowo_w_definicji = config['dodawanie'].getboolean('ukryj_slowo_w_definicji')
+ukryj_slowo_w_zdaniu = config['dodawanie'].getboolean('ukryj_slowo_w_zdaniu')
 save_path = config['dodawanie']['sciezka_zapisu_audio']
 
-pokazuj_filtrowany_slownik = config['wyswietlanie']['pokazuj_filtrowany_slownik']
+pokazuj_filtrowany_slownik = config['wyswietlanie'].getboolean('pokazuj_filtrowany_slownik')
 
 print(f"""{Style.BRIGHT}{Fore.YELLOW}- DODAWACZ KART DO {Fore.CYAN}ANKI {Fore.YELLOW}v0.3.1 -\n
 {Style.RESET_ALL}{Fore.WHITE}Wpisz "--help", aby wyświetlić pomoc\n\n""")
 
-
+# Komendy i input słowa
 def commands():
     global pokazuj_filtrowany_slownik
     global ukryj_slowo_w_definicji
@@ -84,9 +84,10 @@ def commands():
       i skopiuj ją w miejsce "Karty_audio" w "config.ini" (pliku konfiguracyjnym)
                             (wpisz %appdata%)
                             
-    "--ukryj-w-def on/off"       Niektóre definicje zawierają przykładowe użycia słowa.
-                                 Ta opcja zamienia wszystkie użycia słowa na "..."      wartość domyślna = True\n
-    "--ukryj-w-zdaniu on/off"    Jak w definicjach tylko w dodanym zdaniu               wartość domyślna = False
+    "--ukryj-w-def on/off"      Niektóre definicje zawierają użycia słowa.              wartość domyślna = True
+        lub "ud on/off"         Ta opcja zamienia wszystkie użycia słowa na "..."\n              
+    "--ukryj-w-zdaniu on/off"   Jak w definicjach tylko w dodanym zdaniu                wartość domyślna = False
+        lub "uz on/off"          
     ------------------------------------------------------------------------------------------------------------\n""")
         commands()
     elif word == '-d on' or word == '--definicje on':
@@ -165,19 +166,19 @@ def commands():
         dodaj_wlasne_zdanie = False
         print(f'{Fore.LIGHTGREEN_EX}Dodawanie własnego zdania: {Style.BRIGHT}{Fore.RED}wyłączone')
         commands()
-    elif word == '--ukryj-w-def on':
+    elif word == '--ukryj-w-def on' or word == '-ud on':
         ukryj_slowo_w_definicji = True
         print(f'{Fore.LIGHTGREEN_EX}Ukrywanie słowa w definicjach: włączone')
         commands()
-    elif word == '--ukryj-w-def off':
+    elif word == '--ukryj-w-def off' or word == '-ud off':
         ukryj_slowo_w_definicji = False
         print(f'{Fore.LIGHTGREEN_EX}Ukrywanie słowa w definicjach: {Style.BRIGHT}{Fore.RED}wyłączone')
         commands()
-    elif word == '--ukryj-w-zdaniu on':
+    elif word == '--ukryj-w-zdaniu on' or word == '-uz on':
         ukryj_slowo_w_zdaniu = True
         print(f'{Fore.LIGHTGREEN_EX}Ukrywanie słowa w zdaniu: włączone')
         commands()
-    elif word == '--ukryj-w-zdaniu off':
+    elif word == '--ukryj-w-zdaniu off' or word == '-uz off':
         ukryj_slowo_w_zdaniu = False
         print(f'{Fore.LIGHTGREEN_EX}Ukrywanie słowa w zdaniu: {Style.BRIGHT}{Fore.RED}wyłączone')
         commands()
@@ -198,7 +199,8 @@ def get_audio(audio_link, audio_end):
         file.write(response.content)
     return audiofile_name
 
-
+# Rysowanie słownika i pozyskanie audio w tym samym czasie
+# Jak to zfaktoryzować, aby nie stracić szbkości???
 def rysuj_slownik(url):
     global word
     global dodaj_audio
@@ -261,6 +263,8 @@ Aby dodać kolejne hasło z włączonym dodawaniem audio, wpisz "--audio on" lub
                 return None
 
 
+# Tworzenie karty z definicjami, częściami mowy i etymologiami
+# Trzeba pozbyć się tego z tworzenia funkcji
 def wybierz_definicje(wybor_definicji, definicje):
     if len(definicje) >= wybor_definicji > 0:
         return definicje[int(wybor_definicji) - 1]
@@ -306,44 +310,55 @@ def wybierz_etymologie(wybor_etymologii, etymologia):
         return etymologia
 
 
-def zdanie_input():
+# Dodawanie zdania
+def pokazywacz_zdania(zdanie, word):
+    if not ukryj_slowo_w_zdaniu:
+        return zdanie
+    else:
+        return zdanie.replace(word, '...')
+
+
+def ogarnij_zdanie(zdanie):
     global skip_check
-    if dodaj_wlasne_zdanie:
+    zdanie = ''.join(zdanie)
+    if word.lower() in zdanie.lower():
+        return pokazywacz_zdania(zdanie, word)
+    elif zdanie == '-s':
+        print(f'{Fore.LIGHTGREEN_EX}Pominięto dodawanie zdania')
+        zdanie = ' '
+        return zdanie
+    else:
+        print(f'{Style.BRIGHT}{Fore.RED}Zdanie nie zawiera podanego hasła.')
         try:
-            zdanie = str(input('\nDodaj własne przykładowe zdanie: ')).split()
-            rez1 = re.sub(r"[][,]", "", str(zdanie)).strip()
-            rez2 = re.sub('"', '', rez1)
-            rez3 = re.sub(r"'(?!(?<=[a-zA-Z]')[a-zA-Z])", "", rez2)
-
-            if word.lower() in rez3.lower():
-                if ukryj_slowo_w_zdaniu is False:
-                    if word in rez3:
-                        return ''.join(rez3)
-                    return ''.join(rez3)
-                elif ukryj_slowo_w_zdaniu is True:
-                    if word in rez3:
-                        return ''.join(rez3).replace(word, '...')
-                    return ''.join(rez3.lower()).replace(word, '...')
-
-            elif rez3 == '-s':
-                print(f'{Fore.LIGHTGREEN_EX}Pominięto dodawanie zdania')
-                return ' '
+            zdanie_check = int(input(f'Czy kontynuować dodawanie? (1 - tak/0 - dodaj zdanie jeszcze raz): '))
+            if zdanie_check == 1:
+                return zdanie
+            elif zdanie_check == 0:
+                return ogarnij_zdanie(zdanie_input())
+            elif zdanie_check > 1:
+                return zdanie
+            elif zdanie_check < 0:
+                return ogarnij_zdanie(zdanie_input())
             else:
-                print(f'{Style.BRIGHT}{Fore.RED}Zdanie nie zawiera podanego hasła.')
-                zdanie_check = int(input(f'Czy kontynuować dodawanie? (1 - tak/0 - dodaj zdanie jeszcze raz): '))
-                if zdanie_check == 1:
-                    return ''.join(rez3).replace(word, '...')
-                elif zdanie_check == 0:
-                    return zdanie_input()
-                elif zdanie_check > 1:
-                    return ''.join(rez3).replace(word, '...')
+                print('err w zdanie_check')
                 skip_check = 1
         except ValueError:
             print(f'{Fore.LIGHTGREEN_EX}Pominięto dodawanie karty')
             skip_check = 1
-    return ' '
 
 
+def zdanie_input():
+    if dodaj_wlasne_zdanie:
+        zdanie = str(input('\nDodaj własne przykładowe zdanie: ')).split()
+        rez1 = re.sub(r"[][,]", "", str(zdanie)).strip()
+        rez2 = re.sub('"', '', rez1)
+        rez3 = re.sub(r"'(?!(?<=[a-zA-Z]')[a-zA-Z])", "", rez2)
+        zdanie = rez3
+        return zdanie
+    return None
+
+
+# Wybieranie indeksu definicji, części mowy i etymologii
 def etymologia_input():
     global skip_check
     if dodaj_etymologie:
@@ -383,6 +398,7 @@ def definicje_input():
     return wybor_definicji
 
 
+# Tworzenie karty
 def utworz_karte():
     global start
     try:
@@ -435,7 +451,7 @@ while start:
 
     if tworz_karte:
         while True:
-            zdanie = zdanie_input()
+            zdanie = ogarnij_zdanie(zdanie_input())
             if skip_check == 1:
                 break
             wybor_definicji = definicje_input()
