@@ -11,7 +11,7 @@ Audio domyślnie zapisywane jest w folderze "Karty_audio" w folderze z programem
 Możemy zmienić ścieżkę zapisu audio jak i wszystkie domyślne ustawienia w pliku "config.ini".
 Najlepiej zlokalizować folder "collection.media", aby audio było automatycznie odtwarzane w Anki.
 
-Aby uzyskać pomoc dotyczącą komend i możliwości programu wpisz "--help".
+![image](https://user-images.githubusercontent.com/82805891/115930678-2fd71900-a48a-11eb-9163-4abfba9c1df9.png)
 
 
 # Konfiguracja w Anki i notatki
@@ -36,6 +36,8 @@ https://pastebin.com/9ZfWMpNu
 
 Po stworzeniu notatki z odpowiednimi polami i utworzeniu własnego stylu, możemy przejść do importowania dodanych kart.
 
+![image](https://user-images.githubusercontent.com/82805891/115931381-4c278580-a48b-11eb-91d5-f794a65cbd52.png)
+
 
 # Importowanie
 
@@ -45,6 +47,9 @@ Aby zaimportować karty do Anki, na górnym pasku klikami w "Plik" i "Importuj..
 - Klikamy w "Pola oddzielone o:" i wpisujemy "\t"
 - Możemy zaznaczyć "Ignoruj linie, których pierwsze pole pasuje do istniejącej notatki"
 - I na końcu ważne, aby zaznaczyć "Zezwól na HTML w polach"
+
+![image](https://user-images.githubusercontent.com/82805891/115931526-8c870380-a48b-11eb-9d74-f9415cce8ceb.png)
+
 
 Gdy raz ustawimy opcje importowania, nie musimy się przejmować ich ponownym ustawianiem.
 Ścieżka importu też powinna zostać zapisana, ale gdyby tak się nie stało, warto przenieść folder z programem w łatwo dostępne miejsce,
