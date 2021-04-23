@@ -139,7 +139,7 @@ def commands():
         dodaj_czesci_mowy = True
         dodaj_etymologie = True
         dodaj_audio = True
-        print(f'{Fore.LIGHTGREEN_EX}Dodwanie: WSZYSTKO')
+        print(f'{Fore.LIGHTGREEN_EX}Dodawanie: WSZYSTKO')
         commands()
     elif word == '-all off':
         dodaj_wlasne_zdanie = False
@@ -228,11 +228,13 @@ def rysuj_slownik(url):
 
                 if pokazuj_filtrowany_slownik:
                     print(f"{Style.BRIGHT}{Fore.GREEN}{indexing}  {Fore.RESET}{Style.RESET_ALL}{rex4.replace('', '')}")
-                print(f"{Style.BRIGHT}{Fore.GREEN}{indexing}  {Fore.RESET}{Style.RESET_ALL}{meaning.text}")
+                else:
+                    print(f"{Style.BRIGHT}{Fore.GREEN}{indexing}  {Fore.RESET}{Style.RESET_ALL}{meaning.text}")
 
                 if not ukryj_slowo_w_definicji:
                     definicje.append(rex4.replace(':', ':<br>').replace('', ''))
-                definicje.append(rex4.replace(word, '...').replace(':', ':<br>').replace('', ''))
+                else:
+                    definicje.append(rex4.replace(word, '...').replace(':', ':<br>').replace('', ''))
 
             for pos in td.find_all(class_='runseg'):
                 postring = ''
