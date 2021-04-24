@@ -192,6 +192,8 @@ def szukaj():
     return url
 
 
+# Rysowanie słownika i pozyskanie audio w tym samym czasie
+# Jak to zfaktoryzować, aby nie stracić na szbkości???
 def get_audio(audio_link, audio_end):
     audiofile_name = audio_end + '.wav'
     with open(os.path.join(save_path, audiofile_name), 'wb') as file:
@@ -199,8 +201,7 @@ def get_audio(audio_link, audio_end):
         file.write(response.content)
     return audiofile_name
 
-# Rysowanie słownika i pozyskanie audio w tym samym czasie
-# Jak to zfaktoryzować, aby nie stracić szbkości???
+
 def rysuj_slownik(url):
     global word
     global dodaj_audio
@@ -247,6 +248,7 @@ def rysuj_slownik(url):
             for etym in td.find_all(class_='etyseg'):
                 print(f'\n{etym.text}')
                 etymologia.append(etym.text)
+
         if dodaj_audio and tworz_karte:
             audio = soup.find('a', {'target': '_blank'}).get('href')
             audio_end = audio.split('/')[-1]
@@ -264,7 +266,7 @@ Aby dodać kolejne hasło z włączonym dodawaniem audio, wpisz "--audio on" lub
 
 
 # Tworzenie karty z definicjami, częściami mowy i etymologiami
-# Trzeba pozbyć się tego z tworzenia funkcji
+# Trzeba pozbyć się tego z funkcji tworzenia kart
 def wybierz_definicje(wybor_definicji, definicje):
     if len(definicje) >= wybor_definicji > 0:
         return definicje[int(wybor_definicji) - 1]
@@ -320,6 +322,7 @@ def pokazywacz_zdania(zdanie, word):
 
 def ogarnij_zdanie(zdanie):
     global skip_check
+
     zdanie = ''.join(zdanie)
     if word.lower() in zdanie.lower():
         return pokazywacz_zdania(zdanie, word)
@@ -328,9 +331,9 @@ def ogarnij_zdanie(zdanie):
         zdanie = ' '
         return zdanie
     else:
-        print(f'{Style.BRIGHT}{Fore.RED}Zdanie nie zawiera podanego hasła.')
+        print(f'{Style.BRIGHT}{Fore.RED}Zdanie nie zawiera podanego hasła')
         try:
-            zdanie_check = int(input(f'Czy kontynuować dodawanie? (1 - tak/0 - dodaj zdanie jeszcze raz): '))
+            zdanie_check = int(input(f'Czy kontynuować dodawanie? (1 - tak / 0 - dodaj zdanie jeszcze raz): '))
             if zdanie_check == 1:
                 return zdanie
             elif zdanie_check == 0:
@@ -340,7 +343,7 @@ def ogarnij_zdanie(zdanie):
             elif zdanie_check < 0:
                 return ogarnij_zdanie(zdanie_input())
             else:
-                print('err w zdanie_check')
+                print('error w zdanie_check')
                 skip_check = 1
         except ValueError:
             print(f'{Fore.LIGHTGREEN_EX}Pominięto dodawanie karty')
