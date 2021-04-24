@@ -14,11 +14,11 @@ produkujący wysokiej jakości karty przekona do Anki większą ilość osób i 
 
 Cykl dodawanie jest bardzo prosty.
 Wyszukujemy słowo i przechodzimy przez różne pola: przykładowego zdania, definicji, części mowy i etymologii.
-Po przejściu przez wszystkie pola, program zapisuje nasz wybór w dokumencie tekstowym i pokazuje zawartość notatki i jej domyślną konfigurację.
+Po przejściu przez wszystkie pola program zapisuje nasz wybór w dokumencie tekstowym i pokazuje zawartość notatki i jej domyślną konfigurację.
 Po zakończonej sesji dodawania, program tworzy dokument "karty.txt", który od razu jest gotowy do zaimportowania do Anki.
 
 Audio domyślnie zapisywane jest w folderze "Karty_audio" w folderze z programem.
-Możemy zmienić ścieżkę zapisu audio jak i wszystkie domyślne ustawienia w pliku "config.ini".
+Możemy zmienić ścieżkę zapisu audio, jak i wszystkie domyślne ustawienia w pliku "config.ini".
 Najlepiej zlokalizować folder "collection.media", aby audio było automatycznie odtwarzane w Anki.
 
 ![image](https://user-images.githubusercontent.com/82805891/115930678-2fd71900-a48a-11eb-9163-4abfba9c1df9.png)
@@ -40,13 +40,13 @@ To nie oznacza, że te wszystkie informacje będą wyświetlane na naszych karta
 Wszystkie pola podlegają indywidualnej obróbce w Anki.
 
 Dodanie notatki z tymi polami nie gwarantuje nam najlepszych doświadczeń z powtarzania kart.
-Aby ten słownikowy format został najlepiej wykorzystany potrzebujemy potężnej stylizacji, która dostarczy nam prawdziwej powtórkowej przyjemności.
-Dla nowych lub niedoświadczonych użytkowników, którzy nie zaznajomieni są jeszcze z siłą customizacji, oferuję moją notatkę na wypróbowanie:
-https://pastebin.com/9ZfWMpNu
+Aby ten słownikowy format został najlepiej wykorzystany, potrzebujemy potężnej stylizacji, która dostarczy nam prawdziwej powtórkowej przyjemności.
+Dla nowych lub niedoświadczonych użytkowników, którzy niezaznajomieni są jeszcze z siłą customizacji, oferuję moją notatkę na wypróbowanie:
+https://pastebin.com/9ZfWMpNu.
 
 ![image](https://user-images.githubusercontent.com/82805891/115956831-67cc7380-a4ff-11eb-8648-7a6599e45c1f.png)
 
-Po stworzeniu notatki z odpowiednimi polami i utworzeniu własnego stylu, możemy przejść do importowania dodanych kart.
+Po stworzeniu notatki z odpowiednimi polami i utworzeniu własnego stylu możemy przejść do importowania dodanych kart.
 
 
 # Importowanie
@@ -54,7 +54,7 @@ Po stworzeniu notatki z odpowiednimi polami i utworzeniu własnego stylu, możem
 Aby zaimportować karty do Anki, na górnym pasku klikami w "Plik" i "Importuj..." lub "Ctrl+Shift+I".
 - Nawigujemy do folderu z AnkiDodawaczem i wybieramy plik "karty.txt".
 - Wybieramy nasz typ notatki i talię
-- Klikamy w "Pola oddzielone o:" i wpisujemy "\t"
+- Klikamy w "Pola oddzielone o" i wpisujemy "\t"
 - Możemy wybrać "Ignoruj linie, których pierwsze pole pasuje do istniejącej notatki"
 - I na końcu ważne, aby zaznaczyć "Zezwól na HTML w polach"
 
@@ -70,8 +70,8 @@ Po dodaniu kart możemy usunąć zawartość pliku "karty.txt", ale gdy zostawim
 
 # Kod
 
-Jestem początkujący jeżeli chodzi o programowanie. Jest to mój pierwszy projekt i jakość kodu z pewnością jest daleka od perfekcji.
-Pomimo tego, mam bardzo ambitne plany jeżeli chodzi o funkcjonalność Anki-dodawacza, planuję:
+Jestem początkujący, jeżeli chodzi o programowanie. Jest to mój pierwszy projekt i jakość kodu z pewnością jest daleka od perfekcji.
+Pomimo tego, mam bardzo ambitne plany, jeżeli chodzi o funkcjonalność Anki-dodawacza, planuję:
 - Wsparcie dla większej ilości słowników
 - Wykorzystanie Anki connect do tworzenia kart
 - Pole "Disambiguation" i wolny wybór synonimów
