@@ -26,6 +26,7 @@ pokazuj_filtrowany_slownik = config['wyswietlanie'].getboolean('pokazuj_filtrowa
 print(f"""{Style.BRIGHT}{Fore.YELLOW}- DODAWACZ KART DO {Fore.CYAN}ANKI {Fore.YELLOW}v0.3.1 -\n
 {Style.RESET_ALL}{Fore.WHITE}Wpisz "--help", aby wyświetlić pomoc\n\n""")
 
+
 # Komendy i input słowa
 def commands():
     global pokazuj_filtrowany_slownik
@@ -80,7 +81,7 @@ def commands():
     "--audio-path" :
       Umożliwia zmianę miejsca zapisu audio (domyślnie: "Karty_audio" w folderze z programem)
       Aby audio było bezpośrednio dodawane do Anki, zlokalizuj ścieżkę:
-      "C:\[Users]\[Nazwa użytkownika]\AppData\Roaming\Anki2\[Nazwa użytkownika Anki]\collection.media"
+      "C:\\[Users]\\[Nazwa użytkownika]\\AppData\\Roaming\\Anki2\\[Nazwa użytkownika Anki]\\collection.media"
       i skopiuj ją w miejsce "Karty_audio" w "config.ini" (pliku konfiguracyjnym)
                             (wpisz %appdata%)
                             
@@ -217,7 +218,7 @@ def rysuj_slownik(url):
     else:
         for td in soup.find_all('td'):
             meanings_in_td = td.find_all(class_=('ds-list', 'sds-single', 'ds-single', 'ds-list'))
-            print(f'{Style.DIM}{Fore.WHITE}---------------------------------------------{Style.RESET_ALL}')
+            print(f'{Style.DIM}{Fore.WHITE}------------------------------------------------------------------------{Style.RESET_ALL}')
             for meaning_num in td.find_all('font', {'color': '#006595'}, 'sup'):
                 print(f'  {Fore.CYAN}{meaning_num.text}')
             for meaning in meanings_in_td:
@@ -263,53 +264,6 @@ def rysuj_slownik(url):
 Karta może zostać dodana, jednak dodawanie audio zostało wyłączone.
 Aby dodać kolejne hasło z włączonym dodawaniem audio, wpisz "--audio on" lub "-a on"''')
                 return None
-
-
-# Tworzenie karty z definicjami, częściami mowy i etymologiami
-# Trzeba pozbyć się tego z funkcji tworzenia kart
-def wybierz_definicje(wybor_definicji, definicje):
-    if len(definicje) >= wybor_definicji > 0:
-        return definicje[int(wybor_definicji) - 1]
-    elif int(wybor_definicji) == 0:
-        definicje = ' '
-        return definicje
-    elif wybor_definicji > len(definicje):
-        return '<br>'.join(definicje)
-    elif wybor_definicji == -1:
-        return '<br>'.join(definicje)
-    else:
-        definicje = ' '
-        return definicje
-
-
-def wybierz_czesci_mowy(wybor_czesci_mowy, czesci_mowy):
-    if wybor_czesci_mowy == 1:
-        return ' | '.join(czesci_mowy)
-    elif wybor_czesci_mowy == 0:
-        czesci_mowy = ' '
-        return czesci_mowy
-    elif wybor_czesci_mowy > 1:
-        return ' | '.join(czesci_mowy)
-    elif wybor_czesci_mowy == -1:
-        return ' | '.join(czesci_mowy)
-    else:
-        czesci_mowy = ' '
-        return czesci_mowy
-
-
-def wybierz_etymologie(wybor_etymologii, etymologia):
-    if len(etymologia) >= wybor_etymologii > 0:
-        return etymologia[(int(wybor_etymologii) - 1)]
-    elif wybor_etymologii == 0:
-        etymologia = ' '
-        return etymologia
-    elif wybor_etymologii > len(etymologia):
-        return '<br>'.join(etymologia)
-    elif wybor_etymologii == -1:
-        return '<br>'.join(etymologia)
-    else:
-        etymologia = ' '
-        return etymologia
 
 
 # Dodawanie zdania
@@ -361,7 +315,52 @@ def zdanie_input():
     return None
 
 
-# Wybieranie indeksu definicji, części mowy i etymologii
+# Wybieranie definicji, części mowy i etymologii
+def wybierz_definicje(wybor_definicji, definicje):
+    if len(definicje) >= wybor_definicji > 0:
+        return definicje[int(wybor_definicji) - 1]
+    elif int(wybor_definicji) == 0:
+        definicje = ' '
+        return definicje
+    elif wybor_definicji > len(definicje):
+        return '<br>'.join(definicje)
+    elif wybor_definicji == -1:
+        return '<br>'.join(definicje)
+    else:
+        definicje = ' '
+        return definicje
+
+
+def wybierz_czesci_mowy(wybor_czesci_mowy, czesci_mowy):
+    if wybor_czesci_mowy == 1:
+        return ' | '.join(czesci_mowy)
+    elif wybor_czesci_mowy == 0:
+        czesci_mowy = ' '
+        return czesci_mowy
+    elif wybor_czesci_mowy > 1:
+        return ' | '.join(czesci_mowy)
+    elif wybor_czesci_mowy == -1:
+        return ' | '.join(czesci_mowy)
+    else:
+        czesci_mowy = ' '
+        return czesci_mowy
+
+
+def wybierz_etymologie(wybor_etymologii, etymologia):
+    if len(etymologia) >= wybor_etymologii > 0:
+        return etymologia[(int(wybor_etymologii) - 1)]
+    elif wybor_etymologii == 0:
+        etymologia = ' '
+        return etymologia
+    elif wybor_etymologii > len(etymologia):
+        return '<br>'.join(etymologia)
+    elif wybor_etymologii == -1:
+        return '<br>'.join(etymologia)
+    else:
+        etymologia = ' '
+        return etymologia
+
+
 def etymologia_input():
     global skip_check
     if dodaj_etymologie:
@@ -407,17 +406,17 @@ def utworz_karte():
     try:
         if audiofile_name is not None:
             with open('karty.txt', 'a', encoding='utf-8') as f:
-                f.write(f'{wybierz_definicje(wybor_definicji, definicje)}\t{word}\t'
+                f.write(f'{definicje}\t{word}\t'
                         f'{zdanie}\t'
-                        f'{wybierz_czesci_mowy(wybor_czesci_mowy, czesci_mowy)}\t'
-                        f'{wybierz_etymologie(wybor_etymologii, etymologia)}\t[sound:{audiofile_name}]\n')
+                        f'{czesci_mowy}\t'
+                        f'{etymologia}\t[sound:{audiofile_name}]\n')
                 return None
         elif audiofile_name is None:
             with open('karty.txt', 'a', encoding='utf-8') as f:
-                f.write(f'{wybierz_definicje(wybor_definicji, definicje)}\t{word}\t'
+                f.write(f'{definicje}\t{word}\t'
                         f'{zdanie}\t'
-                        f'{wybierz_czesci_mowy(wybor_czesci_mowy, czesci_mowy)}\t'
-                        f'{wybierz_etymologie(wybor_etymologii, etymologia)}\t \n')
+                        f'{czesci_mowy}\t'
+                        f'{etymologia}\t \n')  # Aby karta nie zawierała sound tagu
                 return None
     except NameError:
         print(f"""{Style.BRIGHT}{Fore.RED}Dodawanie karty nie powiodło się.
@@ -428,18 +427,18 @@ Jeżeli problem wystąpi ponownie, zrestartuj program.""")
 def wyswietl_karte():
     print('\n')
     print('Utworzona karta zawiera:')
-    print(f'{Style.DIM}{Fore.WHITE}---------------------------------------------')
-    print(wybierz_definicje(wybor_definicji, definicje).center(42))
-    print(f'{Style.DIM}{Fore.WHITE}---------------------------------------------')
-    print(word.center(42))
-    print(f'{zdanie.center(42)}')
-    print(wybierz_czesci_mowy(wybor_czesci_mowy, czesci_mowy).center(42))
-    print(wybierz_etymologie(wybor_etymologii, etymologia).center(42))
+    print(f'{Style.DIM}{Fore.WHITE}------------------------------------------------------------------------')
+    print(definicje.center(70))
+    print(f'{Style.DIM}{Fore.WHITE}------------------------------------------------------------------------')
+    print(word.center(70))
+    print(f'{zdanie.center(70)}')
+    print(czesci_mowy.center(70))
+    print(etymologia.center(70))
     if audiofile_name is not None:
-        print(f'[sound:{audiofile_name}]'.center(42))
+        print(f'[sound:{audiofile_name}]'.center(70))
     else:
         print('')
-    print(f'{Style.DIM}{Fore.WHITE}---------------------------------------------\n')
+    print(f'{Style.DIM}{Fore.WHITE}------------------------------------------------------------------------\n')
 
 
 while start:
@@ -457,13 +456,13 @@ while start:
             zdanie = ogarnij_zdanie(zdanie_input())
             if skip_check == 1:
                 break
-            wybor_definicji = definicje_input()
+            definicje = wybierz_definicje(definicje_input(), definicje)
             if skip_check == 1:
                 break
-            wybor_czesci_mowy = czesci_mowy_input()
+            czesci_mowy = wybierz_czesci_mowy(czesci_mowy_input(), czesci_mowy)
             if skip_check == 1:
                 break
-            wybor_etymologii = etymologia_input()
+            etymologia = wybierz_etymologie(etymologia_input(), etymologia)
             if skip_check == 1:
                 break
             break
