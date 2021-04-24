@@ -280,6 +280,8 @@ def ogarnij_zdanie(zdanie):
     zdanie = ''.join(zdanie)
     if word.lower() in zdanie.lower():
         return pokazywacz_zdania(zdanie, word)
+    elif zdanie == ' ':
+        return zdanie
     elif zdanie == '-s':
         print(f'{Fore.LIGHTGREEN_EX}Pominięto dodawanie zdania')
         zdanie = ' '
@@ -312,7 +314,7 @@ def zdanie_input():
         rez3 = re.sub(r"'(?!(?<=[a-zA-Z]')[a-zA-Z])", "", rez2)
         zdanie = rez3
         return zdanie
-    return None
+    return ' '
 
 
 # Wybieranie definicji, części mowy i etymologii
