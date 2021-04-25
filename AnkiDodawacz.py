@@ -252,18 +252,16 @@ def rysuj_slownik(url):
 
         if dodaj_audio and tworz_karte:
             audio = soup.find('a', {'target': '_blank'}).get('href')
-            audio_end = audio.split('/')[-1]
-            audio_end = audio_end.split('.')[0]
-            audio_link = 'https://www.ahdictionary.com'
-            audio_link += audio
-            try:
-                return get_audio(audio_link, audio_end)
-            except Exception:
-                dodaj_audio = False
+            if audio == 'http://www.hmhco.com':
                 print(f'''{Fore.RED}{Style.BRIGHT}\nHasło nie posiada pliku audio!
-Karta może zostać dodana, jednak dodawanie audio zostało wyłączone.
-Aby dodać kolejne hasło z włączonym dodawaniem audio, wpisz "--audio on" lub "-a on"''')
+Karta zostanie dodana bez audio''')
                 return None
+            else:
+                audio_end = audio.split('/')[-1]
+                audio_end = audio_end.split('.')[0]
+                audio_link = 'https://www.ahdictionary.com'
+                audio_link += audio
+                return get_audio(audio_link, audio_end)
 
 
 # Dodawanie zdania
