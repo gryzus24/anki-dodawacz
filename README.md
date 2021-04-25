@@ -9,6 +9,9 @@ Celem programu jest ułatwić i uprzyjemnić żmudny i zniechęcający proces do
 Częstym powodem dla nieużywania Anki przez wiele osób jest trud robienia wysokiej jakości kart. Wierzę, że otwarty na konfigurację program 
 produkujący wysokiej jakości karty przekona do Anki większą ilość osób i sprawi, że docenią możliwości tego narzędzia.
 
+**| [Link do pobrania ](https://github.com/funky-trellis/anki-dodawacz/releases/download/v0.3.1/AnkiDodawacz.zip) |**
+
+Należy rozpakować folder w dogodnej lokacji.
 
 # Konfiguracja i działanie programu
 
