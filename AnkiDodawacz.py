@@ -193,8 +193,7 @@ def szukaj():
     return url
 
 
-# Rysowanie słownika i pozyskanie audio w tym samym czasie
-# Jak to zfaktoryzować, aby nie stracić na szbkości???
+# Rysowanie słownika i pozyskanie audio
 def get_audio(audio_link, audio_end):
     audiofile_name = audio_end + '.wav'
     with open(os.path.join(save_path, audiofile_name), 'wb') as file:
@@ -205,7 +204,6 @@ def get_audio(audio_link, audio_end):
 
 def rysuj_slownik(url):
     global word
-    global dodaj_audio
 
     reqs = requests.get(url)
     soup = BeautifulSoup(reqs.content, 'lxml')
