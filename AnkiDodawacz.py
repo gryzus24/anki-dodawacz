@@ -1,6 +1,6 @@
-from configparser import ConfigParser
 from colorama import Fore, Style
 from bs4 import BeautifulSoup
+from config import * # importowanie wszystkich zmiennych ze skryptu
 import colorama
 import requests
 import os.path
@@ -8,20 +8,8 @@ import re
 
 start = True
 colorama.init(autoreset=True)
-config = ConfigParser()
-config.read('config.ini')
 
-dodaj_audio = config['dodawanie'].getboolean('dodaj_audio')
-dodaj_wlasne_zdanie = config['dodawanie'].getboolean('dodaj_wlasne_zdanie')
-dodaj_definicje = config['dodawanie'].getboolean('dodaj_definicje')
-dodaj_czesci_mowy = config['dodawanie'].getboolean('dodaj_czesci_mowy')
-dodaj_etymologie = config['dodawanie'].getboolean('dodaj_etymologie')
-tworz_karte = config['dodawanie'].getboolean('tworz_karte')
-ukryj_slowo_w_definicji = config['dodawanie'].getboolean('ukryj_slowo_w_definicji')
-ukryj_slowo_w_zdaniu = config['dodawanie'].getboolean('ukryj_slowo_w_zdaniu')
-save_path = config['dodawanie']['sciezka_zapisu_audio']
-
-pokazuj_filtrowany_slownik = config['wyswietlanie'].getboolean('pokazuj_filtrowany_slownik')
+save_path = sciezka_zapisu_audio
 
 print(f"""{Style.BRIGHT}{Fore.YELLOW}- DODAWACZ KART DO {Fore.CYAN}ANKI {Fore.YELLOW}v0.3.1 -\n
 {Style.RESET_ALL}{Fore.WHITE}Wpisz "--help", aby wyświetlić pomoc\n\n""")
@@ -29,18 +17,6 @@ print(f"""{Style.BRIGHT}{Fore.YELLOW}- DODAWACZ KART DO {Fore.CYAN}ANKI {Fore.YE
 
 # Komendy i input słowa
 def commands():
-    global pokazuj_filtrowany_slownik
-    global ukryj_slowo_w_definicji
-    global ukryj_slowo_w_zdaniu
-    global dodaj_wlasne_zdanie
-    global dodaj_czesci_mowy
-    global dodaj_etymologie
-    global dodaj_definicje
-    global tworz_karte
-    global dodaj_audio
-    global save_path
-    global word
-
     word = input('Szukaj: ')
 
     if word == '--help':
