@@ -16,7 +16,7 @@ print(f"""{Style.BRIGHT}{Fore.YELLOW}- DODAWACZ KART DO {Fore.CYAN}ANKI {Fore.YE
 # Komendy i input słowa
 def zapisuj_komendy(komenda, wartosc):
     config[komenda] = wartosc
-    with open('config.py', 'w+') as conf:
+    with open('config.py', 'w+') as conf:  #w+
         conf.write(f'config = {str(config)}\n')
     commands()
 
