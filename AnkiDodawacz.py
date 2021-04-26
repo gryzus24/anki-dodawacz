@@ -269,10 +269,13 @@ def ogarnij_zdanie(zdanie):
 def zdanie_input():
     if config['dodaj_wlasne_zdanie']:
         zdanie = str(input('\nDodaj własne przykładowe zdanie: ')).split()
-        rez1 = re.sub(r"[][,]", "", str(zdanie)).strip()
-        rez2 = re.sub('"', '', rez1)
-        rez3 = re.sub(r"'(?!(?<=[a-zA-Z]')[a-zA-Z])", "", rez2)
-        zdanie = rez3
+        rez1 = re.sub(r"[][]", "", str(zdanie)).strip()
+        rez2 = re.sub(",',", "kacz", rez1)
+        rez3 = re.sub("[,]", "", rez2)
+        rez4 = re.sub("kacz", ",", rez3)
+        rez5 = re.sub('"', '', rez4)
+        rez6 = re.sub(r"'(?!(?<=[a-zA-Z]')[a-zA-Z])", "", rez5)
+        zdanie = rez6
         return zdanie
     return ' '
 
