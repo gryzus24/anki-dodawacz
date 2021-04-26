@@ -1,23 +1,27 @@
 from colorama import Fore, Style
 from bs4 import BeautifulSoup
-from config import *
 import colorama
 import requests
 import os.path
+import yaml
 import re
 
 start = True
 colorama.init(autoreset=True)
 
+with open("config.yml", "r") as f:
+    config = yaml.load(f, Loader=yaml.Loader)
+
 print(f"""{Style.BRIGHT}{Fore.YELLOW}- DODAWACZ KART DO {Fore.CYAN}ANKI {Fore.YELLOW}v0.3.2 -\n
 {Style.RESET_ALL}{Fore.WHITE}Wpisz "--help", aby wyświetlić pomoc\n\n""")
 
-
 # Komendy i input słowa
-def zapisuj_komendy(komenda, wartosc):
+def zapisuj_komendy(komenda, wartosc, config=config):
     config[komenda] = wartosc
-    with open('config.py', 'w+') as conf:  # w+
-        conf.write(f'config = {str(config)}\n')
+    
+    with open("config.yml", "w") as f:
+        config = yaml.dump(config, f)
+    
     commands()
 
 
