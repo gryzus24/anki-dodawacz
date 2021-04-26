@@ -1,6 +1,6 @@
-from configparser import ConfigParser
 from colorama import Fore, Style
 from bs4 import BeautifulSoup
+from config import *
 import colorama
 import requests
 import os.path
@@ -8,42 +8,25 @@ import re
 
 start = True
 colorama.init(autoreset=True)
-config = ConfigParser()
-config.read('config.ini')
-
-dodaj_audio = config['dodawanie'].getboolean('dodaj_audio')
-dodaj_wlasne_zdanie = config['dodawanie'].getboolean('dodaj_wlasne_zdanie')
-dodaj_definicje = config['dodawanie'].getboolean('dodaj_definicje')
-dodaj_czesci_mowy = config['dodawanie'].getboolean('dodaj_czesci_mowy')
-dodaj_etymologie = config['dodawanie'].getboolean('dodaj_etymologie')
-tworz_karte = config['dodawanie'].getboolean('tworz_karte')
-ukryj_slowo_w_definicji = config['dodawanie'].getboolean('ukryj_slowo_w_definicji')
-ukryj_slowo_w_zdaniu = config['dodawanie'].getboolean('ukryj_slowo_w_zdaniu')
-save_path = config['dodawanie']['sciezka_zapisu_audio']
-
-pokazuj_filtrowany_slownik = config['wyswietlanie'].getboolean('pokazuj_filtrowany_slownik')
 
 print(f"""{Style.BRIGHT}{Fore.YELLOW}- DODAWACZ KART DO {Fore.CYAN}ANKI {Fore.YELLOW}v0.3.1 -\n
 {Style.RESET_ALL}{Fore.WHITE}Wpisz "--help", aby wyświetlić pomoc\n\n""")
 
 
 # Komendy i input słowa
+def zapisuj_komendy(komenda, wartosc):
+    config[komenda] = wartosc
+    with open('config.py', 'w') as conf:
+        conf.write(f'config = {str(config)}\n')
+    commands()
+
+
 def commands():
-    global pokazuj_filtrowany_slownik
-    global ukryj_slowo_w_definicji
-    global ukryj_slowo_w_zdaniu
-    global dodaj_wlasne_zdanie
-    global dodaj_czesci_mowy
-    global dodaj_etymologie
-    global dodaj_definicje
-    global tworz_karte
-    global dodaj_audio
-    global save_path
     global word
 
     word = input('Szukaj: ')
 
-    if word == '--help':
+    if word == '--help' or word == '-h':
         print(f"""\n    Po wpisaniu hasła w pole "Szukaj" rozpocznie się cykl dodawania karty.
     ------------------------------------------------------------------------------------------------------------
     Przy dodawaniu zdania:
@@ -62,127 +45,110 @@ def commands():
     Wpisanie litery lub wciśnięcie Enter gdy pole jest pust pomija dodawanie karty
     ------------------------------------------------------------------------------------------------------------
     Przy częściach mowy:
-    "1"             dodaje części mowy
+    "1"             dodaje wszystkie części mowy
     "0"             pomija dodawanie elementu
     ------------------------------------------------------------------------------------------------------------
     Przy etymologiach:
-      Przy wielu etymologiach możemy sprecyzować wybranie wpisując numer etymologii licząc od góry.
+      Przy większej ilości etymologii możemy sprecyzować wybór wpisując numer etymologii licząc od góry.
+      lub wpisać "-1", aby dodać wszystkie dostępne etmologie.
     ------------------------------------------------------------------------------------------------------------
     Komendy (wpisywane w pole "Szukaj"):
-    "--zdanie on/off" lub "-z on/off"             włącza/wyłącza dodawanie zdania       wartość domyślna = True
-    "--definicje on/off" lub "-d on/off"          włącza/wyłącza dodawanie definicji    wartość domyślna = True
-    "--czesci-mowy on/off" lub "-pos on/off"      włącza/wyłącza dodawnie części mowy   wartość domyślna = True
-    "--etymologie on/off" lub "-e on/off"         włącza/wyłącza dodawanie etymologii   wartość domyślna = True
-    "--audio on/off" lub "-a on/off"              włącza/wyłącza dodawanie audio        wartość domyślna = True\n
+    "--zdanie on/off" lub "-z on/off"             włącza/wyłącza dodawanie zdania       Aktualna wartość = {config['dodaj_wlasne_zdanie']}
+    "--definicje on/off" lub "-d on/off"          włącza/wyłącza dodawanie definicji    Aktualna wartość = {config['dodaj_definicje']}
+    "--czesci-mowy on/off" lub "-pos on/off"      włącza/wyłącza dodawnie części mowy   Aktualna wartość = {config['dodaj_czesci_mowy']}
+    "--etymologie on/off" lub "-e on/off"         włącza/wyłącza dodawanie etymologii   Aktualna wartość = {config['dodaj_etymologie']}
+    "--audio on/off" lub "-a on/off"              włącza/wyłącza dodawanie audio        Aktualna wartość = {config['dodaj_audio']}\n
     "-all on/off"                                 Zmienia wartość wszystkich powyższych ustawień na True/False\n
-    "-karty on/off"                               włącza/wyłącza dodawanie kart         wartość domyślna = True\n
+    "-karty on/off"                               włącza/wyłącza dodawanie kart         Aktualna wartość = {config['tworz_karte']}\n
     "--filtruj-slownik on/off" lub "-fs on/off"   włącza/wyłącza filtrowanie numeracji
-                                           i stylizacji podczas wyświetlania słownika   wartość domyślna = True\n
+                                           i stylizacji podczas wyświetlania słownika   Aktualna wartość = {config['pokazuj_filtrowany_slownik']}\n
     "--audio-path" :
       Umożliwia zmianę miejsca zapisu audio (domyślnie: "Karty_audio" w folderze z programem)
       Aby audio było bezpośrednio dodawane do Anki, zlokalizuj ścieżkę:
       "C:\\[Users]\\[Nazwa użytkownika]\\AppData\\Roaming\\Anki2\\[Nazwa użytkownika Anki]\\collection.media"
-      i skopiuj ją w miejsce "Karty_audio" w "config.ini" (pliku konfiguracyjnym)
-                            (wpisz %appdata%)
+      (wpisz %appdata%)
+      i wpisz/skopiuj ją w pole wyświetlone po wpisaniu komendy.                        Aktualna ścieżka = {config['save_path']}
                             
-    "--ukryj-w-def on/off"      Niektóre definicje zawierają użycia słowa.              wartość domyślna = True
-        lub "ud on/off"         Ta opcja zamienia wszystkie użycia słowa na "..."\n              
-    "--ukryj-w-zdaniu on/off"   Jak w definicjach tylko w dodanym zdaniu                wartość domyślna = False
-        lub "uz on/off"          
+    "--ukryj-w-def on/off"      Niektóre definicje zawierają użycia słowa.              Aktualna wartość = {config['ukryj_slowo_w_definicji']}
+        lub "-ud on/off"         Ta opcja zamienia wszystkie użycia słowa na "..."\n              
+    "--ukryj-w-zdaniu on/off"   Jak w definicjach tylko w dodanym zdaniu                Aktualna wartość = {config['ukryj_slowo_w_zdaniu']}
+        lub "-uz on/off"          
     ------------------------------------------------------------------------------------------------------------\n""")
         commands()
     elif word == '-d on' or word == '--definicje on':
-        dodaj_definicje = True
         print(f'{Fore.LIGHTGREEN_EX}Dodawanie definicji: włączone')
-        commands()
+        zapisuj_komendy(komenda='dodaj_definicje', wartosc=True)
     elif word == '-d off' or word == '--definicje off':
-        dodaj_definicje = False
         print(f'{Fore.LIGHTGREEN_EX}Dodawanie definicji: {Style.BRIGHT}{Fore.RED}wyłączone')
-        commands()
+        zapisuj_komendy(komenda='dodaj_definicje', wartosc=False)
     elif word == '-a on' or word == '--audio on':
-        dodaj_audio = True
         print(f'{Fore.LIGHTGREEN_EX}Dodawanie audio: włączone')
-        commands()
+        zapisuj_komendy(komenda='dodaj_audio', wartosc=True)
     elif word == '-a off' or word == '--audio off':
-        dodaj_audio = False
         print(f'{Fore.LIGHTGREEN_EX}Dodawanie audio: {Style.BRIGHT}{Fore.RED}wyłączone')
-        commands()
+        zapisuj_komendy(komenda='dodaj_audio', wartosc=False)
     elif word == '--audio-path':
         save_path = str(input('Wprowadź ścieżkę zapisu audio: '))
         print(f'{Fore.LIGHTGREEN_EX}OK')
-        commands()
+        zapisuj_komendy(komenda='save_path', wartosc=save_path)
     elif word == '-e on' or word == '--etymologie on':
-        dodaj_etymologie = True
         print(f'{Fore.LIGHTGREEN_EX}Dodawanie etymologii: włączone')
-        commands()
+        zapisuj_komendy(komenda='dodaj_etymologie', wartosc=True)
     elif word == '-e off' or word == '--etymologie off':
-        dodaj_etymologie = False
         print(f'{Fore.LIGHTGREEN_EX}Dodawanie etymologii: {Style.BRIGHT}{Fore.RED}wyłączone')
-        commands()
+        zapisuj_komendy(komenda='dodaj_etymologie', wartosc=False)
     elif word == '-pos on' or word == '--czesci-mowy on':
-        dodaj_czesci_mowy = True
         print(f'{Fore.LIGHTGREEN_EX}Dodawanie części mowy: włączone')
-        commands()
+        zapisuj_komendy(komenda='dodaj_czesci_mowy', wartosc=True)
     elif word == '-pos off' or word == '--czesci-mowy off':
-        dodaj_czesci_mowy = False
         print(f'{Fore.LIGHTGREEN_EX}Dodawanie części mowy: {Style.BRIGHT}{Fore.RED}wyłączone')
-        commands()
+        zapisuj_komendy(komenda='dodaj_czesci_mowy', wartosc=False)
     elif word == '-fs on' or word == '--filtruj-slownik on':
-        pokazuj_filtrowany_slownik = True
         print(f'{Fore.LIGHTGREEN_EX}Filtrowanie slownika: włączone')
-        commands()
+        zapisuj_komendy(komenda='pokazuj_filtrowany_slownik', wartosc=True)
     elif word == '-fs off' or word == '--filtruj-slownik off':
-        pokazuj_filtrowany_slownik = False
         print(f'{Fore.LIGHTGREEN_EX}Filtrowanie slownika: {Style.BRIGHT}{Fore.RED}wyłączone')
-        commands()
+        zapisuj_komendy(komenda='pokazuj_filtrowany_slownik', wartosc=False)
     elif word == '-all on':
-        dodaj_wlasne_zdanie = True
-        dodaj_definicje = True
-        dodaj_czesci_mowy = True
-        dodaj_etymologie = True
-        dodaj_audio = True
         print(f'{Fore.LIGHTGREEN_EX}Dodawanie: WSZYSTKO')
-        commands()
+        config['dodaj_wlasne_zdanie'] = True
+        config['dodaj_definicje'] = True
+        config['dodaj_czesci_mowy'] = True
+        config['dodaj_etymologie'] = True
+        config['dodaj_audio'] = True
+        zapisuj_komendy(komenda='dodaj_audio', wartosc=True)  # dummy args tylko aby funkcja przeszła
     elif word == '-all off':
-        dodaj_wlasne_zdanie = False
-        dodaj_definicje = False
-        dodaj_czesci_mowy = False
-        dodaj_etymologie = False
-        dodaj_audio = False
         print(f'{Fore.LIGHTGREEN_EX}Dodawanie: {Style.BRIGHT}{Fore.RED}Tylko hasło')
-        commands()
+        config['dodaj_wlasne_zdanie'] = False
+        config['dodaj_definicje'] = False
+        config['dodaj_czesci_mowy'] = False
+        config['dodaj_etymologie'] = False
+        config['dodaj_audio'] = False
+        zapisuj_komendy(komenda='dodaj_audio', wartosc=False)  # dummy args tylko aby funkcja przeszła
     elif word == '-karty on':
-        tworz_karte = True
         print(f'{Fore.LIGHTGREEN_EX}Tworzenie kart: włączone')
-        commands()
+        zapisuj_komendy(komenda='tworz_karte', wartosc=True)
     elif word == '-karty off':
-        tworz_karte = False
         print(f'{Fore.LIGHTGREEN_EX}Tworzenie kart: {Style.BRIGHT}{Fore.RED}wyłączone')
-        commands()
+        zapisuj_komendy(komenda='tworz_karte', wartosc=False)
     elif word == '--zdanie on' or word == '-z on':
-        dodaj_wlasne_zdanie = True
         print(f'{Fore.LIGHTGREEN_EX}Dodawanie własnego zdania: włączone')
-        commands()
+        zapisuj_komendy(komenda='dodaj_wlasne_zdanie', wartosc=True)
     elif word == '--zdanie off' or word == '-z off':
-        dodaj_wlasne_zdanie = False
         print(f'{Fore.LIGHTGREEN_EX}Dodawanie własnego zdania: {Style.BRIGHT}{Fore.RED}wyłączone')
-        commands()
+        zapisuj_komendy(komenda='dodaj_wlasne_zdanie', wartosc=False)
     elif word == '--ukryj-w-def on' or word == '-ud on':
-        ukryj_slowo_w_definicji = True
         print(f'{Fore.LIGHTGREEN_EX}Ukrywanie słowa w definicjach: włączone')
-        commands()
+        zapisuj_komendy(komenda='ukryj_slowo_w_definicji', wartosc=True)
     elif word == '--ukryj-w-def off' or word == '-ud off':
-        ukryj_slowo_w_definicji = False
         print(f'{Fore.LIGHTGREEN_EX}Ukrywanie słowa w definicjach: {Style.BRIGHT}{Fore.RED}wyłączone')
-        commands()
+        zapisuj_komendy(komenda='ukryj_slowo_w_definicji', wartosc=False)
     elif word == '--ukryj-w-zdaniu on' or word == '-uz on':
-        ukryj_slowo_w_zdaniu = True
         print(f'{Fore.LIGHTGREEN_EX}Ukrywanie słowa w zdaniu: włączone')
-        commands()
+        zapisuj_komendy(komenda='ukryj_slowo_w_zdaniu', wartosc=True)
     elif word == '--ukryj-w-zdaniu off' or word == '-uz off':
-        ukryj_slowo_w_zdaniu = False
         print(f'{Fore.LIGHTGREEN_EX}Ukrywanie słowa w zdaniu: {Style.BRIGHT}{Fore.RED}wyłączone')
-        commands()
+        zapisuj_komendy(komenda='ukryj_slowo_w_zdaniu', wartosc=False)
     return word
 
 
@@ -196,7 +162,7 @@ def szukaj():
 # Rysowanie słownika i pozyskanie audio
 def get_audio(audio_link, audio_end):
     audiofile_name = audio_end + '.wav'
-    with open(os.path.join(save_path, audiofile_name), 'wb') as file:
+    with open(os.path.join(config['save_path'], audiofile_name), 'wb') as file:
         response = requests.get(audio_link)
         file.write(response.content)
     return audiofile_name
@@ -204,12 +170,10 @@ def get_audio(audio_link, audio_end):
 
 def rysuj_slownik(url):
     global word
-
     reqs = requests.get(url)
     soup = BeautifulSoup(reqs.content, 'lxml')
     word_check = soup.find_all(class_=('ds-list', 'sds-single', 'ds-single', 'ds-list'))
     indexing = 0
-
     if len(word_check) == 0:
         print(f'{Fore.RED}{Style.BRIGHT}Nie znaleziono podanego hasła')
         return rysuj_slownik(szukaj())
@@ -228,12 +192,11 @@ def rysuj_slownik(url):
                 rex3 = re.sub("\\A\\sa[.]", "", rex2)
                 rex4 = rex3.strip()
 
-                if pokazuj_filtrowany_slownik:
+                if config['pokazuj_filtrowany_slownik']:
                     print(f"{Style.BRIGHT}{Fore.GREEN}{indexing}  {Fore.RESET}{Style.RESET_ALL}{rex4.replace('', '')}")
                 else:
                     print(f"{Style.BRIGHT}{Fore.GREEN}{indexing}  {Fore.RESET}{Style.RESET_ALL}{meaning.text}")
-
-                if not ukryj_slowo_w_definicji:
+                if not config['ukryj_slowo_w_definicji']:
                     definicje.append(rex4.replace(':', ':<br>').replace('', ''))
                 else:
                     definicje.append(rex4.replace(word, '...').replace(':', ':<br>').replace('', ''))
@@ -248,11 +211,11 @@ def rysuj_slownik(url):
                 print(f'\n{etym.text}')
                 etymologia.append(etym.text)
 
-        if dodaj_audio and tworz_karte:
+        if config['dodaj_audio'] and config['tworz_karte']:
             audio = soup.find('a', {'target': '_blank'}).get('href')
             if audio == 'http://www.hmhco.com':
-                print(f'''{Fore.RED}{Style.BRIGHT}\nHasło nie posiada pliku audio!
-Karta zostanie dodana bez audio''')
+                print(f"""{Fore.RED}{Style.BRIGHT}\nHasło nie posiada pliku audio!
+Karta zostanie dodana bez audio""")
                 return None
             else:
                 audio_end = audio.split('/')[-1]
@@ -260,11 +223,12 @@ Karta zostanie dodana bez audio''')
                 audio_link = 'https://www.ahdictionary.com'
                 audio_link += audio
                 return get_audio(audio_link, audio_end)
+        return None
 
 
 # Dodawanie zdania
 def pokazywacz_zdania(zdanie, word):
-    if not ukryj_slowo_w_zdaniu:
+    if not config['ukryj_slowo_w_zdaniu']:
         return zdanie
     else:
         return zdanie.replace(word, '...')
@@ -285,7 +249,7 @@ def ogarnij_zdanie(zdanie):
     else:
         print(f'{Style.BRIGHT}{Fore.RED}Zdanie nie zawiera podanego hasła')
         try:
-            zdanie_check = int(input(f'Czy kontynuować dodawanie? (1 - tak / 0 - dodaj zdanie jeszcze raz): '))
+            zdanie_check = int(input(f'Czy kontynuować dodawanie? [1 - tak/0 - dodaj zdanie jeszcze raz]: '))
             if zdanie_check == 1:
                 return zdanie
             elif zdanie_check == 0:
@@ -303,7 +267,7 @@ def ogarnij_zdanie(zdanie):
 
 
 def zdanie_input():
-    if dodaj_wlasne_zdanie:
+    if config['dodaj_wlasne_zdanie']:
         zdanie = str(input('\nDodaj własne przykładowe zdanie: ')).split()
         rez1 = re.sub(r"[][,]", "", str(zdanie)).strip()
         rez2 = re.sub('"', '', rez1)
@@ -361,7 +325,7 @@ def wybierz_etymologie(wybor_etymologii, etymologia):
 
 def etymologia_input():
     global skip_check
-    if dodaj_etymologie:
+    if config['dodaj_etymologie']:
         try:
             wybor_etymologii = int(input('Dołączyć etymologię?: '))
             return wybor_etymologii
@@ -374,7 +338,7 @@ def etymologia_input():
 
 def czesci_mowy_input():
     global skip_check
-    if dodaj_czesci_mowy:
+    if config['dodaj_czesci_mowy']:
         try:
             wybor_czesci_mowy = int(input('Dołączyć części mowy?: '))
             return wybor_czesci_mowy
@@ -387,7 +351,7 @@ def czesci_mowy_input():
 
 def definicje_input():
     global skip_check
-    if dodaj_definicje:
+    if config['dodaj_definicje']:
         try:
             wybor_definicji = int(input('\nWybierz definicję do dodania: '))
             return wybor_definicji
@@ -449,7 +413,7 @@ while start:
     url = szukaj()
     audiofile_name = rysuj_slownik(url)
 
-    if tworz_karte:
+    if config['tworz_karte']:
         while True:
             zdanie = ogarnij_zdanie(zdanie_input())
             if skip_check == 1:
@@ -465,7 +429,7 @@ while start:
                 break
             break
 
-    if skip_check == 0 and tworz_karte:
+    if skip_check == 0 and config['tworz_karte']:
         utworz_karte()
         wyswietl_karte()
     print()
