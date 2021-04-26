@@ -21,8 +21,9 @@ Po przejściu przez wszystkie pola program zapisuje nasz wybór w dokumencie tek
 Po zakończonej sesji dodawania, program tworzy dokument "karty.txt", który od razu jest gotowy do zaimportowania do Anki.
 
 Audio domyślnie zapisywane jest w folderze "Karty_audio" w folderze z programem.
-Możemy zmienić ścieżkę zapisu audio, jak i wszystkie domyślne ustawienia w pliku "config.ini".
-Najlepiej zlokalizować folder "collection.media", aby audio było automatycznie odtwarzane w Anki.
+Możemy zmienić ścieżkę zapisu audio, jak i wszystkie domyślne ustawienia używając komend.
+
+Najlepiej dodać ścieżkę do folderu "collection.media", aby audio było automatycznie odtwarzane w Anki bez potrzeby ręcznego przenosznia zawartości "Karty_audio".
 
 ![image](https://user-images.githubusercontent.com/82805891/115930678-2fd71900-a48a-11eb-9163-4abfba9c1df9.png)
 
@@ -42,7 +43,7 @@ Musimy stworzyć notatkę, która zawiera te pola w podanej kolejności.
 To nie oznacza, że te wszystkie informacje będą wyświetlane na naszych kartach.
 Wszystkie pola podlegają indywidualnej obróbce w Anki.
 
-Dodanie notatki z tymi polami nie gwarantuje nam najlepszych doświadczeń z powtarzania kart.
+Samo dodanie notatki z tymi polami nie gwarantuje nam najlepszych doświadczeń z powtarzania kart.
 Aby ten słownikowy format został najlepiej wykorzystany, potrzebujemy potężnej stylizacji, która dostarczy nam prawdziwej powtórkowej przyjemności.
 Dla nowych lub niedoświadczonych użytkowników, którzy niezaznajomieni są jeszcze z siłą customizacji, oferuję moją notatkę na wypróbowanie:
 https://pastebin.com/9ZfWMpNu.
@@ -84,4 +85,4 @@ Jestem otwarty na sugestie i krytykę.
 Mam nadzieję, że narzędzie okaże się pomocne.
 
 
-Użyte biblioteki: BeautifulSoup4, requests, colorama, configparser, regex
+Użyte biblioteki: BeautifulSoup4, requests, colorama, regex
