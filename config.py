@@ -1,1 +1,0 @@
-config = {'dodaj_audio': True, 'dodaj_wlasne_zdanie': True, 'dodaj_definicje': True, 'dodaj_czesci_mowy': True, 'dodaj_etymologie': True, 'tworz_karte': True, 'ukryj_slowo_w_definicji': True, 'ukryj_slowo_w_zdaniu': False, 'save_path': 'Karty_audio', 'pokazuj_filtrowany_slownik': True}
