@@ -11,7 +11,9 @@ produkujący wysokiej jakości karty przekona do Anki większą ilość osób i 
 
 **| [Link do pobrania ](https://github.com/funky-trellis/anki-dodawacz/releases/download/v0.3.1/AnkiDodawacz.zip) |**
 
-Należy rozpakować folder w dogodnej lokacji.
+Należy rozpakować folder w dogodnej lokacji i uruchomić plik "AnkiDodawacz.exe"
+
+Jeżeli w folderze z programem nie ma folderu "Karty_audio" to należy go stworzyć.
 
 # Konfiguracja i działanie programu
 
