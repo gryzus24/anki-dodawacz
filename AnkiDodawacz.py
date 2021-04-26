@@ -9,7 +9,7 @@ import re
 start = True
 colorama.init(autoreset=True)
 
-print(f"""{Style.BRIGHT}{Fore.YELLOW}- DODAWACZ KART DO {Fore.CYAN}ANKI {Fore.YELLOW}v0.3.1 -\n
+print(f"""{Style.BRIGHT}{Fore.YELLOW}- DODAWACZ KART DO {Fore.CYAN}ANKI {Fore.YELLOW}v0.3.2 -\n
 {Style.RESET_ALL}{Fore.WHITE}Wpisz "--help", aby wyświetlić pomoc\n\n""")
 
 
