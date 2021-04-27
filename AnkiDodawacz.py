@@ -199,6 +199,8 @@ def get_audio(audio_link, audio_end):
 
 def rysuj_slownik(url):
     global word
+    global lifesaver
+    life_index = 0
     reqs = requests.get(url)
     soup = BeautifulSoup(reqs.content, 'lxml')
     word_check = soup.find_all(class_=('ds-list', 'sds-single', 'ds-single', 'ds-list'))
@@ -211,7 +213,13 @@ def rysuj_slownik(url):
             meanings_in_td = td.find_all(class_=('ds-list', 'sds-single', 'ds-single', 'ds-list'))
             print(f'{Style.DIM}{Fore.WHITE}------------------------------------------------------------------------{Style.RESET_ALL}')
             for meaning_num in td.find_all('font', {'color': '#006595'}, 'sup'):
-                print(f'  {Fore.CYAN}{meaning_num.text}')
+                life_index += 1
+                if life_index == 1:
+                    lifesaver0 = meaning_num.text
+                    lifesaver = re.sub(r'·', '', lifesaver0)
+                    print(f'  {Fore.CYAN}{meaning_num.text}')
+                else:
+                    print(f'  {Fore.CYAN}{meaning_num.text}')
             for meaning in meanings_in_td:
                 indexing += 1
                 meanings_filtered = meaning.text
@@ -239,7 +247,7 @@ def rysuj_slownik(url):
             for etym in td.find_all(class_='etyseg'):
                 print(f'\n{etym.text}')
                 etymologia.append(etym.text)
-
+        print()
         if config['dodaj_audio'] and config['tworz_karte']:
             audio = soup.find('a', {'target': '_blank'}).get('href')
             if audio == 'http://www.hmhco.com':
@@ -442,25 +450,19 @@ def wybierz_disamb(wybor_disamb, grupa_synonimow, grupa_przykladow):
         return ' '
 
 
-def rysuj_synonimy():
+def rysuj_synonimy(syn_soup):
     syn_stream = []
-    url_synsearch = 'http://wordnetweb.princeton.edu/perl/webwn?s='
-    url_synsearch += word
-    reqs_syn = requests.get(url_synsearch)
-    syn_soup = BeautifulSoup(reqs_syn.content, 'lxml')
-    print()
     for synline in syn_soup.find_all('li'):
         syn_stream.append(synline.text)
     for index, ele in enumerate(syn_stream, start=1):
         przyklady = re.findall(r'\"(.+?)\"', ele)
         przyklady2 = re.sub("[][]", "", str(przyklady))
         przyklady3 = re.sub("',", "'\n   ", przyklady2)
-        przyklady4 = re.sub("\A[']", "\n    '", przyklady3)
-        # przyklady_hide = re.sub()
+        przyklady4 = re.sub("\\A[']", "\n    '", przyklady3)
 
         synonimy, sep, tail = ele.partition('"')
         synonimy1 = re.sub("S:", f"{Fore.LIGHTGREEN_EX}{index}{Fore.RESET} :", synonimy)
-        synonimy2 = re.sub("\((.+?)\)", "", synonimy1)
+        synonimy2 = re.sub("\\((.+?)\\)", "", synonimy1)
         index, sep, synonimy3 = synonimy2.partition(':')
         synonimy4 = re.sub(r"\s{2}", "", synonimy3)
 
@@ -477,8 +479,25 @@ def rysuj_synonimy():
             print(f'{synonimy1}{przyklady4}\n')
 
 
-
-
+def disambiguator(url_synsearch, check):
+    global skip_check
+    if check == 'kcz':
+        try:
+            reqs_syn = requests.get(url_synsearch)
+            syn_soup = BeautifulSoup(reqs_syn.content, 'lxml')
+            no_word = syn_soup.find('h3')
+            e, e, check = str(no_word).partition('>')
+            if check == 'Your search did not return any results.</h3>':
+                print(f'{Fore.LIGHTRED_EX}Wyniki dla {Fore.RESET}"{lifesaver}" {Fore.LIGHTRED_EX}zamiast {Fore.RESET}"{word}"')
+                url_synsearch = 'http://wordnetweb.princeton.edu/perl/webwn?s=' + lifesaver
+                disambiguator(url_synsearch, check='kcz')
+            else:
+                print()
+                rysuj_synonimy(syn_soup)
+        except Exception:
+            print(f'{Fore.LIGHTRED_EX}Wystąpił problem podczas pozyskiwania informacji z WordNeta.'
+                  f'Możliwe, że AH posiada wpis dla {Fore.RESET}"{word}"{Fore.LIGHTRED_EX}, ale WordNet nie. ')
+            skip_check = 1
 
 
 def disamb_input():
@@ -500,14 +519,16 @@ def utworz_karte():
     try:
         if audiofile_name is not None:
             with open('karty.txt', 'a', encoding='utf-8') as f:
-                f.write(f'{definicje}\t{word}\t'
+                f.write(f'{definicje}\t{disambiguation}\t'
+                        f'{word}\t'
                         f'{zdanie}\t'
                         f'{czesci_mowy}\t'
                         f'{etymologia}\t[sound:{audiofile_name}]\n')
                 return None
         elif audiofile_name is None:
             with open('karty.txt', 'a', encoding='utf-8') as f:
-                f.write(f'{definicje}\t{word}\t'
+                f.write(f'{definicje}\t{disambiguation}\t'
+                        f'{word}\t'
                         f'{zdanie}\t'
                         f'{czesci_mowy}\t'
                         f'{etymologia}\t \n')  # Aby karta nie zawierała sound tagu
@@ -537,6 +558,7 @@ def wyswietl_karte():
 
 
 while start:
+    lifesaver = ''
     skip_check = 0
     word = ''
     definicje = []
@@ -563,7 +585,9 @@ while start:
             if skip_check == 1:
                 break
             if config['dodaj_disambiguation']:
-                rysuj_synonimy()
+                disambiguator(url_synsearch='http://wordnetweb.princeton.edu/perl/webwn?s=' + word, check='kcz')
+                if skip_check == 1:
+                    break
                 disambiguation = wybierz_disamb(disamb_input(), grupa_synonimow, grupa_przykladow)
                 if skip_check == 1:
                     break
