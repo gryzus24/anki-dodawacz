@@ -1,10 +1,14 @@
 dodaj_audio: true
 dodaj_czesci_mowy: true
 dodaj_definicje: true
+dodaj_disambiguation: true
 dodaj_etymologie: true
+dodaj_przyklady_synonimow: true
+dodaj_synonimy: true
 dodaj_wlasne_zdanie: true
 pokazuj_filtrowany_slownik: true
 save_path: Karty_audio
 tworz_karte: true
 ukryj_slowo_w_definicji: true
+ukryj_slowo_w_disamb: true
 ukryj_slowo_w_zdaniu: false

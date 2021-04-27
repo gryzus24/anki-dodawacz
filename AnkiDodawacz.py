@@ -15,13 +15,12 @@ with open("config.yml", "r") as f:
 print(f"""{Style.BRIGHT}{Fore.YELLOW}- DODAWACZ KART DO {Fore.CYAN}ANKI {Fore.YELLOW}v0.3.2 -\n
 {Style.RESET_ALL}{Fore.WHITE}Wpisz "--help", aby wyświetlić pomoc\n\n""")
 
+
 # Komendy i input słowa
-def zapisuj_komendy(komenda, wartosc, config=config):
+def zapisuj_komendy(komenda, wartosc):
     config[komenda] = wartosc
-    
     with open("config.yml", "w") as f:
-        config = yaml.dump(config, f)
-    
+        yaml.dump(config, f)
     commands()
 
 
@@ -74,7 +73,7 @@ def commands():
       i wpisz/skopiuj ją w pole wyświetlone po wpisaniu komendy.                        Aktualna ścieżka = {config['save_path']}
                             
     "--ukryj-w-def on/off"      Niektóre definicje zawierają użycia słowa.              Aktualna wartość = {config['ukryj_slowo_w_definicji']}
-        lub "-ud on/off"         Ta opcja zamienia wszystkie użycia słowa na "..."\n              
+        lub "-udef on/off"      Ta opcja zamienia wszystkie użycia słowa na "..."\n              
     "--ukryj-w-zdaniu on/off"   Jak w definicjach tylko w dodanym zdaniu                Aktualna wartość = {config['ukryj_slowo_w_zdaniu']}
         lub "-uz on/off"          
     ------------------------------------------------------------------------------------------------------------\n""")
@@ -115,18 +114,20 @@ def commands():
         zapisuj_komendy(komenda='pokazuj_filtrowany_slownik', wartosc=False)
     elif word == '-all on':
         print(f'{Fore.LIGHTGREEN_EX}Dodawanie: WSZYSTKO')
+        config['dodaj_disambiguation'] = True
         config['dodaj_wlasne_zdanie'] = True
-        config['dodaj_definicje'] = True
         config['dodaj_czesci_mowy'] = True
         config['dodaj_etymologie'] = True
+        config['dodaj_definicje'] = True
         config['dodaj_audio'] = True
         zapisuj_komendy(komenda='dodaj_audio', wartosc=True)  # dummy args tylko aby funkcja przeszła
     elif word == '-all off':
         print(f'{Fore.LIGHTGREEN_EX}Dodawanie: {Style.BRIGHT}{Fore.RED}Tylko hasło')
+        config['dodaj_disambiguation'] = False
         config['dodaj_wlasne_zdanie'] = False
-        config['dodaj_definicje'] = False
         config['dodaj_czesci_mowy'] = False
         config['dodaj_etymologie'] = False
+        config['dodaj_definicje'] = False
         config['dodaj_audio'] = False
         zapisuj_komendy(komenda='dodaj_audio', wartosc=False)  # dummy args tylko aby funkcja przeszła
     elif word == '-karty on':
@@ -141,10 +142,10 @@ def commands():
     elif word == '--zdanie off' or word == '-z off':
         print(f'{Fore.LIGHTGREEN_EX}Dodawanie własnego zdania: {Style.BRIGHT}{Fore.RED}wyłączone')
         zapisuj_komendy(komenda='dodaj_wlasne_zdanie', wartosc=False)
-    elif word == '--ukryj-w-def on' or word == '-ud on':
+    elif word == '--ukryj-w-def on' or word == '-udef on':
         print(f'{Fore.LIGHTGREEN_EX}Ukrywanie słowa w definicjach: włączone')
         zapisuj_komendy(komenda='ukryj_slowo_w_definicji', wartosc=True)
-    elif word == '--ukryj-w-def off' or word == '-ud off':
+    elif word == '--ukryj-w-def off' or word == '-udef off':
         print(f'{Fore.LIGHTGREEN_EX}Ukrywanie słowa w definicjach: {Style.BRIGHT}{Fore.RED}wyłączone')
         zapisuj_komendy(komenda='ukryj_slowo_w_definicji', wartosc=False)
     elif word == '--ukryj-w-zdaniu on' or word == '-uz on':
@@ -153,6 +154,30 @@ def commands():
     elif word == '--ukryj-w-zdaniu off' or word == '-uz off':
         print(f'{Fore.LIGHTGREEN_EX}Ukrywanie słowa w zdaniu: {Style.BRIGHT}{Fore.RED}wyłączone')
         zapisuj_komendy(komenda='ukryj_slowo_w_zdaniu', wartosc=False)
+    elif word == '--ukryj-w-disamb on' or word == '-udisamb on':
+        print(f'{Fore.LIGHTGREEN_EX}Ukrywanie słowa w synonimach: włączone')
+        zapisuj_komendy(komenda='ukryj_slowo_w_disamb', wartosc=True)
+    elif word == '--ukryj-w-disamb off' or word == '-udisamb off':
+        print(f'{Fore.LIGHTGREEN_EX}Ukrywanie słowa w synonimach: {Style.BRIGHT}{Fore.RED}wyłączone')
+        zapisuj_komendy(komenda='ukryj_slowo_w_disamb', wartosc=False)
+    elif word == '--disambiguation on' or word == '-disamb on':
+        print(f'{Fore.LIGHTGREEN_EX}Słownik synonimów: włączony')
+        zapisuj_komendy(komenda='dodaj_disambiguation', wartosc=True)
+    elif word == '--disambiguation off' or word == '-disamb off':
+        print(f'{Fore.LIGHTGREEN_EX}Słownik synonimów: {Style.BRIGHT}{Fore.RED}wyłączony')
+        zapisuj_komendy(komenda='dodaj_disambiguation', wartosc=False)
+    elif word == '--disambiguation synonimy on' or word == '-disamb syn on':
+        print(f'{Fore.LIGHTGREEN_EX}Dodawanie synonimów: włączone')
+        zapisuj_komendy(komenda='dodaj_synonimy', wartosc=True)
+    elif word == '--disambiguation synonimy off' or word == '-disamb syn off':
+        print(f'{Fore.LIGHTGREEN_EX}Dodawanie synonimów: {Style.BRIGHT}{Fore.RED}wyłączone')
+        zapisuj_komendy(komenda='dodaj_synonimy', wartosc=False)
+    elif word == '--disambiguation przyklady on' or word == '-disamb p on':
+        print(f'{Fore.LIGHTGREEN_EX}Dodawanie przykładów: włączone')
+        zapisuj_komendy(komenda='dodaj_przyklady_synonimow', wartosc=True)
+    elif word == '--disambiguation przyklady off' or word == '-disamb p off':
+        print(f'{Fore.LIGHTGREEN_EX}Dodawanie przykładów: {Style.BRIGHT}{Fore.RED}wyłączone')
+        zapisuj_komendy(komenda='dodaj_przyklady_synonimow', wartosc=False)
     return word
 
 
@@ -369,6 +394,106 @@ def definicje_input():
     return wybor_definicji
 
 
+def wybierz_disamb(wybor_disamb, grupa_synonimow, grupa_przykladow):
+    if config['dodaj_synonimy'] and config['dodaj_przyklady_synonimow']:
+        if len(grupa_synonimow) >= wybor_disamb > 0:
+            return f'{grupa_synonimow[int(wybor_disamb) - 1]}<br>{grupa_przykladow[int(wybor_disamb) - 1]}'
+        elif wybor_disamb > len(grupa_synonimow):
+            return f"{' '.join(grupa_synonimow)}<br>{' '.join(grupa_przykladow)}"
+        elif wybor_disamb == 0:
+            grupa_synonimow = ' '
+            grupa_przykladow = ' '
+            return f'{grupa_synonimow}<br>{grupa_przykladow}'
+        elif wybor_disamb == -1:
+            return f"{' '.join(grupa_synonimow)}<br>{' '.join(grupa_przykladow)}"
+        else:
+            grupa_synonimow = ' '
+            grupa_przykladow = ' '
+            return f'{grupa_synonimow}{grupa_przykladow}'
+
+    if config['dodaj_synonimy']:
+        if len(grupa_synonimow) >= wybor_disamb > 0:
+            return grupa_synonimow[int(wybor_disamb) - 1]
+        elif wybor_disamb > len(grupa_synonimow):
+            return ' '.join(grupa_synonimow)
+        elif wybor_disamb == 0:
+            grupa_synonimow = ' '
+            return grupa_synonimow
+        elif wybor_disamb == -1:
+            return ' '.join(grupa_synonimow)
+        else:
+            grupa_synonimow = ' '
+            return grupa_synonimow
+
+    if config['dodaj_przyklady_synonimow']:
+        if len(grupa_przykladow) >= wybor_disamb > 0:
+            return grupa_przykladow[int(wybor_disamb) - 1]
+        elif wybor_disamb > len(grupa_przykladow):
+            return ' '.join(grupa_przykladow)
+        elif wybor_disamb == 0:
+            grupa_przykladow = ' '
+            return grupa_przykladow
+        elif wybor_disamb == -1:
+            return ' '.join(grupa_przykladow)
+        else:
+            grupa_przykladow = ' '
+            return grupa_przykladow
+    else:
+        return ' '
+
+
+def rysuj_synonimy():
+    syn_stream = []
+    url_synsearch = 'http://wordnetweb.princeton.edu/perl/webwn?s='
+    url_synsearch += word
+    reqs_syn = requests.get(url_synsearch)
+    syn_soup = BeautifulSoup(reqs_syn.content, 'lxml')
+    print()
+    for synline in syn_soup.find_all('li'):
+        syn_stream.append(synline.text)
+    for index, ele in enumerate(syn_stream, start=1):
+        przyklady = re.findall(r'\"(.+?)\"', ele)
+        przyklady2 = re.sub("[][]", "", str(przyklady))
+        przyklady3 = re.sub("',", "'\n   ", przyklady2)
+        przyklady4 = re.sub("\A[']", "\n    '", przyklady3)
+        # przyklady_hide = re.sub()
+
+        synonimy, sep, tail = ele.partition('"')
+        synonimy1 = re.sub("S:", f"{Fore.LIGHTGREEN_EX}{index}{Fore.RESET} :", synonimy)
+        synonimy2 = re.sub("\((.+?)\)", "", synonimy1)
+        index, sep, synonimy3 = synonimy2.partition(':')
+        synonimy4 = re.sub(r"\s{2}", "", synonimy3)
+
+        if config['ukryj_slowo_w_disamb']:
+            grupa_synonimow.append(synonimy4.replace(word, '...'))
+            grupa_przykladow.append(przyklady2.replace(word, '...'))
+        else:
+            grupa_synonimow.append(synonimy4)
+            grupa_przykladow.append(przyklady2)
+
+        if przyklady4 == '':
+            print(f'{synonimy1}\n    *Brak przykładów*\n')
+        else:
+            print(f'{synonimy1}{przyklady4}\n')
+
+
+
+
+
+
+def disamb_input():
+    global skip_check
+    if config['dodaj_disambiguation']:
+        try:
+            wybor_disamb = int(input('Wybierz grupę synonimów: '))
+            return wybor_disamb
+        except ValueError:
+            skip_check = 1
+            print(f'{Fore.LIGHTGREEN_EX}Pominięto dodawanie karty')
+    wybor_disamb = 0
+    return wybor_disamb
+
+
 # Tworzenie karty
 def utworz_karte():
     global start
@@ -398,6 +523,7 @@ def wyswietl_karte():
     print('Utworzona karta zawiera:')
     print(f'{Style.DIM}{Fore.WHITE}------------------------------------------------------------------------')
     print(definicje.center(70))
+    print(disambiguation.center(70))
     print(f'{Style.DIM}{Fore.WHITE}------------------------------------------------------------------------')
     print(word.center(70))
     print(f'{zdanie.center(70)}')
@@ -416,6 +542,8 @@ while start:
     definicje = []
     czesci_mowy = []
     etymologia = []
+    grupa_przykladow = []
+    grupa_synonimow = []
 
     url = szukaj()
     audiofile_name = rysuj_slownik(url)
@@ -434,6 +562,11 @@ while start:
             etymologia = wybierz_etymologie(etymologia_input(), etymologia)
             if skip_check == 1:
                 break
+            if config['dodaj_disambiguation']:
+                rysuj_synonimy()
+                disambiguation = wybierz_disamb(disamb_input(), grupa_synonimow, grupa_przykladow)
+                if skip_check == 1:
+                    break
             break
 
     if skip_check == 0 and config['tworz_karte']:
