@@ -558,9 +558,10 @@ def wyswietl_karte():
 
 
 while start:
-    lifesaver = ''
     skip_check = 0
+    lifesaver = ''
     word = ''
+    disambiguation = ''
     definicje = []
     czesci_mowy = []
     etymologia = []
