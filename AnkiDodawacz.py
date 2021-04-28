@@ -82,13 +82,13 @@ def commands():
         print(f'{Fore.LIGHTGREEN_EX}Dodawanie definicji: włączone')
         zapisuj_komendy(komenda='dodaj_definicje', wartosc=True)
     elif word == '-d off' or word == '--definicje off':
-        print(f'{Fore.LIGHTGREEN_EX}Dodawanie definicji: {Style.BRIGHT}{Fore.RED}wyłączone')
+        print(f'{Fore.LIGHTGREEN_EX}Dodawanie definicji: {Fore.LIGHTRED_EX}wyłączone')
         zapisuj_komendy(komenda='dodaj_definicje', wartosc=False)
     elif word == '-a on' or word == '--audio on':
         print(f'{Fore.LIGHTGREEN_EX}Dodawanie audio: włączone')
         zapisuj_komendy(komenda='dodaj_audio', wartosc=True)
     elif word == '-a off' or word == '--audio off':
-        print(f'{Fore.LIGHTGREEN_EX}Dodawanie audio: {Style.BRIGHT}{Fore.RED}wyłączone')
+        print(f'{Fore.LIGHTGREEN_EX}Dodawanie audio: {Fore.LIGHTRED_EX}wyłączone')
         zapisuj_komendy(komenda='dodaj_audio', wartosc=False)
     elif word == '--audio-path':
         save_path = str(input('Wprowadź ścieżkę zapisu audio: '))
@@ -98,19 +98,19 @@ def commands():
         print(f'{Fore.LIGHTGREEN_EX}Dodawanie etymologii: włączone')
         zapisuj_komendy(komenda='dodaj_etymologie', wartosc=True)
     elif word == '-e off' or word == '--etymologie off':
-        print(f'{Fore.LIGHTGREEN_EX}Dodawanie etymologii: {Style.BRIGHT}{Fore.RED}wyłączone')
+        print(f'{Fore.LIGHTGREEN_EX}Dodawanie etymologii: {Fore.LIGHTRED_EX}wyłączone')
         zapisuj_komendy(komenda='dodaj_etymologie', wartosc=False)
     elif word == '-pos on' or word == '--czesci-mowy on':
         print(f'{Fore.LIGHTGREEN_EX}Dodawanie części mowy: włączone')
         zapisuj_komendy(komenda='dodaj_czesci_mowy', wartosc=True)
     elif word == '-pos off' or word == '--czesci-mowy off':
-        print(f'{Fore.LIGHTGREEN_EX}Dodawanie części mowy: {Style.BRIGHT}{Fore.RED}wyłączone')
+        print(f'{Fore.LIGHTGREEN_EX}Dodawanie części mowy: {Fore.LIGHTRED_EX}wyłączone')
         zapisuj_komendy(komenda='dodaj_czesci_mowy', wartosc=False)
     elif word == '-fs on' or word == '--filtruj-slownik on':
         print(f'{Fore.LIGHTGREEN_EX}Filtrowanie slownika: włączone')
         zapisuj_komendy(komenda='pokazuj_filtrowany_slownik', wartosc=True)
     elif word == '-fs off' or word == '--filtruj-slownik off':
-        print(f'{Fore.LIGHTGREEN_EX}Filtrowanie slownika: {Style.BRIGHT}{Fore.RED}wyłączone')
+        print(f'{Fore.LIGHTGREEN_EX}Filtrowanie slownika: {Fore.LIGHTRED_EX}wyłączone')
         zapisuj_komendy(komenda='pokazuj_filtrowany_slownik', wartosc=False)
     elif word == '-all on':
         print(f'{Fore.LIGHTGREEN_EX}Dodawanie: WSZYSTKO')
@@ -122,7 +122,7 @@ def commands():
         config['dodaj_audio'] = True
         zapisuj_komendy(komenda='dodaj_audio', wartosc=True)  # dummy args tylko aby funkcja przeszła
     elif word == '-all off':
-        print(f'{Fore.LIGHTGREEN_EX}Dodawanie: {Style.BRIGHT}{Fore.RED}Tylko hasło')
+        print(f'{Fore.LIGHTGREEN_EX}Dodawanie: {Fore.LIGHTRED_EX}Tylko hasło')
         config['dodaj_disambiguation'] = False
         config['dodaj_wlasne_zdanie'] = False
         config['dodaj_czesci_mowy'] = False
@@ -134,49 +134,49 @@ def commands():
         print(f'{Fore.LIGHTGREEN_EX}Tworzenie kart: włączone')
         zapisuj_komendy(komenda='tworz_karte', wartosc=True)
     elif word == '-karty off':
-        print(f'{Fore.LIGHTGREEN_EX}Tworzenie kart: {Style.BRIGHT}{Fore.RED}wyłączone')
+        print(f'{Fore.LIGHTGREEN_EX}Tworzenie kart: {Fore.LIGHTRED_EX}wyłączone')
         zapisuj_komendy(komenda='tworz_karte', wartosc=False)
     elif word == '--zdanie on' or word == '-z on':
         print(f'{Fore.LIGHTGREEN_EX}Dodawanie własnego zdania: włączone')
         zapisuj_komendy(komenda='dodaj_wlasne_zdanie', wartosc=True)
     elif word == '--zdanie off' or word == '-z off':
-        print(f'{Fore.LIGHTGREEN_EX}Dodawanie własnego zdania: {Style.BRIGHT}{Fore.RED}wyłączone')
+        print(f'{Fore.LIGHTGREEN_EX}Dodawanie własnego zdania: {Fore.LIGHTRED_EX}wyłączone')
         zapisuj_komendy(komenda='dodaj_wlasne_zdanie', wartosc=False)
     elif word == '--ukryj-w-def on' or word == '-udef on':
         print(f'{Fore.LIGHTGREEN_EX}Ukrywanie słowa w definicjach: włączone')
         zapisuj_komendy(komenda='ukryj_slowo_w_definicji', wartosc=True)
     elif word == '--ukryj-w-def off' or word == '-udef off':
-        print(f'{Fore.LIGHTGREEN_EX}Ukrywanie słowa w definicjach: {Style.BRIGHT}{Fore.RED}wyłączone')
+        print(f'{Fore.LIGHTGREEN_EX}Ukrywanie słowa w definicjach: {Fore.LIGHTRED_EX}wyłączone')
         zapisuj_komendy(komenda='ukryj_slowo_w_definicji', wartosc=False)
     elif word == '--ukryj-w-zdaniu on' or word == '-uz on':
         print(f'{Fore.LIGHTGREEN_EX}Ukrywanie słowa w zdaniu: włączone')
         zapisuj_komendy(komenda='ukryj_slowo_w_zdaniu', wartosc=True)
     elif word == '--ukryj-w-zdaniu off' or word == '-uz off':
-        print(f'{Fore.LIGHTGREEN_EX}Ukrywanie słowa w zdaniu: {Style.BRIGHT}{Fore.RED}wyłączone')
+        print(f'{Fore.LIGHTGREEN_EX}Ukrywanie słowa w zdaniu: {Fore.LIGHTRED_EX}wyłączone')
         zapisuj_komendy(komenda='ukryj_slowo_w_zdaniu', wartosc=False)
     elif word == '--ukryj-w-disamb on' or word == '-udisamb on':
         print(f'{Fore.LIGHTGREEN_EX}Ukrywanie słowa w synonimach: włączone')
         zapisuj_komendy(komenda='ukryj_slowo_w_disamb', wartosc=True)
     elif word == '--ukryj-w-disamb off' or word == '-udisamb off':
-        print(f'{Fore.LIGHTGREEN_EX}Ukrywanie słowa w synonimach: {Style.BRIGHT}{Fore.RED}wyłączone')
+        print(f'{Fore.LIGHTGREEN_EX}Ukrywanie słowa w synonimach: {Fore.LIGHTRED_EX}wyłączone')
         zapisuj_komendy(komenda='ukryj_slowo_w_disamb', wartosc=False)
     elif word == '--disambiguation on' or word == '-disamb on':
         print(f'{Fore.LIGHTGREEN_EX}Słownik synonimów: włączony')
         zapisuj_komendy(komenda='dodaj_disambiguation', wartosc=True)
     elif word == '--disambiguation off' or word == '-disamb off':
-        print(f'{Fore.LIGHTGREEN_EX}Słownik synonimów: {Style.BRIGHT}{Fore.RED}wyłączony')
+        print(f'{Fore.LIGHTGREEN_EX}Słownik synonimów: {Fore.LIGHTRED_EX}wyłączony')
         zapisuj_komendy(komenda='dodaj_disambiguation', wartosc=False)
     elif word == '--disambiguation synonimy on' or word == '-disamb syn on':
         print(f'{Fore.LIGHTGREEN_EX}Dodawanie synonimów: włączone')
         zapisuj_komendy(komenda='dodaj_synonimy', wartosc=True)
     elif word == '--disambiguation synonimy off' or word == '-disamb syn off':
-        print(f'{Fore.LIGHTGREEN_EX}Dodawanie synonimów: {Style.BRIGHT}{Fore.RED}wyłączone')
+        print(f'{Fore.LIGHTGREEN_EX}Dodawanie synonimów: {Fore.LIGHTRED_EX}wyłączone')
         zapisuj_komendy(komenda='dodaj_synonimy', wartosc=False)
     elif word == '--disambiguation przyklady on' or word == '-disamb p on':
         print(f'{Fore.LIGHTGREEN_EX}Dodawanie przykładów: włączone')
         zapisuj_komendy(komenda='dodaj_przyklady_synonimow', wartosc=True)
     elif word == '--disambiguation przyklady off' or word == '-disamb p off':
-        print(f'{Fore.LIGHTGREEN_EX}Dodawanie przykładów: {Style.BRIGHT}{Fore.RED}wyłączone')
+        print(f'{Fore.LIGHTGREEN_EX}Dodawanie przykładów: {Fore.LIGHTRED_EX}wyłączone')
         zapisuj_komendy(komenda='dodaj_przyklady_synonimow', wartosc=False)
     return word
 
@@ -246,6 +246,7 @@ def rysuj_slownik(url):
             for etym in td.find_all(class_='etyseg'):
                 print(f'\n{etym.text}')
                 etymologia.append(etym.text)
+
         if config['dodaj_audio'] and config['tworz_karte']:
             audio = soup.find('a', {'target': '_blank'}).get('href')
             if audio == 'http://www.hmhco.com':
@@ -583,6 +584,7 @@ while start:
             etymologia = wybierz_etymologie(etymologia_input(), etymologia)
             if skip_check == 1:
                 break
+
             if config['dodaj_disambiguation']:
                 disambiguator(url_synsearch='http://wordnetweb.princeton.edu/perl/webwn?s=' + word, check='kcz')
                 if skip_check == 1:
