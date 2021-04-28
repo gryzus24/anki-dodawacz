@@ -550,16 +550,16 @@ def wyswietl_karte():
     print('\n')
     print('Utworzona karta zawiera:')
     print('--------------------------------------------------------------------------------')
-    print(definicje.replace('<br>', '').center(70))
-    print(disamb_synonimy.center(70))
-    print(disamb_przyklady.center(70))
+    print(definicje.replace('<br>', '').center(80))
+    print(disamb_synonimy.center(80))
+    print(disamb_przyklady.center(80))
     print('--------------------------------------------------------------------------------')
-    print(word.center(70))
-    print(f'{zdanie.center(70)}')
-    print(czesci_mowy.center(70))
-    print(etymologia.center(70))
+    print(word.center(80))
+    print(f'{zdanie.center(80)}')
+    print(czesci_mowy.center(80))
+    print(etymologia.center(80))
     if audiofile_name is not None:
-        print(f'[sound:{audiofile_name}]'.center(70))
+        print(f'[sound:{audiofile_name}]'.center(80))
     else:
         print('')
     print('--------------------------------------------------------------------------------\n')
@@ -570,6 +570,8 @@ while start:
     lifesaver = ''
     word = ''
     disambiguation = ''
+    disamb_synonimy = ''
+    disamb_przyklady = ''
     definicje = []
     czesci_mowy = []
     etymologia = []
@@ -577,8 +579,13 @@ while start:
     grupa_synonimow = []
 
     url = szukaj()
-    rysuj_slownik(url)
-    audiofile_name = search_for_audio(url)
+    if config['tworz_karte']:
+        rysuj_slownik(url)
+        audiofile_name = search_for_audio(url)
+    else:
+        rysuj_slownik(url)
+        disambiguator(url_synsearch='http://wordnetweb.princeton.edu/perl/webwn?s=' + word)
+
 
     if config['tworz_karte']:
         while True:
