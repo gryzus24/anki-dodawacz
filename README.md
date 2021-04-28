@@ -46,7 +46,18 @@ Są to:
 - Etymologia
 - Audio
 
-Musimy stworzyć notatkę, która zawiera te pola w podanej kolejności. 
+Musimy stworzyć notatkę, która zawiera te pola w podanej kolejności.
+Gdy mamy otwarte Anki, na górnym pasku klikamy w "Narzędzia" > "Zarządzaj typami notatek"
+- Klikamy "Dodaj"
+- Wybieramy "Dodaj: Podstawowy"
+- Nazywamy
+- Wybieramy nowoutworzoną notatkę i klikamy w "Pola..."
+- Dodajemy pola
+
+Nasze pola powinny wyglądać tak:
+
+![image](https://user-images.githubusercontent.com/82805891/116415454-b9476c00-a839-11eb-893f-ed4e1e3384ac.png)
+
 To nie oznacza, że te wszystkie informacje będą wyświetlane na naszych kartach.
 Wszystkie pola podlegają indywidualnej obróbce w Anki.
 
