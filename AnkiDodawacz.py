@@ -33,49 +33,62 @@ def commands():
         print(f"""\n    Po wpisaniu hasła w pole "Szukaj" rozpocznie się cykl dodawania karty.
 --------------------------------------------------------------------------------
  Przy dodawaniu zdania:
-   Wpisz swoje własne przykładowe zdanie zawierające wyszukane hasło.
- "-s"             pomija dodawanie zdania\n
+ Wpisz swoje własne przykładowe zdanie zawierające wyszukane hasło.
+  "-s"             pomija dodawanie zdania\n
  W przypadku wpisania zdania niezawierającego wyszukanego hasła:
- "1"              dodaje zdanie
- "0"              powtarza dodawanie zdania
- Wpisanie litery lub wciśnięcie Enter pomija dodawanie karty
+  "1"              dodaje zdanie
+  "0"              powtarza dodawanie zdania
+ Wpisanie litery lub wciśnięcie Enter pomija dodawanie karty.
 --------------------------------------------------------------------------------
  Przy definicjach:
-   Aby wybrać definicję wpisz numer zielonego indeksu.\n
- np. "3"         dodaje trzecią definicję
- "0"             pomija dodawanie elementu
- "-1"            dodaje wszystkie elementy
- Wpisanie litery lub wciśnięcie Enter gdy pole jest puste pomija dodawanie karty
+ Aby wybrać definicję wpisz numer zielonego indeksu.\n
+  np. "3"         dodaje trzecią definicję
+  "0"             pomija dodawanie elementu
+  "-1"            dodaje wszystkie elementy
+ Wpisanie litery lub wciśnięcie Enter gdy pole jest puste pomija dodawanie karty.
 --------------------------------------------------------------------------------
  Przy częściach mowy:
- "1"             dodaje wszystkie części mowy
- "0"             pomija dodawanie elementu
+  "1"             dodaje wszystkie części mowy
+  "0"             pomija dodawanie elementu
 --------------------------------------------------------------------------------
  Przy etymologiach:
-   Przy większej ilości etymologii możemy sprecyzować wybór wpisując numer etymologii licząc od góry.
-   lub wpisać "-1", aby dodać wszystkie dostępne etmologie.
+ Przy większej ilości etymologii możemy sprecyzować wybór wpisując numer etymologii licząc od góry.
+ lub wpisać "-1", aby dodać wszystkie dostępne etmologie.
+--------------------------------------------------------------------------------
+ Przy synonimach:
+ Synonimy wyświetlane są w grupach zawierających synonimy i przykłady.
+ Wybieranie działa tak jak w definicjach, tylko mamy do wyboru dwa pola:
+  - Grupę synonimów
+  - Grupę przykładów
 --------------------------------------------------------------------------------
  Komendy (wpisywane w pole "Szukaj"):
- "--zdanie on/off" lub "-z on/off"             włącza/wyłącza dodawanie zdania       Aktualna wartość = {config['dodaj_wlasne_zdanie']}
- "--definicje on/off" lub "-d on/off"          włącza/wyłącza dodawanie definicji    Aktualna wartość = {config['dodaj_definicje']}
- "--czesci-mowy on/off" lub "-pos on/off"      włącza/wyłącza dodawnie części mowy   Aktualna wartość = {config['dodaj_czesci_mowy']}
- "--etymologie on/off" lub "-e on/off"         włącza/wyłącza dodawanie etymologii   Aktualna wartość = {config['dodaj_etymologie']}
- "--audio on/off" lub "-a on/off"              włącza/wyłącza dodawanie audio        Aktualna wartość = {config['dodaj_audio']}\n
- "-all on/off"                                 Zmienia wartość wszystkich powyższych ustawień na True/False\n
- "-karty on/off"                               włącza/wyłącza dodawanie kart         Aktualna wartość = {config['tworz_karte']}\n
- "--filtruj-slownik on/off" lub "-fs on/off"   włącza/wyłącza filtrowanie numeracji
-                                        i stylizacji podczas wyświetlania słownika   Aktualna wartość = {config['pokazuj_filtrowany_slownik']}\n
+ "--zdanie on/off" lub "-z on/off"               włącza/wyłącza dodawanie zdania       Aktualna wartość = {config['dodaj_wlasne_zdanie']}
+ "--definicje on/off" lub "-d on/off"            włącza/wyłącza dodawanie definicji    Aktualna wartość = {config['dodaj_definicje']}
+ "--czesci-mowy on/off" lub "-pos on/off"        włącza/wyłącza dodawnie części mowy   Aktualna wartość = {config['dodaj_czesci_mowy']}
+ "--etymologie on/off" lub "-e on/off"           włącza/wyłącza dodawanie etymologii   Aktualna wartość = {config['dodaj_etymologie']}
+ "--disambiguation on/off" lub "-disamb on/off"  włącza/wyłącza pokazywanie synonimów  Aktualna wartość = {config['disambiguation']}
+ "--disambiguation synonimy on/off" 
+    lub "-disamb syn on/off"                     włącza/wyłącza dodawanie synonimów    Aktualna wartość = {config['dodaj_synonimy']}
+ "--disambiguation przyklady on/off" 
+    lub "-disamb p on/off"                       włącza/wyłącza dodawanie przykładów   Aktualna wartość = {config['dodaj_przyklady_synonimow']}
+ "--audio on/off" lub "-a on/off"                włącza/wyłącza dodawanie audio        Aktualna wartość = {config['dodaj_audio']}\n
+ "-all on/off"                                   Zmienia wartość wszystkich powyższych ustawień na True/False\n
+ "-karty on/off"                                 włącza/wyłącza dodawanie kart         Aktualna wartość = {config['tworz_karte']}\n
+ "--filtruj-slownik on/off" lub "-fs on/off"     włącza/wyłącza filtrowanie numeracji
+                                          i stylizacji podczas wyświetlania słownika   Aktualna wartość = {config['pokazuj_filtrowany_slownik']}\n
  "--audio-path" :
    Umożliwia zmianę miejsca zapisu audio (domyślnie: "Karty_audio" w folderze z programem)
    Aby audio było bezpośrednio dodawane do Anki, zlokalizuj ścieżkę:
    "C:\\[Users]\\[Nazwa użytkownika]\\AppData\\Roaming\\Anki2\\[Nazwa użytkownika Anki]\\collection.media"
    (wpisz %appdata%)
-   i wpisz/skopiuj ją w pole wyświetlone po wpisaniu komendy.                        Aktualna ścieżka = {config['save_path']}
- 
- "--ukryj-w-def on/off"      Niektóre definicje zawierają użycia słowa.              Aktualna wartość = {config['ukryj_slowo_w_definicji']}
-     lub "-udef on/off"      Ta opcja zamienia wszystkie użycia słowa na "..."\n              
- "--ukryj-w-zdaniu on/off"   Jak w definicjach tylko w dodanym zdaniu                Aktualna wartość = {config['ukryj_slowo_w_zdaniu']}
-     lub "-uz on/off"          
+   i wpisz/skopiuj ją w pole wyświetlone po wpisaniu komendy.                          Aktualna ścieżka = {config['save_path']}
+   
+ "--ukryj-w-def on/off"      Niektóre definicje zawierają użycia słowa.                Aktualna wartość = {config['ukryj_slowo_w_definicji']}
+    lub "-udef on/off"       Ta opcja zamienia wszystkie użycia słowa na "..."\n                
+ "--ukryj-w-zdaniu on/off"   Jak w definicjach tylko w dodanym zdaniu                  Aktualna wartość = {config['ukryj_slowo_w_zdaniu']}
+    lub "-uz on/off"\n  
+ "--ukryj-w-disamb on/off"   Ukrywa szukane hasło   
+    lub "-udisamb on/off     w elementach z WordNetu (synonimach)                      Aktualna wartość = {config['ukryj_slowo_w_disamb']}\n
 --------------------------------------------------------------------------------\n""")
         commands()
     elif word == '-d on' or word == '--definicje on':
@@ -114,7 +127,9 @@ def commands():
         zapisuj_komendy(komenda='pokazuj_filtrowany_slownik', wartosc=False)
     elif word == '-all on':
         print(f'{Fore.LIGHTGREEN_EX}Dodawanie: WSZYSTKO')
-        config['dodaj_disambiguation'] = True
+        config['disambiguation'] = True
+        config['dodaj_synonimy'] = True
+        config['dodaj_przyklady_synonimow'] = True
         config['dodaj_wlasne_zdanie'] = True
         config['dodaj_czesci_mowy'] = True
         config['dodaj_etymologie'] = True
@@ -123,7 +138,9 @@ def commands():
         zapisuj_komendy(komenda='dodaj_audio', wartosc=True)  # dummy args tylko aby funkcja przeszła
     elif word == '-all off':
         print(f'{Fore.LIGHTGREEN_EX}Dodawanie: {Fore.LIGHTRED_EX}Tylko hasło')
-        config['dodaj_disambiguation'] = False
+        config['disambiguation'] = False
+        config['dodaj_synonimy'] = False
+        config['dodaj_przyklady_synonimow'] = False
         config['dodaj_wlasne_zdanie'] = False
         config['dodaj_czesci_mowy'] = False
         config['dodaj_etymologie'] = False
@@ -162,10 +179,10 @@ def commands():
         zapisuj_komendy(komenda='ukryj_slowo_w_disamb', wartosc=False)
     elif word == '--disambiguation on' or word == '-disamb on':
         print(f'{Fore.LIGHTGREEN_EX}Słownik synonimów: włączony')
-        zapisuj_komendy(komenda='dodaj_disambiguation', wartosc=True)
+        zapisuj_komendy(komenda='disambiguation', wartosc=True)
     elif word == '--disambiguation off' or word == '-disamb off':
         print(f'{Fore.LIGHTGREEN_EX}Słownik synonimów: {Fore.LIGHTRED_EX}wyłączony')
-        zapisuj_komendy(komenda='dodaj_disambiguation', wartosc=False)
+        zapisuj_komendy(komenda='disambiguation', wartosc=False)
     elif word == '--disambiguation synonimy on' or word == '-disamb syn on':
         print(f'{Fore.LIGHTGREEN_EX}Dodawanie synonimów: włączone')
         zapisuj_komendy(komenda='dodaj_synonimy', wartosc=True)
@@ -564,6 +581,7 @@ def wyswietl_karte():
         print('')
     print('--------------------------------------------------------------------------------\n')
 
+
 while start:
     skip_check = 0
     skip_check_disamb = 0
@@ -584,8 +602,8 @@ while start:
         audiofile_name = search_for_audio(url)
     else:
         rysuj_slownik(url)
-        disambiguator(url_synsearch='http://wordnetweb.princeton.edu/perl/webwn?s=' + word)
-
+        if config['disambiguation']:
+            disambiguator(url_synsearch='http://wordnetweb.princeton.edu/perl/webwn?s=' + word)
 
     if config['tworz_karte']:
         while True:
@@ -602,7 +620,7 @@ while start:
             if skip_check == 1:
                 break
 
-            if config['dodaj_disambiguation']:
+            if config['disambiguation']:
                 disambiguator(url_synsearch='http://wordnetweb.princeton.edu/perl/webwn?s=' + word)
                 if skip_check_disamb == 1:
                     break
