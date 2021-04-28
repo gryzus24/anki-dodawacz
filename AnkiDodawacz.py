@@ -19,8 +19,8 @@ print(f"""{Style.BRIGHT}{Fore.YELLOW}- DODAWACZ KART DO {Fore.CYAN}ANKI {Fore.YE
 # Komendy i input słowa
 def zapisuj_komendy(komenda, wartosc):
     config[komenda] = wartosc
-    with open("config.yml", "w") as f:
-        yaml.dump(config, f)
+    with open("config.yml", "w") as conf_file:
+        yaml.dump(config, conf_file)
     commands()
 
 
@@ -45,7 +45,7 @@ def commands():
     np. "3"         dodaje trzecią definicję
     "0"             pomija dodawanie elementu
     "-1"            dodaje wszystkie elementy
-    Wpisanie litery lub wciśnięcie Enter gdy pole jest pust pomija dodawanie karty
+    Wpisanie litery lub wciśnięcie Enter gdy pole jest puste pomija dodawanie karty
     ------------------------------------------------------------------------------------------------------------
     Przy częściach mowy:
     "1"             dodaje wszystkie części mowy
@@ -183,9 +183,9 @@ def commands():
 
 def szukaj():
     word = commands()
-    url = 'https://www.ahdictionary.com/word/search.html?q='
-    url += word
-    return url
+    url_ah = 'https://www.ahdictionary.com/word/search.html?q='
+    url_ah += word
+    return url_ah
 
 
 # Rysowanie słownika i pozyskanie audio
@@ -198,7 +198,6 @@ def get_audio(audio_link, audio_end):
 
 
 def rysuj_slownik(url):
-    global word
     global lifesaver
     life_index = 0
     reqs = requests.get(url)
@@ -211,7 +210,7 @@ def rysuj_slownik(url):
     else:
         for td in soup.find_all('td'):
             meanings_in_td = td.find_all(class_=('ds-list', 'sds-single', 'ds-single', 'ds-list'))
-            print(f'{Style.DIM}{Fore.WHITE}------------------------------------------------------------------------{Style.RESET_ALL}')
+            print(f'------------------------------------------------------------------------')
             for meaning_num in td.find_all('font', {'color': '#006595'}, 'sup'):
                 life_index += 1
                 if life_index == 1:
@@ -247,7 +246,6 @@ def rysuj_slownik(url):
             for etym in td.find_all(class_='etyseg'):
                 print(f'\n{etym.text}')
                 etymologia.append(etym.text)
-        print()
         if config['dodaj_audio'] and config['tworz_karte']:
             audio = soup.find('a', {'target': '_blank'}).get('href')
             if audio == 'http://www.hmhco.com':
@@ -273,7 +271,6 @@ def pokazywacz_zdania(zdanie, word):
 
 def ogarnij_zdanie(zdanie):
     global skip_check
-
     zdanie = ''.join(zdanie)
     if word.lower() in zdanie.lower():
         return pokazywacz_zdania(zdanie, word)
@@ -402,23 +399,7 @@ def definicje_input():
     return wybor_definicji
 
 
-def wybierz_disamb(wybor_disamb, grupa_synonimow, grupa_przykladow):
-    if config['dodaj_synonimy'] and config['dodaj_przyklady_synonimow']:
-        if len(grupa_synonimow) >= wybor_disamb > 0:
-            return f'{grupa_synonimow[int(wybor_disamb) - 1]}<br>{grupa_przykladow[int(wybor_disamb) - 1]}'
-        elif wybor_disamb > len(grupa_synonimow):
-            return f"{' '.join(grupa_synonimow)}<br>{' '.join(grupa_przykladow)}"
-        elif wybor_disamb == 0:
-            grupa_synonimow = ' '
-            grupa_przykladow = ' '
-            return f'{grupa_synonimow}<br>{grupa_przykladow}'
-        elif wybor_disamb == -1:
-            return f"{' '.join(grupa_synonimow)}<br>{' '.join(grupa_przykladow)}"
-        else:
-            grupa_synonimow = ' '
-            grupa_przykladow = ' '
-            return f'{grupa_synonimow}{grupa_przykladow}'
-
+def wybierz_synonimy(wybor_disamb, grupa_synonimow):
     if config['dodaj_synonimy']:
         if len(grupa_synonimow) >= wybor_disamb > 0:
             return grupa_synonimow[int(wybor_disamb) - 1]
@@ -432,7 +413,11 @@ def wybierz_disamb(wybor_disamb, grupa_synonimow, grupa_przykladow):
         else:
             grupa_synonimow = ' '
             return grupa_synonimow
+    else:
+        return ' '
 
+
+def wybierz_przyklady(wybor_disamb, grupa_przykladow):
     if config['dodaj_przyklady_synonimow']:
         if len(grupa_przykladow) >= wybor_disamb > 0:
             return grupa_przykladow[int(wybor_disamb) - 1]
@@ -456,15 +441,15 @@ def rysuj_synonimy(syn_soup):
         syn_stream.append(synline.text)
     for index, ele in enumerate(syn_stream, start=1):
         przyklady = re.findall(r'\"(.+?)\"', ele)
-        przyklady2 = re.sub("[][]", "", str(przyklady))
+        przyklady2 = re.sub("[][]", "", str(przyklady))  # do wyświetlenia w karcie
         przyklady3 = re.sub("',", "'\n   ", przyklady2)
-        przyklady4 = re.sub("\\A[']", "\n    '", przyklady3)
+        przyklady4 = re.sub("\\A[']", "\n    '", przyklady3)  # do narysowania
 
         synonimy, sep, tail = ele.partition('"')
-        synonimy1 = re.sub("S:", f"{Fore.LIGHTGREEN_EX}{index}{Fore.RESET} :", synonimy)
+        synonimy1 = re.sub("S:", f"{Fore.LIGHTGREEN_EX}{index}{Fore.RESET} :", synonimy)  # do narysowania
         synonimy2 = re.sub("\\((.+?)\\)", "", synonimy1)
         index, sep, synonimy3 = synonimy2.partition(':')
-        synonimy4 = re.sub(r"\s{2}", "", synonimy3)
+        synonimy4 = re.sub(r"\s{2}", "", synonimy3)  # do wyświetlenia w karcie
 
         if config['ukryj_slowo_w_disamb']:
             grupa_synonimow.append(synonimy4.replace(word, '...'))
@@ -492,30 +477,43 @@ def disambiguator(url_synsearch, check):
                 url_synsearch = 'http://wordnetweb.princeton.edu/perl/webwn?s=' + lifesaver
                 disambiguator(url_synsearch, check='kcz')
             else:
-                print()
+                print('------------------------------------------------------------------------')
+                print(f'{Style.BRIGHT}{"WordNet".center(70)}\n{Style.RESET_ALL}')
                 rysuj_synonimy(syn_soup)
         except Exception:
             print(f'{Fore.LIGHTRED_EX}Wystąpił problem podczas pozyskiwania informacji z WordNeta.'
-                  f'Możliwe, że AH posiada wpis dla {Fore.RESET}"{word}"{Fore.LIGHTRED_EX}, ale WordNet nie. ')
+                  f'Możliwe, że AH posiada wpis dla {Fore.RESET}"{word}"{Fore.LIGHTRED_EX}, lecz WordNet nie. ')
             skip_check = 1
 
 
-def disamb_input():
+def disamb_input_syn():
     global skip_check
-    if config['dodaj_disambiguation']:
+    if config['dodaj_synonimy']:
         try:
-            wybor_disamb = int(input('Wybierz grupę synonimów: '))
-            return wybor_disamb
+            wybor_disamb_syn = int(input('Wybierz grupę synoniów: '))
+            return wybor_disamb_syn
         except ValueError:
             skip_check = 1
             print(f'{Fore.LIGHTGREEN_EX}Pominięto dodawanie karty')
-    wybor_disamb = 0
-    return wybor_disamb
+    wybor_disamb_syn = 0
+    return wybor_disamb_syn
+
+
+def disamb_input_przyklady():
+    global skip_check
+    if config['dodaj_przyklady_synonimow']:
+        try:
+            wybor_disamb_przyklady = int(input('Wybierz grupę przykładów: '))
+            return wybor_disamb_przyklady
+        except ValueError:
+            skip_check = 1
+            print(f'{Fore.LIGHTGREEN_EX}Pominięto dodawanie karty')
+    wybor_disamb_przyklady = 0
+    return wybor_disamb_przyklady
 
 
 # Tworzenie karty
 def utworz_karte():
-    global start
     try:
         if audiofile_name is not None:
             with open('karty.txt', 'a', encoding='utf-8') as f:
@@ -544,7 +542,7 @@ def wyswietl_karte():
     print('Utworzona karta zawiera:')
     print(f'{Style.DIM}{Fore.WHITE}------------------------------------------------------------------------')
     print(definicje.center(70))
-    print(disambiguation.center(70))
+    print(disambiguation.replace('<br>', '\n').center(70))
     print(f'{Style.DIM}{Fore.WHITE}------------------------------------------------------------------------')
     print(word.center(70))
     print(f'{zdanie.center(70)}')
@@ -589,9 +587,16 @@ while start:
                 disambiguator(url_synsearch='http://wordnetweb.princeton.edu/perl/webwn?s=' + word, check='kcz')
                 if skip_check == 1:
                     break
-                disambiguation = wybierz_disamb(disamb_input(), grupa_synonimow, grupa_przykladow)
+                disamb_synonimy = wybierz_synonimy(disamb_input_syn(), grupa_synonimow)
                 if skip_check == 1:
                     break
+                disamb_przyklady = wybierz_przyklady(disamb_input_przyklady(), grupa_przykladow)
+                if skip_check == 1:
+                    break
+                if config['dodaj_synonimy'] and config['dodaj_przyklady_synonimow']:
+                    disambiguation = disamb_synonimy + '<br>' + disamb_przyklady
+                else:
+                    disambiguation = disamb_synonimy + disamb_przyklady
             break
 
     if skip_check == 0 and config['tworz_karte']:
