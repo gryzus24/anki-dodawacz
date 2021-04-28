@@ -46,13 +46,27 @@ Są to:
 - Etymologia
 - Audio
 
-Musimy stworzyć notatkę, która zawiera te pola w podanej kolejności. 
+Musimy stworzyć notatkę, która zawiera te pola w podanej kolejności.
+Gdy mamy otwarte Anki, na górnym pasku klikamy w "Narzędzia" > "Zarządzaj typami notatek".
+- Klikamy "Dodaj"
+- Wybieramy "Dodaj: Podstawowy"
+- Nazywamy
+- Wybieramy nowoutworzoną notatkę i klikamy w "Pola..."
+- Dodajemy pola
+
+Nasze pola powinny wyglądać tak:
+
+![image](https://user-images.githubusercontent.com/82805891/116415454-b9476c00-a839-11eb-893f-ed4e1e3384ac.png)
+
 To nie oznacza, że te wszystkie informacje będą wyświetlane na naszych kartach.
 Wszystkie pola podlegają indywidualnej obróbce w Anki.
 
 Samo dodanie notatki z tymi polami nie gwarantuje nam najlepszych doświadczeń z powtarzania kart.
 Aby ten słownikowy format został najlepiej wykorzystany, potrzebujemy potężnej stylizacji, która dostarczy nam prawdziwej powtórkowej przyjemności.
-Dla nowych lub niedoświadczonych użytkowników, którzy niezaznajomieni są jeszcze z siłą customizacji, oferuję moją notatkę na wypróbowanie:
+
+Aby zastosować stylizację, postępujemy podobnie jak przy tworzeniu pól, tylko teraz klikamy w "Karty...".
+Tutaj ustawiamy jak nasza karta będzie wyglądać. Anki wykorzystuje CSS oraz HTML do wyświetlania kart.
+Dla nowych lub niedoświadczonych użytkowników, którzy niezaznajomieni są jeszcze z tym typem customizacji, oferuję moją notatkę na wypróbowanie:
 https://pastebin.com/9ZfWMpNu.
 
 ![image](https://user-images.githubusercontent.com/82805891/115956831-67cc7380-a4ff-11eb-8648-7a6599e45c1f.png)
