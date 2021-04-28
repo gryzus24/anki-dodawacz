@@ -31,52 +31,52 @@ def commands():
 
     if word == '--help' or word == '-h':
         print(f"""\n    Po wpisaniu hasła w pole "Szukaj" rozpocznie się cykl dodawania karty.
-    ------------------------------------------------------------------------------------------------------------
-    Przy dodawaniu zdania:
-      Wpisz swoje własne przykładowe zdanie zawierające wyszukane hasło.
-    "-s"             pomija dodawanie zdania\n
-    W przypadku wpisania zdania niezawierającego wyszukanego hasła:
-    "1"              dodaje zdanie
-    "0"              powtarza dodawanie zdania
-    Wpisanie litery lub wciśnięcie Enter pomija dodawanie karty
-    ------------------------------------------------------------------------------------------------------------
-    Przy definicjach:
-      Aby wybrać definicję wpisz numer zielonego indeksu.\n
-    np. "3"         dodaje trzecią definicję
-    "0"             pomija dodawanie elementu
-    "-1"            dodaje wszystkie elementy
-    Wpisanie litery lub wciśnięcie Enter gdy pole jest puste pomija dodawanie karty
-    ------------------------------------------------------------------------------------------------------------
-    Przy częściach mowy:
-    "1"             dodaje wszystkie części mowy
-    "0"             pomija dodawanie elementu
-    ------------------------------------------------------------------------------------------------------------
-    Przy etymologiach:
-      Przy większej ilości etymologii możemy sprecyzować wybór wpisując numer etymologii licząc od góry.
-      lub wpisać "-1", aby dodać wszystkie dostępne etmologie.
-    ------------------------------------------------------------------------------------------------------------
-    Komendy (wpisywane w pole "Szukaj"):
-    "--zdanie on/off" lub "-z on/off"             włącza/wyłącza dodawanie zdania       Aktualna wartość = {config['dodaj_wlasne_zdanie']}
-    "--definicje on/off" lub "-d on/off"          włącza/wyłącza dodawanie definicji    Aktualna wartość = {config['dodaj_definicje']}
-    "--czesci-mowy on/off" lub "-pos on/off"      włącza/wyłącza dodawnie części mowy   Aktualna wartość = {config['dodaj_czesci_mowy']}
-    "--etymologie on/off" lub "-e on/off"         włącza/wyłącza dodawanie etymologii   Aktualna wartość = {config['dodaj_etymologie']}
-    "--audio on/off" lub "-a on/off"              włącza/wyłącza dodawanie audio        Aktualna wartość = {config['dodaj_audio']}\n
-    "-all on/off"                                 Zmienia wartość wszystkich powyższych ustawień na True/False\n
-    "-karty on/off"                               włącza/wyłącza dodawanie kart         Aktualna wartość = {config['tworz_karte']}\n
-    "--filtruj-slownik on/off" lub "-fs on/off"   włącza/wyłącza filtrowanie numeracji
-                                           i stylizacji podczas wyświetlania słownika   Aktualna wartość = {config['pokazuj_filtrowany_slownik']}\n
-    "--audio-path" :
-      Umożliwia zmianę miejsca zapisu audio (domyślnie: "Karty_audio" w folderze z programem)
-      Aby audio było bezpośrednio dodawane do Anki, zlokalizuj ścieżkę:
-      "C:\\[Users]\\[Nazwa użytkownika]\\AppData\\Roaming\\Anki2\\[Nazwa użytkownika Anki]\\collection.media"
-      (wpisz %appdata%)
-      i wpisz/skopiuj ją w pole wyświetlone po wpisaniu komendy.                        Aktualna ścieżka = {config['save_path']}
-                            
-    "--ukryj-w-def on/off"      Niektóre definicje zawierają użycia słowa.              Aktualna wartość = {config['ukryj_slowo_w_definicji']}
-        lub "-udef on/off"      Ta opcja zamienia wszystkie użycia słowa na "..."\n              
-    "--ukryj-w-zdaniu on/off"   Jak w definicjach tylko w dodanym zdaniu                Aktualna wartość = {config['ukryj_slowo_w_zdaniu']}
-        lub "-uz on/off"          
-    ------------------------------------------------------------------------------------------------------------\n""")
+--------------------------------------------------------------------------------
+ Przy dodawaniu zdania:
+   Wpisz swoje własne przykładowe zdanie zawierające wyszukane hasło.
+ "-s"             pomija dodawanie zdania\n
+ W przypadku wpisania zdania niezawierającego wyszukanego hasła:
+ "1"              dodaje zdanie
+ "0"              powtarza dodawanie zdania
+ Wpisanie litery lub wciśnięcie Enter pomija dodawanie karty
+--------------------------------------------------------------------------------
+ Przy definicjach:
+   Aby wybrać definicję wpisz numer zielonego indeksu.\n
+ np. "3"         dodaje trzecią definicję
+ "0"             pomija dodawanie elementu
+ "-1"            dodaje wszystkie elementy
+ Wpisanie litery lub wciśnięcie Enter gdy pole jest puste pomija dodawanie karty
+--------------------------------------------------------------------------------
+ Przy częściach mowy:
+ "1"             dodaje wszystkie części mowy
+ "0"             pomija dodawanie elementu
+--------------------------------------------------------------------------------
+ Przy etymologiach:
+   Przy większej ilości etymologii możemy sprecyzować wybór wpisując numer etymologii licząc od góry.
+   lub wpisać "-1", aby dodać wszystkie dostępne etmologie.
+--------------------------------------------------------------------------------
+ Komendy (wpisywane w pole "Szukaj"):
+ "--zdanie on/off" lub "-z on/off"             włącza/wyłącza dodawanie zdania       Aktualna wartość = {config['dodaj_wlasne_zdanie']}
+ "--definicje on/off" lub "-d on/off"          włącza/wyłącza dodawanie definicji    Aktualna wartość = {config['dodaj_definicje']}
+ "--czesci-mowy on/off" lub "-pos on/off"      włącza/wyłącza dodawnie części mowy   Aktualna wartość = {config['dodaj_czesci_mowy']}
+ "--etymologie on/off" lub "-e on/off"         włącza/wyłącza dodawanie etymologii   Aktualna wartość = {config['dodaj_etymologie']}
+ "--audio on/off" lub "-a on/off"              włącza/wyłącza dodawanie audio        Aktualna wartość = {config['dodaj_audio']}\n
+ "-all on/off"                                 Zmienia wartość wszystkich powyższych ustawień na True/False\n
+ "-karty on/off"                               włącza/wyłącza dodawanie kart         Aktualna wartość = {config['tworz_karte']}\n
+ "--filtruj-slownik on/off" lub "-fs on/off"   włącza/wyłącza filtrowanie numeracji
+                                        i stylizacji podczas wyświetlania słownika   Aktualna wartość = {config['pokazuj_filtrowany_slownik']}\n
+ "--audio-path" :
+   Umożliwia zmianę miejsca zapisu audio (domyślnie: "Karty_audio" w folderze z programem)
+   Aby audio było bezpośrednio dodawane do Anki, zlokalizuj ścieżkę:
+   "C:\\[Users]\\[Nazwa użytkownika]\\AppData\\Roaming\\Anki2\\[Nazwa użytkownika Anki]\\collection.media"
+   (wpisz %appdata%)
+   i wpisz/skopiuj ją w pole wyświetlone po wpisaniu komendy.                        Aktualna ścieżka = {config['save_path']}
+ 
+ "--ukryj-w-def on/off"      Niektóre definicje zawierają użycia słowa.              Aktualna wartość = {config['ukryj_slowo_w_definicji']}
+     lub "-udef on/off"      Ta opcja zamienia wszystkie użycia słowa na "..."\n              
+ "--ukryj-w-zdaniu on/off"   Jak w definicjach tylko w dodanym zdaniu                Aktualna wartość = {config['ukryj_slowo_w_zdaniu']}
+     lub "-uz on/off"          
+--------------------------------------------------------------------------------\n""")
         commands()
     elif word == '-d on' or word == '--definicje on':
         print(f'{Fore.LIGHTGREEN_EX}Dodawanie definicji: włączone')
@@ -549,10 +549,11 @@ Jeżeli problem wystąpi ponownie, zrestartuj program.""")
 def wyswietl_karte():
     print('\n')
     print('Utworzona karta zawiera:')
-    print(f'{Style.DIM}{Fore.WHITE}------------------------------------------------------------------------')
-    print(definicje.center(70))
-    print(disambiguation.replace('<br>', '\n').center(70))
-    print(f'{Style.DIM}{Fore.WHITE}------------------------------------------------------------------------')
+    print('--------------------------------------------------------------------------------')
+    print(definicje.replace('<br>', '').center(70))
+    print(disamb_synonimy.center(70))
+    print(disamb_przyklady.center(70))
+    print('--------------------------------------------------------------------------------')
     print(word.center(70))
     print(f'{zdanie.center(70)}')
     print(czesci_mowy.center(70))
@@ -561,8 +562,7 @@ def wyswietl_karte():
         print(f'[sound:{audiofile_name}]'.center(70))
     else:
         print('')
-    print(f'{Style.DIM}{Fore.WHITE}------------------------------------------------------------------------\n')
-
+    print('--------------------------------------------------------------------------------\n')
 
 while start:
     skip_check = 0
