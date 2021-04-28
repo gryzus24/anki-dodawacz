@@ -12,8 +12,8 @@ colorama.init(autoreset=True)
 with open("config.yml", "r") as f:
     config = yaml.load(f, Loader=yaml.Loader)
 
-print(f"""{Style.BRIGHT}{Fore.YELLOW}- DODAWACZ KART DO {Fore.CYAN}ANKI {Fore.YELLOW}v0.3.2 -\n
-{Style.RESET_ALL}{Fore.WHITE}Wpisz "--help", aby wyświetlić pomoc\n\n""")
+print(f"""{Fore.LIGHTYELLOW_EX}- DODAWACZ KART DO {Fore.LIGHTCYAN_EX}ANKI {Fore.LIGHTYELLOW_EX}v0.3.2 -\n
+{Fore.WHITE}Wpisz "--help", aby wyświetlić pomoc\n\n""")
 
 
 # Komendy i input słowa
@@ -188,7 +188,7 @@ def szukaj():
     return url_ah
 
 
-# Rysowanie słownika i pozyskanie audio
+# Pozyskiwanie audio
 def get_audio(audio_link, audio_end):
     audiofile_name = audio_end + '.wav'
     with open(os.path.join(config['save_path'], audiofile_name), 'wb') as file:
@@ -197,6 +197,25 @@ def get_audio(audio_link, audio_end):
     return audiofile_name
 
 
+def search_for_audio(url):
+    reqs = requests.get(url)
+    soup = BeautifulSoup(reqs.content, 'lxml')
+    if config['dodaj_audio'] and config['tworz_karte']:
+        audio = soup.find('a', {'target': '_blank'}).get('href')
+        if audio == 'http://www.hmhco.com':
+            print(f"""{Fore.LIGHTRED_EX}\nHasło nie posiada pliku audio!
+Karta zostanie dodana bez audio""")
+            return None
+        else:
+            audio_end = audio.split('/')[-1]
+            audio_end = audio_end.split('.')[0]
+            audio_link = 'https://www.ahdictionary.com'
+            audio_link += audio
+            return get_audio(audio_link, audio_end)
+    return None
+
+
+# Rysowanie słownika AHD
 def rysuj_slownik(url):
     global lifesaver
     life_index = 0
@@ -205,7 +224,7 @@ def rysuj_slownik(url):
     word_check = soup.find_all(class_=('ds-list', 'sds-single', 'ds-single', 'ds-list'))
     indexing = 0
     if len(word_check) == 0:
-        print(f'{Fore.RED}{Style.BRIGHT}Nie znaleziono podanego hasła')
+        print(f'{Fore.LIGHTRED_EX}Nie znaleziono podanego hasła')
         return rysuj_slownik(szukaj())
     else:
         for td in soup.find_all('td'):
@@ -229,9 +248,9 @@ def rysuj_slownik(url):
                 rex4 = rex3.strip()
 
                 if config['pokazuj_filtrowany_slownik']:
-                    print(f"{Style.BRIGHT}{Fore.GREEN}{indexing}  {Fore.RESET}{Style.RESET_ALL}{rex4.replace('', '')}")
+                    print(f"{Fore.LIGHTGREEN_EX}{indexing}  {Fore.RESET}{Style.RESET_ALL}{rex4.replace('', '')}")
                 else:
-                    print(f"{Style.BRIGHT}{Fore.GREEN}{indexing}  {Fore.RESET}{Style.RESET_ALL}{meaning.text}")
+                    print(f"{Fore.LIGHTGREEN_EX}{indexing}  {Fore.RESET}{Style.RESET_ALL}{meaning.text}")
                 if not config['ukryj_slowo_w_definicji']:
                     definicje.append(rex4.replace(':', ':<br>').replace('', ''))
                 else:
@@ -246,20 +265,6 @@ def rysuj_slownik(url):
             for etym in td.find_all(class_='etyseg'):
                 print(f'\n{etym.text}')
                 etymologia.append(etym.text)
-
-        if config['dodaj_audio'] and config['tworz_karte']:
-            audio = soup.find('a', {'target': '_blank'}).get('href')
-            if audio == 'http://www.hmhco.com':
-                print(f"""{Fore.RED}{Style.BRIGHT}\nHasło nie posiada pliku audio!
-Karta zostanie dodana bez audio""")
-                return None
-            else:
-                audio_end = audio.split('/')[-1]
-                audio_end = audio_end.split('.')[0]
-                audio_link = 'https://www.ahdictionary.com'
-                audio_link += audio
-                return get_audio(audio_link, audio_end)
-        return None
 
 
 # Dodawanie zdania
@@ -282,7 +287,7 @@ def ogarnij_zdanie(zdanie):
         zdanie = ' '
         return zdanie
     else:
-        print(f'{Style.BRIGHT}{Fore.RED}Zdanie nie zawiera podanego hasła')
+        print(f'{Fore.LIGHTRED_EX}Zdanie nie zawiera podanego hasła')
         try:
             zdanie_check = int(input(f'Czy kontynuować dodawanie? [1 - tak/0 - dodaj zdanie jeszcze raz]: '))
             if zdanie_check == 1:
@@ -465,26 +470,29 @@ def rysuj_synonimy(syn_soup):
             print(f'{synonimy1}{przyklady4}\n')
 
 
-def disambiguator(url_synsearch, check):
-    global skip_check
-    if check == 'kcz':
-        try:
-            reqs_syn = requests.get(url_synsearch)
-            syn_soup = BeautifulSoup(reqs_syn.content, 'lxml')
-            no_word = syn_soup.find('h3')
-            e, e, check = str(no_word).partition('>')
-            if check == 'Your search did not return any results.</h3>':
-                print(f'{Fore.LIGHTRED_EX}Wyniki dla {Fore.RESET}"{lifesaver}" {Fore.LIGHTRED_EX}zamiast {Fore.RESET}"{word}"')
-                url_synsearch = 'http://wordnetweb.princeton.edu/perl/webwn?s=' + lifesaver
-                disambiguator(url_synsearch, check='kcz')
-            else:
-                print('------------------------------------------------------------------------')
-                print(f'{Style.BRIGHT}{"WordNet".center(70)}\n{Style.RESET_ALL}')
-                rysuj_synonimy(syn_soup)
-        except Exception:
-            print(f'{Fore.LIGHTRED_EX}Wystąpił problem podczas pozyskiwania informacji z WordNeta.'
-                  f'Możliwe, że AH posiada wpis dla {Fore.RESET}"{word}"{Fore.LIGHTRED_EX}, lecz WordNet nie. ')
-            skip_check = 1
+def disambiguator(url_synsearch):
+    error_loop = -1
+
+    def disamb_handling(url_synsearch):
+        global skip_check_disamb
+        nonlocal error_loop
+        error_loop += 1
+        reqs_syn = requests.get(url_synsearch)
+        syn_soup = BeautifulSoup(reqs_syn.content, 'lxml')
+        no_word = syn_soup.find('h3')
+        if len(str(no_word)) == 48 and error_loop == 0:  # Sprawdza czy WordNet ma hasło
+            print(f'\nWordNet {Fore.LIGHTRED_EX}nie może znaleźć {Fore.RESET}"{word}"{Fore.LIGHTRED_EX}, więc poszuka {Fore.RESET}"{lifesaver}"')
+            url_synsearch = 'http://wordnetweb.princeton.edu/perl/webwn?s=' + lifesaver
+            disamb_handling(url_synsearch)
+        elif len(str(no_word)) != 48 and error_loop == 0 or len(str(no_word)) != 48 and error_loop == 1:
+            print('------------------------------------------------------------------------')
+            print(f'{Style.BRIGHT}{"WordNet".center(70)}\n{Style.RESET_ALL}')
+            rysuj_synonimy(syn_soup)
+        else:
+            print(f'{Fore.LIGHTRED_EX}\nNie znaleziono szukanego hasła na {Fore.RESET}WordNecie')
+            skip_check_disamb = 1
+
+    disamb_handling(url_synsearch)
 
 
 def disamb_input_syn():
@@ -517,23 +525,23 @@ def disamb_input_przyklady():
 def utworz_karte():
     try:
         if audiofile_name is not None:
-            with open('karty.txt', 'a', encoding='utf-8') as f:
-                f.write(f'{definicje}\t{disambiguation}\t'
-                        f'{word}\t'
-                        f'{zdanie}\t'
-                        f'{czesci_mowy}\t'
-                        f'{etymologia}\t[sound:{audiofile_name}]\n')
+            with open('karty.txt', 'a', encoding='utf-8') as tworz:
+                tworz.write(f'{definicje}\t{disambiguation}\t'
+                            f'{word}\t'
+                            f'{zdanie}\t'
+                            f'{czesci_mowy}\t'
+                            f'{etymologia}\t[sound:{audiofile_name}]\n')
                 return None
         elif audiofile_name is None:
-            with open('karty.txt', 'a', encoding='utf-8') as f:
-                f.write(f'{definicje}\t{disambiguation}\t'
-                        f'{word}\t'
-                        f'{zdanie}\t'
-                        f'{czesci_mowy}\t'
-                        f'{etymologia}\t \n')  # Aby karta nie zawierała sound tagu
+            with open('karty.txt', 'a', encoding='utf-8') as tworz:
+                tworz.write(f'{definicje}\t{disambiguation}\t'
+                            f'{word}\t'
+                            f'{zdanie}\t'
+                            f'{czesci_mowy}\t'
+                            f'{etymologia}\t \n')  # Aby karta nie zawierała sound tagu
                 return None
     except NameError:
-        print(f"""{Style.BRIGHT}{Fore.RED}Dodawanie karty nie powiodło się.
+        print(f"""{Fore.LIGHTRED_EX}Dodawanie karty nie powiodło się.
 Jeżeli problem wystąpi ponownie, zrestartuj program.""")
         szukaj()
 
@@ -558,6 +566,7 @@ def wyswietl_karte():
 
 while start:
     skip_check = 0
+    skip_check_disamb = 0
     lifesaver = ''
     word = ''
     disambiguation = ''
@@ -568,7 +577,8 @@ while start:
     grupa_synonimow = []
 
     url = szukaj()
-    audiofile_name = rysuj_slownik(url)
+    rysuj_slownik(url)
+    audiofile_name = search_for_audio(url)
 
     if config['tworz_karte']:
         while True:
@@ -586,8 +596,8 @@ while start:
                 break
 
             if config['dodaj_disambiguation']:
-                disambiguator(url_synsearch='http://wordnetweb.princeton.edu/perl/webwn?s=' + word, check='kcz')
-                if skip_check == 1:
+                disambiguator(url_synsearch='http://wordnetweb.princeton.edu/perl/webwn?s=' + word)
+                if skip_check_disamb == 1:
                     break
                 disamb_synonimy = wybierz_synonimy(disamb_input_syn(), grupa_synonimow)
                 if skip_check == 1:
@@ -602,6 +612,6 @@ while start:
             break
 
     if skip_check == 0 and config['tworz_karte']:
-        utworz_karte()
         wyswietl_karte()
+        utworz_karte()
     print()
