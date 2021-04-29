@@ -102,7 +102,7 @@ def commands():
   "vicious man"                              "emerge"
   "emerge"                                   " "
   "emergent nations"
-  " "
+  " "\n
   {Fore.LIGHTYELLOW_EX}UWAGA! {Fore.RESET}Aktualna wartość Zdania to: {config['dodaj_wlasne_zdanie']}
 --------------------------------------------------------------------------------\n""")
         commands()
