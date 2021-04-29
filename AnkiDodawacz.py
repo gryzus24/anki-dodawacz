@@ -88,7 +88,7 @@ def commands():
  "--ukryj-w-zdaniu on/off"   Jak w definicjach tylko w dodanym zdaniu                  Aktualna wartość = {config['ukryj_slowo_w_zdaniu']}
     lub "-uz on/off"\n  
  "--ukryj-w-disamb on/off"   Ukrywa szukane hasło   
-    lub "-udisamb on/off     w elementach z WordNetu (synonimach)                      Aktualna wartość = {config['ukryj_slowo_w_disamb']}\n
+    lub "-udisamb on/off     w elementach z WordNetu (synonimach)                      Aktualna wartość = {config['ukryj_slowo_w_disamb']}
 --------------------------------------------------------------------------------\n""")
         commands()
     elif word == '-d on' or word == '--definicje on':
@@ -200,9 +200,9 @@ def commands():
 
 def szukaj():
     word = commands()
-    url_ah = 'https://www.ahdictionary.com/word/search.html?q='
-    url_ah += word
-    return url_ah
+    url = 'https://www.ahdictionary.com/word/search.html?q='
+    url += word
+    return url
 
 
 # Pozyskiwanie audio
@@ -242,7 +242,7 @@ def rysuj_slownik(url):
     indexing = 0
     if len(word_check) == 0:
         print(f'{Fore.LIGHTRED_EX}Nie znaleziono podanego hasła')
-        return rysuj_slownik(szukaj())
+        rysuj_slownik(szukaj())
     else:
         for td in soup.find_all('td'):
             meanings_in_td = td.find_all(class_=('ds-list', 'sds-single', 'ds-single', 'ds-list'))
@@ -587,6 +587,7 @@ while start:
     skip_check_disamb = 0
     lifesaver = ''
     word = ''
+    audiofile_name = ''
     disambiguation = ''
     disamb_synonimy = ''
     disamb_przyklady = ''
@@ -599,7 +600,7 @@ while start:
     url = szukaj()
     if config['tworz_karte']:
         rysuj_slownik(url)
-        audiofile_name = search_for_audio(url)
+        audiofile_name = search_for_audio(url='https://www.ahdictionary.com/word/search.html?q=' + word)
     else:
         rysuj_slownik(url)
         if config['disambiguation']:
