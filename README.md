@@ -2,12 +2,15 @@
 
 Prosty i otwarty na konfigurację program do tworzenia monojęzycznych kart do Anki.
 Pozyskuje on informacje z American Heritage Dictionary i pozwala na szybki wybór definicji, części mowy, etymologii i audio.
-Możemy też natychmiastowo dodawać własne przykładowe zdania.
+Możemy też natychmiastowo dodawać własne przykładowe zdania, a także dodawać synonimy i przykłady z WordNet 3.1 jako Disambiguation (usunięcie dwuznaczności).
 
-Celem programu jest ułatwić i uprzyjemnić żmudny i zniechęcający proces dodawanie kart, który konwencjonalnie odbywa się za pomocą powtarzalnych ruchów myszką i przekopiowywania informacji do edytora kart. Z Anki-dodawaczem ten proces odbywa się w prawie stu procentach za pomocą klawiatury.
+Celem programu jest ułatwić i uprzyjemnić żmudny i zniechęcający proces dodawanie kart,
+który konwencjonalnie odbywa się za pomocą powtarzalnych ruchów myszką i przekopiowywania
+informacji do edytora kart. Z Anki-dodawaczem ten proces odbywa się w prawie stu procentach
+za pomocą klawiatury.
 
-Częstym powodem dla nieużywania Anki przez wiele osób jest trud robienia wysokiej jakości kart. Wierzę, że otwarty na konfigurację program 
-produkujący wysokiej jakości karty przekona do Anki większą ilość osób i sprawi, że docenią możliwości tego narzędzia.
+Częstym powodem dla nieużywania Anki przez wiele osób jest trudność w robieniu wysokiej jakości kart. 
+Wierzę, że otwarty na konfigurację program produkujący wysokiej jakości karty przekona do Anki większą ilość osób i sprawi, że docenią przydatność tego narzędzia.
 
 ## Linki do pobrania:
 
@@ -21,7 +24,7 @@ Jeżeli w folderze z programem nie ma folderu "Karty_audio" to należy go stworz
 # Konfiguracja i działanie programu
 
 Cykl dodawanie jest bardzo prosty.
-Wyszukujemy słowo i przechodzimy przez różne pola: przykładowego zdania, definicji, części mowy i etymologii.
+Wyszukujemy słowo i przechodzimy przez różne pola: przykładowego zdania, definicji, części mowy, etymologii i synonimów.
 Po przejściu przez wszystkie pola program zapisuje nasz wybór w dokumencie tekstowym i pokazuje zawartość notatki i jej domyślną konfigurację.
 Po zakończonej sesji dodawania, program tworzy dokument "karty.txt", który od razu jest gotowy do zaimportowania do Anki.
 
@@ -40,9 +43,10 @@ Tutaj możemy dostosować program do naszych preferencji.
 
 # Konfiguracja Anki i notatki
 
-Program na chwilę obecną wykorzystuje sześć pól naszej notatki, aby prawidłowo dodawać karty.
+Program na chwilę obecną wykorzystuje siedem pól naszej notatki, aby prawidłowo dodawać karty.
 Są to:
-- Definicja 
+- Definicja
+- Disambiguation
 - Słowo
 - Przykładowe zdanie
 - Części mowy
@@ -61,16 +65,22 @@ Nasze pola powinny wyglądać tak:
 
 ![image](https://user-images.githubusercontent.com/82805891/116415454-b9476c00-a839-11eb-893f-ed4e1e3384ac.png)
 
+(Możesz nazwać je inaczej, jeżeli tworzysz własną notatkę, jednak jeżeli planujesz użyć mojej przykładowej,
+to wszelkie nazwy pól trzeba uwzględnić w ustawieniach karty).
+
 To nie oznacza, że te wszystkie informacje będą wyświetlane na naszych kartach.
 Wszystkie pola podlegają indywidualnej obróbce w Anki.
 
 Samo dodanie notatki z tymi polami nie gwarantuje nam najlepszych doświadczeń z powtarzania kart.
-Aby ten słownikowy format został najlepiej wykorzystany, potrzebujemy potężnej stylizacji, która dostarczy nam prawdziwej powtórkowej przyjemności.
+Aby ten słownikowy format został najlepiej wykorzystany, potrzebujemy potężnej stylizacji, która z pewnością
+dostarczy nam niezapomnianych powtórkowych wrażeń!
 
 Aby zastosować stylizację, postępujemy podobnie jak przy tworzeniu pól, tylko teraz klikamy w "Karty...".
-Tutaj ustawiamy jak nasza karta będzie wyglądać. Anki wykorzystuje CSS oraz HTML do wyświetlania kart.
-Dla nowych lub niedoświadczonych użytkowników, którzy niezaznajomieni są jeszcze z tym typem customizacji, oferuję moją notatkę na wypróbowanie:
+Tutaj ustawiamy, jak nasza karta będzie wyglądać. Anki wykorzystuje CSS oraz HTML do wyświetlania kart.
+Dla nowych lub niedoświadczonych użytkowników, którzy niezaznajomieni są jeszcze z tym typem customizacji,
+oferuję moją przykładową notatkę na wypróbowanie:
 https://pastebin.com/9ZfWMpNu.
+ 
 
 ![image](https://user-images.githubusercontent.com/82805891/115956831-67cc7380-a4ff-11eb-8648-7a6599e45c1f.png)
 
@@ -93,8 +103,9 @@ Gdy raz ustawimy opcje importowania, nie musimy się przejmować ich ponownym us
 Ścieżka importu też powinna zostać zapisana, ale gdyby tak się nie stało, warto przenieść folder z programem w łatwo dostępne miejsce,
 aby skrócić nudny czas dodawania do minimum!
 
-Po dodaniu kart możemy usunąć zawartość pliku "karty.txt", ale gdy zostawimy go, importowanie nie powinno zostać skompromitowane dzięki opcji "Ignoruj linie, których pierwsze pole pasuje do istniejącej notatki". Warto o tym pamiętać.
-
+Po dodaniu kart możemy usunąć zawartość pliku "karty.txt", jednak gdy zostawimy go, importowanie
+nie powinno zostać skompromitowane dzięki opcji "Ignoruj linie, których pierwsze pole pasuje do istniejącej notatki".
+Warto o tym pamiętać.
 
 # Kod
 
@@ -102,7 +113,6 @@ Jestem początkujący, jeżeli chodzi o programowanie. Jest to mój pierwszy pro
 Pomimo tego, mam bardzo ambitne plany, jeżeli chodzi o funkcjonalność Anki-dodawacza, planuję:
 - Wsparcie dla większej ilości słowników
 - Wykorzystanie Anki connect do tworzenia kart
-- Pole "Disambiguation" i wolny wybór synonimów
 - Tworzenie różnych typów kart oraz jeszcze większą swobodę konfiguracji
 
 Jestem otwarty na sugestie i krytykę.
