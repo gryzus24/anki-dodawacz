@@ -63,7 +63,7 @@ Gdy mamy otwarte Anki, na górnym pasku klikamy w "Narzędzia" > "Zarządzaj typ
 
 Nasze pola powinny wyglądać tak:
 
-![image](https://user-images.githubusercontent.com/82805891/116415454-b9476c00-a839-11eb-893f-ed4e1e3384ac.png)
+![image](https://user-images.githubusercontent.com/82805891/116594831-f0de1300-a922-11eb-8af7-65688c721c8d.png)
 
 (Możesz nazwać je inaczej, jeżeli tworzysz własną notatkę, jednak jeżeli planujesz użyć mojej przykładowej,
 to wszelkie nazwy pól trzeba uwzględnić w ustawieniach karty).
@@ -95,9 +95,8 @@ Aby zaimportować karty do Anki, na górnym pasku klikami w "Plik" i "Importuj..
 - Klikamy w "Pola oddzielone o" i wpisujemy "\t"
 - Możemy wybrać "Ignoruj linie, których pierwsze pole pasuje do istniejącej notatki"
 - I na końcu ważne, aby zaznaczyć "Zezwól na HTML w polach"
-
-![image](https://user-images.githubusercontent.com/82805891/115931526-8c870380-a48b-11eb-9d74-f9415cce8ceb.png)
-
+- 
+![image](https://user-images.githubusercontent.com/82805891/116596638-e886d780-a924-11eb-8e82-b7d789151486.png)
 
 Gdy raz ustawimy opcje importowania, nie musimy się przejmować ich ponownym ustawianiem.
 Ścieżka importu też powinna zostać zapisana, ale gdyby tak się nie stało, warto przenieść folder z programem w łatwo dostępne miejsce,
