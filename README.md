@@ -32,7 +32,7 @@ Najlepiej dodać ścieżkę do folderu "collection.media", aby audio było autom
 
 ![image](https://user-images.githubusercontent.com/82805891/115930678-2fd71900-a48a-11eb-9163-4abfba9c1df9.png)
 
-Anki-dodawacz jest programem 'CLI' i wszelka customizacja jest zależna od naszego emulatora terminalu.
+Anki-dodawacz jest programem CLI i wszelka customizacja jest zależna od naszego emulatora terminalu.
 Na Windowsie 10, aby zmienić czcionkę, przeźroczystość czy wielkość okna należy kliknąć górny pasek > właściwości.
 Tutaj możemy dostosować program do naszych preferencji.
 
