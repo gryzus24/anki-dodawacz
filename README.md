@@ -14,8 +14,11 @@ Wierzę, że otwarty na konfigurację program produkujący wysokiej jakości kar
 
 ## Linki do pobrania:
 
+| [Wersja 0.4.0 ]
+|-
 | [Wersja 0.3.2.1 ](https://github.com/funky-trellis/anki-dodawacz/releases/download/v0.3.2.1/AnkiDodawacz.zip) |
 |-
+
 
 Należy rozpakować folder w dogodnej lokacji i uruchomić plik "AnkiDodawacz.exe"
 
