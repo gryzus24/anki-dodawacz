@@ -12,7 +12,7 @@ colorama.init(autoreset=True)
 with open("config.yml", "r") as f:
     config = yaml.load(f, Loader=yaml.Loader)
 
-print(f"""{Fore.LIGHTYELLOW_EX}- DODAWACZ KART DO {Fore.LIGHTCYAN_EX}ANKI {Fore.LIGHTYELLOW_EX}v0.3.2 -\n
+print(f"""{Fore.LIGHTYELLOW_EX}- DODAWACZ KART DO {Fore.LIGHTCYAN_EX}ANKI {Fore.LIGHTYELLOW_EX}v0.4.0 -\n
 {Fore.WHITE}Wpisz "--help", aby wyświetlić pomoc\n\n""")
 
 
@@ -25,7 +25,7 @@ def zapisuj_komendy(komenda, wartosc):
 
 
 def commands():
-    global word
+    global word  # Nie wiem jak się tego pozbyć wrr...
 
     word = input('Szukaj: ')
 
@@ -88,44 +88,59 @@ def commands():
  "--ukryj-w-zdaniu on/off"   Jak w definicjach tylko w dodanym zdaniu                  Aktualna wartość = {config['ukryj_slowo_w_zdaniu']}
     lub "-uz on/off"\n  
  "--ukryj-w-disamb on/off"   Ukrywa szukane hasło   
-    lub "-udisamb on/off     w elementach z WordNetu (synonimach)                      Aktualna wartość = {config['ukryj_slowo_w_disamb']}
+    lub "-udisamb on/off     w elementach z WordNetu (synonimach)                      Aktualna wartość = {config['ukryj_slowo_w_disamb']}\n
+ "-bulk on/off"              włącza/wyłącz funkcję masowego dodawania                  Aktualna wartość = {config['bulk_add']}
+--------------------------------------------------------------------------------
+ Masowe dodawanie (bulk):
+ Masowe dodawanie pozwala na dodanie wielu kart na raz.
+ Wartości, które mają wpływ na masowe dodawanie to:
+ Disambiguation True/False,  Zdanie True/False
+ na zmiany w strukturze masowego dodawania wpływa tylko Zdanie True/False
+ 
+ Dla Zdanie = True:                          Dla Zdanie = False:
+  "vicious"                                  "vicious"
+  "vicious man"                              "emerge"
+  "emerge"                                   " "
+  "emergent nations"
+  " "
+  {Fore.LIGHTYELLOW_EX}UWAGA! {Fore.RESET}Aktualna wartość Zdania to: {config['dodaj_wlasne_zdanie']}
 --------------------------------------------------------------------------------\n""")
         commands()
-    elif word == '-d on' or word == '--definicje on':
+    elif word == '-d on' or word == '--definicje on' or word == ' -d on' or word == ' --definicje on':  # Ten whitespace pozwala na natychmiastowe wpisanie komendy po masowym dodawaniu
         print(f'{Fore.LIGHTGREEN_EX}Dodawanie definicji: włączone')
         zapisuj_komendy(komenda='dodaj_definicje', wartosc=True)
-    elif word == '-d off' or word == '--definicje off':
+    elif word == '-d off' or word == '--definicje off' or word == ' -d off' or word == ' --definicje off':  # Trzeba te komendy przebudować, bo tak to chyba niepowinno wyglądać
         print(f'{Fore.LIGHTGREEN_EX}Dodawanie definicji: {Fore.LIGHTRED_EX}wyłączone')
         zapisuj_komendy(komenda='dodaj_definicje', wartosc=False)
-    elif word == '-a on' or word == '--audio on':
+    elif word == '-a on' or word == '--audio on' or word == ' -a on' or word == ' --audio on':
         print(f'{Fore.LIGHTGREEN_EX}Dodawanie audio: włączone')
         zapisuj_komendy(komenda='dodaj_audio', wartosc=True)
-    elif word == '-a off' or word == '--audio off':
+    elif word == '-a off' or word == '--audio off' or word == ' -a off' or word == ' --audio off':
         print(f'{Fore.LIGHTGREEN_EX}Dodawanie audio: {Fore.LIGHTRED_EX}wyłączone')
         zapisuj_komendy(komenda='dodaj_audio', wartosc=False)
-    elif word == '--audio-path':
+    elif word == '--audio-path' or word == ' --audio-path':
         save_path = str(input('Wprowadź ścieżkę zapisu audio: '))
         print(f'{Fore.LIGHTGREEN_EX}OK')
         zapisuj_komendy(komenda='save_path', wartosc=save_path)
-    elif word == '-e on' or word == '--etymologie on':
+    elif word == '-e on' or word == '--etymologie on' or word == ' -e on' or word == ' --etymologie on':
         print(f'{Fore.LIGHTGREEN_EX}Dodawanie etymologii: włączone')
         zapisuj_komendy(komenda='dodaj_etymologie', wartosc=True)
-    elif word == '-e off' or word == '--etymologie off':
+    elif word == '-e off' or word == '--etymologie off' or word == ' -e off' or word == ' --etymologie off':
         print(f'{Fore.LIGHTGREEN_EX}Dodawanie etymologii: {Fore.LIGHTRED_EX}wyłączone')
         zapisuj_komendy(komenda='dodaj_etymologie', wartosc=False)
-    elif word == '-pos on' or word == '--czesci-mowy on':
+    elif word == '-pos on' or word == '--czesci-mowy on' or word == ' -pos on' or word == ' --czesci-mowy on':
         print(f'{Fore.LIGHTGREEN_EX}Dodawanie części mowy: włączone')
         zapisuj_komendy(komenda='dodaj_czesci_mowy', wartosc=True)
-    elif word == '-pos off' or word == '--czesci-mowy off':
+    elif word == '-pos off' or word == '--czesci-mowy off' or word == ' -pos off' or word == ' --czesci-mowy off':
         print(f'{Fore.LIGHTGREEN_EX}Dodawanie części mowy: {Fore.LIGHTRED_EX}wyłączone')
         zapisuj_komendy(komenda='dodaj_czesci_mowy', wartosc=False)
-    elif word == '-fs on' or word == '--filtruj-slownik on':
+    elif word == '-fs on' or word == '--filtruj-slownik on' or word == ' -fs on' or word == ' --filtruj-slownik on':
         print(f'{Fore.LIGHTGREEN_EX}Filtrowanie slownika: włączone')
         zapisuj_komendy(komenda='pokazuj_filtrowany_slownik', wartosc=True)
-    elif word == '-fs off' or word == '--filtruj-slownik off':
+    elif word == '-fs off' or word == '--filtruj-slownik off' or word == ' -fs off' or word == ' --filtruj-slownik off':
         print(f'{Fore.LIGHTGREEN_EX}Filtrowanie slownika: {Fore.LIGHTRED_EX}wyłączone')
         zapisuj_komendy(komenda='pokazuj_filtrowany_slownik', wartosc=False)
-    elif word == '-all on':
+    elif word == '-all on' or word == ' -all on':
         print(f'{Fore.LIGHTGREEN_EX}Dodawanie: WSZYSTKO')
         config['disambiguation'] = True
         config['dodaj_synonimy'] = True
@@ -136,7 +151,7 @@ def commands():
         config['dodaj_definicje'] = True
         config['dodaj_audio'] = True
         zapisuj_komendy(komenda='dodaj_audio', wartosc=True)  # dummy args tylko aby funkcja przeszła
-    elif word == '-all off':
+    elif word == '-all off' or word == ' -all off':
         print(f'{Fore.LIGHTGREEN_EX}Dodawanie: {Fore.LIGHTRED_EX}Tylko hasło')
         config['disambiguation'] = False
         config['dodaj_synonimy'] = False
@@ -147,54 +162,60 @@ def commands():
         config['dodaj_definicje'] = False
         config['dodaj_audio'] = False
         zapisuj_komendy(komenda='dodaj_audio', wartosc=False)  # dummy args tylko aby funkcja przeszła
-    elif word == '-karty on':
+    elif word == '-karty on' or word == ' -karty on':
         print(f'{Fore.LIGHTGREEN_EX}Tworzenie kart: włączone')
         zapisuj_komendy(komenda='tworz_karte', wartosc=True)
-    elif word == '-karty off':
+    elif word == '-karty off' or word == ' -karty off':
         print(f'{Fore.LIGHTGREEN_EX}Tworzenie kart: {Fore.LIGHTRED_EX}wyłączone')
         zapisuj_komendy(komenda='tworz_karte', wartosc=False)
-    elif word == '--zdanie on' or word == '-z on':
+    elif word == '--zdanie on' or word == '-z on' or word == ' --zdanie on' or word == ' -z on':
         print(f'{Fore.LIGHTGREEN_EX}Dodawanie własnego zdania: włączone')
         zapisuj_komendy(komenda='dodaj_wlasne_zdanie', wartosc=True)
-    elif word == '--zdanie off' or word == '-z off':
+    elif word == '--zdanie off' or word == '-z off' or word == ' --zdanie off' or word == ' -z off':
         print(f'{Fore.LIGHTGREEN_EX}Dodawanie własnego zdania: {Fore.LIGHTRED_EX}wyłączone')
         zapisuj_komendy(komenda='dodaj_wlasne_zdanie', wartosc=False)
-    elif word == '--ukryj-w-def on' or word == '-udef on':
+    elif word == '--ukryj-w-def on' or word == '-udef on' or word == ' --ukryj-w-def on' or word == ' -udef on':
         print(f'{Fore.LIGHTGREEN_EX}Ukrywanie słowa w definicjach: włączone')
         zapisuj_komendy(komenda='ukryj_slowo_w_definicji', wartosc=True)
-    elif word == '--ukryj-w-def off' or word == '-udef off':
+    elif word == '--ukryj-w-def off' or word == '-udef off' or word == ' --ukryj-w-def off' or word == ' -udef off':
         print(f'{Fore.LIGHTGREEN_EX}Ukrywanie słowa w definicjach: {Fore.LIGHTRED_EX}wyłączone')
         zapisuj_komendy(komenda='ukryj_slowo_w_definicji', wartosc=False)
-    elif word == '--ukryj-w-zdaniu on' or word == '-uz on':
+    elif word == '--ukryj-w-zdaniu on' or word == '-uz on' or word == ' --ukryj-w-zdaniu on' or word == ' -uz on':
         print(f'{Fore.LIGHTGREEN_EX}Ukrywanie słowa w zdaniu: włączone')
         zapisuj_komendy(komenda='ukryj_slowo_w_zdaniu', wartosc=True)
-    elif word == '--ukryj-w-zdaniu off' or word == '-uz off':
+    elif word == '--ukryj-w-zdaniu off' or word == '-uz off' or word == ' --ukryj-w-zdaniu off' or word == ' -uz off':
         print(f'{Fore.LIGHTGREEN_EX}Ukrywanie słowa w zdaniu: {Fore.LIGHTRED_EX}wyłączone')
         zapisuj_komendy(komenda='ukryj_slowo_w_zdaniu', wartosc=False)
-    elif word == '--ukryj-w-disamb on' or word == '-udisamb on':
+    elif word == '--ukryj-w-disamb on' or word == '-udisamb on' or word == ' --ukryj-w-disamb on' or word == ' -udisamb on':
         print(f'{Fore.LIGHTGREEN_EX}Ukrywanie słowa w synonimach: włączone')
         zapisuj_komendy(komenda='ukryj_slowo_w_disamb', wartosc=True)
-    elif word == '--ukryj-w-disamb off' or word == '-udisamb off':
+    elif word == '--ukryj-w-disamb off' or word == '-udisamb off' or word == ' --ukryj-w-disamb off' or word == ' -udisamb off':
         print(f'{Fore.LIGHTGREEN_EX}Ukrywanie słowa w synonimach: {Fore.LIGHTRED_EX}wyłączone')
         zapisuj_komendy(komenda='ukryj_slowo_w_disamb', wartosc=False)
-    elif word == '--disambiguation on' or word == '-disamb on':
+    elif word == '--disambiguation on' or word == '-disamb on' or word == ' --disambiguation on' or word == ' -disamb on':
         print(f'{Fore.LIGHTGREEN_EX}Słownik synonimów: włączony')
         zapisuj_komendy(komenda='disambiguation', wartosc=True)
-    elif word == '--disambiguation off' or word == '-disamb off':
+    elif word == '--disambiguation off' or word == '-disamb off' or word == ' --disambiguation off' or word == ' -disamb off':
         print(f'{Fore.LIGHTGREEN_EX}Słownik synonimów: {Fore.LIGHTRED_EX}wyłączony')
         zapisuj_komendy(komenda='disambiguation', wartosc=False)
-    elif word == '--disambiguation synonimy on' or word == '-disamb syn on':
+    elif word == '--disambiguation synonimy on' or word == '-disamb syn on' or word == ' --disambiguation synonimy on' or word == ' -disamb syn on':
         print(f'{Fore.LIGHTGREEN_EX}Dodawanie synonimów: włączone')
         zapisuj_komendy(komenda='dodaj_synonimy', wartosc=True)
-    elif word == '--disambiguation synonimy off' or word == '-disamb syn off':
+    elif word == '--disambiguation synonimy off' or word == '-disamb syn off' or word == ' --disambiguation synonimy off' or word == ' -disamb syn off':
         print(f'{Fore.LIGHTGREEN_EX}Dodawanie synonimów: {Fore.LIGHTRED_EX}wyłączone')
         zapisuj_komendy(komenda='dodaj_synonimy', wartosc=False)
-    elif word == '--disambiguation przyklady on' or word == '-disamb p on':
+    elif word == '--disambiguation przyklady on' or word == '-disamb p on' or word == ' --disambiguation przyklady on' or word == ' -disamb p on':
         print(f'{Fore.LIGHTGREEN_EX}Dodawanie przykładów: włączone')
         zapisuj_komendy(komenda='dodaj_przyklady_synonimow', wartosc=True)
-    elif word == '--disambiguation przyklady off' or word == '-disamb p off':
+    elif word == '--disambiguation przyklady off' or word == '-disamb p off' or word == ' --disambiguation przyklady off' or word == ' -disamb p off':
         print(f'{Fore.LIGHTGREEN_EX}Dodawanie przykładów: {Fore.LIGHTRED_EX}wyłączone')
         zapisuj_komendy(komenda='dodaj_przyklady_synonimow', wartosc=False)
+    elif word == '-bulk on' or word == ' -bulk on':
+        print(f'{Fore.LIGHTGREEN_EX}Bulk: włączony\n{Fore.LIGHTYELLOW_EX}Zdanie = {Fore.RESET}{config["dodaj_wlasne_zdanie"]}')
+        zapisuj_komendy(komenda='bulk_add', wartosc=True)
+    elif word == '-bulk off' or word == ' -bulk off':
+        print(f'{Fore.LIGHTGREEN_EX}Bulk: {Fore.LIGHTRED_EX}wyłączony\n{Fore.LIGHTYELLOW_EX}Zdanie = {Fore.RESET}{config["dodaj_wlasne_zdanie"]}')
+        zapisuj_komendy(komenda='bulk_add', wartosc=False)
     return word
 
 
@@ -205,7 +226,7 @@ def szukaj():
     return url
 
 
-# Pozyskiwanie audio
+# Pozyskiwanie audio z AHD
 def get_audio(audio_link, audio_end):
     audiofile_name = audio_end + '.wav'
     with open(os.path.join(config['save_path'], audiofile_name), 'wb') as file:
@@ -246,7 +267,7 @@ def rysuj_slownik(url):
     else:
         for td in soup.find_all('td'):
             meanings_in_td = td.find_all(class_=('ds-list', 'sds-single', 'ds-single', 'ds-list'))
-            print(f'------------------------------------------------------------------------')
+            print('--------------------------------------------------------------------------------')
             for meaning_num in td.find_all('font', {'color': '#006595'}, 'sup'):
                 life_index += 1
                 if life_index == 1:
@@ -284,43 +305,41 @@ def rysuj_slownik(url):
                 etymologia.append(etym.text)
 
 
-# Dodawanie zdania
-def pokazywacz_zdania(zdanie, word):
-    if not config['ukryj_slowo_w_zdaniu']:
-        return zdanie
-    else:
-        return zdanie.replace(word, '...')
-
-
 def ogarnij_zdanie(zdanie):
     global skip_check
     zdanie = ''.join(zdanie)
     if word.lower() in zdanie.lower():
-        return pokazywacz_zdania(zdanie, word)
-    elif zdanie == ' ':
+        if not config['ukryj_slowo_w_zdaniu']:
+            return zdanie
+        else:
+            return zdanie.replace(word, '...')
+    elif zdanie == ' ':  # Aby przy wyłączonym dodawaniu zdania nie pytało o zdanie_check
         return zdanie
     elif zdanie == '-s':
         print(f'{Fore.LIGHTGREEN_EX}Pominięto dodawanie zdania')
         zdanie = ' '
         return zdanie
     else:
-        print(f'{Fore.LIGHTRED_EX}Zdanie nie zawiera podanego hasła')
-        try:
-            zdanie_check = int(input(f'Czy kontynuować dodawanie? [1 - tak/0 - dodaj zdanie jeszcze raz]: '))
-            if zdanie_check == 1:
-                return zdanie
-            elif zdanie_check == 0:
-                return ogarnij_zdanie(zdanie_input())
-            elif zdanie_check > 1:
-                return zdanie
-            elif zdanie_check < 0:
-                return ogarnij_zdanie(zdanie_input())
-            else:
-                print('error w zdanie_check')
+        if not config['bulk_add']:
+            print(f'\n{Fore.LIGHTRED_EX}Zdanie nie zawiera podanego hasła')
+            try:
+                zdanie_check = int(input(f'Czy kontynuować dodawanie? [1 - tak/0 - dodaj zdanie jeszcze raz]: '))
+                if zdanie_check == 1:
+                    return zdanie
+                elif zdanie_check == 0:
+                    return ogarnij_zdanie(zdanie_input())
+                elif zdanie_check > 1:
+                    return zdanie
+                elif zdanie_check < 0:
+                    return ogarnij_zdanie(zdanie_input())
+                else:
+                    print('error w zdanie_check')
+                    skip_check = 1
+            except ValueError:
+                print(f'{Fore.LIGHTGREEN_EX}Pominięto dodawanie karty')
                 skip_check = 1
-        except ValueError:
-            print(f'{Fore.LIGHTGREEN_EX}Pominięto dodawanie karty')
-            skip_check = 1
+        else:
+            return zdanie
 
 
 def zdanie_input():
@@ -436,8 +455,7 @@ def wybierz_synonimy(wybor_disamb, grupa_synonimow):
         else:
             grupa_synonimow = ' '
             return grupa_synonimow
-    else:
-        return ' '
+    return ' '
 
 
 def wybierz_przyklady(wybor_disamb, grupa_przykladow):
@@ -454,8 +472,7 @@ def wybierz_przyklady(wybor_disamb, grupa_przykladow):
         else:
             grupa_przykladow = ' '
             return grupa_przykladow
-    else:
-        return ' '
+    return ' '
 
 
 def rysuj_synonimy(syn_soup):
@@ -499,12 +516,20 @@ def disambiguator(url_synsearch):
         no_word = syn_soup.find('h3')
         if len(str(no_word)) == 48 and error_loop == 0:  # Sprawdza czy WordNet ma hasło
             print(f'\nWordNet {Fore.LIGHTRED_EX}nie może znaleźć {Fore.RESET}"{word}"{Fore.LIGHTRED_EX}, więc poszuka {Fore.RESET}"{lifesaver}"')
-            url_synsearch = 'http://wordnetweb.princeton.edu/perl/webwn?s=' + lifesaver
+            url_synsearch = 'http://wordnetweb.princeton.edu/perl/webwn?s=' + lifesaver  # Gdy wyszukiwane hasło w AH jest nieprawidłowym glossem, lifesaver jest zawsze prawidłowym glossem
             disamb_handling(url_synsearch)
-        elif len(str(no_word)) != 48 and error_loop == 0 or len(str(no_word)) != 48 and error_loop == 1:
-            print('------------------------------------------------------------------------')
-            print(f'{Style.BRIGHT}{"WordNet".center(70)}\n{Style.RESET_ALL}')
+        elif len(str(no_word)) != 48 and error_loop == 0 and len(str(no_word)) != 117 or\
+                len(str(no_word)) != 48 and error_loop == 1 and len(str(no_word)) != 117:  # Hasło zostało znalezione za pierwszym lub drugim razem
+
+            print('--------------------------------------------------------------------------------')
+            print(f'{Style.BRIGHT}{"WordNet".center(80)}\n{Style.RESET_ALL}')
             rysuj_synonimy(syn_soup)
+
+        elif len(str(no_word)) == 117:  # Alternatywna wiadomość na brak hasła
+            print(f'{Fore.LIGHTRED_EX}\nNie znaleziono szukanego hasła na {Fore.RESET}WordNecie')
+            skip_check_disamb = 1
+            print(len(str(no_word)), error_loop)
+            print(no_word)
         else:
             print(f'{Fore.LIGHTRED_EX}\nNie znaleziono szukanego hasła na {Fore.RESET}WordNecie')
             skip_check_disamb = 1
@@ -567,7 +592,7 @@ def wyswietl_karte():
     print('\n')
     print('Utworzona karta zawiera:')
     print('--------------------------------------------------------------------------------')
-    print(definicje.replace('<br>', '').center(80))
+    print(definicje.replace('<br>', ' ').center(80))
     print(disamb_synonimy.center(80))
     print(disamb_przyklady.center(80))
     print('--------------------------------------------------------------------------------')
@@ -598,6 +623,7 @@ while start:
     grupa_synonimow = []
 
     url = szukaj()
+    print()  # Aby przy bulk_add nie było wizualnego buga
     if config['tworz_karte']:
         rysuj_slownik(url)
         audiofile_name = search_for_audio(url='https://www.ahdictionary.com/word/search.html?q=' + word)
@@ -606,7 +632,7 @@ while start:
         if config['disambiguation']:
             disambiguator(url_synsearch='http://wordnetweb.princeton.edu/perl/webwn?s=' + word)
 
-    if config['tworz_karte']:
+    if config['tworz_karte'] and not config['bulk_add']:
         while True:
             zdanie = ogarnij_zdanie(zdanie_input())
             if skip_check == 1:
@@ -636,6 +662,16 @@ while start:
                 else:
                     disambiguation = disamb_synonimy + disamb_przyklady
             break
+
+    if config['bulk_add']:
+        definicje = wybierz_definicje(wybor_definicji=-1, definicje=definicje)
+        czesci_mowy = wybierz_czesci_mowy(wybor_czesci_mowy=1, czesci_mowy=czesci_mowy)
+        etymologia = wybierz_etymologie(wybor_etymologii=-1, etymologia=etymologia)
+        if config['disambiguation']:
+            disambiguator(url_synsearch='http://wordnetweb.princeton.edu/perl/webwn?s=' + word)
+            disamb_synonimy = wybierz_synonimy(wybor_disamb=-1, grupa_synonimow=grupa_synonimow)
+            disamb_przyklady = wybierz_przyklady(wybor_disamb=-1, grupa_przykladow=grupa_przykladow)
+        zdanie = ogarnij_zdanie(zdanie_input())
 
     if skip_check == 0 and config['tworz_karte']:
         wyswietl_karte()
