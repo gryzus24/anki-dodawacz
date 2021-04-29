@@ -22,7 +22,7 @@ Wierzę, że otwarty na konfigurację program produkujący wysokiej jakości kar
 
 Należy rozpakować folder w dogodnej lokacji i uruchomić plik "AnkiDodawacz.exe"
 
-(Jeżeli nie chcesz używać pliku .exe, możesz uruchomić program instalując biblioteki podane poniżej i używając Pythona 3.9)
+(Jeżeli nie chcesz używać pliku .exe, możesz uruchomić używając Pythona 3.9 po zainstalowaniu bibliotek podanych poniżej)
 
 Jeżeli w folderze z programem nie ma folderu "Karty_audio" to należy go stworzyć.
 
@@ -123,4 +123,4 @@ Jestem otwarty na sugestie i krytykę.
 Mam nadzieję, że narzędzie okaże się pomocne.
 
 
-Użyte biblioteki: BeautifulSoup4, requests, colorama, regex
+Użyte biblioteki: BeautifulSoup4, requests, colorama, regex, yaml
