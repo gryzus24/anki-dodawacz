@@ -100,7 +100,7 @@ Aby zaimportować karty do Anki, na górnym pasku klikami w "Plik" i "Importuj..
 - Klikamy w "Pola oddzielone o" i wpisujemy "\t"
 - Możemy wybrać "Ignoruj linie, których pierwsze pole pasuje do istniejącej notatki"
 - I na końcu ważne, aby zaznaczyć "Zezwól na HTML w polach"
-- 
+
 ![image](https://user-images.githubusercontent.com/82805891/116596638-e886d780-a924-11eb-8e82-b7d789151486.png)
 
 Gdy raz ustawimy opcje importowania, nie musimy się przejmować ich ponownym ustawianiem.
