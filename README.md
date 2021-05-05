@@ -14,10 +14,15 @@ Wierzę, że otwarty na konfigurację program produkujący wysokiej jakości kar
 
 ## Linki do pobrania:
 
-| [Wersja 0.3.2.1 ](https://github.com/funky-trellis/anki-dodawacz/releases/download/v0.3.2.1/AnkiDodawacz.zip) |
+| [Wersja 0.4.0 ](https://github.com/funky-trellis/anki-dodawacz/releases/download/v0.4.0/AnkiDodawacz_v0_4_0.zip) |
 |-
+| [Wersja 0.3.2.1 ](https://github.com/funky-trellis/anki-dodawacz/releases/download/v0.3.2.1/AnkiDodawacz.zip) |
+
+
 
 Należy rozpakować folder w dogodnej lokacji i uruchomić plik "AnkiDodawacz.exe"
+
+(Jeżeli nie chcesz używać pliku .exe, możesz uruchomić program używając Pythona 3.7 - 3.9.4 z podanymi niżej bibliotekami)
 
 Jeżeli w folderze z programem nie ma folderu "Karty_audio" to należy go stworzyć.
 
@@ -95,7 +100,7 @@ Aby zaimportować karty do Anki, na górnym pasku klikami w "Plik" i "Importuj..
 - Klikamy w "Pola oddzielone o" i wpisujemy "\t"
 - Możemy wybrać "Ignoruj linie, których pierwsze pole pasuje do istniejącej notatki"
 - I na końcu ważne, aby zaznaczyć "Zezwól na HTML w polach"
-- 
+
 ![image](https://user-images.githubusercontent.com/82805891/116596638-e886d780-a924-11eb-8e82-b7d789151486.png)
 
 Gdy raz ustawimy opcje importowania, nie musimy się przejmować ich ponownym ustawianiem.
@@ -118,4 +123,4 @@ Jestem otwarty na sugestie i krytykę.
 Mam nadzieję, że narzędzie okaże się pomocne.
 
 
-Użyte biblioteki: BeautifulSoup4, requests, colorama, regex
+Użyte biblioteki: BeautifulSoup4, requests, colorama, regex, yaml
