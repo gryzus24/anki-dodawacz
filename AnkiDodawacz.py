@@ -12,6 +12,10 @@ colorama.init(autoreset=True)
 with open("config.yml", "r") as f:
     config = yaml.load(f, Loader=yaml.Loader)
 
+syn_color = eval(config['syn_color'])
+index_color = eval(config['index_color'])
+gloss_color = eval(config['gloss_color'])
+
 print(f"""{Fore.LIGHTYELLOW_EX}- DODAWACZ KART DO {Fore.LIGHTCYAN_EX}ANKI {Fore.LIGHTYELLOW_EX}v0.4.0 -\n
 {Fore.WHITE}Wpisz "--help", aby wyświetlić pomoc\n\n""")
 
@@ -22,6 +26,47 @@ def zapisuj_komendy(komenda, wartosc):
     with open("config.yml", "w") as conf_file:
         yaml.dump(config, conf_file)
     commands()
+
+
+def koloryfer(color):
+    color = 'Fore.' + color.upper()
+    if 'light' in color.lower():
+        color = color + '_EX'
+    return eval(color)
+
+
+def zmien_kolory(word):
+    colors = ('black', 'red', 'green', 'yellow', 'blue', 'magenta', 'cyan', 'white',
+              'lightblack', 'lightred', 'lightgreen', 'lightyellow', 'lightblue', 'lightmagenta', 'lightcyan', 'lightwhite')
+    color_commands = ('-syn color', '-index color', '-gloss color')
+    color_message = {'-syn color': 'Kolor synonimów', '-index color': 'Kolor indexów', '-gloss color': 'Kolor glossów'}
+
+    color_tuple = word.split('/')
+
+    if color_tuple[0].lower() in color_commands:
+        color_ph = color_tuple[1]
+        if color_ph.lower() in colors:
+            color = 'Fore.' + color_ph.upper()
+            if 'light' in color.lower():
+                color = color + '_EX'
+
+            msg_color = eval(color)
+            print(f'{color_message[color_tuple[0]]} ustawiony na {msg_color}{color_ph}')
+            zapisuj_komendy(komenda=color_tuple[0].strip('-').replace(' ', '_'), wartosc=color)
+
+        else:
+            print(f'{Fore.LIGHTRED_EX}Brak wybranego koloru')
+            commands()
+    elif color_tuple[0].strip() == '-colors':
+        print('\nDostępne kolory to:')
+        for index, color in enumerate(colors, start=1):
+            print(f'{koloryfer(color)}{color}', end=', ')
+            if index/4 == 1 or index/4 == 2 or index/4 == 3 or index/4 == 4:
+                print()
+        print()
+        commands()
+    else:
+        print('ne dam!')
 
 
 def commands():
@@ -82,17 +127,18 @@ Komendy (wpisywane w pole "Szukaj"):
   
 "-udef on/off"        Niektóre definicje zawierają użycia słowa.                Aktualnie = {config['ukryj_slowo_w_definicji']}
                       Ta opcja zamienia wszystkie użycia słowa na "..."\n
-"-upz on/off"         Jak w definicjach tylko w dodanym zdaniu\n                Aktualnie = {config['ukryj_slowo_w_zdaniu']}  
-"-udisamb on/off"     Ukrywa szukane hasło w elementach z WordNetu (synonimach) Aktualnie = {config['ukryj_slowo_w_disamb']}\n
+"-upz on/off"         Jak w definicjach tylko w dodanym zdaniu                  Aktualnie = {config['ukryj_slowo_w_zdaniu']}  
+"-udisamb on/off"     Ukrywa wystąpienie hasła w synonimach z WordNetu          Aktualnie = {config['ukryj_slowo_w_disamb']}\n
 "-bulk on/off"        włącza/wyłącz funkcję masowego dodawania                  Aktualnie = {config['bulk_add']}
 --------------------------------------------------------------------------------
 Masowe dodawanie (bulk):
 Masowe dodawanie pozwala na dodanie wielu kart na raz.
+Wystarczy skopiować tekst według szablonu i wkleić do Dodawacza.
 Wartości, które mają wpływ na masowe dodawanie to:
 Disambiguation True/False,  Zdanie True/False
 na zmiany w strukturze masowego dodawania wpływa tylko Zdanie True/False
 
-Dla Zdanie = True:                          Dla Zdanie = False:
+Szablon dla Zdanie = True:                  Szablon dla Zdanie = False:
  "vicious"                                  "vicious"
  "vicious man"                              "emerge"
  "emerge"                                   " "
@@ -107,7 +153,7 @@ Dla Zdanie = True:                          Dla Zdanie = False:
     elif word == '-def off' or word == ' -def off':  # Trzeba te komendy przebudować, bo tak to chyba niepowinno wyglądać
         print(f'{Fore.LIGHTGREEN_EX}Dodawanie definicji: {Fore.LIGHTRED_EX}wyłączone')
         zapisuj_komendy(komenda='dodaj_definicje', wartosc=False)
-    elif word == '-audio on'  or word == ' -audio on':
+    elif word == '-audio on' or word == ' -audio on':
         print(f'{Fore.LIGHTGREEN_EX}Dodawanie audio: włączone')
         zapisuj_komendy(komenda='dodaj_audio', wartosc=True)
     elif word == '-audio off' or word == ' -audio off':
@@ -211,6 +257,10 @@ Dla Zdanie = True:                          Dla Zdanie = False:
     elif word == '-bulk off' or word == ' -bulk off':
         print(f'{Fore.LIGHTGREEN_EX}Bulk: {Fore.LIGHTRED_EX}wyłączony\n{Fore.LIGHTYELLOW_EX}Zdanie = {Fore.RESET}{config["dodaj_wlasne_zdanie"]}')
         zapisuj_komendy(komenda='bulk_add', wartosc=False)
+    elif '-syn color/' in word or '-index color/' in word or '-gloss color/' in word:
+        zmien_kolory(word)
+    elif word == '-colors' or word == ' -colors':
+        zmien_kolory(word)
     return word
 
 
@@ -270,10 +320,10 @@ def rysuj_slownik(url):
                     gloss1 = re.sub(r'·', '', gloss0)
                     gloss = re.sub(r'\d', '', gloss1).strip()
                     if word != gloss:
-                        print(f'Wyniki dla {Fore.CYAN}{gloss}'.center(80))
-                    print(f'  {Fore.CYAN}{meaning_num.text}')
+                        print(f'Wyniki dla {gloss_color}{gloss}'.center(80))
+                    print(f'  {gloss_color}{meaning_num.text}')
                 else:
-                    print(f'  {Fore.CYAN}{meaning_num.text}')
+                    print(f'  {gloss_color}{meaning_num.text}')
             for meaning in meanings_in_td:
                 indexing += 1
                 meanings_filtered = meaning.text
@@ -284,9 +334,9 @@ def rysuj_slownik(url):
                 rex4 = rex3.strip()
 
                 if config['pokazuj_filtrowany_slownik']:
-                    print(f"{Fore.LIGHTGREEN_EX}{indexing}  {Fore.RESET}{Style.RESET_ALL}{rex4.replace('', '')}")
+                    print(f"{index_color}{indexing}  {Fore.RESET}{Style.RESET_ALL}{rex4.replace('', '')}")
                 else:
-                    print(f"{Fore.LIGHTGREEN_EX}{indexing}  {Fore.RESET}{Style.RESET_ALL}{meaning.text}")
+                    print(f"{index_color}{indexing}  {Fore.RESET}{Style.RESET_ALL}{meaning.text}")
                 if not config['ukryj_slowo_w_definicji']:
                     definicje.append(rex4.replace(':', ':<br>').replace('', ''))
                 else:
@@ -487,13 +537,14 @@ def rysuj_synonimy(syn_soup):
         przyklady2 = re.sub("[][]", "", str(przyklady))  # do wyświetlenia w karcie
         przyklady3 = re.sub("',", "'\n   ", przyklady2)
         przyklady4 = re.sub(r"\A[']", "\n    '", przyklady3)  # do narysowania
-
         synonimy, sep, tail = ele.partition('"')  # oddziela synonimy od przykładów
         synonimy0 = synonimy.replace("S:", "")  # do rysowania synonimów z kategoryzacją wordneta
-        category = synonimy0.split('(')[2]
+
+        category = synonimy0.split('(', 2)[2]
         category = '(' + category
         pos = synonimy0.split(')')[0]
         pos = pos + ')'
+
         synonimy1 = re.sub(r"\([^()]*\)", "", synonimy0)  # usuwa pierwszy miot nawiasów
         synonimy2 = re.sub(r"\(.*\)", "", synonimy1)  # ususwa resztę nawiasów
         synonimy3 = re.sub(r"\s{2}", "", synonimy2)  # gotowe do wyświetlenia w karcie
@@ -505,12 +556,10 @@ def rysuj_synonimy(syn_soup):
             grupa_synonimow.append(synonimy3)
             grupa_przykladow.append(przyklady2)
 
-        color_syn = Fore.YELLOW
-
         if przyklady4 == '':
-            print(f'{Fore.LIGHTGREEN_EX}{index}{Fore.RESET} :{pos} {color_syn}{synonimy3} {Fore.RESET}{category}\n    *Brak przykładów*\n')
+            print(f'{index_color}{index}{Fore.RESET} :{pos} {syn_color}{synonimy3} {Fore.RESET}{category}\n    *Brak przykładów*\n')
         else:
-            print(f'{Fore.LIGHTGREEN_EX}{index}{Fore.RESET} :{pos} {color_syn}{synonimy3} {Fore.RESET}{category}{Fore.RESET}{przyklady4}\n')
+            print(f'{index_color}{index}{Fore.RESET} :{pos} {syn_color}{synonimy3} {Fore.RESET}{category}{Fore.RESET}{przyklady4}\n')
 
 
 def disambiguator(url_synsearch):
@@ -619,7 +668,6 @@ while start:
     grupa_synonimow = []
 
     url = szukaj()
-    print()  # Aby przy bulk_add nie było wizualnego buga
     if config['tworz_karte']:
         rysuj_slownik(url)
         audiofile_name = search_for_audio(url='https://www.ahdictionary.com/word/search.html?q=' + word)

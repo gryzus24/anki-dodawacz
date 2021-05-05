@@ -7,8 +7,11 @@ dodaj_etymologie: true
 dodaj_przyklady_synonimow: true
 dodaj_synonimy: true
 dodaj_wlasne_zdanie: true
+gloss_color: Fore.CYAN
+index_color: Fore.LIGHTGREEN_EX
 pokazuj_filtrowany_slownik: true
 save_path: Karty_audio
+syn_color: Fore.YELLOW
 tworz_karte: true
 ukryj_slowo_w_definicji: true
 ukryj_slowo_w_disamb: true
