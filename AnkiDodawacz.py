@@ -273,7 +273,7 @@ def rysuj_slownik(url):
                 if gloss_index == 1:
                     gloss0 = meaning_num.text
                     gloss1 = re.sub(r'·', '', gloss0)
-                    gloss = re.sub('\d', '', gloss1).strip()
+                    gloss = re.sub('\\d', '', gloss1).strip()
                     if word != gloss:
                         print(f'Wyniki dla {Fore.CYAN}{gloss}'.center(80))
                     print(f'  {Fore.CYAN}{meaning_num.text}')
@@ -449,7 +449,6 @@ def definicje_input():
         else:
             skip_check = 1
             print(f'{Fore.LIGHTGREEN_EX}Pominięto dodawanie karty')
-        return wybor_definicji
     wybor_definicji = 0
     return int(wybor_definicji)
 
@@ -494,24 +493,29 @@ def rysuj_synonimy(syn_soup):
         przyklady3 = re.sub("',", "'\n   ", przyklady2)
         przyklady4 = re.sub("\\A[']", "\n    '", przyklady3)  # do narysowania
 
-        synonimy, sep, tail = ele.partition('"')
-        synonimy1 = re.sub("S:", f"{Fore.LIGHTGREEN_EX}{index}{Fore.RESET} :", synonimy)  # do narysowania
-        synonimy2 = re.sub("\\((.+?)\\)", "", synonimy1)
-        index, sep, synonimy3 = synonimy2.partition(':')
-        synonimy4 = re.sub(r"\s{2}", "", synonimy3)  # do wyświetlenia w karcie
+        synonimy, sep, tail = ele.partition('"')  # oddziela synonimy od przykładów
+        synonimy0 = synonimy.replace("S:", "")  # do rysowania synonimów z kategoryzacją wordneta
+        category = synonimy0.split('(')[2]
+        category = '(' + category
+        pos = synonimy0.split(')')[0]
+        pos = pos + ')'
+        synonimy1 = re.sub(r"\([^()]*\)", "", synonimy0)  # usuwa pierwszy miot nawiasów
+        synonimy2 = re.sub("\(.*\)", "", synonimy1)  # ususwa resztę nawiasów
+        synonimy3 = re.sub(r"\s{2}", "", synonimy2)  # gotowe do wyświetlenia w karcie
 
         if config['ukryj_slowo_w_disamb']:
-            grupa_synonimow.append(synonimy4.replace(gloss, '...'))
+            grupa_synonimow.append(synonimy3.replace(gloss, '...'))
             grupa_przykladow.append(przyklady2.replace(gloss, '...'))
         else:
-            grupa_synonimow.append(synonimy4)
+            grupa_synonimow.append(synonimy3)
             grupa_przykladow.append(przyklady2)
 
-        if przyklady4 == '':
-            print(f'{synonimy1}\n    *Brak przykładów*\n')
-        else:
-            print(f'{synonimy1}{przyklady4}\n')
+        color_syn = Fore.YELLOW
 
+        if przyklady4 == '':
+            print(f'{Fore.LIGHTGREEN_EX}{index}{Fore.RESET} :{pos} {color_syn}{synonimy3} {Fore.RESET}{category}\n    *Brak przykładów*\n')
+        else:
+            print(f'{Fore.LIGHTGREEN_EX}{index}{Fore.RESET} :{pos} {color_syn}{synonimy3} {Fore.RESET}{category}{Fore.RESET}{przyklady4}\n')
 
 
 def disambiguator(url_synsearch):
@@ -522,14 +526,10 @@ def disambiguator(url_synsearch):
     if len(str(no_word)) == 48 or len(str(no_word)) == 117:
         print(f'{Fore.LIGHTRED_EX}\nNie znaleziono {Fore.RESET}{gloss} {Fore.LIGHTRED_EX}na {Fore.RESET}WordNecie')
         skip_check_disamb = 1
-        # print(f'\nWordNet {Fore.LIGHTRED_EX}nie może znaleźć {Fore.RESET}"{word}"{Fore.LIGHTRED_EX}, więc poszuka {Fore.RESET}"{gloss}"')
-        # url_synsearch = 'http://wordnetweb.princeton.edu/perl/webwn?s=' + gloss  # Gdy wyszukiwane hasło w AH jest nieprawidłowym glossem, gloss jest zawsze prawidłowym glossem
-        # disamb_handling(url_synsearch)
     else:
         print('--------------------------------------------------------------------------------')
         print(f'{Style.BRIGHT}{"WordNet".center(80)}\n{Style.RESET_ALL}')
         rysuj_synonimy(syn_soup)
-
 
 
 def disamb_input_syn():
