@@ -28,116 +28,111 @@ def commands():
     global word  # Nie wiem jak się tego pozbyć wrr...
 
     word = input('Szukaj: ')
-
     if word == '--help' or word == '-h':
         print(f"""\n    Po wpisaniu hasła w pole "Szukaj" rozpocznie się cykl dodawania karty.
 --------------------------------------------------------------------------------
- Przy dodawaniu zdania:
- Wpisz swoje własne przykładowe zdanie zawierające wyszukane hasło.
-  "-s"             pomija dodawanie zdania\n
- W przypadku wpisania zdania niezawierającego wyszukanego hasła:
-  "1"              dodaje zdanie
-  "0"              powtarza dodawanie zdania
- Wpisanie litery lub wciśnięcie Enter pomija dodawanie karty.
+Przy dodawaniu zdania:
+Wpisz swoje własne przykładowe zdanie zawierające wyszukane hasło.
+ "-s"             pomija dodawanie zdania\n
+W przypadku wpisania zdania niezawierającego wyszukanego hasła:
+ "1"              dodaje zdanie
+ "0"              powtarza dodawanie zdania
+Wpisanie litery lub wciśnięcie Enter pomija dodawanie karty.
 --------------------------------------------------------------------------------
- Przy definicjach:
- Aby wybrać definicję wpisz numer zielonego indeksu.\n
-  np. "3"         dodaje trzecią definicję
-  "0"             pomija dodawanie elementu
-  "-1"            dodaje wszystkie elementy
- Wpisanie litery lub wciśnięcie Enter gdy pole jest puste pomija dodawanie karty.
+Przy definicjach:
+Aby wybrać definicję wpisz numer zielonego indeksu.\n
+ np. "3"         dodaje trzecią definicję
+ "0"             pomija dodawanie elementu
+ "-1"            dodaje wszystkie elementy
+Wpisanie litery lub wciśnięcie Enter gdy pole jest puste pomija dodawanie karty.
 --------------------------------------------------------------------------------
- Przy częściach mowy:
-  "1"             dodaje wszystkie części mowy
-  "0"             pomija dodawanie elementu
+Przy częściach mowy:
+ "1"             dodaje wszystkie części mowy
+ "0"             pomija dodawanie elementu
 --------------------------------------------------------------------------------
- Przy etymologiach:
- Przy większej ilości etymologii możemy sprecyzować wybór wpisując numer etymologii licząc od góry.
- lub wpisać "-1", aby dodać wszystkie dostępne etmologie.
+Przy etymologiach:
+Przy większej ilości etymologii możemy sprecyzować wybór wpisując numer etymologii licząc od góry.
+lub wpisać "-1", aby dodać wszystkie dostępne etmologie.
 --------------------------------------------------------------------------------
- Przy synonimach:
- Synonimy wyświetlane są w grupach zawierających synonimy i przykłady.
- Wybieranie działa tak jak w definicjach, tylko mamy do wyboru dwa pola:
-  - Grupę synonimów
-  - Grupę przykładów
+Przy synonimach:
+Synonimy wyświetlane są w grupach zawierających synonimy i przykłady.
+Wybieranie działa tak jak w definicjach, tylko mamy do wyboru dwa pola:
+ - Grupę synonimów
+ - Grupę przykładów
 --------------------------------------------------------------------------------
- Komendy (wpisywane w pole "Szukaj"):
- "--zdanie on/off" lub "-z on/off"               włącza/wyłącza dodawanie zdania       Aktualna wartość = {config['dodaj_wlasne_zdanie']}
- "--definicje on/off" lub "-d on/off"            włącza/wyłącza dodawanie definicji    Aktualna wartość = {config['dodaj_definicje']}
- "--czesci-mowy on/off" lub "-pos on/off"        włącza/wyłącza dodawnie części mowy   Aktualna wartość = {config['dodaj_czesci_mowy']}
- "--etymologie on/off" lub "-e on/off"           włącza/wyłącza dodawanie etymologii   Aktualna wartość = {config['dodaj_etymologie']}
- "--disambiguation on/off" lub "-disamb on/off"  włącza/wyłącza pokazywanie synonimów  Aktualna wartość = {config['disambiguation']}
- "--disambiguation synonimy on/off" 
-    lub "-disamb syn on/off"                     włącza/wyłącza dodawanie synonimów    Aktualna wartość = {config['dodaj_synonimy']}
- "--disambiguation przyklady on/off" 
-    lub "-disamb p on/off"                       włącza/wyłącza dodawanie przykładów   Aktualna wartość = {config['dodaj_przyklady_synonimow']}
- "--audio on/off" lub "-a on/off"                włącza/wyłącza dodawanie audio        Aktualna wartość = {config['dodaj_audio']}\n
- "-all on/off"                                   Zmienia wartość wszystkich powyższych ustawień na True/False\n
- "-karty on/off"                                 włącza/wyłącza dodawanie kart         Aktualna wartość = {config['tworz_karte']}\n
- "--filtruj-slownik on/off" lub "-fs on/off"     włącza/wyłącza filtrowanie numeracji
-                                          i stylizacji podczas wyświetlania słownika   Aktualna wartość = {config['pokazuj_filtrowany_slownik']}\n
- "--audio-path" :
-   Umożliwia zmianę miejsca zapisu audio (domyślnie: "Karty_audio" w folderze z programem)
-   Aby audio było bezpośrednio dodawane do Anki, zlokalizuj ścieżkę:
-   "C:\\[Users]\\[Nazwa użytkownika]\\AppData\\Roaming\\Anki2\\[Nazwa użytkownika Anki]\\collection.media"
-   (wpisz %appdata%)
-   i wpisz/skopiuj ją w pole wyświetlone po wpisaniu komendy.                          Aktualna ścieżka = {config['save_path']}
-   
- "--ukryj-w-def on/off"      Niektóre definicje zawierają użycia słowa.                Aktualna wartość = {config['ukryj_slowo_w_definicji']}
-    lub "-udef on/off"       Ta opcja zamienia wszystkie użycia słowa na "..."\n                
- "--ukryj-w-zdaniu on/off"   Jak w definicjach tylko w dodanym zdaniu                  Aktualna wartość = {config['ukryj_slowo_w_zdaniu']}
-    lub "-uz on/off"\n  
- "--ukryj-w-disamb on/off"   Ukrywa szukane hasło   
-    lub "-udisamb on/off     w elementach z WordNetu (synonimach)                      Aktualna wartość = {config['ukryj_slowo_w_disamb']}\n
- "-bulk on/off"              włącza/wyłącz funkcję masowego dodawania                  Aktualna wartość = {config['bulk_add']}
+Komendy (wpisywane w pole "Szukaj"):
+"-pz on/off"             włącza/wyłącza dodawanie zdania       Aktualnie = {config['dodaj_wlasne_zdanie']}
+"-def on/off"            włącza/wyłącza dodawanie definicji    Aktualnie = {config['dodaj_definicje']}
+"-pos on/off"            włącza/wyłącza dodawnie części mowy   Aktualnie = {config['dodaj_czesci_mowy']}
+"-etym on/off"           włącza/wyłącza dodawanie etymologii   Aktualnie = {config['dodaj_etymologie']}
+"-disamb on/off"         włącza/wyłącza pokazywanie synonimów  Aktualnie = {config['disambiguation']}
+"-disamb syn on/off"     włącza/wyłącza dodawanie synonimów    Aktualnie = {config['dodaj_synonimy']}
+"-disamb p on/off"       włącza/wyłącza dodawanie przykładów   Aktualnie = {config['dodaj_przyklady_synonimow']}
+"-audio on/off"          włącza/wyłącza dodawanie audio        Aktualnie = {config['dodaj_audio']}\n
+"-all on/off"            Zmienia wartość powyższych ustawień na True/False\n
+"-karty on/off"          włącza/wyłącza dodawanie kart         Aktualnie = {config['tworz_karte']}\n
+"-fs on/off"             włącza/wyłącza filtrowanie numeracji
+                         podczas wyświetlania słownika         Aktualnie = {config['pokazuj_filtrowany_slownik']}\n
+"--audio-path" :
+  Umożliwia zmianę miejsca zapisu audio (domyślnie: "Karty_audio" w folderze z programem)
+  Aby audio było bezpośrednio dodawane do Anki, zlokalizuj ścieżkę:
+  "C:\\[Users]\\[Nazwa użytkownika]\\AppData\\Roaming\\Anki2\\[Nazwa użytkownika Anki]\\collection.media"
+  (wpisz %appdata%)
+  i wpisz/skopiuj ją w pole wyświetlone po wpisaniu komendy.                    Aktualna ścieżka = {config['save_path']}
+  
+"-udef on/off"        Niektóre definicje zawierają użycia słowa.                Aktualnie = {config['ukryj_slowo_w_definicji']}
+                      Ta opcja zamienia wszystkie użycia słowa na "..."\n
+"-upz on/off"         Jak w definicjach tylko w dodanym zdaniu\n                Aktualnie = {config['ukryj_slowo_w_zdaniu']}  
+"-udisamb on/off"     Ukrywa szukane hasło w elementach z WordNetu (synonimach) Aktualnie = {config['ukryj_slowo_w_disamb']}\n
+"-bulk on/off"        włącza/wyłącz funkcję masowego dodawania                  Aktualnie = {config['bulk_add']}
 --------------------------------------------------------------------------------
- Masowe dodawanie (bulk):
- Masowe dodawanie pozwala na dodanie wielu kart na raz.
- Wartości, które mają wpływ na masowe dodawanie to:
- Disambiguation True/False,  Zdanie True/False
- na zmiany w strukturze masowego dodawania wpływa tylko Zdanie True/False
- 
- Dla Zdanie = True:                          Dla Zdanie = False:
-  "vicious"                                  "vicious"
-  "vicious man"                              "emerge"
-  "emerge"                                   " "
-  "emergent nations"
-  " "\n
-  {Fore.LIGHTYELLOW_EX}UWAGA! {Fore.RESET}Aktualna wartość Zdania to: {config['dodaj_wlasne_zdanie']}
+Masowe dodawanie (bulk):
+Masowe dodawanie pozwala na dodanie wielu kart na raz.
+Wartości, które mają wpływ na masowe dodawanie to:
+Disambiguation True/False,  Zdanie True/False
+na zmiany w strukturze masowego dodawania wpływa tylko Zdanie True/False
+
+Dla Zdanie = True:                          Dla Zdanie = False:
+ "vicious"                                  "vicious"
+ "vicious man"                              "emerge"
+ "emerge"                                   " "
+ "emergent nations"
+ " "\n
+{Fore.LIGHTYELLOW_EX}UWAGA! {Fore.RESET}Aktualna wartość Zdania to: {config['dodaj_wlasne_zdanie']}
 --------------------------------------------------------------------------------\n""")
         commands()
-    elif word == '-d on' or word == '--definicje on' or word == ' -d on' or word == ' --definicje on':  # Ten whitespace pozwala na natychmiastowe wpisanie komendy po masowym dodawaniu
+    elif word == '-def on' or word == ' -def on':  # Ten whitespace pozwala na natychmiastowe wpisanie komendy po masowym dodawaniu
         print(f'{Fore.LIGHTGREEN_EX}Dodawanie definicji: włączone')
         zapisuj_komendy(komenda='dodaj_definicje', wartosc=True)
-    elif word == '-d off' or word == '--definicje off' or word == ' -d off' or word == ' --definicje off':  # Trzeba te komendy przebudować, bo tak to chyba niepowinno wyglądać
+    elif word == '-def off' or word == ' -def off':  # Trzeba te komendy przebudować, bo tak to chyba niepowinno wyglądać
         print(f'{Fore.LIGHTGREEN_EX}Dodawanie definicji: {Fore.LIGHTRED_EX}wyłączone')
         zapisuj_komendy(komenda='dodaj_definicje', wartosc=False)
-    elif word == '-a on' or word == '--audio on' or word == ' -a on' or word == ' --audio on':
+    elif word == '-audio on'  or word == ' -audio on':
         print(f'{Fore.LIGHTGREEN_EX}Dodawanie audio: włączone')
         zapisuj_komendy(komenda='dodaj_audio', wartosc=True)
-    elif word == '-a off' or word == '--audio off' or word == ' -a off' or word == ' --audio off':
+    elif word == '-audio off' or word == ' -audio off':
         print(f'{Fore.LIGHTGREEN_EX}Dodawanie audio: {Fore.LIGHTRED_EX}wyłączone')
         zapisuj_komendy(komenda='dodaj_audio', wartosc=False)
     elif word == '--audio-path' or word == ' --audio-path':
         save_path = str(input('Wprowadź ścieżkę zapisu audio: '))
         print(f'{Fore.LIGHTGREEN_EX}OK')
         zapisuj_komendy(komenda='save_path', wartosc=save_path)
-    elif word == '-e on' or word == '--etymologie on' or word == ' -e on' or word == ' --etymologie on':
+    elif word == '-etym on' or word == ' -etym on':
         print(f'{Fore.LIGHTGREEN_EX}Dodawanie etymologii: włączone')
         zapisuj_komendy(komenda='dodaj_etymologie', wartosc=True)
-    elif word == '-e off' or word == '--etymologie off' or word == ' -e off' or word == ' --etymologie off':
+    elif word == '-etym off' or word == ' -etym off':
         print(f'{Fore.LIGHTGREEN_EX}Dodawanie etymologii: {Fore.LIGHTRED_EX}wyłączone')
         zapisuj_komendy(komenda='dodaj_etymologie', wartosc=False)
-    elif word == '-pos on' or word == '--czesci-mowy on' or word == ' -pos on' or word == ' --czesci-mowy on':
+    elif word == '-pos on' or word == ' -pos on':
         print(f'{Fore.LIGHTGREEN_EX}Dodawanie części mowy: włączone')
         zapisuj_komendy(komenda='dodaj_czesci_mowy', wartosc=True)
-    elif word == '-pos off' or word == '--czesci-mowy off' or word == ' -pos off' or word == ' --czesci-mowy off':
+    elif word == '-pos off' or word == ' -pos off':
         print(f'{Fore.LIGHTGREEN_EX}Dodawanie części mowy: {Fore.LIGHTRED_EX}wyłączone')
         zapisuj_komendy(komenda='dodaj_czesci_mowy', wartosc=False)
-    elif word == '-fs on' or word == '--filtruj-slownik on' or word == ' -fs on' or word == ' --filtruj-slownik on':
+    elif word == '-fs on' or word == ' -fs on':
         print(f'{Fore.LIGHTGREEN_EX}Filtrowanie slownika: włączone')
         zapisuj_komendy(komenda='pokazuj_filtrowany_slownik', wartosc=True)
-    elif word == '-fs off' or word == '--filtruj-slownik off' or word == ' -fs off' or word == ' --filtruj-slownik off':
+    elif word == '-fs off' or word == ' -fs off':
         print(f'{Fore.LIGHTGREEN_EX}Filtrowanie slownika: {Fore.LIGHTRED_EX}wyłączone')
         zapisuj_komendy(komenda='pokazuj_filtrowany_slownik', wartosc=False)
     elif word == '-all on' or word == ' -all on':
@@ -168,46 +163,46 @@ def commands():
     elif word == '-karty off' or word == ' -karty off':
         print(f'{Fore.LIGHTGREEN_EX}Tworzenie kart: {Fore.LIGHTRED_EX}wyłączone')
         zapisuj_komendy(komenda='tworz_karte', wartosc=False)
-    elif word == '--zdanie on' or word == '-z on' or word == ' --zdanie on' or word == ' -z on':
+    elif word == '-pz on' or word == ' -pz on':
         print(f'{Fore.LIGHTGREEN_EX}Dodawanie własnego zdania: włączone')
         zapisuj_komendy(komenda='dodaj_wlasne_zdanie', wartosc=True)
-    elif word == '--zdanie off' or word == '-z off' or word == ' --zdanie off' or word == ' -z off':
+    elif word == '-pz off' or word == ' -pz off':
         print(f'{Fore.LIGHTGREEN_EX}Dodawanie własnego zdania: {Fore.LIGHTRED_EX}wyłączone')
         zapisuj_komendy(komenda='dodaj_wlasne_zdanie', wartosc=False)
-    elif word == '--ukryj-w-def on' or word == '-udef on' or word == ' --ukryj-w-def on' or word == ' -udef on':
+    elif word == '-udef on' or word == ' -udef on':
         print(f'{Fore.LIGHTGREEN_EX}Ukrywanie słowa w definicjach: włączone')
         zapisuj_komendy(komenda='ukryj_slowo_w_definicji', wartosc=True)
-    elif word == '--ukryj-w-def off' or word == '-udef off' or word == ' --ukryj-w-def off' or word == ' -udef off':
+    elif word == '-udef off' or word == ' -udef off':
         print(f'{Fore.LIGHTGREEN_EX}Ukrywanie słowa w definicjach: {Fore.LIGHTRED_EX}wyłączone')
         zapisuj_komendy(komenda='ukryj_slowo_w_definicji', wartosc=False)
-    elif word == '--ukryj-w-zdaniu on' or word == '-uz on' or word == ' --ukryj-w-zdaniu on' or word == ' -uz on':
+    elif word == '-upz on' or word == ' -upz on':
         print(f'{Fore.LIGHTGREEN_EX}Ukrywanie słowa w zdaniu: włączone')
         zapisuj_komendy(komenda='ukryj_slowo_w_zdaniu', wartosc=True)
-    elif word == '--ukryj-w-zdaniu off' or word == '-uz off' or word == ' --ukryj-w-zdaniu off' or word == ' -uz off':
+    elif word == '-upz off' or word == ' -upz off':
         print(f'{Fore.LIGHTGREEN_EX}Ukrywanie słowa w zdaniu: {Fore.LIGHTRED_EX}wyłączone')
         zapisuj_komendy(komenda='ukryj_slowo_w_zdaniu', wartosc=False)
-    elif word == '--ukryj-w-disamb on' or word == '-udisamb on' or word == ' --ukryj-w-disamb on' or word == ' -udisamb on':
+    elif word == '-udisamb on' or word == ' -udisamb on':
         print(f'{Fore.LIGHTGREEN_EX}Ukrywanie słowa w synonimach: włączone')
         zapisuj_komendy(komenda='ukryj_slowo_w_disamb', wartosc=True)
-    elif word == '--ukryj-w-disamb off' or word == '-udisamb off' or word == ' --ukryj-w-disamb off' or word == ' -udisamb off':
+    elif word == '-udisamb off' or word == ' -udisamb off':
         print(f'{Fore.LIGHTGREEN_EX}Ukrywanie słowa w synonimach: {Fore.LIGHTRED_EX}wyłączone')
         zapisuj_komendy(komenda='ukryj_slowo_w_disamb', wartosc=False)
-    elif word == '--disambiguation on' or word == '-disamb on' or word == ' --disambiguation on' or word == ' -disamb on':
+    elif word == '-disamb on' or word == ' -disamb on':
         print(f'{Fore.LIGHTGREEN_EX}Słownik synonimów: włączony')
         zapisuj_komendy(komenda='disambiguation', wartosc=True)
-    elif word == '--disambiguation off' or word == '-disamb off' or word == ' --disambiguation off' or word == ' -disamb off':
+    elif word == '-disamb off' or word == ' -disamb off':
         print(f'{Fore.LIGHTGREEN_EX}Słownik synonimów: {Fore.LIGHTRED_EX}wyłączony')
         zapisuj_komendy(komenda='disambiguation', wartosc=False)
-    elif word == '--disambiguation synonimy on' or word == '-disamb syn on' or word == ' --disambiguation synonimy on' or word == ' -disamb syn on':
+    elif word == '-disamb syn on' or word == ' -disamb syn on':
         print(f'{Fore.LIGHTGREEN_EX}Dodawanie synonimów: włączone')
         zapisuj_komendy(komenda='dodaj_synonimy', wartosc=True)
-    elif word == '--disambiguation synonimy off' or word == '-disamb syn off' or word == ' --disambiguation synonimy off' or word == ' -disamb syn off':
+    elif word == '-disamb syn off' or word == ' -disamb syn off':
         print(f'{Fore.LIGHTGREEN_EX}Dodawanie synonimów: {Fore.LIGHTRED_EX}wyłączone')
         zapisuj_komendy(komenda='dodaj_synonimy', wartosc=False)
-    elif word == '--disambiguation przyklady on' or word == '-disamb p on' or word == ' --disambiguation przyklady on' or word == ' -disamb p on':
+    elif word == '-disamb p on' or word == ' -disamb p on':
         print(f'{Fore.LIGHTGREEN_EX}Dodawanie przykładów: włączone')
         zapisuj_komendy(komenda='dodaj_przyklady_synonimow', wartosc=True)
-    elif word == '--disambiguation przyklady off' or word == '-disamb p off' or word == ' --disambiguation przyklady off' or word == ' -disamb p off':
+    elif word == '-disamb p off' or word == ' -disamb p off':
         print(f'{Fore.LIGHTGREEN_EX}Dodawanie przykładów: {Fore.LIGHTRED_EX}wyłączone')
         zapisuj_komendy(komenda='dodaj_przyklady_synonimow', wartosc=False)
     elif word == '-bulk on' or word == ' -bulk on':
@@ -273,7 +268,7 @@ def rysuj_slownik(url):
                 if gloss_index == 1:
                     gloss0 = meaning_num.text
                     gloss1 = re.sub(r'·', '', gloss0)
-                    gloss = re.sub('\\d', '', gloss1).strip()
+                    gloss = re.sub(r'\d', '', gloss1).strip()
                     if word != gloss:
                         print(f'Wyniki dla {Fore.CYAN}{gloss}'.center(80))
                     print(f'  {Fore.CYAN}{meaning_num.text}')
@@ -491,7 +486,7 @@ def rysuj_synonimy(syn_soup):
         przyklady = re.findall(r'\"(.+?)\"', ele)
         przyklady2 = re.sub("[][]", "", str(przyklady))  # do wyświetlenia w karcie
         przyklady3 = re.sub("',", "'\n   ", przyklady2)
-        przyklady4 = re.sub("\\A[']", "\n    '", przyklady3)  # do narysowania
+        przyklady4 = re.sub(r"\A[']", "\n    '", przyklady3)  # do narysowania
 
         synonimy, sep, tail = ele.partition('"')  # oddziela synonimy od przykładów
         synonimy0 = synonimy.replace("S:", "")  # do rysowania synonimów z kategoryzacją wordneta
@@ -500,7 +495,7 @@ def rysuj_synonimy(syn_soup):
         pos = synonimy0.split(')')[0]
         pos = pos + ')'
         synonimy1 = re.sub(r"\([^()]*\)", "", synonimy0)  # usuwa pierwszy miot nawiasów
-        synonimy2 = re.sub("\(.*\)", "", synonimy1)  # ususwa resztę nawiasów
+        synonimy2 = re.sub(r"\(.*\)", "", synonimy1)  # ususwa resztę nawiasów
         synonimy3 = re.sub(r"\s{2}", "", synonimy2)  # gotowe do wyświetlenia w karcie
 
         if config['ukryj_slowo_w_disamb']:
