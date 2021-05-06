@@ -1,5 +1,5 @@
-from colorama import Fore, Style
 from bs4 import BeautifulSoup
+from colorama import Fore
 import colorama
 import requests
 import os.path
@@ -66,7 +66,8 @@ def zmien_kolory(word):
         print()
         commands()
     else:
-        print('ne dam!')
+        print(f'{Fore.LIGHTRED_EX}Nie udało się zmienić koloru\n{Fore.RESET}Spróbuj jeszcze raz')
+        commands()
 
 
 def commands():
@@ -334,9 +335,9 @@ def rysuj_slownik(url):
                 rex4 = rex3.strip()
 
                 if config['pokazuj_filtrowany_slownik']:
-                    print(f"{index_color}{indexing}  {Fore.RESET}{Style.RESET_ALL}{rex4.replace('', '')}")
+                    print(f"{index_color}{indexing}  {Fore.RESET}{rex4.replace('', '')}")
                 else:
-                    print(f"{index_color}{indexing}  {Fore.RESET}{Style.RESET_ALL}{meaning.text}")
+                    print(f"{index_color}{indexing}  {Fore.RESET}{meaning.text}")
                 if not config['ukryj_slowo_w_definicji']:
                     definicje.append(rex4.replace(':', ':<br>').replace('', ''))
                 else:
@@ -572,7 +573,7 @@ def disambiguator(url_synsearch):
         skip_check_disamb = 1
     else:
         print('--------------------------------------------------------------------------------')
-        print(f'{Style.BRIGHT}{"WordNet".center(80)}\n{Style.RESET_ALL}')
+        print(f'{Fore.LIGHTWHITE_EX}{"WordNet".center(80)}\n')
         rysuj_synonimy(syn_soup)
 
 
