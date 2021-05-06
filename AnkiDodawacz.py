@@ -12,12 +12,20 @@ colorama.init(autoreset=True)
 with open("config.yml", "r") as f:
     config = yaml.load(f, Loader=yaml.Loader)
 
-syn_color = eval(config['syn_color'])
-index_color = eval(config['index_color'])
-gloss_color = eval(config['gloss_color'])
-
 print(f"""{Fore.LIGHTYELLOW_EX}- DODAWACZ KART DO {Fore.LIGHTCYAN_EX}ANKI {Fore.LIGHTYELLOW_EX}v0.4.0 -\n
 {Fore.WHITE}Wpisz "--help", aby wyświetlić pomoc\n\n""")
+
+
+# Ustawia kolory
+def color_reset():
+    global syn_color, index_color, gloss_color
+    syn_color = eval(config['syn_color'])
+    index_color = eval(config['index_color'])
+    gloss_color = eval(config['gloss_color'])
+    return syn_color, index_color, gloss_color
+
+
+syn_color, index_color, gloss_color = color_reset()
 
 
 # Komendy i input słowa
@@ -211,10 +219,10 @@ Szablon dla Zdanie = True:                  Szablon dla Zdanie = False:
         print(f'{Fore.LIGHTGREEN_EX}Tworzenie kart: {Fore.LIGHTRED_EX}wyłączone')
         zapisuj_komendy(komenda='tworz_karte', wartosc=False)
     elif word == '-pz on' or word == ' -pz on':
-        print(f'{Fore.LIGHTGREEN_EX}Dodawanie własnego zdania: włączone')
+        print(f'{Fore.LIGHTGREEN_EX}Dodawanie przykładowego zdania: włączone')
         zapisuj_komendy(komenda='dodaj_wlasne_zdanie', wartosc=True)
     elif word == '-pz off' or word == ' -pz off':
-        print(f'{Fore.LIGHTGREEN_EX}Dodawanie własnego zdania: {Fore.LIGHTRED_EX}wyłączone')
+        print(f'{Fore.LIGHTGREEN_EX}Dodawanie przykładowego zdania: {Fore.LIGHTRED_EX}wyłączone')
         zapisuj_komendy(komenda='dodaj_wlasne_zdanie', wartosc=False)
     elif word == '-udef on' or word == ' -udef on':
         print(f'{Fore.LIGHTGREEN_EX}Ukrywanie słowa w definicjach: włączone')
@@ -262,6 +270,10 @@ Szablon dla Zdanie = True:                  Szablon dla Zdanie = False:
         zmien_kolory(word)
     elif word == '-colors' or word == ' -colors':
         zmien_kolory(word)
+    elif word == '-reset' or word == ' -reset':
+        color_reset()
+        print(f'{Fore.LIGHTGREEN_EX}Odświeżono ustawienia kolorów')
+        commands()
     return word
 
 
