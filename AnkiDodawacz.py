@@ -383,25 +383,21 @@ def ogarnij_zdanie(zdanie):
     else:
         if not config['bulk_add']:
             print(f'\n{Fore.LIGHTRED_EX}Zdanie nie zawiera podanego hasła')
-            try:
-                zdanie_check = int(input(f'Czy kontynuować dodawanie? [1 tak / 0 dodaj zdanie jeszcze raz]: '))
-                if zdanie_check >= 1:
-                    return zdanie
-                elif zdanie_check <= 0:
-                    return ogarnij_zdanie(zdanie_input())
-                else:
-                    skip_check = 1
-                    print(f'{Fore.LIGHTGREEN_EX}Pominięto dodawanie karty')
-            except ValueError:
-                print(f'{Fore.LIGHTGREEN_EX}Pominięto dodawanie karty')
+            zdanie_check = input(f'Czy kontynuować dodawanie? [T/n]: ')
+            if zdanie_check.lower() == 't' or zdanie_check.lower() == 'y':
+                return zdanie
+            elif zdanie_check.lower() == 'n':
+                return ogarnij_zdanie(zdanie_input())
+            else:
                 skip_check = 1
+                print(f'{Fore.LIGHTGREEN_EX}Pominięto dodawanie karty')
         else:
             return zdanie
 
 
 def zdanie_input():
     if config['dodaj_wlasne_zdanie']:
-        zdanie = str(input('\nDodaj własne przykładowe zdanie: ')).split()
+        zdanie = str(input('\nDodaj przykładowe zdanie: ')).split()
         rez1 = re.sub(r"[][]", "", str(zdanie)).strip()
         rez2 = re.sub(",',", "kacz", rez1)
         rez3 = re.sub("[,]", "", rez2)
@@ -445,7 +441,7 @@ def wybierz_etymologie(wybor_etymologii, etymologia):
 def etymologia_input():
     global skip_check
     if config['dodaj_etymologie']:
-        wybor_etymologii = input('Dołączyć etymologię?: ')
+        wybor_etymologii = input('Wybierz etymologię: ')
         if wybor_etymologii.isnumeric() or wybor_etymologii == '-1':
             return int(wybor_etymologii)
         elif wybor_etymologii == '':
@@ -461,7 +457,7 @@ def etymologia_input():
 def czesci_mowy_input():
     global skip_check
     if config['dodaj_czesci_mowy']:
-        wybor_czesci_mowy = input('Dołączyć części mowy?: ')
+        wybor_czesci_mowy = input('Dołączyć części mowy? [1/0]: ')
         if wybor_czesci_mowy.isnumeric() or wybor_czesci_mowy == '-1':
             return int(wybor_czesci_mowy)
         elif wybor_czesci_mowy == '':
@@ -477,7 +473,7 @@ def czesci_mowy_input():
 def definicje_input():
     global skip_check
     if config['dodaj_definicje']:
-        wybor_definicji = input('\nWybierz definicję do dodania: ')
+        wybor_definicji = input('\nWybierz definicję: ')
         if wybor_definicji.isnumeric() or wybor_definicji == '-1':
             return int(wybor_definicji)
         elif wybor_definicji == '':
@@ -644,72 +640,71 @@ def wyswietl_karte():
     print('--------------------------------------------------------------------------------\n')
 
 
-while start:
-    skip_check = 0
-    skip_check_disamb = 0
-    gloss = ''
-    word = ''
-    audiofile_name = ''
-    disambiguation = ''
-    disamb_synonimy = ''
-    disamb_przyklady = ''
-    definicje = []
-    czesci_mowy = []
-    etymologia = []
-    grupa_przykladow = []
-    grupa_synonimow = []
-
-    url = szukaj()
-    if config['tworz_karte']:
-        rysuj_slownik(url)
-        audiofile_name = search_for_audio(url='https://www.ahdictionary.com/word/search.html?q=' + word)
-    else:
-        rysuj_slownik(url)
-        if config['disambiguation']:
-            disambiguator(url_synsearch='http://wordnetweb.princeton.edu/perl/webwn?s=' + gloss)
-
-    if config['tworz_karte'] and not config['bulk_add']:
-        while True:
-            zdanie = ogarnij_zdanie(zdanie_input())
-            if skip_check == 1:
-                break
-            definicje = wybierz_definicje(definicje_input(), definicje)
-            if skip_check == 1:
-                break
-            czesci_mowy = wybierz_czesci_mowy(czesci_mowy_input(), czesci_mowy)
-            if skip_check == 1:
-                break
-            etymologia = wybierz_etymologie(etymologia_input(), etymologia)
-            if skip_check == 1:
-                break
-
+try:
+    while start:
+        skip_check = 0
+        skip_check_disamb = 0
+        gloss = ''
+        word = ''
+        audiofile_name = ''
+        disambiguation = ''
+        disamb_synonimy = ''
+        disamb_przyklady = ''
+        definicje = []
+        czesci_mowy = []
+        etymologia = []
+        grupa_przykladow = []
+        grupa_synonimow = []
+        url = szukaj()
+        if config['tworz_karte']:
+            rysuj_slownik(url)
+            audiofile_name = search_for_audio(url='https://www.ahdictionary.com/word/search.html?q=' + word)
+        else:
+            rysuj_slownik(url)
             if config['disambiguation']:
                 disambiguator(url_synsearch='http://wordnetweb.princeton.edu/perl/webwn?s=' + gloss)
-                if skip_check_disamb == 1:
-                    break
-                disamb_synonimy = wybierz_synonimy(disamb_input_syn(), grupa_synonimow)
+        if config['tworz_karte'] and not config['bulk_add']:
+            while True:
+                zdanie = ogarnij_zdanie(zdanie_input())
                 if skip_check == 1:
                     break
-                disamb_przyklady = wybierz_przyklady(disamb_input_przyklady(), grupa_przykladow)
+                definicje = wybierz_definicje(definicje_input(), definicje)
                 if skip_check == 1:
                     break
-                if config['dodaj_synonimy'] and config['dodaj_przyklady_synonimow']:
-                    disambiguation = disamb_synonimy + '<br>' + disamb_przyklady
-                else:
-                    disambiguation = disamb_synonimy + disamb_przyklady
-            break
-
-    if config['bulk_add']:
-        definicje = wybierz_definicje(wybor_definicji=-1, definicje=definicje)
-        czesci_mowy = wybierz_czesci_mowy(wybor_czesci_mowy=1, czesci_mowy=czesci_mowy)
-        etymologia = wybierz_etymologie(wybor_etymologii=-1, etymologia=etymologia)
-        if config['disambiguation']:
-            disambiguator(url_synsearch='http://wordnetweb.princeton.edu/perl/webwn?s=' + word)
-            disamb_synonimy = wybierz_synonimy(wybor_disamb=-1, grupa_synonimow=grupa_synonimow)
-            disamb_przyklady = wybierz_przyklady(wybor_disamb=-1, grupa_przykladow=grupa_przykladow)
-        zdanie = ogarnij_zdanie(zdanie_input())
-
-    if skip_check == 0 and config['tworz_karte']:
-        wyswietl_karte()
-        utworz_karte()
-    print()
+                czesci_mowy = wybierz_czesci_mowy(czesci_mowy_input(), czesci_mowy)
+                if skip_check == 1:
+                    break
+                etymologia = wybierz_etymologie(etymologia_input(), etymologia)
+                if skip_check == 1:
+                    break
+                if config['disambiguation']:
+                    disambiguator(url_synsearch='http://wordnetweb.princeton.edu/perl/webwn?s=' + gloss)
+                    if skip_check_disamb == 1:
+                        break
+                    disamb_synonimy = wybierz_synonimy(disamb_input_syn(), grupa_synonimow)
+                    if skip_check == 1:
+                        break
+                    disamb_przyklady = wybierz_przyklady(disamb_input_przyklady(), grupa_przykladow)
+                    if skip_check == 1:
+                        break
+                    if config['dodaj_synonimy'] and config['dodaj_przyklady_synonimow']:
+                        disambiguation = disamb_synonimy + '<br>' + disamb_przyklady
+                    else:
+                        disambiguation = disamb_synonimy + disamb_przyklady
+                break
+        if config['bulk_add']:
+            definicje = wybierz_definicje(wybor_definicji=-1, definicje=definicje)
+            czesci_mowy = wybierz_czesci_mowy(wybor_czesci_mowy=1, czesci_mowy=czesci_mowy)
+            etymologia = wybierz_etymologie(wybor_etymologii=-1, etymologia=etymologia)
+            if config['disambiguation']:
+                disambiguator(url_synsearch='http://wordnetweb.princeton.edu/perl/webwn?s=' + word)
+                disamb_synonimy = wybierz_synonimy(wybor_disamb=-1, grupa_synonimow=grupa_synonimow)
+                disamb_przyklady = wybierz_przyklady(wybor_disamb=-1, grupa_przykladow=grupa_przykladow)
+            zdanie = ogarnij_zdanie(zdanie_input())
+        if skip_check == 0 and config['tworz_karte']:
+            wyswietl_karte()
+            utworz_karte()
+        print()
+except KeyboardInterrupt:
+    print('\nZakończono')
+    start = False
