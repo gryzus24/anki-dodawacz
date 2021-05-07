@@ -347,18 +347,18 @@ def rysuj_slownik(url):
                 rex4 = rex3.strip()
 
                 if config['pokazuj_filtrowany_slownik']:
-                    print(f"{index_color}{indexing}  {Fore.RESET}{rex4.replace('', '')}")
+                    print(f"{index_color}{indexing}  {Fore.RESET}{rex4.replace('', '')}")  # Trzeba znaleźć ten symbol
                 else:
                     print(f"{index_color}{indexing}  {Fore.RESET}{meaning.text}")
                 if not config['ukryj_slowo_w_definicji']:
-                    definicje.append(rex4.replace(':', ':<br>').replace('', ''))
+                    definicje.append(rex4.replace(':', ':<br>').replace('', '′'))
                 else:
-                    definicje.append(rex4.replace(gloss, '...').replace(':', ':<br>').replace('', ''))
+                    definicje.append(rex4.replace(gloss, '...').replace(':', ':<br>').replace('', '′'))
 
             for pos in td.find_all(class_='runseg'):
                 postring = ''
-                for letter in pos.text:
-                    postring += (str(letter).strip('').strip('').strip('·'))
+                for letter in pos.text:   # Te dwa są inne 363                362
+                    postring += (str(letter).replace('', 'oo').replace('', 'oo').replace('', '′').strip('·'))  # Trzeba znaleźć i wymienić te symbole, a nie się ich pozbywać
                 print(f'\n{postring.strip()}')
                 czesci_mowy.append(postring.strip())
             for etym in td.find_all(class_='etyseg'):
@@ -383,7 +383,7 @@ def ogarnij_zdanie(zdanie):
     else:
         if not config['bulk_add']:
             print(f'\n{Fore.LIGHTRED_EX}Zdanie nie zawiera podanego hasła')
-            zdanie_check = input(f'Czy kontynuować dodawanie? [T/n]: ')
+            zdanie_check = input(f'Czy dodać w takiej formie? [T/n]: ')
             if zdanie_check.lower() == 't' or zdanie_check.lower() == 'y':
                 return zdanie
             elif zdanie_check.lower() == 'n':
