@@ -13,7 +13,7 @@ with open("config.yml", "r") as f:
     config = yaml.load(f, Loader=yaml.Loader)
 
 print(f"""{Fore.LIGHTYELLOW_EX}- DODAWACZ KART DO {Fore.LIGHTCYAN_EX}ANKI {Fore.LIGHTYELLOW_EX}v0.4.0 -\n
-{Fore.WHITE}Wpisz "--help", aby wyświetlić pomoc\n\n""")
+{Fore.RESET}Wpisz "--help", aby wyświetlić pomoc\n\n""")
 
 
 # Ustawia kolory
@@ -159,7 +159,7 @@ Szablon dla Zdanie = True:                  Szablon dla Zdanie = False:
     elif word == '-def on' or word == ' -def on':  # Ten whitespace pozwala na natychmiastowe wpisanie komendy po masowym dodawaniu
         print(f'{Fore.LIGHTGREEN_EX}Dodawanie definicji: włączone')
         zapisuj_komendy(komenda='dodaj_definicje', wartosc=True)
-    elif word == '-def off' or word == ' -def off':  # Trzeba te komendy przebudować, bo tak to chyba niepowinno wyglądać
+    elif word == '-def off' or word == ' -def off':  # Trzeba te komendy przebudować, bo tak to chyba nie powinno wyglądać
         print(f'{Fore.LIGHTGREEN_EX}Dodawanie definicji: {Fore.LIGHTRED_EX}wyłączone')
         zapisuj_komendy(komenda='dodaj_definicje', wartosc=False)
     elif word == '-audio on' or word == ' -audio on':
@@ -384,18 +384,14 @@ def ogarnij_zdanie(zdanie):
         if not config['bulk_add']:
             print(f'\n{Fore.LIGHTRED_EX}Zdanie nie zawiera podanego hasła')
             try:
-                zdanie_check = int(input(f'Czy kontynuować dodawanie? [1 - tak/0 - dodaj zdanie jeszcze raz]: '))
-                if zdanie_check == 1:
+                zdanie_check = int(input(f'Czy kontynuować dodawanie? [1 tak / 0 dodaj zdanie jeszcze raz]: '))
+                if zdanie_check >= 1:
                     return zdanie
-                elif zdanie_check == 0:
-                    return ogarnij_zdanie(zdanie_input())
-                elif zdanie_check > 1:
-                    return zdanie
-                elif zdanie_check < 0:
+                elif zdanie_check <= 0:
                     return ogarnij_zdanie(zdanie_input())
                 else:
-                    print('error w zdanie_check')
                     skip_check = 1
+                    print(f'{Fore.LIGHTGREEN_EX}Pominięto dodawanie karty')
             except ValueError:
                 print(f'{Fore.LIGHTGREEN_EX}Pominięto dodawanie karty')
                 skip_check = 1
@@ -421,12 +417,7 @@ def zdanie_input():
 def wybierz_definicje(wybor_definicji, definicje):
     if len(definicje) >= wybor_definicji > 0:
         return definicje[int(wybor_definicji) - 1]
-    elif int(wybor_definicji) == 0:
-        definicje = ' '
-        return definicje
-    elif wybor_definicji > len(definicje):
-        return '<br>'.join(definicje)
-    elif wybor_definicji == -1:
+    elif wybor_definicji > len(definicje) or wybor_definicji == -1:
         return '<br>'.join(definicje)
     else:
         definicje = ' '
@@ -434,14 +425,7 @@ def wybierz_definicje(wybor_definicji, definicje):
 
 
 def wybierz_czesci_mowy(wybor_czesci_mowy, czesci_mowy):
-    if wybor_czesci_mowy == 1:
-        return ' | '.join(czesci_mowy)
-    elif wybor_czesci_mowy == 0:
-        czesci_mowy = ' '
-        return czesci_mowy
-    elif wybor_czesci_mowy > 1:
-        return ' | '.join(czesci_mowy)
-    elif wybor_czesci_mowy == -1:
+    if wybor_czesci_mowy > 0 or wybor_czesci_mowy == -1:
         return ' | '.join(czesci_mowy)
     else:
         czesci_mowy = ' '
@@ -451,12 +435,7 @@ def wybierz_czesci_mowy(wybor_czesci_mowy, czesci_mowy):
 def wybierz_etymologie(wybor_etymologii, etymologia):
     if len(etymologia) >= wybor_etymologii > 0:
         return etymologia[(int(wybor_etymologii) - 1)]
-    elif wybor_etymologii == 0:
-        etymologia = ' '
-        return etymologia
-    elif wybor_etymologii > len(etymologia):
-        return '<br>'.join(etymologia)
-    elif wybor_etymologii == -1:
+    elif wybor_etymologii > len(etymologia) or wybor_etymologii == -1:
         return '<br>'.join(etymologia)
     else:
         etymologia = ' '
@@ -467,7 +446,7 @@ def etymologia_input():
     global skip_check
     if config['dodaj_etymologie']:
         wybor_etymologii = input('Dołączyć etymologię?: ')
-        if wybor_etymologii.isnumeric():
+        if wybor_etymologii.isnumeric() or wybor_etymologii == '-1':
             return int(wybor_etymologii)
         elif wybor_etymologii == '':
             wybor_etymologii = 0
@@ -483,7 +462,7 @@ def czesci_mowy_input():
     global skip_check
     if config['dodaj_czesci_mowy']:
         wybor_czesci_mowy = input('Dołączyć części mowy?: ')
-        if wybor_czesci_mowy.isnumeric():
+        if wybor_czesci_mowy.isnumeric() or wybor_czesci_mowy == '-1':
             return int(wybor_czesci_mowy)
         elif wybor_czesci_mowy == '':
             wybor_czesci_mowy = 0
@@ -499,7 +478,7 @@ def definicje_input():
     global skip_check
     if config['dodaj_definicje']:
         wybor_definicji = input('\nWybierz definicję do dodania: ')
-        if wybor_definicji.isnumeric():
+        if wybor_definicji.isnumeric() or wybor_definicji == '-1':
             return int(wybor_definicji)
         elif wybor_definicji == '':
             wybor_definicji = 0
@@ -559,7 +538,7 @@ def rysuj_synonimy(syn_soup):
         pos = pos + ')'
 
         synonimy1 = re.sub(r"\([^()]*\)", "", synonimy0)  # usuwa pierwszy miot nawiasów
-        synonimy2 = re.sub(r"\(.*\)", "", synonimy1)  # ususwa resztę nawiasów
+        synonimy2 = re.sub(r"\(.*\)", "", synonimy1)  # usuwa resztę nawiasów
         synonimy3 = re.sub(r"\s{2}", "", synonimy2)  # gotowe do wyświetlenia w karcie
 
         if config['ukryj_slowo_w_disamb']:
