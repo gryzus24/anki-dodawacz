@@ -43,16 +43,28 @@ def koloryfer(color):
     return eval(color)
 
 
-def zmien_kolory(word):
-    colors = ('black', 'red', 'green', 'yellow', 'blue', 'magenta', 'cyan', 'white',
-              'lightblack', 'lightred', 'lightgreen', 'lightyellow', 'lightblue', 'lightmagenta', 'lightcyan', 'lightwhite')
-    color_commands = ('-syn color', '-index color', '-gloss color')
-    color_message = {'-syn color': 'Kolor synonimów', '-index color': 'Kolor indexów', '-gloss color': 'Kolor glossów'}
+colors = ('black', 'red', 'green', 'yellow', 'blue', 'magenta', 'cyan', 'white',
+          'lightblack', 'lightred', 'lightgreen', 'lightyellow', 'lightblue', 'lightmagenta', 'lightcyan', 'lightwhite')
+color_commands = ('-syn color', '-index color', '-gloss color')
+color_message = {'-syn color': 'Kolor synonimów', '-index color': 'Kolor indexów', '-gloss color': 'Kolor glossów'}
 
-    color_tuple = word.split('/')
+
+def pokaz_dostepne_kolory():
+    print('\nDostępne kolory to:')
+    for index, color in enumerate(colors, start=1):
+        print(f'{koloryfer(color)}{color}', end=', ')
+        if index / 4 == 1 or index / 4 == 2 or index / 4 == 3 or index / 4 == 4:
+            print()
+    print()
+    commands()
+
+
+def kolory(word):
+    color_word = word.strip()
+    color_tuple = color_word.split('/')
 
     if color_tuple[0].lower() in color_commands:
-        color_ph = color_tuple[1]
+        color_ph = color_tuple[1].strip()
         if color_ph.lower() in colors:
             color = 'Fore.' + color_ph.upper()
             if 'light' in color.lower():
@@ -61,20 +73,12 @@ def zmien_kolory(word):
             msg_color = eval(color)
             print(f'{color_message[color_tuple[0]]} ustawiony na {msg_color}{color_ph}')
             zapisuj_komendy(komenda=color_tuple[0].strip('-').replace(' ', '_'), wartosc=color)
-
+            # commands() <-- jest już w zapisuj_komendy
         else:
             print(f'{Fore.LIGHTRED_EX}Brak wybranego koloru')
             commands()
-    elif color_tuple[0].strip() == '-colors':
-        print('\nDostępne kolory to:')
-        for index, color in enumerate(colors, start=1):
-            print(f'{koloryfer(color)}{color}', end=', ')
-            if index/4 == 1 or index/4 == 2 or index/4 == 3 or index/4 == 4:
-                print()
-        print()
-        commands()
     else:
-        print(f'{Fore.LIGHTRED_EX}Nie udało się zmienić koloru\n{Fore.RESET}Spróbuj jeszcze raz')
+        print(f'{Fore.LIGHTRED_EX}Błąd podczas zmiany kolorów')
         commands()
 
 
@@ -267,13 +271,10 @@ Szablon dla Zdanie = True:                  Szablon dla Zdanie = False:
         print(f'{Fore.LIGHTGREEN_EX}Bulk: {Fore.LIGHTRED_EX}wyłączony\n{Fore.LIGHTYELLOW_EX}Zdanie = {Fore.RESET}{config["dodaj_wlasne_zdanie"]}')
         zapisuj_komendy(komenda='bulk_add', wartosc=False)
     elif '-syn color/' in word or '-index color/' in word or '-gloss color/' in word:
-        zmien_kolory(word)
-    elif word == '-colors' or word == ' -colors':
-        zmien_kolory(word)
-    elif word == '-reset' or word == ' -reset':
+        kolory(word)
         color_reset()
-        print(f'{Fore.LIGHTGREEN_EX}Odświeżono ustawienia kolorów')
-        commands()
+    elif word == '-colors' or word == ' -colors':
+        pokaz_dostepne_kolory()
     return word
 
 
