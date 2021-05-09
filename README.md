@@ -1,4 +1,4 @@
-# Anki-dodawacz
+ "# Anki-dodawacz
 
 Prosty i otwarty na konfigurację program do tworzenia monojęzycznych kart do Anki.
 Pozyskuje on informacje z American Heritage Dictionary i pozwala na szybki wybór definicji, części mowy, etymologii i audio.
@@ -26,7 +26,7 @@ Należy rozpakować folder w dogodnej lokacji i uruchomić plik "AnkiDodawacz.ex
 Aby korzystać z zupełnie najnowszej wersji programu należy sklonować repozytorium "git clone [link]". "
 Jeżeli w folderze z programem nie ma folderu "Karty_audio" to należy go stworzyć.
 
- "# Konfiguracja i działanie programu
+# Konfiguracja i działanie programu
 
 Cykl dodawanie jest bardzo prosty.
 Wyszukujemy słowo i przechodzimy przez różne pola: przykładowego zdania, definicji, części mowy, etymologii i synonimów.
