@@ -3,6 +3,7 @@ from colorama import Fore
 import colorama
 import requests
 import os.path
+import komendy
 import yaml
 import re
 
@@ -43,15 +44,9 @@ def koloryfer(color):
     return eval(color)
 
 
-colors = ('black', 'red', 'green', 'yellow', 'blue', 'magenta', 'cyan', 'white',
-          'lightblack', 'lightred', 'lightgreen', 'lightyellow', 'lightblue', 'lightmagenta', 'lightcyan', 'lightwhite')
-color_commands = ('-syn color', '-index color', '-gloss color')
-color_message = {'-syn color': 'Kolor synonimów', '-index color': 'Kolor indexów', '-gloss color': 'Kolor glossów'}
-
-
 def pokaz_dostepne_kolory():
     print('\nDostępne kolory to:')
-    for index, color in enumerate(colors, start=1):
+    for index, color in enumerate(komendy.colors, start=1):
         print(f'{koloryfer(color)}{color}', end=', ')
         if index / 4 == 1 or index / 4 == 2 or index / 4 == 3 or index / 4 == 4:
             print()
@@ -63,15 +58,15 @@ def kolory(word):
     color_word = word.strip()
     color_tuple = color_word.split('/')
 
-    if color_tuple[0].lower() in color_commands:
+    if color_tuple[0].lower() in komendy.color_commands:
         color_ph = color_tuple[1].strip()
-        if color_ph.lower() in colors:
+        if color_ph.lower() in komendy.colors:
             color = 'Fore.' + color_ph.upper()
             if 'light' in color.lower():
                 color = color + '_EX'
 
             msg_color = eval(color)
-            print(f'{color_message[color_tuple[0]]} ustawiony na {msg_color}{color_ph}')
+            print(f'{komendy.color_message[color_tuple[0]]} ustawiony na {msg_color}{color_ph}')
             zapisuj_komendy(komenda=color_tuple[0].strip('-').replace(' ', '_'), wartosc=color)
             # commands() <-- jest już w zapisuj_komendy
         else:
@@ -87,78 +82,7 @@ def commands():
 
     word = input('Szukaj: ')
     if word == '--help' or word == '-h':
-        print(f"""\n    Po wpisaniu hasła w pole "Szukaj" rozpocznie się cykl dodawania karty.
---------------------------------------------------------------------------------
-Przy dodawaniu zdania:
-Wpisz swoje własne przykładowe zdanie zawierające wyszukane hasło.
- "-s"             pomija dodawanie zdania\n
-W przypadku wpisania zdania niezawierającego wyszukanego hasła:
- "1"              dodaje zdanie
- "0"              powtarza dodawanie zdania
-Wpisanie litery lub wciśnięcie Enter pomija dodawanie karty.
---------------------------------------------------------------------------------
-Przy definicjach:
-Aby wybrać definicję wpisz numer zielonego indeksu.\n
- np. "3"         dodaje trzecią definicję
- "0"             pomija dodawanie elementu
- "-1"            dodaje wszystkie elementy
-Wpisanie litery lub wciśnięcie Enter gdy pole jest puste pomija dodawanie karty.
---------------------------------------------------------------------------------
-Przy częściach mowy:
- "1"             dodaje wszystkie części mowy
- "0"             pomija dodawanie elementu
---------------------------------------------------------------------------------
-Przy etymologiach:
-Przy większej ilości etymologii możemy sprecyzować wybór wpisując numer etymologii licząc od góry.
-lub wpisać "-1", aby dodać wszystkie dostępne etmologie.
---------------------------------------------------------------------------------
-Przy synonimach:
-Synonimy wyświetlane są w grupach zawierających synonimy i przykłady.
-Wybieranie działa tak jak w definicjach, tylko mamy do wyboru dwa pola:
- - Grupę synonimów
- - Grupę przykładów
---------------------------------------------------------------------------------
-Komendy (wpisywane w pole "Szukaj"):
-"-pz on/off"             włącza/wyłącza dodawanie zdania       Aktualnie = {config['dodaj_wlasne_zdanie']}
-"-def on/off"            włącza/wyłącza dodawanie definicji    Aktualnie = {config['dodaj_definicje']}
-"-pos on/off"            włącza/wyłącza dodawnie części mowy   Aktualnie = {config['dodaj_czesci_mowy']}
-"-etym on/off"           włącza/wyłącza dodawanie etymologii   Aktualnie = {config['dodaj_etymologie']}
-"-disamb on/off"         włącza/wyłącza pokazywanie synonimów  Aktualnie = {config['disambiguation']}
-"-disamb syn on/off"     włącza/wyłącza dodawanie synonimów    Aktualnie = {config['dodaj_synonimy']}
-"-disamb p on/off"       włącza/wyłącza dodawanie przykładów   Aktualnie = {config['dodaj_przyklady_synonimow']}
-"-audio on/off"          włącza/wyłącza dodawanie audio        Aktualnie = {config['dodaj_audio']}\n
-"-all on/off"            Zmienia wartość powyższych ustawień na True/False\n
-"-karty on/off"          włącza/wyłącza dodawanie kart         Aktualnie = {config['tworz_karte']}\n
-"-fs on/off"             włącza/wyłącza filtrowanie numeracji
-                         podczas wyświetlania słownika         Aktualnie = {config['pokazuj_filtrowany_slownik']}\n
-"--audio-path" :
-  Umożliwia zmianę miejsca zapisu audio (domyślnie: "Karty_audio" w folderze z programem)
-  Aby audio było bezpośrednio dodawane do Anki, zlokalizuj ścieżkę:
-  "C:\\[Users]\\[Nazwa użytkownika]\\AppData\\Roaming\\Anki2\\[Nazwa użytkownika Anki]\\collection.media"
-  (wpisz %appdata%)
-  i wpisz/skopiuj ją w pole wyświetlone po wpisaniu komendy.                    Aktualna ścieżka = {config['save_path']}
-  
-"-udef on/off"        Niektóre definicje zawierają użycia słowa.                Aktualnie = {config['ukryj_slowo_w_definicji']}
-                      Ta opcja zamienia wszystkie użycia słowa na "..."\n
-"-upz on/off"         Jak w definicjach tylko w dodanym zdaniu                  Aktualnie = {config['ukryj_slowo_w_zdaniu']}  
-"-udisamb on/off"     Ukrywa wystąpienie hasła w synonimach z WordNetu          Aktualnie = {config['ukryj_slowo_w_disamb']}\n
-"-bulk on/off"        włącza/wyłącz funkcję masowego dodawania                  Aktualnie = {config['bulk_add']}
---------------------------------------------------------------------------------
-Masowe dodawanie (bulk):
-Masowe dodawanie pozwala na dodanie wielu kart na raz.
-Wystarczy skopiować tekst według szablonu i wkleić do Dodawacza.
-Wartości, które mają wpływ na masowe dodawanie to:
-Disambiguation True/False,  Zdanie True/False
-na zmiany w strukturze masowego dodawania wpływa tylko Zdanie True/False
-
-Szablon dla Zdanie = True:                  Szablon dla Zdanie = False:
- "vicious"                                  "vicious"
- "vicious man"                              "emerge"
- "emerge"                                   " "
- "emergent nations"
- " "\n
-{Fore.LIGHTYELLOW_EX}UWAGA! {Fore.RESET}Aktualna wartość Zdania to: {config['dodaj_wlasne_zdanie']}
---------------------------------------------------------------------------------\n""")
+        print(komendy.help_command)
         commands()
     elif word == '-def on' or word == ' -def on':  # Ten whitespace pozwala na natychmiastowe wpisanie komendy po masowym dodawaniu
         print(f'{Fore.LIGHTGREEN_EX}Dodawanie definicji: włączone')
@@ -379,15 +303,14 @@ def ogarnij_zdanie(zdanie):
         return zdanie
     elif zdanie == '-s':
         print(f'{Fore.LIGHTGREEN_EX}Pominięto dodawanie zdania')
-        zdanie = ' '
-        return zdanie
+        return ' '
     else:
         if not config['bulk_add']:
             print(f'\n{Fore.LIGHTRED_EX}Zdanie nie zawiera podanego hasła')
             zdanie_check = input(f'Czy dodać w takiej formie? [T/n]: ')
-            if zdanie_check.lower() == 't' or zdanie_check.lower() == 'y':
+            if zdanie_check.lower() == 't' or zdanie_check.lower() == 'y' or zdanie_check.lower() == '1':
                 return zdanie
-            elif zdanie_check.lower() == 'n':
+            elif zdanie_check.lower() == 'n' or zdanie_check.lower() == '0':
                 return ogarnij_zdanie(zdanie_input())
             else:
                 skip_check = 1
@@ -405,8 +328,7 @@ def zdanie_input():
         rez4 = re.sub("kacz", ",", rez3)
         rez5 = re.sub('"', '', rez4)
         rez6 = re.sub(r"'(?!(?<=[a-zA-Z]')[a-zA-Z])", "", rez5)
-        zdanie = rez6
-        return zdanie
+        return rez6
     return ' '
 
 
@@ -417,16 +339,14 @@ def wybierz_definicje(wybor_definicji, definicje):
     elif wybor_definicji > len(definicje) or wybor_definicji == -1:
         return '<br>'.join(definicje)
     else:
-        definicje = ' '
-        return definicje
+        return ' '
 
 
 def wybierz_czesci_mowy(wybor_czesci_mowy, czesci_mowy):
     if wybor_czesci_mowy > 0 or wybor_czesci_mowy == -1:
         return ' | '.join(czesci_mowy)
     else:
-        czesci_mowy = ' '
-        return czesci_mowy
+        return ' '
 
 
 def wybierz_etymologie(wybor_etymologii, etymologia):
@@ -435,8 +355,7 @@ def wybierz_etymologie(wybor_etymologii, etymologia):
     elif wybor_etymologii > len(etymologia) or wybor_etymologii == -1:
         return '<br>'.join(etymologia)
     else:
-        etymologia = ' '
-        return etymologia
+        return ' '
 
 
 def etymologia_input():
@@ -446,13 +365,11 @@ def etymologia_input():
         if wybor_etymologii.isnumeric() or wybor_etymologii == '-1':
             return int(wybor_etymologii)
         elif wybor_etymologii == '':
-            wybor_etymologii = 0
-            return int(wybor_etymologii)
+            return 0
         else:
             skip_check = 1
             print(f'{Fore.LIGHTGREEN_EX}Pominięto dodawanie karty')
-    wybor_etymologii = 0
-    return int(wybor_etymologii)
+    return 0
 
 
 def czesci_mowy_input():
@@ -462,13 +379,11 @@ def czesci_mowy_input():
         if wybor_czesci_mowy.isnumeric() or wybor_czesci_mowy == '-1':
             return int(wybor_czesci_mowy)
         elif wybor_czesci_mowy == '':
-            wybor_czesci_mowy = 0
-            return int(wybor_czesci_mowy)
+            return 0
         else:
             skip_check = 1
             print(f'{Fore.LIGHTGREEN_EX}Pominięto dodawnie karty')
-    wybor_czesci_mowy = 0
-    return int(wybor_czesci_mowy)
+    return 0
 
 
 def definicje_input():
@@ -478,43 +393,29 @@ def definicje_input():
         if wybor_definicji.isnumeric() or wybor_definicji == '-1':
             return int(wybor_definicji)
         elif wybor_definicji == '':
-            wybor_definicji = 0
-            return int(wybor_definicji)
+            return 0
         else:
             skip_check = 1
             print(f'{Fore.LIGHTGREEN_EX}Pominięto dodawanie karty')
-    wybor_definicji = 0
-    return int(wybor_definicji)
+    return 0
 
 
 def wybierz_synonimy(wybor_disamb, grupa_synonimow):
     if len(grupa_synonimow) >= wybor_disamb > 0:
         return grupa_synonimow[int(wybor_disamb) - 1]
-    elif wybor_disamb > len(grupa_synonimow):
-        return ' '.join(grupa_synonimow)
-    elif wybor_disamb == 0:
-        grupa_synonimow = ' '
-        return grupa_synonimow
-    elif wybor_disamb == -1:
+    elif wybor_disamb > len(grupa_synonimow) or wybor_disamb == -1:
         return ' '.join(grupa_synonimow)
     else:
-        grupa_synonimow = ' '
-        return grupa_synonimow
+        return ' '
 
 
 def wybierz_przyklady(wybor_disamb, grupa_przykladow):
     if len(grupa_przykladow) >= wybor_disamb > 0:
         return grupa_przykladow[int(wybor_disamb) - 1]
-    elif wybor_disamb > len(grupa_przykladow):
-        return ' '.join(grupa_przykladow)
-    elif wybor_disamb == 0:
-        grupa_przykladow = ' '
-        return grupa_przykladow
-    elif wybor_disamb == -1:
+    elif wybor_disamb > len(grupa_przykladow) or wybor_disamb == -1:
         return ' '.join(grupa_przykladow)
     else:
-        grupa_przykladow = ' '
-        return grupa_przykladow
+        return ' '
 
 
 def rysuj_synonimy(syn_soup):
