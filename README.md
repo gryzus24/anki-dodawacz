@@ -1,4 +1,4 @@
- "# Anki-dodawacz
+# Anki-dodawacz
 
 Prosty i otwarty na konfigurację program do tworzenia monojęzycznych kart do Anki.
 Pozyskuje on informacje z American Heritage Dictionary i pozwala na szybki wybór definicji, części mowy, etymologii i audio.
