@@ -23,7 +23,7 @@ Wierzę, że otwarty na konfigurację program produkujący wysokiej jakości kar
 Należy rozpakować folder w dogodnej lokacji i uruchomić plik "AnkiDodawacz.exe".
 (Jeżeli nie chcesz używać pliku .exe, możesz uruchomić program używając Pythona (3.6?) 3.7+ z podanymi niżej bibliotekami)
 
-Aby korzystać z zupełnie najnowszej wersji programu należy sklonować repozytorium "git clone [link]". "
+Aby korzystać z zupełnie najnowszej wersji programu należy sklonować repozytorium "git clone [link]".
 Jeżeli w folderze z programem nie ma folderu "Karty_audio" to należy go stworzyć.
 
 # Konfiguracja i działanie programu
