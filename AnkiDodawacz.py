@@ -216,29 +216,31 @@ def get_audio(audio_link, audio_end):
         with open(os.path.join(config['save_path'], audiofile_name), 'wb') as file:
             response = requests.get(audio_link)
             file.write(response.content)
-        return audiofile_name
+        return f'[sound:{audiofile_name}]'
     except Exception:
         print(f"""{Fore.LIGHTRED_EX}Zapisywanie pliku audio {Fore.RESET}"{audiofile_name}" {Fore.LIGHTRED_EX}nie powiodło się
 Aktualna ścieżka zapisu audio to {Fore.RESET}"{config['save_path']}"
 {Fore.LIGHTRED_EX}Upewnij się, że taki folder istnieje i spróbuj ponownie""")
+        return ' '
 
 
 def search_for_audio(url):
-    reqs = requests.get(url)
-    soup = BeautifulSoup(reqs.content, 'lxml')
-    if config['dodaj_audio'] and config['tworz_karte']:
+    try:
+        reqs = requests.get(url)
+        soup = BeautifulSoup(reqs.content, 'lxml')
         audio = soup.find('a', {'target': '_blank'}).get('href')
         if audio == 'http://www.hmhco.com':
             print(f"""{Fore.LIGHTRED_EX}\nHasło nie posiada pliku audio!
 Karta zostanie dodana bez audio""")
-            return None
+            return ' '
         else:
             audio_end = audio.split('/')[-1]
             audio_end = audio_end.split('.')[0]
             audio_link = 'https://www.ahdictionary.com'
             audio_link += audio
             return get_audio(audio_link, audio_end)
-    return None
+    except Exception:
+        print(f'{Fore.LIGHTRED_EX}Wystąpił błąd podczas szukania pliku audio')
 
 
 # Rysowanie słownika AHD
@@ -337,43 +339,42 @@ def zdanie_input():
     return ' '
 
 
-# Wybieranie definicji, części mowy i etymologii
-def wybierz_definicje(wybor_definicji, definicje):
-    if len(definicje) >= wybor_definicji > 0:
-        return definicje[int(wybor_definicji) - 1]
-    elif wybor_definicji > len(definicje) or wybor_definicji == -1:
-        return '<br>'.join(definicje)
+# Sprawdzanie co wpisano w polach input
+def input_func(in_put):
+    if in_put.isnumeric() or in_put == '-1':
+        return int(in_put)
+    elif in_put == '' or in_put == '-s':
+        return 0
     else:
-        return ' '
+        return -2
 
 
-def wybierz_czesci_mowy(wybor_czesci_mowy, czesci_mowy):
-    if wybor_czesci_mowy > 0 or wybor_czesci_mowy == -1:
-        return ' | '.join(czesci_mowy)
-    else:
-        return ' '
+# Adekwatne pola input dla pól wyboru
+def disamb_input_syn():
+    if config['dodaj_synonimy']:
+        wybor_disamb_syn = input('Wybierz grupę synoniów: ')
+        return input_func(wybor_disamb_syn), grupa_synonimow
+    return 0
 
 
-def wybierz_etymologie(wybor_etymologii, etymologia):
-    if len(etymologia) >= wybor_etymologii > 0:
-        return etymologia[(int(wybor_etymologii) - 1)]
-    elif wybor_etymologii > len(etymologia) or wybor_etymologii == -1:
-        return '<br>'.join(etymologia)
-    else:
-        return ' '
+def disamb_input_przyklady():
+    if config['dodaj_przyklady_synonimow']:
+        wybor_disamb_przyklady = input('Wybierz grupę przykładów: ')
+        return input_func(wybor_disamb_przyklady), grupa_przykladow
+    return 0
 
 
 def etymologia_input():
-    global skip_check
     if config['dodaj_etymologie']:
         wybor_etymologii = input('Wybierz etymologię: ')
-        if wybor_etymologii.isnumeric() or wybor_etymologii == '-1':
-            return int(wybor_etymologii)
-        elif wybor_etymologii == '':
-            return 0
-        else:
-            skip_check = 1
-            print(f'{Fore.LIGHTGREEN_EX}Pominięto dodawanie karty')
+        return input_func(wybor_etymologii), etymologia
+    return 0
+
+
+def definicje_input():
+    if config['dodaj_definicje']:
+        wybor_definicji = input('\nWybierz definicję: ')
+        return input_func(wybor_definicji), definicje
     return 0
 
 
@@ -383,7 +384,7 @@ def czesci_mowy_input():
         wybor_czesci_mowy = input('Dołączyć części mowy? [1/0]: ')
         if wybor_czesci_mowy.isnumeric() or wybor_czesci_mowy == '-1':
             return int(wybor_czesci_mowy)
-        elif wybor_czesci_mowy == '':
+        elif wybor_czesci_mowy == '' or wybor_czesci_mowy == '-s':
             return 0
         else:
             skip_check = 1
@@ -391,34 +392,24 @@ def czesci_mowy_input():
     return 0
 
 
-def definicje_input():
+# Bierze wybór z input_func i wydaje adekwatne informacje na kartę
+def choice_func(wybor, gloss_content, connector):
     global skip_check
-    if config['dodaj_definicje']:
-        wybor_definicji = input('\nWybierz definicję: ')
-        if wybor_definicji.isnumeric() or wybor_definicji == '-1':
-            return int(wybor_definicji)
-        elif wybor_definicji == '':
-            return 0
-        else:
-            skip_check = 1
-            print(f'{Fore.LIGHTGREEN_EX}Pominięto dodawanie karty')
-    return 0
-
-
-def wybierz_synonimy(wybor_disamb, grupa_synonimow):
-    if len(grupa_synonimow) >= wybor_disamb > 0:
-        return grupa_synonimow[int(wybor_disamb) - 1]
-    elif wybor_disamb > len(grupa_synonimow) or wybor_disamb == -1:
-        return ' '.join(grupa_synonimow)
+    if len(gloss_content) >= wybor > 0:
+        return gloss_content[int(wybor) - 1]
+    elif wybor > len(gloss_content) or wybor == -1:
+        return connector.join(gloss_content)  # Pola z disambiguation nie potrzebują "<br>", bo nie są aż tak obszerne
+    elif wybor == -2:
+        skip_check = 1
+        print(f'{Fore.LIGHTGREEN_EX}Pominięto dodawanie karty')
     else:
         return ' '
 
 
-def wybierz_przyklady(wybor_disamb, grupa_przykladow):
-    if len(grupa_przykladow) >= wybor_disamb > 0:
-        return grupa_przykladow[int(wybor_disamb) - 1]
-    elif wybor_disamb > len(grupa_przykladow) or wybor_disamb == -1:
-        return ' '.join(grupa_przykladow)
+def wybierz_czesci_mowy(wybor_czesci_mowy, connector):
+    global skip_check
+    if wybor_czesci_mowy > 0 or wybor_czesci_mowy == -1:
+        return connector.join(czesci_mowy)
     else:
         return ' '
 
@@ -433,7 +424,7 @@ def rysuj_synonimy(syn_soup):
         przyklady3 = re.sub("',", "'\n   ", przyklady2)
         przyklady4 = re.sub(r"\A[']", "\n    '", przyklady3)  # do narysowania
         synonimy, sep, tail = ele.partition('"')  # oddziela synonimy od przykładów
-        synonimy0 = synonimy.replace("S:", "")  # do rysowania synonimów z kategoryzacją wordneta
+        synonimy0 = synonimy.replace("S:", "")  # do rysowania synonimów z kategoryzacją wordnetu
 
         category = synonimy0.split('(', 2)[2]
         category = '(' + category
@@ -458,74 +449,32 @@ def rysuj_synonimy(syn_soup):
 
 
 def disambiguator(url_synsearch):
-    global skip_check_disamb
+    global skip_check
     reqs_syn = requests.get(url_synsearch)
     syn_soup = BeautifulSoup(reqs_syn.content, 'lxml')
     no_word = syn_soup.find('h3')
     if len(str(no_word)) == 48 or len(str(no_word)) == 117:
         print(f'{Fore.LIGHTRED_EX}\nNie znaleziono {Fore.RESET}{gloss} {Fore.LIGHTRED_EX}na {Fore.RESET}WordNecie')
-        skip_check_disamb = 1
+        skip_check = 1
     else:
         print('--------------------------------------------------------------------------------')
         print(f'{Fore.LIGHTWHITE_EX}{"WordNet".center(80)}\n')
         rysuj_synonimy(syn_soup)
 
 
-def disamb_input_syn():
-    global skip_check
-    if config['dodaj_synonimy']:
-        wybor_disamb_syn = input('Wybierz grupę synoniów: ')
-        if wybor_disamb_syn.isnumeric():
-            return int(wybor_disamb_syn)
-        elif wybor_disamb_syn == '':
-            wybor_disamb_syn = 0
-            return int(wybor_disamb_syn)
-        else:
-            skip_check = 1
-            print(f'{Fore.LIGHTGREEN_EX}Pominięto dodawanie karty')
-    wybor_disamb_syn = 0
-    return int(wybor_disamb_syn)
-
-
-def disamb_input_przyklady():
-    global skip_check
-    if config['dodaj_przyklady_synonimow']:
-        wybor_disamb_przyklady = input('Wybierz grupę przykładów: ')
-        if wybor_disamb_przyklady.isnumeric():
-            return int(wybor_disamb_przyklady)
-        elif wybor_disamb_przyklady == '':
-            wybor_disamb_przyklady = 0
-            return int(wybor_disamb_przyklady)
-        else:
-            skip_check = 1
-            print(f'{Fore.LIGHTGREEN_EX}Pominięto dodawanie karty')
-    wybor_disamb_przyklady = 0
-    return int(wybor_disamb_przyklady)
-
-
 # Tworzenie karty
 def utworz_karte():
     try:
-        if audiofile_name is not None:
-            with open('karty.txt', 'a', encoding='utf-8') as tworz:
-                tworz.write(f'{definicje}\t{disambiguation}\t'
-                            f'{gloss}\t'
-                            f'{zdanie}\t'
-                            f'{czesci_mowy}\t'
-                            f'{etymologia}\t[sound:{audiofile_name}]\n')
-                return None
-        elif audiofile_name is None:
-            with open('karty.txt', 'a', encoding='utf-8') as tworz:
-                tworz.write(f'{definicje}\t{disambiguation}\t'
-                            f'{gloss}\t'
-                            f'{zdanie}\t'
-                            f'{czesci_mowy}\t'
-                            f'{etymologia}\t \n')  # Aby karta nie zawierała sound tagu
-                return None
+        with open('karty.txt', 'a', encoding='utf-8') as twor:
+            twor.write(f'{definicje}\t{disambiguation}\t'
+                       f'{gloss}\t'
+                       f'{zdanie}\t'
+                       f'{czesci_mowy}\t'
+                       f'{etymologia}\t{audiofile_name}\n')
+            return None
     except NameError:
         print(f"""{Fore.LIGHTRED_EX}Dodawanie karty nie powiodło się.
 Jeżeli problem wystąpi ponownie, zrestartuj program.""")
-        szukaj()
 
 
 def wyswietl_karte():
@@ -537,13 +486,10 @@ def wyswietl_karte():
     print(disamb_przyklady.center(80))
     print('--------------------------------------------------------------------------------')
     print(gloss.center(80))
-    print(f'{zdanie.center(80)}')
+    print(zdanie.center(80))
     print(czesci_mowy.center(80))
     print(etymologia.center(80))
-    if audiofile_name is not None:
-        print(f'[sound:{audiofile_name}]'.center(80))
-    else:
-        print('')
+    print(audiofile_name.center(80))
     print('--------------------------------------------------------------------------------\n')
 
 
@@ -553,7 +499,7 @@ try:
         skip_check_disamb = 0
         gloss = ''
         word = ''
-        audiofile_name = ''
+        audiofile_name = ' '
         disambiguation = ''
         disamb_synonimy = ''
         disamb_przyklady = ''
@@ -565,7 +511,8 @@ try:
         url = szukaj()
         if config['tworz_karte']:
             rysuj_slownik(url)
-            audiofile_name = search_for_audio(url='https://www.ahdictionary.com/word/search.html?q=' + word)
+            if config['dodaj_audio']:
+                audiofile_name = search_for_audio(url='https://www.ahdictionary.com/word/search.html?q=' + word)
         else:
             rysuj_slownik(url)
             if config['disambiguation']:
@@ -575,23 +522,23 @@ try:
                 zdanie = ogarnij_zdanie(zdanie_input())
                 if skip_check == 1:
                     break
-                definicje = wybierz_definicje(definicje_input(), definicje)
+                definicje = choice_func(*definicje_input(), connector='<br>')
                 if skip_check == 1:
                     break
-                czesci_mowy = wybierz_czesci_mowy(czesci_mowy_input(), czesci_mowy)
+                czesci_mowy = wybierz_czesci_mowy(czesci_mowy_input(), connector=' | ')
                 if skip_check == 1:
                     break
-                etymologia = wybierz_etymologie(etymologia_input(), etymologia)
+                etymologia = choice_func(*etymologia_input(), connector='<br>')
                 if skip_check == 1:
                     break
                 if config['disambiguation']:
                     disambiguator(url_synsearch='http://wordnetweb.princeton.edu/perl/webwn?s=' + gloss)
-                    if skip_check_disamb == 1:
-                        break
-                    disamb_synonimy = wybierz_synonimy(disamb_input_syn(), grupa_synonimow)
                     if skip_check == 1:
                         break
-                    disamb_przyklady = wybierz_przyklady(disamb_input_przyklady(), grupa_przykladow)
+                    disamb_synonimy = choice_func(*disamb_input_syn(), connector=' ')
+                    if skip_check == 1:
+                        break
+                    disamb_przyklady = choice_func(*disamb_input_przyklady(), connector=' ')
                     if skip_check == 1:
                         break
                     if config['dodaj_synonimy'] and config['dodaj_przyklady_synonimow']:
@@ -599,15 +546,17 @@ try:
                     else:
                         disambiguation = disamb_synonimy + disamb_przyklady
                 break
+
         if config['bulk_add']:
-            definicje = wybierz_definicje(wybor_definicji=-1, definicje=definicje)
-            czesci_mowy = wybierz_czesci_mowy(wybor_czesci_mowy=1, czesci_mowy=czesci_mowy)
-            etymologia = wybierz_etymologie(wybor_etymologii=-1, etymologia=etymologia)
+            definicje = choice_func(wybor=-1, gloss_content=definicje, connector='<br>')
+            czesci_mowy = wybierz_czesci_mowy(wybor_czesci_mowy=1, connector=' | ')
+            etymologia = choice_func(wybor=-1, gloss_content=etymologia, connector='<br>')
             if config['disambiguation']:
                 disambiguator(url_synsearch='http://wordnetweb.princeton.edu/perl/webwn?s=' + word)
-                disamb_synonimy = wybierz_synonimy(wybor_disamb=-1, grupa_synonimow=grupa_synonimow)
-                disamb_przyklady = wybierz_przyklady(wybor_disamb=-1, grupa_przykladow=grupa_przykladow)
+                disamb_synonimy = choice_func(wybor=-1, gloss_content=grupa_synonimow, connector=' ')
+                disamb_przyklady = choice_func(wybor=-1, gloss_content=grupa_przykladow, connector=' ')
             zdanie = ogarnij_zdanie(zdanie_input())
+
         if skip_check == 0 and config['tworz_karte']:
             wyswietl_karte()
             utworz_karte()
