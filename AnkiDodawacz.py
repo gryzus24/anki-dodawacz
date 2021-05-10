@@ -212,10 +212,15 @@ def szukaj():
 # Pozyskiwanie audio z AHD
 def get_audio(audio_link, audio_end):
     audiofile_name = audio_end + '.wav'
-    with open(os.path.join(config['save_path'], audiofile_name), 'wb') as file:
-        response = requests.get(audio_link)
-        file.write(response.content)
-    return audiofile_name
+    try:
+        with open(os.path.join(config['save_path'], audiofile_name), 'wb') as file:
+            response = requests.get(audio_link)
+            file.write(response.content)
+        return audiofile_name
+    except Exception:
+        print(f"""{Fore.LIGHTRED_EX}Zapisywanie pliku audio {Fore.RESET}"{audiofile_name}" {Fore.LIGHTRED_EX}nie powiodło się
+Aktualna ścieżka zapisu audio to {Fore.RESET}"{config['save_path']}"
+{Fore.LIGHTRED_EX}Upewnij się, że taki folder istnieje i spróbuj ponownie""")
 
 
 def search_for_audio(url):
@@ -256,7 +261,7 @@ def rysuj_slownik(url):
                 if gloss_index == 1:
                     gloss0 = meaning_num.text
                     gloss1 = re.sub(r'·', '', gloss0)
-                    gloss = re.sub(r'\d', '', gloss1).strip()
+                    gloss = re.sub(r'\d', '', gloss1).strip().strip('-')
                     if word != gloss:
                         print(f'Wyniki dla {gloss_color}{gloss}'.center(80))
                     print(f'  {gloss_color}{meaning_num.text}')
