@@ -1,5 +1,4 @@
 import yaml
-
 BOLD = '\033[1m'
 END = '\033[0m'
 BYELLOW = '\033[93m'  # Lepiej ustawić samemu ANSI codes czy zaimportować moduł?
@@ -26,15 +25,25 @@ search_commands = {
 }
 bool_colors = {False: 'Fore.LIGHTRED_EX', True: 'Fore.LIGHTGREEN_EX'}
 colors = ('black', 'red', 'green', 'yellow', 'blue', 'magenta', 'cyan', 'white',
-          'lightblack', 'lightred', 'lightgreen', 'lightyellow', 'lightblue', 'lightmagenta', 'lightcyan', 'lightwhite')
-color_commands = ('-syn-color', '-index-color', '-gloss-color')
-color_message = {'-syn-color': 'Kolor synonimów', '-index-color': 'Kolor indexów', '-gloss-color': 'Kolor glossów'}
-help_command = f"""\n    Po wpisaniu hasła w pole "Szukaj" rozpocznie się cykl dodawania karty
+          'lightblack', 'lightred', 'lightgreen', 'lightyellow', 'lightblue', 'lightmagenta', 'lightcyan', 'lightwhite',
+          'reset')
+color_commands = ('-syn-color', '-index-color', '-gloss-color', '-psyn-color', '-def1-color', '-def2-color',
+                  '-pos-color', '-etym-color', '-synpos-color', '-syndef-color', '-error-color', '-delimit-color',
+                  '-input-color')
+color_message = {'-syn-color': 'Kolor synonimów', '-index-color': 'Kolor indexów', '-gloss-color': 'Kolor glossów',
+                 '-psyn-color': 'Kolor przykładów synonimów', '-def1-color': 'Kolor nieparzystych definicji',
+                 '-def2-color': 'Kolor parzystych definicji', '-pos-color': 'Kolor części mowy', '-etym-color': 'Kolor etymologii',
+                 '-synpos-color': 'Kolor części mowy przy synonimach', '-syndef-color': 'Kolor definicji przy synonimach',
+                 '-error-color': 'Kolor błędów', '-delimit-color': 'Kolor odkreśleń',
+                 '-input-color': 'Kolor pól na input'}
+help_command = f"""\n        Wpisz "--help-colors", aby wyświetlić konfigurację kolorów
+--------------------------------------------------------------------------------
+    Po wpisaniu hasła w pole "Szukaj" rozpocznie się cykl dodawania karty
 --------------------------------------------------------------------------------
 {BOLD}Przy dodawaniu zdania:{END}
 Wpisz swoje własne przykładowe zdanie zawierające wyszukane hasło
  "-s"             pomija dodawanie zdania\n
-W przypadku wpisania zdania niezawierającego wyszukanego hasła:
+W przypadku wpisania zdania niezawierającego szukanego hasła:
  "T"              dodaje zdanie
  "n"              powtarza dodawanie zdania
  Wpisanie litery lub wciśnięcie Enter pomija dodawanie karty
@@ -93,7 +102,7 @@ Masowe dodawanie pozwala na dodanie wielu kart na raz.
 Wystarczy skopiować tekst według szablonu i wkleić do Dodawacza.
 Wartości, które mają wpływ na masowe dodawanie to:
 Disambiguation True/False,  Zdanie True/False
-na zmiany w strukturze masowego dodawania wpływa tylko Zdanie True/False
+na zmiany w sposobie masowego dodawania wpływa tylko Zdanie True/False
 
 {BOLD}Szablon dla Zdanie = True:{END}           {BOLD}Szablon dla Zdanie = False:{END}
  "vicious"                            "vicious"
@@ -102,4 +111,22 @@ na zmiany w strukturze masowego dodawania wpływa tylko Zdanie True/False
  "emergent nations"
  " "\n
 {BYELLOW}UWAGA! {END}Aktualna wartość Zdania to: {config['dodaj_wlasne_zdanie']}
+--------------------------------------------------------------------------------\n"""
+
+help_colors_command = f"""\n  {BOLD}Dostępne komendy konfiguracji kolorów{END}
+--------------------------------------------------------------------------------
+Każda komenda zmiany kolorów musi otrzymać kolor:
+ {BOLD}[Komenda] [kolor]{END}
+ Np. "-syn-color lightblue"\n
+ -syn-color        zmienia kolor synonimów na WordNecie
+ -psyn-color       zmienia kolor przykładów pod synonimami
+ -syndef-color     zmienia kolor definicji przy synonimach
+ -synpos-color     zmienia kolor części mowy przy synonimach
+ -index-color      zmienia kolor indeksów w słowniku
+ -gloss-color      zmienia kolor wyszukanego hasła w słowniku
+ -def1-color       zmienia kolor nieparzystych definicji
+ -def2-color       zmienia kolor parzystych definicji
+ -error-color      zmienia kolor błędów
+ -delimit-color    zmienia kolor odkreśleń
+ -input-color      zmienia kolor pól na input (tj. "Szukaj:" itd.)
 --------------------------------------------------------------------------------\n"""
