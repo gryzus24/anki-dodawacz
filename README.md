@@ -1,22 +1,22 @@
-# Anki-dodawacz
+# Anki-dodawacz
 
 Prosty i otwarty na konfigurację program do tworzenia monojęzycznych kart do Anki.
 Pozyskuje on informacje z American Heritage Dictionary i pozwala na szybki wybór definicji, części mowy, etymologii i audio.
-Możemy też natychmiastowo dodawać własne przykładowe zdania, a także dodawać synonimy i przykłady z WordNet 3.1 jako Disambiguation (usunięcie dwuznaczności).
+Możemy też natychmiastowo dodawać własne przykładowe zdania, a także synonimy i przykłady z WordNet 3.1.
 
-Celem programu jest ułatwić i uprzyjemnić żmudny i zniechęcający proces dodawanie kart,
+Celem programu jest ułatwić i uprzyjemnić żmudny i zniechęcający proces dodawania kart,
 który konwencjonalnie odbywa się za pomocą powtarzalnych ruchów myszką i przekopiowywania
 informacji do edytora kart. Z Anki-dodawaczem ten proces odbywa się w prawie stu procentach
 za pomocą klawiatury.
 
 Częstym powodem dla nieużywania Anki przez wiele osób jest trudność w robieniu wysokiej jakości kart. 
-Wierzę, że otwarty na konfigurację program produkujący wysokiej jakości karty przekona do Anki większą ilość osób i sprawi, że docenią przydatność tego narzędzia.
+Wierzę, że otwarty na konfigurację program produkujący wysokiej jakości karty przekona do Anki większą ilość osób.
 
 ## Linki do pobrania:
 
-| [Wersja 0.4.0 ](https://github.com/funky-trellis/anki-dodawacz/releases/download/v0.4.0/AnkiDodawacz_v0_4_0.zip) |
+| [Win v0.4.0 ](https://github.com/funky-trellis/anki-dodawacz/releases/download/v0.4.0/AnkiDodawacz_v0_4_0.zip) |
 |-
-| [Wersja 0.3.2.1 ](https://github.com/funky-trellis/anki-dodawacz/releases/download/v0.3.2.1/AnkiDodawacz.zip) |
+| [Win v0.3.2.1 ](https://github.com/funky-trellis/anki-dodawacz/releases/download/v0.3.2.1/AnkiDodawacz.zip) |
 
 
 
@@ -24,7 +24,7 @@ Należy rozpakować folder w dogodnej lokacji i uruchomić plik "AnkiDodawacz.ex
 (Jeżeli nie chcesz używać pliku .exe, możesz uruchomić program używając Pythona (3.6?) 3.7+ z podanymi niżej bibliotekami)
 
 Aby korzystać z zupełnie najnowszej wersji programu należy sklonować repozytorium "git clone [link]".
-Jeżeli w folderze z programem nie ma folderu "Karty_audio" to należy go stworzyć.
+Na wersji starszej od 0.4.1.1, jeżeli w folderze z programem nie ma folderu "Karty_audio" to należy go stworzyć.
 
 # Konfiguracja i działanie programu
 
@@ -82,14 +82,14 @@ dostarczy nam niezapomnianych powtórkowych wrażeń!
 
 Aby zastosować stylizację, postępujemy podobnie jak przy tworzeniu pól, tylko teraz klikamy w "Karty...".
 Tutaj ustawiamy, jak nasza karta będzie wyglądać. Anki wykorzystuje CSS oraz HTML do wyświetlania kart.
-Dla nowych lub niedoświadczonych użytkowników, którzy niezaznajomieni są jeszcze z tym typem customizacji,
+Dla nowych użytkowników, którzy niezaznajomieni są jeszcze z tym typem customizacji,
 oferuję moją przykładową notatkę na wypróbowanie:
 https://pastebin.com/9ZfWMpNu.
  
 
 ![image](https://user-images.githubusercontent.com/82805891/115956831-67cc7380-a4ff-11eb-8648-7a6599e45c1f.png)
 
-Po stworzeniu notatki z odpowiednimi polami i utworzeniu własnego stylu możemy przejść do importowania dodanych kart.
+Po stworzeniu notatki z odpowiednimi polami i utworzeniu stylu możemy przejść do importowania dodanych kart.
 
 
 # Importowanie
@@ -100,12 +100,13 @@ Aby zaimportować karty do Anki, na górnym pasku klikami w "Plik" i "Importuj..
 - Klikamy w "Pola oddzielone o" i wpisujemy "\t"
 - Możemy wybrać "Ignoruj linie, których pierwsze pole pasuje do istniejącej notatki"
 - I na końcu ważne, aby zaznaczyć "Zezwól na HTML w polach"
+- Jeżeli nie sprecyzowaliśmy ścieżki zapisu audio w Anki-dodawaczu, musimy przenieść zawartość folderu "Karty_audio" do folderu "collection.media", jeżeli chcemy, aby audio było odtwarzane podczas powtarzania
 
 ![image](https://user-images.githubusercontent.com/82805891/116596638-e886d780-a924-11eb-8e82-b7d789151486.png)
 
-Gdy raz ustawimy opcje importowania, nie musimy się przejmować ich ponownym ustawianiem.
+Gdy raz ustawimy opcje importowania w Anki, nie musimy się przejmować ich ponownym ustawianiem.
 Ścieżka importu też powinna zostać zapisana, ale gdyby tak się nie stało, warto przenieść folder z programem w łatwo dostępne miejsce,
-aby skrócić nudny czas dodawania do minimum!
+aby skrócić czas dodawania do minimum!
 
 Po dodaniu kart możemy usunąć zawartość pliku "karty.txt", jednak gdy zostawimy go, importowanie
 nie powinno zostać skompromitowane dzięki opcji "Ignoruj linie, których pierwsze pole pasuje do istniejącej notatki".
