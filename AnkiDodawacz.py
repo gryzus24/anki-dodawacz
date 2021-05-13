@@ -13,7 +13,10 @@ colorama.init(autoreset=True)
 with open("config.yml", "r") as f:
     config = yaml.load(f, Loader=yaml.Loader)
 
-print(f"""{Fore.LIGHTYELLOW_EX}- DODAWACZ KART DO {Fore.LIGHTCYAN_EX}ANKI {Fore.LIGHTYELLOW_EX}v0.4.1 -\n
+if not os.path.exists('Karty_audio') and config['save_path'] == 'Karty_audio':
+    os.mkdir('Karty_audio')  # Aby nie trzeba było tworzyć folderu ręcznie
+
+print(f"""{Fore.LIGHTYELLOW_EX}- DODAWACZ KART DO {Fore.LIGHTCYAN_EX}ANKI {Fore.LIGHTYELLOW_EX}v0.4.1.1 -\n
 {Fore.RESET}Wpisz "--help", aby wyświetlić pomoc\n\n""")
 
 # Ustawia kolory
@@ -209,7 +212,7 @@ def rysuj_slownik(url):
                 for pos in td.find_all(class_='runseg'):  # Rysuje części mowy
                     postring = pos.text.replace('', 'oo').replace('', 'oo').replace('', '′').replace('·', '')
                     print(f'{pos_color}{postring}')
-                    czesci_mowy.append(postring)
+                    czesci_mowy.append(postring.strip())
                 print()
                 for etym in td.find_all(class_='etyseg'):  # Rysuje etymologie
                     print(f'{etym_color}{etym.text}')
@@ -416,7 +419,7 @@ try:
         skip_check_disamb = 0
         gloss = ''
         word = ''
-        audiofile_name = ' '
+        audiofile_name = ''
         disambiguation = ''
         disamb_synonimy = ''
         disamb_przyklady = ''
