@@ -1,9 +1,28 @@
 import yaml
+from colorama import Fore
+import colorama
+colorama.init(autoreset=True)
+
 BOLD = '\033[1m'
 END = '\033[0m'
-BYELLOW = '\033[93m'  # Lepiej ustawić samemu ANSI codes czy zaimportować moduł?
+
 with open("config.yml", "r") as readconfig:
     config = yaml.load(readconfig, Loader=yaml.Loader)
+
+syn_color = eval(config['syn_color'])
+psyn_color = eval(config['psyn_color'])
+def1_color = eval(config['def1_color'])
+def2_color = eval(config['def2_color'])
+index_color = eval(config['index_color'])
+gloss_color = eval(config['gloss_color'])
+pos_color = eval(config['pos_color'])
+etym_color = eval(config['etym_color'])
+synpos_color = eval(config['synpos_color'])
+syndef_color = eval(config['syndef_color'])
+error_color = eval(config['error_color'])
+delimit_color = eval(config['delimit_color'])
+input_color = eval(config['input_color'])
+
 commands_msg = {
                 '-def': 'Dodawanie definicji: ', '-audio': 'Dodawanie audio: ', '--audio-path': 'Ścieżka zapisu audio: ',
                 '-etym': 'Dodawanie etymologii: ', '-pos': 'Dodawanie części mowy: ', '-fs': 'Filtrowany słownik: ',
@@ -52,7 +71,7 @@ W przypadku wpisania zdania niezawierającego szukanego hasła:
 Aby wybrać definicję wpisz numer zielonego indeksu.\n
  np. "3"         dodaje trzecią definicję
  "0" lub "-s"    pomija dodawanie elementu
- "-1"            dodaje wszystkie elementy
+ "-1" lub "all"  dodaje wszystkie elementy
  Wpisanie litery pomija dodawanie karty
 --------------------------------------------------------------------------------
 {BOLD}Przy częściach mowy:{END}
@@ -86,16 +105,21 @@ Wybieranie działa tak jak w definicjach, tylko mamy do wyboru dwa pola:
                          podczas wyświetlania słownika         Aktualnie = {config['pokazuj_filtrowany_slownik']}\n
 "--audio-path" lub "--save-path":
   Umożliwia zmianę miejsca zapisu audio (domyślnie: "Karty_audio" w folderze z programem)
-  Aby audio było bezpośrednio dodawane do Anki, zlokalizuj ścieżkę:
-  "C:\\[Users]\\[Nazwa użytkownika]\\AppData\\Roaming\\Anki2\\[Nazwa użytkownika Anki]\\collection.media"
-  (wpisz %appdata%)
+  Aby audio było bezpośrednio dodawane do Anki, zlokalizuj ścieżkę:\n
+  Na Windowsie:
+   "C:\\[Users]\\[Nazwa użytkownika]\\AppData\\Roaming\\Anki2\\[Nazwa użytkownika Anki]\\collection.media"
+   (wpisz %appdata%)\n
+  Na Linuxie:
+   "~/.local/share/Anki2/[Nazwa użytkownika Anki]/collection.media"\n
   i wpisz/skopiuj ją w pole wyświetlone po wpisaniu komendy.                    Aktualna ścieżka = {config['save_path']}
   
 "-udef on/off"        Niektóre definicje zawierają użycia słowa.                Aktualnie = {config['ukryj_slowo_w_definicji']}
                       Ta opcja zamienia wszystkie użycia słowa na "..."\n
 "-upz on/off"         Jak w definicjach tylko w dodanym zdaniu                  Aktualnie = {config['ukryj_slowo_w_zdaniu']}  
 "-udisamb on/off"     Ukrywa wystąpienie hasła w synonimach z WordNetu          Aktualnie = {config['ukryj_slowo_w_disamb']}\n
-"-bulk on/off"        włącza/wyłącz funkcję masowego dodawania                  Aktualnie = {config['bulk_add']}
+"-bulk on/off"        włącza/wyłącz funkcję masowego dodawania                  Aktualnie = {config['bulk_add']}\n
+"--delete-last" lub
+"--delete-recent"     usuwa ostatnią dodaną kartę
 --------------------------------------------------------------------------------
 {BOLD}Masowe dodawanie (bulk):{END}
 Masowe dodawanie pozwala na dodanie wielu kart na raz.
@@ -110,7 +134,7 @@ na zmiany w sposobie masowego dodawania wpływa tylko Zdanie True/False
  "emerge"                             " "
  "emergent nations"
  " "\n
-{BYELLOW}UWAGA! {END}Aktualna wartość Zdania to: {config['dodaj_wlasne_zdanie']}
+{Fore.LIGHTYELLOW_EX}UWAGA! {END}Aktualna wartość Zdania to: {config['dodaj_wlasne_zdanie']}
 --------------------------------------------------------------------------------\n"""
 
 help_colors_command = f"""\n  {BOLD}Dostępne komendy konfiguracji kolorów{END}
@@ -118,15 +142,17 @@ help_colors_command = f"""\n  {BOLD}Dostępne komendy konfiguracji kolorów{END}
 Każda komenda zmiany kolorów musi otrzymać kolor:
  {BOLD}[Komenda] [kolor]{END}
  Np. "-syn-color lightblue"\n
- -syn-color        zmienia kolor synonimów na WordNecie
- -psyn-color       zmienia kolor przykładów pod synonimami
- -syndef-color     zmienia kolor definicji przy synonimach
- -synpos-color     zmienia kolor części mowy przy synonimach
- -index-color      zmienia kolor indeksów w słowniku
- -gloss-color      zmienia kolor wyszukanego hasła w słowniku
- -def1-color       zmienia kolor nieparzystych definicji
- -def2-color       zmienia kolor parzystych definicji
- -error-color      zmienia kolor błędów
- -delimit-color    zmienia kolor odkreśleń
- -input-color      zmienia kolor pól na input (tj. "Szukaj:" itd.)
+ -syn-color        zmienia kolor {syn_color}synonimów na WordNecie{END}
+ -psyn-color       zmienia kolor {psyn_color}przykładów pod synonimami{END}
+ -syndef-color     zmienia kolor {syndef_color}definicji przy synonimach{END}
+ -synpos-color     zmienia kolor {synpos_color}części mowy przy synonimach{END}
+ -index-color      zmienia kolor {index_color}indeksów w słowniku{END}
+ -gloss-color      zmienia kolor {gloss_color}wyszukanego hasła w słowniku{END}
+ -def1-color       zmienia kolor {def1_color}nieparzystych definicji{END}
+ -def2-color       zmienia kolor {def2_color}parzystych definicji{END}
+ -error-color      zmienia kolor {error_color}błędów{END}
+ -delimit-color    zmienia kolor {delimit_color}odkreśleń{END}
+ -input-color      zmienia kolor {input_color}pól na input {END}(tj. "Szukaj:" itd.)
+ 
+ -colors           wyświetla dostępne kolory
 --------------------------------------------------------------------------------\n"""

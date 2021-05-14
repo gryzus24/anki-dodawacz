@@ -1,6 +1,6 @@
 from bs4 import BeautifulSoup
 from colorama import Fore
-import colorama
+import readline
 import requests
 import os.path
 import komendy
@@ -8,7 +8,7 @@ import yaml
 import re
 
 start = True
-colorama.init(autoreset=True)
+readline.read_init_file()
 
 with open("config.yml", "r") as f:
     config = yaml.load(f, Loader=yaml.Loader)
@@ -33,6 +33,23 @@ syndef_color = eval(config['syndef_color'])
 error_color = eval(config['error_color'])
 delimit_color = eval(config['delimit_color'])
 input_color = eval(config['input_color'])
+
+
+def delete_last_card():
+    try:
+        with open('karty.txt', 'r') as read:
+            lines = read.readlines()
+        with open('karty.txt', 'w') as write:
+            deleted_line = lines.pop().replace('\n', '')  # Usuwa ostatnią linijkę
+            new_file = ''.join(lines)
+            write.write(new_file)
+        print(f'{Fore.LIGHTYELLOW_EX}Usunięto: \n{Fore.RESET}"{deleted_line[:64]}..."')
+    except IndexError:
+        print(f'{error_color}Plik {Fore.RESET}"karty.txt" {error_color}jest pusty, nie ma co usuwać')
+    except FileNotFoundError:
+        print(f'{error_color}Plik {Fore.RESET}"karty.txt" {error_color}nie istnieje, nie ma co usuwać')
+    except Exception:
+        print(f'{error_color}Coś poszło nie tak podczas usuwania karty *_*')
 
 
 # Komendy i input słowa
@@ -78,7 +95,7 @@ def kolory(komenda, wartosc):
 
 
 def komendo(word):
-    loc_word = word.strip().lower() + ' '
+    loc_word = word.lower() + ' '
     cmd_tuple = loc_word.split(' ')
     if cmd_tuple[0] in komendy.search_commands:
         if cmd_tuple[1] in komendy.commands_values:
@@ -96,6 +113,8 @@ def komendo(word):
         print(komendy.help_command)
     elif loc_word == '--help-colors ' or loc_word == '--help-color ':
         print(komendy.help_colors_command)
+    elif loc_word == '--delete-last ' or loc_word == '--delete-recent ':
+        delete_last_card()
     elif loc_word == '--audio-path ' or loc_word == '--save-path ':
         save_path = str(input(f'{input_color}Wprowadź ścieżkę zapisu audio: '))
         print(f'Pliki audio będą zapisywane w: "{save_path}"')
@@ -144,8 +163,8 @@ def search_for_audio(url):
         soup = BeautifulSoup(reqs.content, 'lxml')
         audio = soup.find('a', {'target': '_blank'}).get('href')
         if audio == 'http://www.hmhco.com':
-            print(f"""{error_color}\nHasło nie posiada pliku audio!
-Karta zostanie dodana bez audio""")
+            print(f"""{error_color}Hasło nie posiada pliku audio!
+Karta zostanie dodana bez audio\n""")
             return ' '
         else:
             audio_end = audio.split('/')[-1]
@@ -182,7 +201,7 @@ def rysuj_slownik(url):
                 meanings_in_td = td.find_all(class_=('ds-list', 'sds-single', 'ds-single', 'ds-list'))
                 print(f'{delimit_color}--------------------------------------------------------------------------------')
                 for meaning_num in td.find_all('font', {'color': '#006595'}, 'sup'):  # Rysuje glossy, czyli bat·ter 1, bat·ter 2 itd.
-                    gloss_index += 1
+                    gloss_index += 1  # Aby przy wpisaniu nieprawidłowego glossa, np. "impeachment" zamiast "impeach", dodało "impeach"
                     if gloss_index == 1:
                         gloss0 = meaning_num.text
                         gloss1 = gloss0.replace('·', '')
@@ -213,13 +232,15 @@ def rysuj_slownik(url):
                     postring = pos.text.replace('', 'oo').replace('', 'oo').replace('', '′').replace('·', '')
                     print(f'{pos_color}{postring}')
                     czesci_mowy.append(postring.strip())
-                print()
+                if not str(czesci_mowy).startswith('[]'):
+                    print()
                 for etym in td.find_all(class_='etyseg'):  # Rysuje etymologie
                     print(f'{etym_color}{etym.text}')
                     etymologia.append(etym.text)
-            print()
+            if not str(etymologia).startswith('[]'):  # Aby przy hasłach bez etymologii czy części mowy nie było niepotrzebnych spacji
+                print()
     except Exception:
-        print('slownik exception')
+        print('Coś poszło nie tak *_*')
         skip_check = 1
 
 
@@ -266,6 +287,8 @@ def input_func(in_put):
         return int(in_put)
     elif in_put == '' or in_put == '-s':
         return 0
+    elif in_put == 'all':
+        return -1
     return -2
 
 
@@ -398,8 +421,7 @@ Jeżeli problem wystąpi ponownie, zrestartuj program.""")
 
 
 def wyswietl_karte():
-    print()
-    print('Utworzona karta zawiera:')
+    print(f'\n{Fore.LIGHTYELLOW_EX}Utworzona karta zawiera:')
     print(f'{delimit_color}--------------------------------------------------------------------------------')
     print(f"{def1_color}{definicje.replace('<br>', ' ').center(80)}")  # Trzeba tu użyć .format()
     print(f'{syn_color}{disamb_synonimy.center(80)}')
@@ -462,7 +484,7 @@ try:
                     break
                 if config['disambiguation']:
                     disambiguator(url_synsearch='http://wordnetweb.princeton.edu/perl/webwn?s=' + gloss)
-                    if skip_check_disamb == 1:
+                    if skip_check_disamb == 1:  # Aby tylko pominęło dodawanie synonimów, a nie tworzenie karty
                         break
                     disamb_synonimy = choice_func(*disamb_input_syn(), connector=' ')
                     if skip_check == 1:
@@ -486,7 +508,6 @@ try:
             if skip_check == 0 and config['tworz_karte']:
                 wyswietl_karte()
                 utworz_karte()
-            print()
             break
 except KeyboardInterrupt:
     print('\nZakończono')
