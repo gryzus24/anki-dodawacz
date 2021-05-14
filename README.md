@@ -14,9 +14,9 @@ Wierzę, że otwarty na konfigurację program produkujący wysokiej jakości kar
 
 ## Linki do pobrania:
 
-| [Win v0.4.0 ](https://github.com/funky-trellis/anki-dodawacz/releases/download/v0.4.0/AnkiDodawacz_v0_4_0.zip) |
+| [Windows v0.4.0 ](https://github.com/funky-trellis/anki-dodawacz/releases/download/v0.4.0/AnkiDodawacz_v0_4_0.zip) |
 |-
-| [Win v0.3.2.1 ](https://github.com/funky-trellis/anki-dodawacz/releases/download/v0.3.2.1/AnkiDodawacz.zip) |
+| [Windows v0.3.2.1 ](https://github.com/funky-trellis/anki-dodawacz/releases/download/v0.3.2.1/AnkiDodawacz.zip) |
 
 
 
