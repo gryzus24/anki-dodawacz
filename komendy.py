@@ -22,6 +22,7 @@ syndef_color = eval(config['syndef_color'])
 error_color = eval(config['error_color'])
 delimit_color = eval(config['delimit_color'])
 input_color = eval(config['input_color'])
+inputtext_color = eval(config['inputtext_color'])
 
 commands_msg = {
                 '-def': 'Dodawanie definicji: ', '-audio': 'Dodawanie audio: ', '--audio-path': 'Ścieżka zapisu audio: ',
@@ -48,79 +49,81 @@ colors = ('black', 'red', 'green', 'yellow', 'blue', 'magenta', 'cyan', 'white',
           'reset')
 color_commands = ('-syn-color', '-index-color', '-gloss-color', '-psyn-color', '-def1-color', '-def2-color',
                   '-pos-color', '-etym-color', '-synpos-color', '-syndef-color', '-error-color', '-delimit-color',
-                  '-input-color')
+                  '-input-color', '-inputtext-color')
 color_message = {'-syn-color': 'Kolor synonimów', '-index-color': 'Kolor indexów', '-gloss-color': 'Kolor glossów',
                  '-psyn-color': 'Kolor przykładów synonimów', '-def1-color': 'Kolor nieparzystych definicji',
                  '-def2-color': 'Kolor parzystych definicji', '-pos-color': 'Kolor części mowy', '-etym-color': 'Kolor etymologii',
                  '-synpos-color': 'Kolor części mowy przy synonimach', '-syndef-color': 'Kolor definicji przy synonimach',
                  '-error-color': 'Kolor błędów', '-delimit-color': 'Kolor odkreśleń',
-                 '-input-color': 'Kolor pól na input'}
-help_command = f"""\n        Wpisz "--help-colors", aby wyświetlić konfigurację kolorów
---------------------------------------------------------------------------------
+                 '-input-color': 'Kolor pól na input', '-inputtext-color': 'Kolor wpisywanego tekstu'}
+help_command = f"""{Fore.RESET}\n        Wpisz "--help-colors", aby wyświetlić konfigurację kolorów
+
     Po wpisaniu hasła w pole "Szukaj" rozpocznie się cykl dodawania karty
---------------------------------------------------------------------------------
+
 {BOLD}Przy dodawaniu zdania:{END}
 Wpisz swoje własne przykładowe zdanie zawierające wyszukane hasło
- "-s"             pomija dodawanie zdania\n
-W przypadku wpisania zdania niezawierającego szukanego hasła:
- "T"              dodaje zdanie
- "n"              powtarza dodawanie zdania
- Wpisanie litery lub wciśnięcie Enter pomija dodawanie karty
---------------------------------------------------------------------------------
+ "-s"             pomija dodawanie zdania
+
 {BOLD}Przy definicjach:{END}
 Aby wybrać definicję wpisz numer zielonego indeksu.\n
  np. "3"         dodaje trzecią definicję
  "0" lub "-s"    pomija dodawanie elementu
  "-1" lub "all"  dodaje wszystkie elementy
  Wpisanie litery pomija dodawanie karty
---------------------------------------------------------------------------------
+ 
+ Aby dodać własną definicję, części mowy, etymologię czy synonimy
+ zacznij wpisywanie od "/"
+ Np. "/Moja definicja"
+ 
 {BOLD}Przy częściach mowy:{END}
  "1"             dodaje wszystkie części mowy
  "0" lub "-s"    pomija dodawanie elementu
  Wpisanie litery pomija dodawanie karty
---------------------------------------------------------------------------------
+
 {BOLD}Przy etymologiach:{END}
 Przy większej ilości etymologii możemy sprecyzować wybór wpisując numer etymologii licząc od góry.
 lub wpisać "-1", aby dodać wszystkie dostępne etymologie.
  "0" lub "-s"    pomija dodawanie elementu
---------------------------------------------------------------------------------
+
 {BOLD}Przy synonimach:{END}
 Synonimy wyświetlane są w grupach zawierających synonimy i przykłady.
 Wybieranie działa tak jak w definicjach, tylko mamy do wyboru dwa pola:
  - Grupę synonimów
  - Grupę przykładów
---------------------------------------------------------------------------------
+
 {BOLD}Komendy (wpisywane w pole "Szukaj"):{END}
-"-pz on/off"             włącza/wyłącza dodawanie zdania       Aktualnie = {config['dodaj_wlasne_zdanie']}
-"-def on/off"            włącza/wyłącza dodawanie definicji    Aktualnie = {config['dodaj_definicje']}
-"-pos on/off"            włącza/wyłącza dodawnie części mowy   Aktualnie = {config['dodaj_czesci_mowy']}
-"-etym on/off"           włącza/wyłącza dodawanie etymologii   Aktualnie = {config['dodaj_etymologie']}
-"-disamb on/off"         włącza/wyłącza pokazywanie synonimów  Aktualnie = {config['disambiguation']}
-"-syn on/off"            włącza/wyłącza dodawanie synonimów    Aktualnie = {config['dodaj_synonimy']}
-"-psyn on/off"           włącza/wyłącza dodawanie przykładów   Aktualnie = {config['dodaj_przyklady_synonimow']}
-"-audio on/off"          włącza/wyłącza dodawanie audio        Aktualnie = {config['dodaj_audio']}\n
-"-all on/off"            Zmienia wartość powyższych ustawień na True/False\n
-"-karty on/off"          włącza/wyłącza dodawanie kart         Aktualnie = {config['tworz_karte']}\n
-"-fs on/off"             włącza/wyłącza filtrowanie numeracji
-                         podczas wyświetlania słownika         Aktualnie = {config['pokazuj_filtrowany_slownik']}\n
-"--audio-path" lub "--save-path":
-  Umożliwia zmianę miejsca zapisu audio (domyślnie: "Karty_audio" w folderze z programem)
-  Aby audio było bezpośrednio dodawane do Anki, zlokalizuj ścieżkę:\n
-  Na Windowsie:
-   "C:\\[Users]\\[Nazwa użytkownika]\\AppData\\Roaming\\Anki2\\[Nazwa użytkownika Anki]\\collection.media"
-   (wpisz %appdata%)\n
-  Na Linuxie:
-   "~/.local/share/Anki2/[Nazwa użytkownika Anki]/collection.media"\n
-  i wpisz/skopiuj ją w pole wyświetlone po wpisaniu komendy.                    Aktualna ścieżka = {config['save_path']}
-  
-"-udef on/off"        Niektóre definicje zawierają użycia słowa.                Aktualnie = {config['ukryj_slowo_w_definicji']}
-                      Ta opcja zamienia wszystkie użycia słowa na "..."\n
-"-upz on/off"         Jak w definicjach tylko w dodanym zdaniu                  Aktualnie = {config['ukryj_slowo_w_zdaniu']}  
-"-udisamb on/off"     Ukrywa wystąpienie hasła w synonimach z WordNetu          Aktualnie = {config['ukryj_slowo_w_disamb']}\n
-"-bulk on/off"        włącza/wyłącz funkcję masowego dodawania                  Aktualnie = {config['bulk_add']}\n
-"--delete-last" lub
-"--delete-recent"     usuwa ostatnią dodaną kartę
---------------------------------------------------------------------------------
+                    [{Fore.LIGHTGREEN_EX}włącza{Fore.RESET}/{Fore.LIGHTRED_EX}wyłącza{Fore.RESET}]
+-pz on/off          dodawanie zdania           Aktualnie = {config['dodaj_wlasne_zdanie']}
+-def on/off         dodawanie definicji        Aktualnie = {config['dodaj_definicje']}
+-pos on/off         dodawnie części mowy       Aktualnie = {config['dodaj_czesci_mowy']}
+-etym on/off        dodawanie etymologii       Aktualnie = {config['dodaj_etymologie']}
+-disamb on/off      pokazywanie synonimów      Aktualnie = {config['disambiguation']}
+-syn on/off         dodawanie synonimów        Aktualnie = {config['dodaj_synonimy']}
+-psyn on/off        dodawanie przykładów       Aktualnie = {config['dodaj_przyklady_synonimow']}
+-audio on/off       dodawanie audio            Aktualnie = {config['dodaj_audio']}\n
+-all on/off         Zmienia wartość powyższych ustawień na True/False\n
+-karty on/off       dodawanie kart             Aktualnie = {config['tworz_karte']}\n
+-fs on/off          filtrowanie numeracji
+                    podczas wyświetlania słownika      Aktualnie = {config['pokazuj_filtrowany_slownik']}\n
+--audio-path" lub "--save-path":
+ Umożliwia zmianę miejsca zapisu audio (domyślnie: "Karty_audio" w folderze z programem)
+ Aby audio było bezpośrednio dodawane do Anki, zlokalizuj ścieżkę
+ i wpisz/skopiuj ją w pole wyświetlone po wpisaniu komendy.\n
+ Na Windowsie:
+  "C:\\[Users]\\[Nazwa użytkownika]\\AppData\\Roaming\\Anki2\\[Nazwa użytkownika Anki]\\collection.media"
+  (wpisz %appdata%)\n
+ Na Linuxie:
+  "~/.local/share/Anki2/[Nazwa użytkownika Anki]/collection.media"\n
+               Aktualna ścieżka = {config['save_path']}
+
+-udef on/off         Niektóre definicje zawierają użycia słowa.            Aktualnie = {config['ukryj_slowo_w_definicji']}
+                     Ta opcja zamienia wszystkie użycia słowa na "..."\n
+-upz on/off          Jak w definicjach tylko w dodanym zdaniu              Aktualnie = {config['ukryj_slowo_w_zdaniu']}  
+-udisamb on/off      Ukrywa wystąpienie hasła w synonimach z WordNetu      Aktualnie = {config['ukryj_slowo_w_disamb']}\n
+-bulk on/off         włącza/wyłącz funkcję masowego dodawania              Aktualnie = {config['bulk_add']}\n
+--delete-last lub
+--delete-recent      usuwa ostatnią dodaną kartę
+
 {BOLD}Masowe dodawanie (bulk):{END}
 Masowe dodawanie pozwala na dodanie wielu kart na raz.
 Wystarczy skopiować tekst według szablonu i wkleić do Dodawacza.
@@ -135,24 +138,28 @@ na zmiany w sposobie masowego dodawania wpływa tylko Zdanie True/False
  "emergent nations"
  " "\n
 {Fore.LIGHTYELLOW_EX}UWAGA! {END}Aktualna wartość Zdania to: {config['dodaj_wlasne_zdanie']}
---------------------------------------------------------------------------------\n"""
+\n"""
 
-help_colors_command = f"""\n  {BOLD}Dostępne komendy konfiguracji kolorów{END}
---------------------------------------------------------------------------------
+help_colors_command = f"""{Fore.RESET}\n  {BOLD}Dostępne komendy konfiguracji kolorów{END}
+
 Każda komenda zmiany kolorów musi otrzymać kolor:
  {BOLD}[Komenda] [kolor]{END}
- Np. "-syn-color lightblue"\n
- -syn-color        zmienia kolor {syn_color}synonimów na WordNecie{END}
- -psyn-color       zmienia kolor {psyn_color}przykładów pod synonimami{END}
- -syndef-color     zmienia kolor {syndef_color}definicji przy synonimach{END}
- -synpos-color     zmienia kolor {synpos_color}części mowy przy synonimach{END}
- -index-color      zmienia kolor {index_color}indeksów w słowniku{END}
- -gloss-color      zmienia kolor {gloss_color}wyszukanego hasła w słowniku{END}
- -def1-color       zmienia kolor {def1_color}nieparzystych definicji{END}
- -def2-color       zmienia kolor {def2_color}parzystych definicji{END}
- -error-color      zmienia kolor {error_color}błędów{END}
- -delimit-color    zmienia kolor {delimit_color}odkreśleń{END}
- -input-color      zmienia kolor {input_color}pól na input {END}(tj. "Szukaj:" itd.)
+ Np. "-syn-color lightblue"
+                    {BOLD}[Zmienia kolor]:{END}
+ -def1-color         {def1_color}nieparzystych definicji{END}
+ -def2-color         {def2_color}parzystych definicji{END}
+ -pos-color          {pos_color}części mowy w słowniku{END}
+ -etym-color         {etym_color}etymologii w słowniku{END}
+ -syn-color          {syn_color}synonimów na WordNecie{END}
+ -psyn-color         {psyn_color}przykładów pod synonimami{END}
+ -syndef-color       {syndef_color}definicji przy synonimach{END}
+ -synpos-color       {synpos_color}części mowy przy synonimach{END}
+ -index-color        {index_color}indeksów w słowniku{END}
+ -gloss-color        {gloss_color}wyszukanego hasła w słowniku{END}
+ -error-color        {error_color}błędów{END}
+ -delimit-color      {delimit_color}odkreśleń{END}
+ -input-color        {input_color}pól na input {END}(tj. "Szukaj:" itd.)
+ -inputtext-color    {inputtext_color}wpisywanego tekstu
  
  -colors           wyświetla dostępne kolory
---------------------------------------------------------------------------------\n"""
+\n"""

@@ -1,4 +1,5 @@
 from bs4 import BeautifulSoup
+from komendy import BOLD, END
 from colorama import Fore
 import readline
 import requests
@@ -16,8 +17,8 @@ with open("config.yml", "r") as f:
 if not os.path.exists('Karty_audio') and config['save_path'] == 'Karty_audio':
     os.mkdir('Karty_audio')  # Aby nie trzeba było tworzyć folderu ręcznie
 
-print(f"""{Fore.LIGHTYELLOW_EX}- DODAWACZ KART DO {Fore.LIGHTCYAN_EX}ANKI {Fore.LIGHTYELLOW_EX}v0.4.1.1 -\n
-{Fore.RESET}Wpisz "--help", aby wyświetlić pomoc\n\n""")
+print(f"""\n{BOLD}- Dodawacz kart do Anki v0.5.0 -{END}\n
+Wpisz "--help", aby wyświetlić pomoc\n\n""")
 
 # Ustawia kolory
 syn_color = eval(config['syn_color'])
@@ -33,6 +34,7 @@ syndef_color = eval(config['syndef_color'])
 error_color = eval(config['error_color'])
 delimit_color = eval(config['delimit_color'])
 input_color = eval(config['input_color'])
+inputtext_color = eval(config['inputtext_color'])
 
 
 def delete_last_card():
@@ -77,7 +79,7 @@ def koloryfer(color):
 
 
 def pokaz_dostepne_kolory():
-    print('\nDostępne kolory to:')
+    print(f'{Fore.RESET}\nDostępne kolory to:')
     for index, color in enumerate(komendy.colors, start=1):
         print(f'{koloryfer(color)}{color}', end=', ')
         if index == 4 or index == 8 or index == 12 or index == 16:
@@ -90,7 +92,7 @@ def kolory(komenda, wartosc):
     if 'light' in color.lower():
         color = color + '_EX'
     msg_color = eval(color)
-    print(f'{komendy.color_message[komenda]} ustawiony na {msg_color}{wartosc}')
+    print(f'{komendy.color_message[komenda]} ustawiony na: {msg_color}{wartosc}')
     zapisuj_komendy(komenda=komenda.strip('-').replace('-', '_'), wartosc=color)
 
 
@@ -116,7 +118,7 @@ def komendo(word):
     elif loc_word == '--delete-last ' or loc_word == '--delete-recent ':
         delete_last_card()
     elif loc_word == '--audio-path ' or loc_word == '--save-path ':
-        save_path = str(input(f'{input_color}Wprowadź ścieżkę zapisu audio: '))
+        save_path = str(input(f'{input_color}Wprowadź ścieżkę zapisu audio:{inputtext_color} '))
         print(f'Pliki audio będą zapisywane w: "{save_path}"')
         zapisuj_komendy(komenda='save_path', wartosc=save_path)
     elif cmd_tuple[0] in komendy.color_commands:
@@ -132,7 +134,7 @@ def komendo(word):
 
 def szukaj():
     global word
-    word = input(f'{input_color}Szukaj: ').strip()
+    word = input(f'{input_color}Szukaj:{inputtext_color} ').strip()
     word = komendo(word)
     if word is None:
         return word
@@ -207,7 +209,7 @@ def rysuj_slownik(url):
                         gloss1 = gloss0.replace('·', '')
                         gloss_to_print = re.sub(r'\d', '', gloss1).strip()
                         gloss = gloss_to_print.strip('-').strip('–')
-                        print(f'Wyniki dla {gloss_color}{gloss_to_print}'.center(80))
+                        print(f'Wyniki dla {gloss_color}{gloss_to_print}{Fore.RESET}'.center(80))
                         print(f'  {gloss_color}{meaning_num.text}')
                     else:
                         print(f'  {gloss_color}{meaning_num.text}')
@@ -230,7 +232,7 @@ def rysuj_slownik(url):
                 print()
                 for pos in td.find_all(class_='runseg'):  # Rysuje części mowy
                     postring = pos.text.replace('', 'oo').replace('', 'oo').replace('', '′').replace('·', '')
-                    print(f'{pos_color}{postring}')
+                    print(f'{pos_color}{postring.strip()}')
                     czesci_mowy.append(postring.strip())
                 if not str(czesci_mowy).startswith('[]'):
                     print()
@@ -239,8 +241,11 @@ def rysuj_slownik(url):
                     etymologia.append(etym.text)
             if not str(etymologia).startswith('[]'):  # Aby przy hasłach bez etymologii czy części mowy nie było niepotrzebnych spacji
                 print()
+    except ConnectionError:
+        print(f'{error_color}Nie udało się połączyć ze słownikiem, sprawdź swoje połączenie i spróbuj ponownie')
+        skip_check = 1
     except Exception:
-        print('Coś poszło nie tak *_*')
+        print(f'{error_color}Coś poszło nie tak i nie jest to problem z połączeniem *_*')
         skip_check = 1
 
 
@@ -262,7 +267,7 @@ def ogarnij_zdanie(zdanie):
     else:
         if not config['bulk_add']:
             print(f'\n{error_color}Zdanie nie zawiera podanego hasła')
-            zdanie_check = input(f'{input_color}Czy dodać w takiej formie? [T/n]: ')
+            zdanie_check = input(f'{input_color}Czy dodać w takiej formie? [T/n]:{inputtext_color} ')
             if zdanie_check.lower() == 't' or zdanie_check.lower() == 'y' or zdanie_check.lower() == '1':
                 return zdanie
             elif zdanie_check.lower() == 'n' or zdanie_check.lower() == '0':
@@ -276,7 +281,7 @@ def ogarnij_zdanie(zdanie):
 
 def zdanie_input():
     if config['dodaj_wlasne_zdanie']:
-        zdanie = str(input(f'{input_color}Dodaj przykładowe zdanie: '))
+        zdanie = str(input(f'{input_color}Dodaj przykładowe zdanie:{inputtext_color} '))
         return zdanie
     return ' '
 
@@ -289,34 +294,41 @@ def input_func(in_put):
         return 0
     elif in_put == 'all':
         return -1
+    elif in_put.startswith('/'):
+        if config['ukryj_slowo_w_definicji']:
+            return in_put.replace(gloss, '...')\
+                .replace(gloss.lower(), '...')\
+                .replace(gloss.upper(), '...')\
+                .replace(gloss.capitalize(), '...')
+        return in_put
     return -2
 
 
 # Adekwatne pola input dla pól wyboru
 def disamb_input_syn():
     if config['dodaj_synonimy']:
-        wybor_disamb_syn = input(f'{input_color}Wybierz grupę synoniów: ')
+        wybor_disamb_syn = input(f'{input_color}Wybierz grupę synoniów:{inputtext_color} ')
         return input_func(wybor_disamb_syn), grupa_synonimow
     return 0, grupa_synonimow
 
 
 def disamb_input_przyklady():
     if config['dodaj_przyklady_synonimow']:
-        wybor_disamb_przyklady = input(f'{input_color}Wybierz grupę przykładów: ')
+        wybor_disamb_przyklady = input(f'{input_color}Wybierz grupę przykładów:{inputtext_color} ')
         return input_func(wybor_disamb_przyklady), grupa_przykladow
     return 0, grupa_przykladow
 
 
 def etymologia_input():
     if config['dodaj_etymologie']:
-        wybor_etymologii = input(f'{input_color}Wybierz etymologię: ')
+        wybor_etymologii = input(f'{input_color}Wybierz etymologię:{inputtext_color} ')
         return input_func(wybor_etymologii), etymologia
     return 0, etymologia
 
 
 def definicje_input():
     if config['dodaj_definicje']:
-        wybor_definicji = input(f'{input_color}\nWybierz definicję: ')
+        wybor_definicji = input(f'{input_color}\nWybierz definicję:{inputtext_color} ')
         return input_func(wybor_definicji), definicje
     return 0, definicje
 
@@ -324,11 +336,13 @@ def definicje_input():
 def czesci_mowy_input():
     global skip_check
     if config['dodaj_czesci_mowy']:
-        wybor_czesci_mowy = input(f'{input_color}Dołączyć części mowy? [1/0]: ')
+        wybor_czesci_mowy = input(f'{input_color}Dołączyć części mowy? [1/0]:{inputtext_color} ')
         if wybor_czesci_mowy.isnumeric() or wybor_czesci_mowy == '-1':
             return int(wybor_czesci_mowy)
         elif wybor_czesci_mowy == '' or wybor_czesci_mowy == '-s':
             return 0
+        elif wybor_czesci_mowy.startswith('/'):
+            return wybor_czesci_mowy
         else:
             skip_check = 1
             print(f'{Fore.LIGHTGREEN_EX}Pominięto dodawnie karty')
@@ -338,8 +352,10 @@ def czesci_mowy_input():
 # Bierze wybór z input_func i wydaje adekwatne informacje na kartę
 def choice_func(wybor, gloss_content, connector):
     global skip_check
-    if len(gloss_content) >= wybor > 0:
-        return gloss_content[int(wybor) - 1]
+    if isinstance(wybor, str):  # Nie podoba mi się przechodzenie przez ten if. Isinstance jest chyba najlepszym rozwiązaniem
+        return wybor.lstrip('/')
+    elif len(gloss_content) >= wybor > 0:
+        return gloss_content[wybor - 1]
     elif wybor > len(gloss_content) or wybor == -1:
         return connector.join(gloss_content)  # Pola z disambiguation nie potrzebują "<br>", bo nie są aż tak obszerne
     elif wybor == -2:
@@ -351,7 +367,9 @@ def choice_func(wybor, gloss_content, connector):
 
 def wybierz_czesci_mowy(wybor_czesci_mowy, connector):
     global skip_check
-    if wybor_czesci_mowy > 0 or wybor_czesci_mowy == -1:
+    if isinstance(wybor_czesci_mowy, str):
+        return wybor_czesci_mowy.lstrip('/')
+    elif wybor_czesci_mowy > 0 or wybor_czesci_mowy == -1:
         return connector.join(czesci_mowy)
     else:
         return ' '
@@ -393,16 +411,23 @@ def rysuj_synonimy(syn_soup):
 
 def disambiguator(url_synsearch):
     global skip_check_disamb
-    reqs_syn = requests.get(url_synsearch)
-    syn_soup = BeautifulSoup(reqs_syn.content, 'lxml')
-    no_word = syn_soup.find('h3')
-    if len(str(no_word)) == 48 or len(str(no_word)) == 117:
-        print(f'{error_color}\nNie znaleziono {gloss_color}{gloss} {error_color}na {Fore.RESET}WordNecie')
+    try:
+        reqs_syn = requests.get(url_synsearch)
+        syn_soup = BeautifulSoup(reqs_syn.content, 'lxml')
+        no_word = syn_soup.find('h3')
+        if len(str(no_word)) == 48 or len(str(no_word)) == 117:
+            print(f'{error_color}\nNie znaleziono {gloss_color}{gloss} {error_color}na {Fore.RESET}WordNecie')
+            skip_check_disamb = 1
+        else:
+            print(f'{delimit_color}--------------------------------------------------------------------------------')
+            print(f'{Fore.LIGHTWHITE_EX}{"WordNet".center(80)}\n')
+            rysuj_synonimy(syn_soup)
+    except ConnectionError:
+        print(f'{error_color}Nie udało się połączyć z WordNetem, sprawdź swoje połączenie i spróbuj ponownie')
         skip_check_disamb = 1
-    else:
-        print(f'{delimit_color}--------------------------------------------------------------------------------')
-        print(f'{Fore.LIGHTWHITE_EX}{"WordNet".center(80)}\n')
-        rysuj_synonimy(syn_soup)
+    except Exception:
+        print(f'{error_color}Coś poszło nie tak i nie jest to połączenie z połączeniem *_* ')
+        skip_check_disamb = 1
 
 
 # Tworzenie karty
@@ -510,4 +535,4 @@ try:
                 utworz_karte()
             break
 except KeyboardInterrupt:
-    print('\nZakończono')
+    print(f'{Fore.RESET}\nZakończono')  # Fore.RESET musi tu być, aby kolory z "inputtext" nie wchodziły

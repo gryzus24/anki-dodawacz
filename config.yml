@@ -15,13 +15,14 @@ etym_color: Fore.RESET
 gloss_color: Fore.CYAN
 index_color: Fore.LIGHTGREEN_EX
 input_color: Fore.RESET
+inputtext_color: Fore.RESET
 pokazuj_filtrowany_slownik: true
 pos_color: Fore.YELLOW
 psyn_color: Fore.RESET
 save_path: Karty_audio
 syn_color: Fore.YELLOW
 syndef_color: Fore.RESET
-synpos_color: Fore.LIGHTBLACK_EX
+synpos_color: Fore.RESET
 tworz_karte: true
 ukryj_slowo_w_definicji: true
 ukryj_slowo_w_disamb: true
