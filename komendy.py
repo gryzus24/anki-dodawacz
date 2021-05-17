@@ -1,6 +1,6 @@
-import yaml
 from colorama import Fore
 import colorama
+import yaml
 colorama.init(autoreset=True)
 
 BOLD = '\033[1m'
@@ -56,6 +56,7 @@ color_message = {'-syn-color': 'Kolor synonimów', '-index-color': 'Kolor index�
                  '-synpos-color': 'Kolor części mowy przy synonimach', '-syndef-color': 'Kolor definicji przy synonimach',
                  '-error-color': 'Kolor błędów', '-delimit-color': 'Kolor odkreśleń',
                  '-input-color': 'Kolor pól na input', '-inputtext-color': 'Kolor wpisywanego tekstu'}
+
 help_command = f"""{Fore.RESET}\n        Wpisz "--help-colors", aby wyświetlić konfigurację kolorów
 
     Po wpisaniu hasła w pole "Szukaj" rozpocznie się cykl dodawania karty
@@ -93,19 +94,19 @@ Wybieranie działa tak jak w definicjach, tylko mamy do wyboru dwa pola:
 
 {BOLD}Komendy (wpisywane w pole "Szukaj"):{END}
                     [{Fore.LIGHTGREEN_EX}włącza{Fore.RESET}/{Fore.LIGHTRED_EX}wyłącza{Fore.RESET}]
--pz on/off          dodawanie zdania           Aktualnie = {config['dodaj_wlasne_zdanie']}
--def on/off         dodawanie definicji        Aktualnie = {config['dodaj_definicje']}
--pos on/off         dodawnie części mowy       Aktualnie = {config['dodaj_czesci_mowy']}
--etym on/off        dodawanie etymologii       Aktualnie = {config['dodaj_etymologie']}
--disamb on/off      pokazywanie synonimów      Aktualnie = {config['disambiguation']}
--syn on/off         dodawanie synonimów        Aktualnie = {config['dodaj_synonimy']}
--psyn on/off        dodawanie przykładów       Aktualnie = {config['dodaj_przyklady_synonimow']}
--audio on/off       dodawanie audio            Aktualnie = {config['dodaj_audio']}\n
--all on/off         Zmienia wartość powyższych ustawień na True/False\n
--karty on/off       dodawanie kart             Aktualnie = {config['tworz_karte']}\n
+-pz on/off          dodawanie zdania
+-def on/off         dodawanie definicji
+-pos on/off         dodawnie części mowy
+-etym on/off        dodawanie etymologii
+-disamb on/off      pokazywanie synonimów
+-syn on/off         dodawanie synonimów
+-psyn on/off        dodawanie przykładów
+-audio on/off       dodawanie audio\n
+-all on/off         Zmienia wartość powyższych ustawień\n
+-karty on/off       dodawanie kart\n
 -fs on/off          filtrowanie numeracji
-                    podczas wyświetlania słownika      Aktualnie = {config['pokazuj_filtrowany_slownik']}\n
---audio-path" lub "--save-path":
+                    podczas wyświetlania słownika\n
+--audio-path lub --save-path:
  Umożliwia zmianę miejsca zapisu audio (domyślnie: "Karty_audio" w folderze z programem)
  Aby audio było bezpośrednio dodawane do Anki, zlokalizuj ścieżkę
  i wpisz/skopiuj ją w pole wyświetlone po wpisaniu komendy.\n
@@ -113,14 +114,13 @@ Wybieranie działa tak jak w definicjach, tylko mamy do wyboru dwa pola:
   "C:\\[Users]\\[Nazwa użytkownika]\\AppData\\Roaming\\Anki2\\[Nazwa użytkownika Anki]\\collection.media"
   (wpisz %appdata%)\n
  Na Linuxie:
-  "~/.local/share/Anki2/[Nazwa użytkownika Anki]/collection.media"\n
-               Aktualna ścieżka = {config['save_path']}
+  "~/.local/share/Anki2/[Nazwa użytkownika Anki]/collection.media"
 
--udef on/off         Niektóre definicje zawierają użycia słowa.            Aktualnie = {config['ukryj_slowo_w_definicji']}
-                     Ta opcja zamienia wszystkie użycia słowa na "..."\n
--upz on/off          Jak w definicjach tylko w dodanym zdaniu              Aktualnie = {config['ukryj_slowo_w_zdaniu']}  
--udisamb on/off      Ukrywa wystąpienie hasła w synonimach z WordNetu      Aktualnie = {config['ukryj_slowo_w_disamb']}\n
--bulk on/off         włącza/wyłącz funkcję masowego dodawania              Aktualnie = {config['bulk_add']}\n
+-udef on/off         Niektóre definicje zawierają użycia słowa.
+                     Ta opcja zamienia wszystkie użycia słowa na "..."
+-upz on/off          Jak w definicjach tylko w dodanym zdaniu
+-udisamb on/off      Ukrywa wystąpienie hasła w synonimach z WordNetu
+-bulk on/off         włącza/wyłącz funkcję masowego dodawania
 --delete-last lub
 --delete-recent      usuwa ostatnią dodaną kartę
 
@@ -131,14 +131,17 @@ Wartości, które mają wpływ na masowe dodawanie to:
 Disambiguation True/False,  Zdanie True/False
 na zmiany w sposobie masowego dodawania wpływa tylko Zdanie True/False
 
+--config-bulk    włącza szczegółową konfigurację masowego dodawanie
+                 gdzie można ustawić opcja dodawania definicji, części mowy,
+                 etymologii, synonimów i ich przykładów
+                 Wpisanie litery wychodzi z konfiguracji
+
 {BOLD}Szablon dla Zdanie = True:{END}           {BOLD}Szablon dla Zdanie = False:{END}
  "vicious"                            "vicious"
  "vicious man"                        "emerge"
  "emerge"                             " "
  "emergent nations"
- " "\n
-{Fore.LIGHTYELLOW_EX}UWAGA! {END}Aktualna wartość Zdania to: {config['dodaj_wlasne_zdanie']}
-\n"""
+ " "\n"""
 
 help_colors_command = f"""{Fore.RESET}\n  {BOLD}Dostępne komendy konfiguracji kolorów{END}
 
@@ -161,5 +164,5 @@ Każda komenda zmiany kolorów musi otrzymać kolor:
  -input-color        {input_color}pól na input {END}(tj. "Szukaj:" itd.)
  -inputtext-color    {inputtext_color}wpisywanego tekstu
  
- -colors           wyświetla dostępne kolory
+ -colors             wyświetla dostępne kolory
 \n"""
