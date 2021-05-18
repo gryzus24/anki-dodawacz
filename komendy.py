@@ -56,99 +56,122 @@ color_message = {'-syn-color': 'Kolor synonimów', '-index-color': 'Kolor index�
                  '-synpos-color': 'Kolor części mowy przy synonimach', '-syndef-color': 'Kolor definicji przy synonimach',
                  '-error-color': 'Kolor błędów', '-delimit-color': 'Kolor odkreśleń',
                  '-input-color': 'Kolor pól na input', '-inputtext-color': 'Kolor wpisywanego tekstu'}
-
-help_command = f"""{Fore.RESET}\n        Wpisz "--help-colors", aby wyświetlić konfigurację kolorów
-
-    Po wpisaniu hasła w pole "Szukaj" rozpocznie się cykl dodawania karty
+help_command = f"""{Fore.RESET}\nPo wpisaniu hasła w pole "Szukaj" rozpocznie się cykl dodawania karty
 
 {BOLD}Przy dodawaniu zdania:{END}
 Wpisz swoje własne przykładowe zdanie zawierające wyszukane hasło
- "-s"             pomija dodawanie zdania
+ -s      pomija dodawanie zdania
 
 {BOLD}Przy definicjach:{END}
-Aby wybrać definicję wpisz numer zielonego indeksu.\n
- np. "3"         dodaje trzecią definicję
- "0" lub "-s"    pomija dodawanie elementu
- "-1" lub "all"  dodaje wszystkie elementy
+Aby wybrać definicję wpisz numer zielonego indeksu.
+
+ np. 3           dodaje trzecią definicję
+ 0 lub -s        pomija dodawanie elementu
+ -1 lub all      dodaje wszystkie elementy
+
  Wpisanie litery pomija dodawanie karty
- 
+
  Aby dodać własną definicję, części mowy, etymologię czy synonimy
  zacznij wpisywanie od "/"
- Np. "/Moja definicja"
- 
+ np. "/dwa grzyby" spowoduje dodaniem "dwa grzyby" w pole definicji na karcie
+
 {BOLD}Przy częściach mowy:{END}
- "1"             dodaje wszystkie części mowy
- "0" lub "-s"    pomija dodawanie elementu
+ 1             dodaje wszystkie części mowy
+ 0 lub -s      pomija dodawanie elementu
+ 
  Wpisanie litery pomija dodawanie karty
 
 {BOLD}Przy etymologiach:{END}
 Przy większej ilości etymologii możemy sprecyzować wybór wpisując numer etymologii licząc od góry.
-lub wpisać "-1", aby dodać wszystkie dostępne etymologie.
- "0" lub "-s"    pomija dodawanie elementu
+lub wpisać -1, aby dodać wszystkie dostępne etymologie.
+ 0 lub -s      pomija dodawanie elementu
 
 {BOLD}Przy synonimach:{END}
 Synonimy wyświetlane są w grupach zawierających synonimy i przykłady.
-Wybieranie działa tak jak w definicjach, tylko mamy do wyboru dwa pola:
- - Grupę synonimów
- - Grupę przykładów
+Wybieranie działa tak jak w definicjach
+mamy do wyboru dwa pola:
+ - grupę synonimów
+ - grupę przykładów
 
-{BOLD}Komendy (wpisywane w pole "Szukaj"):{END}
-                    [{Fore.LIGHTGREEN_EX}włącza{Fore.RESET}/{Fore.LIGHTRED_EX}wyłącza{Fore.RESET}]
--pz on/off          dodawanie zdania
--def on/off         dodawanie definicji
--pos on/off         dodawnie części mowy
--etym on/off        dodawanie etymologii
--disamb on/off      pokazywanie synonimów
--syn on/off         dodawanie synonimów
--psyn on/off        dodawanie przykładów
--audio on/off       dodawanie audio\n
--all on/off         Zmienia wartość powyższych ustawień\n
--karty on/off       dodawanie kart\n
--fs on/off          filtrowanie numeracji
-                    podczas wyświetlania słownika\n
+{BOLD}Komendy dodawania:{END}
+Aby zmienić wartość opcji wpisz {BOLD}on/off{END} po komendzie
+np. "-pz off", "-disamb on" itd.
+
+{BOLD}[Komenda]    [włącza/wyłącza]         [Wartość]{END}
+-pz          dodawanie zdania           {config['dodaj_wlasne_zdanie']}
+-def         dodawanie definicji        {config['dodaj_definicje']}
+-pos         dodawnie części mowy       {config['dodaj_czesci_mowy']}
+-etym        dodawanie etymologii       {config['dodaj_etymologie']}
+-disamb      pokazywanie synonimów      {config['disambiguation']}
+-syn         dodawanie synonimów        {config['dodaj_synonimy']}
+-psyn        dodawanie przykładów       {config['dodaj_przyklady_synonimow']}
+-audio       dodawanie audio            {config['dodaj_audio']}
+
+-all         zmienia wartości powyższych ustawień
+
+-karty       dodawanie kart             {config['tworz_karte']}
+
 --audio-path lub --save-path:
  Umożliwia zmianę miejsca zapisu audio (domyślnie: "Karty_audio" w folderze z programem)
  Aby audio było bezpośrednio dodawane do Anki, zlokalizuj ścieżkę
- i wpisz/skopiuj ją w pole wyświetlone po wpisaniu komendy.\n
+ i wpisz/skopiuj ją w pole wyświetlone po wpisaniu komendy.
+
  Na Windowsie:
   "C:\\[Users]\\[Nazwa użytkownika]\\AppData\\Roaming\\Anki2\\[Nazwa użytkownika Anki]\\collection.media"
-  (wpisz %appdata%)\n
+  (wpisz %appdata%)
+
  Na Linuxie:
   "~/.local/share/Anki2/[Nazwa użytkownika Anki]/collection.media"
 
--udef on/off         Niektóre definicje zawierają użycia słowa.
-                     Ta opcja zamienia wszystkie użycia słowa na "..."
--upz on/off          Jak w definicjach tylko w dodanym zdaniu
--udisamb on/off      Ukrywa wystąpienie hasła w synonimach z WordNetu
--bulk on/off         włącza/wyłącz funkcję masowego dodawania
+Aktualna ścieżka zapisu audio: {config['save_path']}
+
+{BOLD}Misc komendy:{END}
+Ukrywanie hasła to zamiana wyszukiwanego słowa na "..."
+
+{BOLD}[Komenda]     [on/off]                            [Wartość]{END} 
+-udef         ukrywa hasło w definicjach            {config['ukryj_slowo_w_definicji']}
+-upz          ukrywa hasło w zdaniu                 {config['ukryj_slowo_w_zdaniu']}
+-udisamb      ukrywa hasło w synonimach             {config['ukryj_slowo_w_disamb']}
+-fs           filtrowanie numeracji w słowniku      {config['pokazuj_filtrowany_slownik']}
+-bulk         włącza/wyłącza masowe dodawanie       {config['bulk_add']}
+
 --delete-last lub
---delete-recent      usuwa ostatnią dodaną kartę
+--delete-recent      usuwa ostatnią dodawaną kartę
+
+--help-colors        wyświetla konfigurację kolorów
+--config-bulk        rozpoczyna konfigurację bulk
 
 {BOLD}Masowe dodawanie (bulk):{END}
-Masowe dodawanie pozwala na dodanie wielu kart na raz.
-Wystarczy skopiować tekst według szablonu i wkleić do Dodawacza.
+Bulk pozwala na dodawanie wielu kart na raz.
+Wystarczy skopiować tekst według szablonu i wkleić do dodawacza.
+
 Wartości, które mają wpływ na masowe dodawanie to:
-Disambiguation True/False,  Zdanie True/False
-na zmiany w sposobie masowego dodawania wpływa tylko Zdanie True/False
+"Disambiguation" i "Zdanie"
+na zmiany w sposobie masowego dodawania wpływa tylko "Zdanie"
 
---config-bulk    włącza szczegółową konfigurację masowego dodawanie
-                 gdzie można ustawić opcja dodawania definicji, części mowy,
-                 etymologii, synonimów i ich przykładów
-                 Wpisanie litery wychodzi z konfiguracji
-
+--config-bulk      włącza szczegółową konfigurację masowego dodawania
+                   gdzie można ustawić opcje dodawania definicji, części mowy,
+                   etymologii, synonimów i ich przykładów
+                   
+                   domyślna wartość dla wszystkich elementów to: 0
+                   
+                   Wpisanie litery wychodzi z konfiguracji
+                   i nie zapisuje wprowadzonych zmian
+                 
 {BOLD}Szablon dla Zdanie = True:{END}           {BOLD}Szablon dla Zdanie = False:{END}
  "vicious"                            "vicious"
  "vicious man"                        "emerge"
  "emerge"                             " "
  "emergent nations"
- " "\n"""
+ " "
+\n"""
 
 help_colors_command = f"""{Fore.RESET}\n  {BOLD}Dostępne komendy konfiguracji kolorów{END}
 
 Każda komenda zmiany kolorów musi otrzymać kolor:
  {BOLD}[Komenda] [kolor]{END}
- Np. "-syn-color lightblue"
-                    {BOLD}[Zmienia kolor]:{END}
+ np. "-syn-color lightblue", "-pos-color magenta" itd.
+                    {BOLD}[Zmienia kolor]{END}
  -def1-color         {def1_color}nieparzystych definicji{END}
  -def2-color         {def2_color}parzystych definicji{END}
  -pos-color          {pos_color}części mowy w słowniku{END}
@@ -162,7 +185,10 @@ Każda komenda zmiany kolorów musi otrzymać kolor:
  -error-color        {error_color}błędów{END}
  -delimit-color      {delimit_color}odkreśleń{END}
  -input-color        {input_color}pól na input {END}(tj. "Szukaj:" itd.)
- -inputtext-color    {inputtext_color}wpisywanego tekstu
- 
+ -inputtext-color    {inputtext_color}wpisywanego tekstu{END}
+
  -colors             wyświetla dostępne kolory
 \n"""
+
+# {eval(bool_colors[config['ukryj_slowo_w_definicji']])}{config['ukryj_slowo_w_definicji']}{END}
+# [{Fore.LIGHTGREEN_EX}włącza{Fore.RESET}/{Fore.LIGHTRED_EX}wyłącza{Fore.RESET}]

@@ -1,12 +1,14 @@
-from komendy import BOLD, END, help_command, help_colors_command
 from bs4 import BeautifulSoup
 from colorama import Fore
+import importlib
 import readline
 import requests
 import os.path
-import komendy
 import yaml
 import re
+
+import komendy as k
+from komendy import BOLD, END
 
 start = True
 readline.read_init_file()
@@ -42,7 +44,7 @@ def delete_last_card():
         with open('karty.txt', 'r') as read:
             lines = read.readlines()
         with open('karty.txt', 'w') as write:
-            deleted_line = lines.pop().replace('\n', '')  # Usuwa ostatnią linijkę
+            deleted_line = lines.pop().replace('\n', '')
             new_file = ''.join(lines)
             write.write(new_file)
         print(f'{Fore.LIGHTYELLOW_EX}Usunięto: \n{Fore.RESET}"{deleted_line[:64]}..."')
@@ -87,7 +89,7 @@ def config_bulk():
                 values_to_save.append(0)
                 print(f'{error_color}Podano nieobsługiwaną wartość\n{Fore.RESET}{input_msg} {error_color}zmieniona na: {Fore.RESET}0')
     except ValueError:
-        print(f'{error_color}Podano nieobsługiwany typ danych, opuszczam konfigurację\nWprowadzone zmiany nie zostaną zapisane')
+        print(f'{error_color}Opuszczam konfigurację\nWprowadzone zmiany nie zostaną zapisane')
         return None
 
     print(f'\n{Fore.LIGHTGREEN_EX}Konfiguracja masowego dodawania zapisana pomyślnie{Fore.RESET}')
@@ -106,7 +108,7 @@ def koloryfer(color):
 
 def pokaz_dostepne_kolory():
     print(f'{Fore.RESET}\nDostępne kolory to:')
-    for index, color in enumerate(komendy.colors, start=1):
+    for index, color in enumerate(k.colors, start=1):
         print(f'{koloryfer(color)}{color}', end=', ')
         if index == 4 or index == 8 or index == 12 or index == 16:
             print()
@@ -118,19 +120,19 @@ def kolory(komenda, wartosc):
     if 'light' in color.lower():
         color = color + '_EX'
     msg_color = eval(color)
-    print(f'{komendy.color_message[komenda]} ustawiony na: {msg_color}{wartosc}')
+    print(f'{k.color_message[komenda]} ustawiony na: {msg_color}{wartosc}')
     zapisuj_komendy(komenda=komenda.strip('-').replace('-', '_'), wartosc=color)
 
 
 def komendo(word):
     loc_word = word.lower() + ' '
     cmd_tuple = loc_word.split(' ')
-    if cmd_tuple[0] in komendy.search_commands:
-        if cmd_tuple[1] in komendy.commands_values:
-            komenda = komendy.search_commands[cmd_tuple[0]]
-            wartosc = komendy.commands_values[cmd_tuple[1]]
-            msg_color = eval(komendy.bool_colors[wartosc])
-            msg = komendy.commands_msg[cmd_tuple[0]]
+    if cmd_tuple[0] in k.search_commands:
+        if cmd_tuple[1] in k.commands_values:
+            komenda = k.search_commands[cmd_tuple[0]]
+            wartosc = k.commands_values[cmd_tuple[1]]
+            msg_color = eval(k.bool_colors[wartosc])
+            msg = k.commands_msg[cmd_tuple[0]]
             print(f'{msg}{msg_color}{wartosc}')
             zapisuj_komendy(komenda, wartosc)
         else:
@@ -138,9 +140,10 @@ def komendo(word):
     elif loc_word == '-colors ':
         pokaz_dostepne_kolory()
     elif loc_word == '--help ' or loc_word == '-h ':
-        print(help_command)
+        importlib.reload(k)  # Aby nie trzeba było restartować programu, żeby zobaczyć aktualny stan configu
+        print(k.help_command)
     elif loc_word == '--help-colors ' or loc_word == '--help-color ':
-        print(help_colors_command)
+        print(k.help_colors_command)
     elif loc_word == '--delete-last ' or loc_word == '--delete-recent ':
         delete_last_card()
     elif loc_word == '--config-bulk ':
@@ -149,8 +152,8 @@ def komendo(word):
         save_path = str(input(f'{input_color}Wprowadź ścieżkę zapisu audio:{inputtext_color} '))
         print(f'Pliki audio będą zapisywane w: "{save_path}"')
         zapisuj_komendy(komenda='save_path', wartosc=save_path)
-    elif cmd_tuple[0] in komendy.color_commands:
-        if cmd_tuple[1] in komendy.colors:
+    elif cmd_tuple[0] in k.color_commands:
+        if cmd_tuple[1] in k.colors:
             komenda = cmd_tuple[0]
             wartosc = cmd_tuple[1]
             kolory(komenda, wartosc)
