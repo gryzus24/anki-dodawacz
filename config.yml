@@ -1,4 +1,6 @@
 bulk_add: false
+bulk_free_def: false
+bulk_free_syn: false
 def1_color: Fore.RESET
 def2_color: Fore.RESET
 def_bulk: 0
@@ -10,7 +12,7 @@ dodaj_definicje: true
 dodaj_etymologie: true
 dodaj_przyklady_synonimow: true
 dodaj_synonimy: true
-dodaj_wlasne_zdanie: false
+dodaj_wlasne_zdanie: true
 error_color: Fore.LIGHTRED_EX
 etym_bulk: 0
 etym_color: Fore.RESET

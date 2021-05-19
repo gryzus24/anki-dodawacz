@@ -1,3 +1,4 @@
+from itertools import zip_longest
 from bs4 import BeautifulSoup
 from colorama import Fore
 import importlib
@@ -12,6 +13,7 @@ from komendy import BOLD, END
 
 start = True
 readline.read_init_file()
+requests_session = requests.Session()
 
 with open("config.yml", "r") as f:
     config = yaml.load(f, Loader=yaml.Loader)
@@ -57,7 +59,7 @@ def delete_last_card():
 
 
 # Komendy i input słowa
-def zapisuj_komendy(komenda, wartosc):
+def save_commands(komenda, wartosc):
     if komenda == '-all':
         config['disambiguation'] = wartosc
         config['dodaj_synonimy'] = wartosc
@@ -73,11 +75,13 @@ def zapisuj_komendy(komenda, wartosc):
         yaml.dump(config, conf_file)
 
 
+input_list = ['Wartość dla definicji', 'Wartość dla części mowy',
+              'Wartość dla etymologii', 'Wartość dla synonimów',
+              'Wartość dla przykładów synonimów']
+bulk_cmds = ['def_bulk', 'pos_bulk', 'etym_bulk', 'syn_bulk', 'psyn_bulk']
+
+
 def config_bulk():
-    input_list = ['Wartość dla definicji', 'Wartość dla części mowy',
-                  'Wartość dla etymologii', 'Wartość dla synonimów',
-                  'Wartość dla przykładów synonimów']
-    bulk_cmds = ['def_bulk', 'pos_bulk', 'etym_bulk', 'syn_bulk', 'psyn_bulk']
     values_to_save = []
     try:
         for input_msg, command in zip(input_list, bulk_cmds):
@@ -95,8 +99,32 @@ def config_bulk():
     print(f'\n{Fore.LIGHTGREEN_EX}Konfiguracja masowego dodawania zapisana pomyślnie{Fore.RESET}')
     for cmd, value_ts, input_mesg in zip(bulk_cmds, values_to_save, input_list):
         print(f'{input_mesg}: {value_ts}')
-        zapisuj_komendy(komenda=cmd, wartosc=value_ts)
+        save_commands(komenda=cmd, wartosc=value_ts)
     print()
+
+
+def print_conf():
+    print(f'\n{BOLD}[config komend]        [config bulk]{END}')
+    for command, blkcmd in zip_longest(k.search_commands, bulk_cmds, fillvalue=''):
+        if command == '-all':
+            continue
+        if command == '-fs':
+            print(f'\n--audio-path: {config["save_path"]}\n\n{BOLD}[config misc]{END}')
+        config_cmd = config[f'{k.search_commands[command]}']
+        color = eval(k.bool_colors[config_cmd])
+        if blkcmd == '':
+            blk_conf = ''
+        else:
+            blk_conf = config[blkcmd]
+            if str(blk_conf).isnumeric():  # Aby wartość z minusem była left-aligned
+                blk_conf = ' ' + str(blk_conf)
+            blk_conf = blk_conf
+        if command == '-bulk':
+            print()
+            command = '-bulk'
+        print('{:10s} {}{:12s}{}{:11s}{:}'
+              .format(command, color, str(config_cmd), Fore.RESET, blkcmd, blk_conf))
+    print('\nkonfiguracja kolorów: --help-colors\n')
 
 
 def koloryfer(color):
@@ -121,7 +149,7 @@ def kolory(komenda, wartosc):
         color = color + '_EX'
     msg_color = eval(color)
     print(f'{k.color_message[komenda]} ustawiony na: {msg_color}{wartosc}')
-    zapisuj_komendy(komenda=komenda.strip('-').replace('-', '_'), wartosc=color)
+    save_commands(komenda=komenda.strip('-').replace('-', '_'), wartosc=color)
 
 
 def komendo(word):
@@ -134,7 +162,7 @@ def komendo(word):
             msg_color = eval(k.bool_colors[wartosc])
             msg = k.commands_msg[cmd_tuple[0]]
             print(f'{msg}{msg_color}{wartosc}')
-            zapisuj_komendy(komenda, wartosc)
+            save_commands(komenda, wartosc)
         else:
             print(f'{error_color}Nieprawidłowa wartość{Fore.RESET}\nUżyj "{cmd_tuple[0]} [on/off]"')
     elif loc_word == '-colors ':
@@ -148,10 +176,12 @@ def komendo(word):
         delete_last_card()
     elif loc_word == '--config-bulk ':
         config_bulk()
+    elif loc_word == '-conf ' or loc_word == '-config ' or loc_word == '-configuration ':
+        print_conf()
     elif loc_word == '--audio-path ' or loc_word == '--save-path ':
         save_path = str(input(f'{input_color}Wprowadź ścieżkę zapisu audio:{inputtext_color} '))
         print(f'Pliki audio będą zapisywane w: "{save_path}"')
-        zapisuj_komendy(komenda='save_path', wartosc=save_path)
+        save_commands(komenda='save_path', wartosc=save_path)
     elif cmd_tuple[0] in k.color_commands:
         if cmd_tuple[1] in k.colors:
             komenda = cmd_tuple[0]
@@ -180,7 +210,7 @@ def get_audio(audio_link, audio_end):
     audiofile_name = audio_end + '.wav'
     try:
         with open(os.path.join(config['save_path'], audiofile_name), 'wb') as file:
-            response = requests.get(audio_link)
+            response = requests_session.get(audio_link)
             file.write(response.content)
         return f'[sound:{audiofile_name}]'
     except Exception:
@@ -192,8 +222,8 @@ Aktualna ścieżka zapisu audio to {Fore.RESET}"{config['save_path']}"
 
 def search_for_audio(url):
     try:
-        reqs = requests.get(url)
-        soup = BeautifulSoup(reqs.content, 'lxml')
+        reqs = requests_session.get(url)
+        soup = BeautifulSoup(reqs.content, 'lxml', from_encoding='utf-8')
         audio = soup.find('a', {'target': '_blank'}).get('href')
         if audio == 'http://www.hmhco.com':
             print(f"""{error_color}Hasło nie posiada pliku audio!
@@ -206,7 +236,7 @@ Karta zostanie dodana bez audio\n""")
             audio_link += audio
             return get_audio(audio_link, audio_end)
     except Exception:
-        print(f'{error_color}Wystąpił błąd podczas szukania pliku audio')
+        print(f'{error_color}Wystąpił problem podczas szukania pliku audio')
 
 
 # Rysowanie słownika AHD
@@ -222,8 +252,8 @@ def rysuj_slownik(url):
     global skip_check
     try:
         gloss_index = 0
-        reqs = requests.get(url)
-        soup = BeautifulSoup(reqs.content, 'lxml')
+        reqs = requests_session.get(url)
+        soup = BeautifulSoup(reqs.content, 'lxml', from_encoding='utf-8')
         word_check = soup.find_all(class_=('ds-list', 'sds-single', 'ds-single', 'ds-list'))
         indexing = 0
         if len(word_check) == 0:
@@ -330,7 +360,7 @@ def input_func(in_put):
             return in_put.replace(gloss, '...')\
                 .replace(gloss.lower(), '...')\
                 .replace(gloss.upper(), '...')\
-                .replace(gloss.capitalize(), '...')
+                .replace(gloss.capitalize(), '...')  # To jest szybsze niż regex i obejmuje wszystkie sensowne sytuacje
         return in_put
     return -2
 
@@ -443,15 +473,14 @@ def rysuj_synonimy(syn_soup):
 def disambiguator(url_synsearch):
     global skip_check_disamb
     try:
-        reqs_syn = requests.get(url_synsearch)
-        syn_soup = BeautifulSoup(reqs_syn.content, 'lxml')
+        reqs_syn = requests_session.get(url_synsearch)
+        syn_soup = BeautifulSoup(reqs_syn.content, 'lxml', from_encoding='utf-8')
         no_word = syn_soup.find('h3')
         if len(str(no_word)) == 48 or len(str(no_word)) == 117:
             print(f'{error_color}\nNie znaleziono {gloss_color}{gloss} {error_color}na {Fore.RESET}WordNecie')
             skip_check_disamb = 1
         else:
-            print(f'{delimit_color}-------------------------------------------------------------------------------')
-            print(f'{Fore.LIGHTWHITE_EX}{"WordNet".center(79)}\n')
+            print(f'\n{Fore.LIGHTWHITE_EX}{"WordNet".center(79)}\n')
             rysuj_synonimy(syn_soup)
     except ConnectionError:
         print(f'{error_color}Nie udało się połączyć z WordNetem, sprawdź swoje połączenie i spróbuj ponownie')
@@ -552,15 +581,22 @@ try:
                         disambiguation = disamb_synonimy + '<br>' + disamb_przyklady
                     else:
                         disambiguation = disamb_synonimy + disamb_przyklady
+
             if config['tworz_karte'] and config['bulk_add']:
-                definicje = choice_func(wybor=config['def_bulk'], gloss_content=definicje, connector='<br>')
+                zdanie = ogarnij_zdanie(zdanie_input())  # Aby wyłączyć dodawanie zdania w bulk wystarczy -pz off
+                if config['bulk_free_def']:
+                    definicje = choice_func(*definicje_input(), connector=' ')
+                else:
+                    definicje = choice_func(wybor=config['def_bulk'], gloss_content=definicje, connector='<br>')
                 czesci_mowy = wybierz_czesci_mowy(wybor_czesci_mowy=config['pos_bulk'], connector=' | ')
                 etymologia = choice_func(wybor=config['etym_bulk'], gloss_content=etymologia, connector='<br>')
                 if config['disambiguation']:
-                    disambiguator(url_synsearch='http://wordnetweb.princeton.edu/perl/webwn?s=' + word)
-                    disamb_synonimy = choice_func(wybor=config['syn_bulk'], gloss_content=grupa_synonimow, connector=' ')
+                    if config['bulk_free_syn']:
+                        disamb_synonimy = choice_func(*disamb_input_syn(), connector=' ')
+                    else:
+                        disamb_synonimy = choice_func(wybor=config['syn_bulk'], gloss_content=grupa_synonimow, connector=' ')
                     disamb_przyklady = choice_func(wybor=config['psyn_bulk'], gloss_content=grupa_przykladow, connector=' ')
-                zdanie = ogarnij_zdanie(zdanie_input())
+
             if skip_check == 0 and config['tworz_karte']:
                 wyswietl_karte()
                 utworz_karte()

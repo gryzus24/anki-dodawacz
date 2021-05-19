@@ -25,23 +25,27 @@ input_color = eval(config['input_color'])
 inputtext_color = eval(config['inputtext_color'])
 
 commands_msg = {
-                '-def': 'Dodawanie definicji: ', '-audio': 'Dodawanie audio: ', '--audio-path': 'Ścieżka zapisu audio: ',
+                '-def': 'Dodawanie definicji: ', '--audio-path': 'Ścieżka zapisu audio: ',
                 '-etym': 'Dodawanie etymologii: ', '-pos': 'Dodawanie części mowy: ', '-fs': 'Filtrowany słownik: ',
                 '-all': 'Dodawanie wszystkiego: ', '-karty': 'Tworzenie kart: ', '-pz': 'Dodawanie zdania: ',
                 '-udef': 'Ukrywanie słowa w definicjach: ', '-upz': 'Ukrywanie słowa w zdaniu: ',
                 '-udisamb': 'Ukrywanie słowa w disamb: ', '-disamb': 'Disambiguation: ', '-syn': 'Dodawanie synonimów: ',
-                '-psyn': 'Dodawanie przykładów synonimów: ', '-bulk': 'Masowe dodawanie: '
+                '-psyn': 'Dodawanie przykładów synonimów: ', '-bulk': 'Masowe dodawanie: ', '-bulkfdef': 'Swobodne masowe dodawanie definicji: ',
+                '-bulkfsyn': 'Swobodne masowe dodawanie synonimów: '
 }
 commands_values = {
                    'on': True, 'off': False, 'true': True, 'false': False, '1': True, '0': False
 }
+
+
 search_commands = {
-                   '-def': 'dodaj_definicje', '-audio': 'dodaj_audio',
-                   '-etym': 'dodaj_etymologie', '-pos': 'dodaj_czesci_mowy', '-fs': 'pokazuj_filtrowany_slownik',
-                   '-all': '-all', '-karty': 'tworz_karte', '-pz': 'dodaj_wlasne_zdanie',
-                   '-udef': 'ukryj_slowo_w_definicji', '-upz': 'ukryj_slowo_w_zdaniu', '-udisamb': 'ukryj_slowo_w_disamb',
-                   '-disamb': 'disambiguation', '-syn': 'dodaj_synonimy', '-psyn': 'dodaj_przyklady_synonimow',
-                   '-bulk': 'bulk_add'
+                   '-pz': 'dodaj_wlasne_zdanie', '-def': 'dodaj_definicje', '-pos': 'dodaj_czesci_mowy',
+                   '-etym': 'dodaj_etymologie', '-audio': 'dodaj_audio', '-disamb': 'disambiguation',
+                   '-syn': 'dodaj_synonimy', '-psyn': 'dodaj_przyklady_synonimow', '-karty': 'tworz_karte',
+                   '-bulk': 'bulk_add', '-bulkfdef': 'bulk_free_def', '-bulkfsyn': 'bulk_free_syn',
+                   '-fs': 'pokazuj_filtrowany_slownik',
+                   '-all': '-all',
+                   '-upz': 'ukryj_slowo_w_zdaniu', '-udef': 'ukryj_slowo_w_definicji', '-udisamb': 'ukryj_slowo_w_disamb',
 }
 bool_colors = {False: 'Fore.LIGHTRED_EX', True: 'Fore.LIGHTGREEN_EX'}
 colors = ('black', 'red', 'green', 'yellow', 'blue', 'magenta', 'cyan', 'white',
@@ -56,6 +60,7 @@ color_message = {'-syn-color': 'Kolor synonimów', '-index-color': 'Kolor index�
                  '-synpos-color': 'Kolor części mowy przy synonimach', '-syndef-color': 'Kolor definicji przy synonimach',
                  '-error-color': 'Kolor błędów', '-delimit-color': 'Kolor odkreśleń',
                  '-input-color': 'Kolor pól na input', '-inputtext-color': 'Kolor wpisywanego tekstu'}
+
 help_command = f"""{Fore.RESET}\nPo wpisaniu hasła w pole "Szukaj" rozpocznie się cykl dodawania karty
 
 {BOLD}Przy dodawaniu zdania:{END}
@@ -128,17 +133,18 @@ Aktualna ścieżka zapisu audio: {config['save_path']}
 {BOLD}Misc komendy:{END}
 Ukrywanie hasła to zamiana wyszukiwanego słowa na "..."
 
-{BOLD}[Komenda]     [on/off]                            [Wartość]{END} 
+{BOLD}[Komenda]     [on/off]                            [Wartość]{END}
+-fs           filtrowanie numeracji w słowniku      {config['pokazuj_filtrowany_slownik']}
 -udef         ukrywa hasło w definicjach            {config['ukryj_slowo_w_definicji']}
 -upz          ukrywa hasło w zdaniu                 {config['ukryj_slowo_w_zdaniu']}
 -udisamb      ukrywa hasło w synonimach             {config['ukryj_slowo_w_disamb']}
--fs           filtrowanie numeracji w słowniku      {config['pokazuj_filtrowany_slownik']}
 -bulk         włącza/wyłącza masowe dodawanie       {config['bulk_add']}
 
 --delete-last lub
 --delete-recent      usuwa ostatnią dodawaną kartę
 
 --help-colors        wyświetla konfigurację kolorów
+-colors              wyświetla dostępne kolory
 --config-bulk        rozpoczyna konfigurację bulk
 
 {BOLD}Masowe dodawanie (bulk):{END}
@@ -149,46 +155,56 @@ Wartości, które mają wpływ na masowe dodawanie to:
 "Disambiguation" i "Zdanie"
 na zmiany w sposobie masowego dodawania wpływa tylko "Zdanie"
 
---config-bulk      włącza szczegółową konfigurację masowego dodawania
-                   gdzie można ustawić opcje dodawania definicji, części mowy,
-                   etymologii, synonimów i ich przykładów
+--config-bulk     włącza szczegółową konfigurację masowego dodawania
+                  gdzie można ustawić opcje dodawania definicji, części mowy,
+                  etymologii, synonimów i ich przykładów
+                
+                  domyślna wartość dla wszystkich elementów to: 0
+                
+                  wpisanie litery wychodzi z konfiguracji
+                  i nie zapisuje wprowadzonych zmian
+
+-bulkfdef         włącza swobodne masowe dodawanie definicji
+                  czyli dla każdego hasła musimy sami sprecyzować wybór definicji
+                  możemy dodawać własne definicje używając "/"
                    
-                   domyślna wartość dla wszystkich elementów to: 0
-                   
-                   Wpisanie litery wychodzi z konfiguracji
-                   i nie zapisuje wprowadzonych zmian
-                 
-{BOLD}Szablon dla Zdanie = True:{END}           {BOLD}Szablon dla Zdanie = False:{END}
- "vicious"                            "vicious"
- "vicious man"                        "emerge"
- "emerge"                             " "
- "emergent nations"
- " "
+-bulkfsyn         włącza swobodne masowe dodawanie synonimów
+
+{BOLD}Szablon dla masowego dodawania:{END}
+Aby rozpocząć masowe dodawanie należy wkleić listę elementów oddzielonych
+nową linią według szablonu (razem ze spacją)
+[słowo]      <---  musi zostać podane, aby rozpocząć dodawanie
+[zdanie]     <---  zależy od -pz
+[definicja]  <---  zależy od --bulk-free-def
+[synonimy]   <---  zależy od --bulk-free-syn
+...
+[ ]          <---  spacja, aby zaznaczyć koniec dodawania
+
+{BOLD}Przykładowy szablon dla -pz on, --bulk-free-def off, --bulk-free-syn on{END}
+"concede"
+"/she conceded reluctantly"
+"/concede, profess, confess"
 \n"""
 
 help_colors_command = f"""{Fore.RESET}\n  {BOLD}Dostępne komendy konfiguracji kolorów{END}
 
 Każda komenda zmiany kolorów musi otrzymać kolor:
- {BOLD}[Komenda] [kolor]{END}
- np. "-syn-color lightblue", "-pos-color magenta" itd.
+{BOLD}[Komenda] [kolor]{END}
+np. "-syn-color lightblue", "-pos-color magenta" itd.
                     {BOLD}[Zmienia kolor]{END}
- -def1-color         {def1_color}nieparzystych definicji{END}
- -def2-color         {def2_color}parzystych definicji{END}
- -pos-color          {pos_color}części mowy w słowniku{END}
- -etym-color         {etym_color}etymologii w słowniku{END}
- -syn-color          {syn_color}synonimów na WordNecie{END}
- -psyn-color         {psyn_color}przykładów pod synonimami{END}
- -syndef-color       {syndef_color}definicji przy synonimach{END}
- -synpos-color       {synpos_color}części mowy przy synonimach{END}
- -index-color        {index_color}indeksów w słowniku{END}
- -gloss-color        {gloss_color}wyszukanego hasła w słowniku{END}
- -error-color        {error_color}błędów{END}
- -delimit-color      {delimit_color}odkreśleń{END}
- -input-color        {input_color}pól na input {END}(tj. "Szukaj:" itd.)
- -inputtext-color    {inputtext_color}wpisywanego tekstu{END}
+-def1-color         {def1_color}nieparzystych definicji{END}
+-def2-color         {def2_color}parzystych definicji{END}
+-pos-color          {pos_color}części mowy w słowniku{END}
+-etym-color         {etym_color}etymologii w słowniku{END}
+-syn-color          {syn_color}synonimów na WordNecie{END}
+-psyn-color         {psyn_color}przykładów pod synonimami{END}
+-syndef-color       {syndef_color}definicji przy synonimach{END}
+-synpos-color       {synpos_color}części mowy przy synonimach{END}
+-index-color        {index_color}indeksów w słowniku{END}
+-gloss-color        {gloss_color}wyszukanego hasła w słowniku{END}
+-error-color        {error_color}błędów{END}
+-delimit-color      {delimit_color}odkreśleń{END}
+-input-color        {input_color}pól na input {END}(tj. "Szukaj:" itd.)
+-inputtext-color    {inputtext_color}wpisywanego tekstu{END}
 
- -colors             wyświetla dostępne kolory
-\n"""
-
-# {eval(bool_colors[config['ukryj_slowo_w_definicji']])}{config['ukryj_slowo_w_definicji']}{END}
-# [{Fore.LIGHTGREEN_EX}włącza{Fore.RESET}/{Fore.LIGHTRED_EX}wyłącza{Fore.RESET}]
+-colors             wyświetla dostępne kolory\n"""
