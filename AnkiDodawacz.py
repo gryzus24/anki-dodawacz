@@ -1,4 +1,3 @@
-import sys
 from itertools import zip_longest
 from bs4 import BeautifulSoup
 from colorama import Fore
@@ -6,6 +5,7 @@ import importlib
 import requests
 import os.path
 import yaml
+import sys
 import re
 
 import komendy as k

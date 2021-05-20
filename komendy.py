@@ -1,10 +1,16 @@
+import sys
+
 from colorama import Fore
 import colorama
 import yaml
 colorama.init(autoreset=True)
 
-BOLD = '\033[1m'
-END = '\033[0m'
+if sys.platform.startswith('linux'):
+    BOLD = '\033[1m'
+    END = '\033[0m'
+else:
+    BOLD = ''
+    END = ''
 
 with open("config.yml", "r") as readconfig:
     config = yaml.load(readconfig, Loader=yaml.Loader)
