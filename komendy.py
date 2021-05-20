@@ -3,6 +3,7 @@ import colorama
 import yaml
 import sys
 
+# Nie może być True, bo na windowsie nie można tak po prostu pokolorować pól na input, trzeba użyć print
 colorama.init(autoreset=False)
 if sys.platform.startswith('linux'):
     BOLD = '\033[1m'

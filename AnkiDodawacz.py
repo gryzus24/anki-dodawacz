@@ -107,12 +107,12 @@ def config_bulk():
 
 
 def print_config():
-    print(f'\n{BOLD}[config komend]        [config bulk]{END}')
+    print(f'{Fore.RESET}\n{BOLD}[config komend]        [config bulk]{END}')
     for command, blkcmd in zip_longest(k.search_commands, bulk_cmds, fillvalue=''):
         if command == '-all':
             continue
         if command == '-fs':
-            print(f'\n--audio-path: {config["save_path"]}\n\n{BOLD}[config misc]{END}')
+            print(f'{Fore.RESET}\n--audio-path: {config["save_path"]}\n\n{BOLD}[config misc]{END}')
         config_cmd = config[f'{k.search_commands[command]}']
         color = eval(k.bool_colors[config_cmd])
         blk_conf = config.get(blkcmd, '')
@@ -121,8 +121,8 @@ def print_config():
         blk_conf = blk_conf
         if command == '-bulk':
             print()
-        print('{:10s} {}{:12s}{}{:11s}{:}'
-              .format(command, color, str(config_cmd), Fore.RESET, blkcmd, blk_conf))
+        print('{}{:10s} {}{:12s}{}{:11s}{:}'
+              .format(Fore.RESET, command, color, str(config_cmd), Fore.RESET, blkcmd, blk_conf))
     print('\nkonfiguracja kolorów: --help-colors\n')
 
 
@@ -147,7 +147,7 @@ def kolory(komenda, wartosc):
     if 'light' in color.lower():
         color = color + '_EX'
     msg_color = eval(color)
-    print(f'{k.color_message[komenda]} ustawiony na: {msg_color}{wartosc}{Fore.RESET}')
+    print(f'{Fore.RESET}{k.color_message[komenda]} ustawiony na: {msg_color}{wartosc}{Fore.RESET}')
     save_commands(komenda=komenda.strip('-').replace('-', '_'), wartosc=color)
 
 
@@ -160,7 +160,7 @@ def komendo(word):
             wartosc = k.commands_values[cmd_tuple[1]]
             msg_color = eval(k.bool_colors[wartosc])
             msg = k.commands_msg[cmd_tuple[0]]
-            print(f'{msg}{msg_color}{wartosc}')
+            print(f'{Fore.RESET}{msg}{msg_color}{wartosc}{Fore.RESET}')
             save_commands(komenda, wartosc)
         else:
             print(f'{error_color}Nieprawidłowa wartość{Fore.RESET}\nUżyj "{cmd_tuple[0]} [on/off]"{Fore.RESET}')
