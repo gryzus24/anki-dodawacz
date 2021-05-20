@@ -1,10 +1,9 @@
-import sys
-
 from colorama import Fore
 import colorama
 import yaml
-colorama.init(autoreset=True)
+import sys
 
+colorama.init(autoreset=False)
 if sys.platform.startswith('linux'):
     BOLD = '\033[1m'
     END = '\033[0m'
@@ -195,19 +194,19 @@ Każda komenda zmiany kolorów musi otrzymać kolor:
 {BOLD}[Komenda] [kolor]{END}
 np. "-syn-color lightblue", "-pos-color magenta" itd.
                     {BOLD}[Zmienia kolor]{END}
--def1-color         {def1_color}nieparzystych definicji{END}
--def2-color         {def2_color}parzystych definicji{END}
--pos-color          {pos_color}części mowy w słowniku{END}
--etym-color         {etym_color}etymologii w słowniku{END}
--syn-color          {syn_color}synonimów na WordNecie{END}
--psyn-color         {psyn_color}przykładów pod synonimami{END}
--syndef-color       {syndef_color}definicji przy synonimach{END}
--synpos-color       {synpos_color}części mowy przy synonimach{END}
--index-color        {index_color}indeksów w słowniku{END}
--gloss-color        {gloss_color}wyszukanego hasła w słowniku{END}
--error-color        {error_color}błędów{END}
--delimit-color      {delimit_color}odkreśleń{END}
--input-color        {input_color}pól na input {END}(tj. "Szukaj:" itd.)
--inputtext-color    {inputtext_color}wpisywanego tekstu{END}
+-def1-color         {def1_color}nieparzystych definicji{Fore.RESET}
+-def2-color         {def2_color}parzystych definicji{Fore.RESET}
+-pos-color          {pos_color}części mowy w słowniku{Fore.RESET}
+-etym-color         {etym_color}etymologii w słowniku{Fore.RESET}
+-syn-color          {syn_color}synonimów na WordNecie{Fore.RESET}
+-psyn-color         {psyn_color}przykładów pod synonimami{Fore.RESET}
+-syndef-color       {syndef_color}definicji przy synonimach{Fore.RESET}
+-synpos-color       {synpos_color}części mowy przy synonimach{Fore.RESET}
+-index-color        {index_color}indeksów w słowniku{Fore.RESET}
+-gloss-color        {gloss_color}wyszukanego hasła w słowniku{Fore.RESET}
+-error-color        {error_color}błędów{Fore.RESET}
+-delimit-color      {delimit_color}odkreśleń{Fore.RESET}
+-input-color        {input_color}pól na input {Fore.RESET}(tj. "Szukaj:" itd.)
+-inputtext-color    {inputtext_color}wpisywanego tekstu{Fore.RESET}
 
 -colors             wyświetla dostępne kolory\n"""
