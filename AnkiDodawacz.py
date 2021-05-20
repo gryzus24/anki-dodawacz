@@ -1,8 +1,8 @@
+import sys
 from itertools import zip_longest
 from bs4 import BeautifulSoup
 from colorama import Fore
 import importlib
-import readline
 import requests
 import os.path
 import yaml
@@ -10,6 +10,9 @@ import re
 
 import komendy as k
 from komendy import BOLD, END
+
+if sys.platform.startswith('linux'):
+    import readline
 
 readline.read_init_file()  # Zapisywanie historii komend
 requests_session = requests.Session()
