@@ -11,8 +11,7 @@ import re
 import komendy as k
 from komendy import BOLD, END
 
-start = True
-readline.read_init_file()
+readline.read_init_file()  # Zapisywanie historii komend
 requests_session = requests.Session()
 
 with open("config.yml", "r") as f:
@@ -61,13 +60,13 @@ def delete_last_card():
 # Komendy i input słowa
 def save_commands(komenda, wartosc):
     if komenda == '-all':
-        config['disambiguation'] = wartosc
-        config['dodaj_synonimy'] = wartosc
         config['dodaj_przyklady_synonimow'] = wartosc
         config['dodaj_wlasne_zdanie'] = wartosc
         config['dodaj_czesci_mowy'] = wartosc
         config['dodaj_etymologie'] = wartosc
         config['dodaj_definicje'] = wartosc
+        config['disambiguation'] = wartosc
+        config['dodaj_synonimy'] = wartosc
         config['dodaj_audio'] = wartosc
     else:
         config[komenda] = wartosc
@@ -103,7 +102,7 @@ def config_bulk():
     print()
 
 
-def print_conf():
+def print_config():
     print(f'\n{BOLD}[config komend]        [config bulk]{END}')
     for command, blkcmd in zip_longest(k.search_commands, bulk_cmds, fillvalue=''):
         if command == '-all':
@@ -112,16 +111,12 @@ def print_conf():
             print(f'\n--audio-path: {config["save_path"]}\n\n{BOLD}[config misc]{END}')
         config_cmd = config[f'{k.search_commands[command]}']
         color = eval(k.bool_colors[config_cmd])
-        if blkcmd == '':
-            blk_conf = ''
-        else:
-            blk_conf = config[blkcmd]
-            if str(blk_conf).isnumeric():  # Aby wartość z minusem była left-aligned
-                blk_conf = ' ' + str(blk_conf)
-            blk_conf = blk_conf
+        blk_conf = config.get(blkcmd, '')
+        if str(blk_conf).isnumeric():  # Aby wartość z minusem była left-aligned
+            blk_conf = ' ' + str(blk_conf)
+        blk_conf = blk_conf
         if command == '-bulk':
             print()
-            command = '-bulk'
         print('{:10s} {}{:12s}{}{:11s}{:}'
               .format(command, color, str(config_cmd), Fore.RESET, blkcmd, blk_conf))
     print('\nkonfiguracja kolorów: --help-colors\n')
@@ -177,16 +172,14 @@ def komendo(word):
     elif loc_word == '--config-bulk ':
         config_bulk()
     elif loc_word == '-conf ' or loc_word == '-config ' or loc_word == '-configuration ':
-        print_conf()
+        print_config()
     elif loc_word == '--audio-path ' or loc_word == '--save-path ':
         save_path = str(input(f'{input_color}Wprowadź ścieżkę zapisu audio:{inputtext_color} '))
         print(f'Pliki audio będą zapisywane w: "{save_path}"')
         save_commands(komenda='save_path', wartosc=save_path)
     elif cmd_tuple[0] in k.color_commands:
         if cmd_tuple[1] in k.colors:
-            komenda = cmd_tuple[0]
-            wartosc = cmd_tuple[1]
-            kolory(komenda, wartosc)
+            kolory(komenda=cmd_tuple[0], wartosc=cmd_tuple[1])
         else:
             print(f'{error_color}Nie znaleziono koloru{Fore.RESET}\nAby wyświetlić listę dostępnych kolorów wpisz "-colors"')
     else:
@@ -200,8 +193,8 @@ def szukaj():
     if word is None:
         return word
     else:
-        url = 'https://www.ahdictionary.com/word/search.html?q='
-        url = url + word
+        url0 = 'https://www.ahdictionary.com/word/search.html?q='
+        url = url0 + word
         return url
 
 
@@ -270,10 +263,8 @@ def rysuj_slownik(url):
                         gloss1 = gloss0.replace('·', '')
                         gloss_to_print = re.sub(r'\d', '', gloss1).strip()
                         gloss = gloss_to_print.strip('-').strip('–')
-                        print(f'Wyniki dla {gloss_color}{gloss_to_print}{Fore.RESET}'.center(79))
-                        print(f'  {gloss_color}{meaning_num.text}')
-                    else:
-                        print(f'  {gloss_color}{meaning_num.text}')
+                        print(f'{BOLD}Wyniki dla {gloss_color}{gloss_to_print}{END}'.center(79))
+                    print(f'  {gloss_color}{meaning_num.text}')
                 for meandex, meaning in enumerate(meanings_in_td, start=1):  # Rysuje definicje
                     indexing += 1
                     rex0 = re.sub("[.][a-z][.]", ".", meaning.text)
@@ -286,21 +277,25 @@ def rysuj_slownik(url):
                         ah_def_print(indexing, meandex, definition=rex4.replace('', ''))  # Kolorowanie bazując na enumeracji
                     else:
                         ah_def_print(indexing, meandex, definition=meaning.text)
-                    if not config['ukryj_slowo_w_definicji']:
-                        definicje.append(rex4.replace(':', ':<br>').replace('', '′'))
+                    if config['ukryj_slowo_w_definicji']:
+                        if gloss.endswith('y') and 'ied' in rex4:  # Aby słowa typu "varied" i "married" były częściowo ukrywane
+                            definicje.append(rex4.replace(gloss.rstrip("y"), '...').replace(':', ':<br>').replace('', '′'))
+                        else:
+                            definicje.append(rex4.replace(gloss, '...').replace(':', ':<br>').replace('', '′'))
                     else:
-                        definicje.append(rex4.replace(gloss, '...').replace(':', ':<br>').replace('', '′'))
+                        definicje.append(rex4.replace(':', ':<br>').replace('', '′'))
+
                 print()
-                for pos in td.find_all(class_='runseg'):  # Rysuje części mowy
-                    postring = pos.text.replace('', 'oo').replace('', 'oo').replace('', '′').replace('·', '')
-                    print(f'{pos_color}{postring.strip()}')
-                    czesci_mowy.append(postring.strip())
+                for pos in td.find_all(class_='runseg'):  # Dodaje części mowy
+                    postring = pos.text.replace('', 'oo').replace('', 'oo').replace('', '′').replace('·', '').strip()
+                    print(f'{pos_color}{postring}')
+                    czesci_mowy.append(postring)
                 if not str(czesci_mowy).startswith('[]'):
                     print()
-                for etym in td.find_all(class_='etyseg'):  # Rysuje etymologie
+                for etym in td.find_all(class_='etyseg'):  # Dodaje etymologie
                     print(f'{etym_color}{etym.text}')
                     etymologia.append(etym.text)
-            if not str(etymologia).startswith('[]'):  # Aby przy hasłach bez etymologii czy części mowy nie było niepotrzebnych spacji
+            if not str(etymologia).startswith('[]'):  # Aby przy hasłach bez etymologii lub części mowy nie było niepotrzebnych spacji
                 print()
     except ConnectionError:
         print(f'{error_color}Nie udało się połączyć ze słownikiem, sprawdź swoje połączenie i spróbuj ponownie')
@@ -413,7 +408,7 @@ def czesci_mowy_input():
 # Bierze wybór z input_func i wydaje adekwatne informacje na kartę
 def choice_func(wybor, gloss_content, connector):
     global skip_check
-    if isinstance(wybor, str):  # Nie podoba mi się przechodzenie przez ten if. Isinstance jest chyba najlepszym rozwiązaniem
+    if isinstance(wybor, str):  # Nie podoba mi się przechodzenie przez ten if. Ale isinstance jest chyba najlepszym rozwiązaniem
         return wybor.lstrip('/')
     elif len(gloss_content) >= wybor > 0:
         return gloss_content[wybor - 1]
@@ -463,11 +458,7 @@ def rysuj_synonimy(syn_soup):
         else:
             grupa_synonimow.append(synonimy3)
             grupa_przykladow.append(przyklady2)
-
-        if przyklady4 == '':
-            print(f'{index_color}{index} :{synpos_color}{pos} {syn_color}{synonimy3} {syndef_color}{syndef}\n    {psyn_color}*Brak przykładów*\n')
-        else:
-            print(f'{index_color}{index} :{synpos_color}{pos} {syn_color}{synonimy3} {syndef_color}{syndef}{psyn_color}{przyklady4}\n')
+        print(f'{index_color}{index} :{synpos_color}{pos} {syn_color}{synonimy3} {syndef_color}{syndef}{psyn_color}{przyklady4}\n')
 
 
 def disambiguator(url_synsearch):
@@ -520,8 +511,11 @@ def wyswietl_karte():
     print(f'{delimit_color}-------------------------------------------------------------------------------\n')
 
 
+start = True
 try:
     while start:
+        # Wszystkie pola muszą być resetowane, bo gdy zmieniamy ustawienia dodawania
+        # to niektóre pola będą zapisywane na karcie nie zważając na zmiany ustawień
         skip_check = 0
         skip_check_disamb = 0
         gloss = ''

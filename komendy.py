@@ -65,14 +65,14 @@ help_command = f"""{Fore.RESET}\nPo wpisaniu hasła w pole "Szukaj" rozpocznie s
 
 {BOLD}Przy dodawaniu zdania:{END}
 Wpisz swoje własne przykładowe zdanie zawierające wyszukane hasło
- -s      pomija dodawanie zdania
+ -s     pomija dodawanie zdania
 
 {BOLD}Przy definicjach:{END}
 Aby wybrać definicję wpisz numer zielonego indeksu.
 
- np. 3           dodaje trzecią definicję
- 0 lub -s        pomija dodawanie elementu
- -1 lub all      dodaje wszystkie elementy
+ np. 3          dodaje trzecią definicję
+ 0 lub -s       pomija dodawanie elementu
+ -1 lub all     dodaje wszystkie elementy
 
  Wpisanie litery pomija dodawanie karty
 
@@ -81,15 +81,15 @@ Aby wybrać definicję wpisz numer zielonego indeksu.
  np. "/dwa grzyby" spowoduje dodaniem "dwa grzyby" w pole definicji na karcie
 
 {BOLD}Przy częściach mowy:{END}
- 1             dodaje wszystkie części mowy
- 0 lub -s      pomija dodawanie elementu
+ 1            dodaje wszystkie części mowy
+ 0 lub -s     pomija dodawanie elementu
  
  Wpisanie litery pomija dodawanie karty
 
 {BOLD}Przy etymologiach:{END}
 Przy większej ilości etymologii możemy sprecyzować wybór wpisując numer etymologii licząc od góry.
 lub wpisać -1, aby dodać wszystkie dostępne etymologie.
- 0 lub -s      pomija dodawanie elementu
+ 0 lub -s     pomija dodawanie elementu
 
 {BOLD}Przy synonimach:{END}
 Synonimy wyświetlane są w grupach zawierających synonimy i przykłady.
@@ -117,7 +117,7 @@ np. "-pz off", "-disamb on" itd.
 -karty       dodawanie kart             {config['tworz_karte']}
 
 --audio-path lub --save-path:
- Umożliwia zmianę miejsca zapisu audio (domyślnie: "Karty_audio" w folderze z programem)
+ Umożliwia zmianę miejsca zapisu audio (domyślnie: "Karty_audio" w folderze z programem).
  Aby audio było bezpośrednio dodawane do Anki, zlokalizuj ścieżkę
  i wpisz/skopiuj ją w pole wyświetlone po wpisaniu komendy.
 
@@ -141,19 +141,16 @@ Ukrywanie hasła to zamiana wyszukiwanego słowa na "..."
 -bulk         włącza/wyłącza masowe dodawanie       {config['bulk_add']}
 
 --delete-last lub
---delete-recent      usuwa ostatnią dodawaną kartę
+--delete-recent     usuwa ostatnią dodawaną kartę
 
---help-colors        wyświetla konfigurację kolorów
--colors              wyświetla dostępne kolory
---config-bulk        rozpoczyna konfigurację bulk
+--help-colors       wyświetla konfigurację kolorów
+-colors             wyświetla dostępne kolory
+--config-bulk       rozpoczyna konfigurację bulk
+-config             wyświetla informacje o aktualnej konfiguracji
 
 {BOLD}Masowe dodawanie (bulk):{END}
 Bulk pozwala na dodawanie wielu kart na raz.
 Wystarczy skopiować tekst według szablonu i wkleić do dodawacza.
-
-Wartości, które mają wpływ na masowe dodawanie to:
-"Disambiguation" i "Zdanie"
-na zmiany w sposobie masowego dodawania wpływa tylko "Zdanie"
 
 --config-bulk     włącza szczegółową konfigurację masowego dodawania
                   gdzie można ustawić opcje dodawania definicji, części mowy,
