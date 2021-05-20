@@ -124,4 +124,4 @@ Jestem otwarty na sugestie i krytykę.
 Mam nadzieję, że narzędzie okaże się pomocne.
 
 
-Użyte biblioteki: BeautifulSoup4, requests, colorama, regex, yaml
+Użyte biblioteki: BeautifulSoup4, requests, colorama, regex, yaml, lxml
