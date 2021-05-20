@@ -13,8 +13,8 @@ from komendy import BOLD, END
 
 if sys.platform.startswith('linux'):
     import readline
+    readline.read_init_file()  # Zapisywanie historii komend
 
-readline.read_init_file()  # Zapisywanie historii komend
 requests_session = requests.Session()
 
 with open("config.yml", "r") as f:
