@@ -269,8 +269,8 @@ def rysuj_slownik(url):
                         gloss1 = gloss0.replace('·', '')
                         gloss_to_print = re.sub(r'\d', '', gloss1).strip()
                         gloss = gloss_to_print.strip('-').strip('–')
-                        print(f'{BOLD}Wyniki dla {gloss_color}{gloss_to_print}{END}'.center(79))
-                    print(f'  {gloss_color}{meaning_num.text}')
+                        print(f'{Fore.RESET}{BOLD}Wyniki dla {gloss_color}{gloss_to_print}{END}{Fore.RESET}'.center(79))
+                    print(f'  {gloss_color}{meaning_num.text}{Fore.RESET}')
                 for meandex, meaning in enumerate(meanings_in_td, start=1):  # Rysuje definicje
                     indexing += 1
                     rex0 = re.sub("[.][a-z][.]", ".", meaning.text)

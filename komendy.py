@@ -177,7 +177,7 @@ Wystarczy skopiować tekst według szablonu i wkleić do dodawacza.
 Aby rozpocząć masowe dodawanie należy wkleić listę elementów oddzielonych
 nową linią według szablonu (razem ze spacją)
 [słowo]      <---  musi zostać podane, aby rozpocząć dodawanie
-[zdanie]     <---  zależy od -pz
+[zdanie]     <---  zależy od -pz (nie trzeba używać "/")
 [definicja]  <---  zależy od --bulk-free-def
 [synonimy]   <---  zależy od --bulk-free-syn
 ...
@@ -207,7 +207,7 @@ np. "-syn-color lightblue", "-pos-color magenta" itd.
 -gloss-color        {gloss_color}wyszukanego hasła w słowniku{Fore.RESET}
 -error-color        {error_color}błędów{Fore.RESET}
 -delimit-color      {delimit_color}odkreśleń{Fore.RESET}
--input-color        {input_color}pól na input {Fore.RESET}(tj. "Szukaj:" itd.)
+-input-color        {input_color}pól na input (tj. "Szukaj:" itd.){Fore.RESET}
 -inputtext-color    {inputtext_color}wpisywanego tekstu{Fore.RESET}
 
 -colors             wyświetla dostępne kolory\n"""
