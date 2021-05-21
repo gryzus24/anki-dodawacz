@@ -11,14 +11,14 @@ import re
 import komendy as k
 from komendy import BOLD, END
 
-if sys.platform.startswith('linux'):
-    import readline
-    readline.read_init_file()  # Zapisywanie historii komend
-
-requests_session = requests.Session()
-
+requests_session_ah = requests.Session()
 with open("config.yml", "r") as f:
     config = yaml.load(f, Loader=yaml.Loader)
+
+if sys.platform.startswith('linux'):
+    # Zapisywanie historii komend. Ten moduł jest niepotrzebny i nie działa na windowsie
+    import readline
+    readline.read_init_file()
 
 if not os.path.exists('Karty_audio') and config['save_path'] == 'Karty_audio':
     os.mkdir('Karty_audio')  # Aby nie trzeba było tworzyć folderu ręcznie
@@ -40,7 +40,12 @@ syndef_color = eval(config['syndef_color'])
 error_color = eval(config['error_color'])
 delimit_color = eval(config['delimit_color'])
 input_color = eval(config['input_color'])
-inputtext_color = eval(config['inputtext_color'])
+if sys.platform.startswith('linux'):
+    inputtext_color = eval(config['inputtext_color'])
+    # Aby nie kombinować z robieniem tego koloru na windowsie,
+    # bo to wymaga rozwiązań co tylko zaśmiecają kod
+else:
+    inputtext_color = ''
 
 
 def delete_last_card():
@@ -51,13 +56,13 @@ def delete_last_card():
             deleted_line = lines.pop().replace('\n', '')
             new_file = ''.join(lines)
             write.write(new_file)
-        print(f'{Fore.LIGHTYELLOW_EX}Usunięto: \n{Fore.RESET}"{deleted_line[:64]}..."{Fore.RESET}')
+        print(f'{Fore.LIGHTYELLOW_EX}Usunięto: \n{Fore.RESET}"{deleted_line[:64]}..."')
     except IndexError:
-        print(f'{error_color}Plik {Fore.RESET}"karty.txt" {error_color}jest pusty, nie ma co usuwać{Fore.RESET}')
+        print(f'{error_color}Plik {Fore.RESET}"karty.txt" {error_color}jest pusty, nie ma co usuwać')
     except FileNotFoundError:
-        print(f'{error_color}Plik {Fore.RESET}"karty.txt" {error_color}nie istnieje, nie ma co usuwać{Fore.RESET}')
+        print(f'{error_color}Plik {Fore.RESET}"karty.txt" {error_color}nie istnieje, nie ma co usuwać')
     except Exception:
-        print(f'{error_color}Coś poszło nie tak podczas usuwania karty *_*{Fore.RESET}')
+        print(f'{error_color}Coś poszło nie tak podczas usuwania karty *_*')
 
 
 # Komendy i input słowa
@@ -87,19 +92,19 @@ def config_bulk():
     values_to_save = []
     try:
         for input_msg, command in zip(input_list, bulk_cmds):
-            print(f'{input_color}{input_msg}:{inputtext_color}', end='')
-            value = int(input(' '))
+            print(f'{input_color}{input_msg}:', end='')
+            value = int(input(f'{inputtext_color} '))
             if value >= -1:
                 values_to_save.append(value)
-                print(f'{Fore.LIGHTGREEN_EX}OK{Fore.RESET}')
+                print(f'{Fore.LIGHTGREEN_EX}OK')
             else:
                 values_to_save.append(0)
                 print(f'{error_color}Podano nieobsługiwaną wartość\n{Fore.RESET}{input_msg} {error_color}zmieniona na: {Fore.RESET}0')
     except ValueError:
-        print(f'{error_color}Opuszczam konfigurację\nWprowadzone zmiany nie zostaną zapisane{Fore.RESET}')
+        print(f'{Fore.LIGHTYELLOW_EX}Opuszczam konfigurację\nWprowadzone zmiany nie zostaną zapisane')
         return None
 
-    print(f'\n{Fore.LIGHTGREEN_EX}Konfiguracja masowego dodawania zapisana pomyślnie{Fore.RESET}')
+    print(f'\n{Fore.LIGHTGREEN_EX}Konfiguracja masowego dodawania zapisana pomyślnie')
     for cmd, value_ts, input_mesg in zip(bulk_cmds, values_to_save, input_list):
         print(f'{input_mesg}: {value_ts}')
         save_commands(komenda=cmd, wartosc=value_ts)
@@ -107,12 +112,12 @@ def config_bulk():
 
 
 def print_config():
-    print(f'{Fore.RESET}\n{BOLD}[config komend]        [config bulk]{END}')
+    print(f'\n{Fore.RESET}{BOLD}[config komend]        [config bulk]{END}')
     for command, blkcmd in zip_longest(k.search_commands, bulk_cmds, fillvalue=''):
         if command == '-all':
             continue
         if command == '-fs':
-            print(f'{Fore.RESET}\n--audio-path: {config["save_path"]}\n\n{BOLD}[config misc]{END}')
+            print(f'\n--audio-path: {config["save_path"]}\n\n{BOLD}[config misc]{END}')
         config_cmd = config[f'{k.search_commands[command]}']
         color = eval(k.bool_colors[config_cmd])
         blk_conf = config.get(blkcmd, '')
@@ -121,8 +126,8 @@ def print_config():
         blk_conf = blk_conf
         if command == '-bulk':
             print()
-        print('{}{:10s} {}{:12s}{}{:11s}{:}'
-              .format(Fore.RESET, command, color, str(config_cmd), Fore.RESET, blkcmd, blk_conf))
+        print('{:10s} {}{:12s}{}{:11s}{:}'
+              .format(command, color, str(config_cmd), Fore.RESET, blkcmd, blk_conf))
     print('\nkonfiguracja kolorów: --help-colors\n')
 
 
@@ -147,7 +152,7 @@ def kolory(komenda, wartosc):
     if 'light' in color.lower():
         color = color + '_EX'
     msg_color = eval(color)
-    print(f'{Fore.RESET}{k.color_message[komenda]} ustawiony na: {msg_color}{wartosc}{Fore.RESET}')
+    print(f'{Fore.RESET}{k.color_message[komenda]} ustawiony na: {msg_color}{wartosc}')
     save_commands(komenda=komenda.strip('-').replace('-', '_'), wartosc=color)
 
 
@@ -160,10 +165,10 @@ def komendo(word):
             wartosc = k.commands_values[cmd_tuple[1]]
             msg_color = eval(k.bool_colors[wartosc])
             msg = k.commands_msg[cmd_tuple[0]]
-            print(f'{Fore.RESET}{msg}{msg_color}{wartosc}{Fore.RESET}')
+            print(f'{Fore.RESET}{msg}{msg_color}{wartosc}')
             save_commands(komenda, wartosc)
         else:
-            print(f'{error_color}Nieprawidłowa wartość{Fore.RESET}\nUżyj "{cmd_tuple[0]} [on/off]"{Fore.RESET}')
+            print(f'{error_color}Nieprawidłowa wartość{Fore.RESET}\nUżyj "{cmd_tuple[0]} [on/off]"')
     elif loc_word == '-colors ':
         pokaz_dostepne_kolory()
     elif loc_word == '--help ' or loc_word == '-h ':
@@ -178,8 +183,8 @@ def komendo(word):
     elif loc_word == '-conf ' or loc_word == '-config ' or loc_word == '-configuration ':
         print_config()
     elif loc_word == '--audio-path ' or loc_word == '--save-path ':
-        print(f'{input_color}Wprowadź ścieżkę zapisu audio:{inputtext_color}', end='')
-        save_path = str(input(' '))
+        print(f'{input_color}Wprowadź ścieżkę zapisu audio:', end='')
+        save_path = str(input(f'{inputtext_color} '))
         print(f'{Fore.RESET}Pliki audio będą zapisywane w: "{save_path}"')
         save_commands(komenda='save_path', wartosc=save_path)
     elif cmd_tuple[0] in k.color_commands:
@@ -193,8 +198,8 @@ def komendo(word):
 
 def szukaj():
     global word
-    print(f'{input_color}Szukaj:{inputtext_color}', end='')
-    word = input(' ').strip()
+    print(f'{input_color}Szukaj:', end='')
+    word = input(f'{inputtext_color} ').strip()
     word = komendo(word)
     if word is None:
         return word
@@ -209,24 +214,24 @@ def get_audio(audio_link, audio_end):
     audiofile_name = audio_end + '.wav'
     try:
         with open(os.path.join(config['save_path'], audiofile_name), 'wb') as file:
-            response = requests_session.get(audio_link)
+            response = requests_session_ah.get(audio_link)
             file.write(response.content)
         return f'[sound:{audiofile_name}]'
     except Exception:
         print(f"""{error_color}Zapisywanie pliku audio {Fore.RESET}"{audiofile_name}" {error_color}nie powiodło się
 Aktualna ścieżka zapisu audio to {Fore.RESET}"{config['save_path']}"
-{error_color}Upewnij się, że taki folder istnieje i spróbuj ponownie{Fore.RESET}""")
+{error_color}Upewnij się, że taki folder istnieje i spróbuj ponownie""")
         return ' '
 
 
 def search_for_audio(url):
     try:
-        reqs = requests_session.get(url)
+        reqs = requests_session_ah.get(url)
         soup = BeautifulSoup(reqs.content, 'lxml', from_encoding='utf-8')
         audio = soup.find('a', {'target': '_blank'}).get('href')
         if audio == 'http://www.hmhco.com':
             print(f"""{error_color}Hasło nie posiada pliku audio!
-Karta zostanie dodana bez audio\n{Fore.RESET}""")
+Karta zostanie dodana bez audio\n""")
             return ' '
         else:
             audio_end = audio.split('/')[-1]
@@ -235,7 +240,7 @@ Karta zostanie dodana bez audio\n{Fore.RESET}""")
             audio_link += audio
             return get_audio(audio_link, audio_end)
     except Exception:
-        print(f'{error_color}Wystąpił problem podczas szukania pliku audio{Fore.RESET}')
+        print(f'{error_color}Wystąpił problem podczas szukania pliku audio')
 
 
 # Rysowanie słownika AHD
@@ -251,12 +256,12 @@ def rysuj_slownik(url):
     global skip_check
     try:
         gloss_index = 0
-        reqs = requests_session.get(url)
+        reqs = requests_session_ah.get(url, timeout=10)
         soup = BeautifulSoup(reqs.content, 'lxml', from_encoding='utf-8')
         word_check = soup.find_all(class_=('ds-list', 'sds-single', 'ds-single', 'ds-list'))
         indexing = 0
         if len(word_check) == 0:
-            print(f'{error_color}Nie znaleziono podanego hasła{Fore.RESET}')
+            print(f'{error_color}Nie znaleziono podanego hasła')
             skip_check = 1
         else:
             for td in soup.find_all('td'):
@@ -269,8 +274,8 @@ def rysuj_slownik(url):
                         gloss1 = gloss0.replace('·', '')
                         gloss_to_print = re.sub(r'\d', '', gloss1).strip()
                         gloss = gloss_to_print.strip('-').strip('–')
-                        print(f'{Fore.RESET}{BOLD}Wyniki dla {gloss_color}{gloss_to_print}{END}{Fore.RESET}'.center(79))
-                    print(f'  {gloss_color}{meaning_num.text}{Fore.RESET}')
+                        print(f'{BOLD}Wyniki dla {gloss_color}{gloss_to_print}{END}'.center(79))
+                    print(f'  {gloss_color}{meaning_num.text}')
                 for meandex, meaning in enumerate(meanings_in_td, start=1):  # Rysuje definicje
                     indexing += 1
                     rex0 = re.sub("[.][a-z][.]", ".", meaning.text)
@@ -304,11 +309,13 @@ def rysuj_slownik(url):
             if not str(etymologia).startswith('[]'):  # Aby przy hasłach bez etymologii lub części mowy nie było niepotrzebnych spacji
                 print()
     except ConnectionError:
-        print(f'{error_color}Nie udało się połączyć ze słownikiem, sprawdź swoje połączenie i spróbuj ponownie{Fore.RESET}')
+        print(f'{error_color}Nie udało się połączyć ze słownikiem, sprawdź swoje połączenie i spróbuj ponownie')
         skip_check = 1
+    except TimeoutError:
+        print(f'{error_color}AH Dictionary nie odpowiada')
     except Exception:
-        print(f'{error_color}Coś poszło nie tak i nie jest to problem z połączeniem *_*{Fore.RESET}')
-        skip_check = 1
+        print(f'{error_color}Nastąpił nieoczekiwany błąd')
+        raise
 
 
 def ogarnij_zdanie(zdanie):
@@ -324,28 +331,28 @@ def ogarnij_zdanie(zdanie):
     elif zdanie == ' ':  # Aby przy wyłączonym dodawaniu zdania nie pytało o zdanie_check
         return zdanie
     elif zdanie == '-s':
-        print(f'{Fore.LIGHTGREEN_EX}Pominięto dodawanie zdania{Fore.RESET}')
+        print(f'{Fore.LIGHTGREEN_EX}Pominięto dodawanie zdania')
         return ' '
     else:
         if not config['bulk_add']:
-            print(f'\n{error_color}Zdanie nie zawiera podanego hasła{Fore.RESET}')
-            print(f'{input_color}Czy dodać w takiej formie? [T/n]:{inputtext_color}', end='')
-            zdanie_check = input(' ')
+            print(f'\n{error_color}Zdanie nie zawiera podanego hasła')
+            print(f'{input_color}Czy dodać w takiej formie? [T/n]:', end='')
+            zdanie_check = input(f'{inputtext_color} ')
             if zdanie_check.lower() == 't' or zdanie_check.lower() == 'y' or zdanie_check.lower() == '1':
                 return zdanie
             elif zdanie_check.lower() == 'n' or zdanie_check.lower() == '0':
                 return ogarnij_zdanie(zdanie_input())
             else:
                 skip_check = 1
-                print(f'{Fore.LIGHTGREEN_EX}Pominięto dodawanie karty{Fore.RESET}')
+                print(f'{Fore.LIGHTGREEN_EX}Pominięto dodawanie karty')
         else:
             return zdanie
 
 
 def zdanie_input():
     if config['dodaj_wlasne_zdanie']:
-        print(f'{input_color}Dodaj przykładowe zdanie:{inputtext_color}', end='')
-        zdanie = str(input(' '))
+        print(f'{input_color}Dodaj przykładowe zdanie:', end='')
+        zdanie = str(input(f'{inputtext_color} '))
         return zdanie
     return ' '
 
@@ -371,32 +378,32 @@ def input_func(in_put):
 # Adekwatne pola input dla pól wyboru
 def disamb_input_syn():
     if config['dodaj_synonimy']:
-        print(f'{input_color}Wybierz grupę synoniów:{inputtext_color}', end='')
-        wybor_disamb_syn = input(' ')
+        print(f'{input_color}Wybierz grupę synonimów:', end='')
+        wybor_disamb_syn = input(f'{inputtext_color} ')
         return input_func(wybor_disamb_syn), grupa_synonimow
     return 0, grupa_synonimow
 
 
 def disamb_input_przyklady():
     if config['dodaj_przyklady_synonimow']:
-        print(f'{input_color}Wybierz grupę przykładów:{inputtext_color}', end='')
-        wybor_disamb_przyklady = input(' ')
+        print(f'{input_color}Wybierz grupę przykładów:', end='')
+        wybor_disamb_przyklady = input(f'{inputtext_color} ')
         return input_func(wybor_disamb_przyklady), grupa_przykladow
     return 0, grupa_przykladow
 
 
 def etymologia_input():
     if config['dodaj_etymologie']:
-        print(f'{input_color}Wybierz etymologię:{inputtext_color}', end='')
-        wybor_etymologii = input(' ')
+        print(f'{input_color}Wybierz etymologię:', end='')
+        wybor_etymologii = input(f'{inputtext_color} ')
         return input_func(wybor_etymologii), etymologia
     return 0, etymologia
 
 
 def definicje_input():
     if config['dodaj_definicje']:
-        print(f'{input_color}\nWybierz definicję:{inputtext_color}', end='')
-        wybor_definicji = input(' ')
+        print(f'{input_color}\nWybierz definicję:', end='')
+        wybor_definicji = input(f'{inputtext_color} ')
         return input_func(wybor_definicji), definicje
     return 0, definicje
 
@@ -404,8 +411,8 @@ def definicje_input():
 def czesci_mowy_input():
     global skip_check
     if config['dodaj_czesci_mowy']:
-        print(f'{input_color}Dołączyć części mowy? [1/0]:{inputtext_color}', end='')
-        wybor_czesci_mowy = input(' ')
+        print(f'{input_color}Dołączyć części mowy? [1/0]:', end='')
+        wybor_czesci_mowy = input(f'{inputtext_color} ')
         if wybor_czesci_mowy.isnumeric() or wybor_czesci_mowy == '-1':
             return int(wybor_czesci_mowy)
         elif wybor_czesci_mowy == '' or wybor_czesci_mowy == '-s':
@@ -414,7 +421,7 @@ def czesci_mowy_input():
             return wybor_czesci_mowy
         else:
             skip_check = 1
-            print(f'{Fore.LIGHTGREEN_EX}Pominięto dodawnie karty{Fore.RESET}')
+            print(f'{Fore.LIGHTGREEN_EX}Pominięto dodawnie karty')
     return 0
 
 
@@ -429,7 +436,7 @@ def choice_func(wybor, gloss_content, connector):
         return connector.join(gloss_content)  # Pola z disambiguation nie potrzebują "<br>", bo nie są aż tak obszerne
     elif wybor == -2:
         skip_check = 1
-        print(f'{Fore.LIGHTGREEN_EX}Pominięto dodawanie karty{Fore.RESET}')
+        print(f'{Fore.LIGHTGREEN_EX}Pominięto dodawanie karty')
     else:
         return ' '
 
@@ -471,26 +478,36 @@ def rysuj_synonimy(syn_soup):
         else:
             grupa_synonimow.append(synonimy3)
             grupa_przykladow.append(przyklady2)
-        print(f'{index_color}{index} :{synpos_color}{pos} {syn_color}{synonimy3} {syndef_color}{syndef}{psyn_color}{przyklady4}\n{Fore.RESET}')
+
+        if not config['bulk_add']:  # Aby ograniczyć przesuwanie podczas bulk, wordnet nie jest wyświetlany
+            print(f'{index_color}{index} :{synpos_color}{pos} {syn_color}{synonimy3} {syndef_color}{syndef}{psyn_color}{przyklady4}\n')
+        else:
+            ''
 
 
 def disambiguator(url_synsearch):
     global skip_check_disamb
     try:
-        reqs_syn = requests_session.get(url_synsearch)
-        syn_soup = BeautifulSoup(reqs_syn.content, 'lxml', from_encoding='utf-8')
+        # Wordnet nie zyskuje na szybkości gdy użyjemy requests.Session(),
+        # może dlatego, że połączenie nie jest Keep-alive.
+        # Albo nie ma ciasteczka, które by to połączenie przyspieszyło
+        reqs_syn = requests.get(url_synsearch, timeout=10)
+        syn_soup = BeautifulSoup(reqs_syn.content, 'lxml', from_encoding='iso-8859-1')
         no_word = syn_soup.find('h3')
         if len(str(no_word)) == 48 or len(str(no_word)) == 117:
             print(f'{error_color}\nNie znaleziono {gloss_color}{gloss} {error_color}na {Fore.RESET}WordNecie')
             skip_check_disamb = 1
         else:
-            print(f'\n{Fore.LIGHTWHITE_EX}{"WordNet".center(79)}\n{Fore.RESET}')
+            print(f'\n{Fore.LIGHTWHITE_EX}{"WordNet".center(79)}\n')
             rysuj_synonimy(syn_soup)
     except ConnectionError:
-        print(f'{error_color}Nie udało się połączyć z WordNetem, sprawdź swoje połączenie i spróbuj ponownie{Fore.RESET}')
+        print(f'{error_color}Nie udało się połączyć z WordNetem, sprawdź swoje połączenie i spróbuj ponownie')
+        skip_check_disamb = 1
+    except TimeoutError:
+        print(f'{error_color}WordNet nie odpowiada, spróbuj nawiązać połączenie później')
         skip_check_disamb = 1
     except Exception:
-        print(f'{error_color}Coś poszło nie tak i nie jest to problem z połączeniem *_*{Fore.RESET}')
+        print(f'{error_color}Nastąpił nieoczekiwany błąd\n')
         skip_check_disamb = 1
 
 
@@ -506,13 +523,13 @@ def utworz_karte():
             return None
     except NameError:
         print(f"""{error_color}Dodawanie karty nie powiodło się.
-Jeżeli problem wystąpi ponownie, zrestartuj program{Fore.RESET}""")
+Jeżeli problem wystąpi ponownie, zrestartuj program""")
 
 
 def wyswietl_karte():
     print(f'\n{Fore.LIGHTYELLOW_EX}Utworzona karta zawiera:')
     print(f'{delimit_color}-------------------------------------------------------------------------------')
-    print(f"{def1_color}{definicje.replace('<br>', ' ').center(79)}")  # Trzeba tu użyć .format()
+    print(f"{def1_color}{definicje.replace('<br>', ' ').center(79)}")  # center() się psuje jak zamieni się "<br>" na "\n" :/
     print(f'{syn_color}{disamb_synonimy.center(79)}')
     print(f'{psyn_color}{disamb_przyklady.center(79)}')
     print(f'{delimit_color}-------------------------------------------------------------------------------')
@@ -521,7 +538,7 @@ def wyswietl_karte():
     print(f'{pos_color}{czesci_mowy.center(79)}')
     print(f'{etym_color}{etymologia.center(79)}')
     print(audiofile_name.center(79))
-    print(f'{delimit_color}-------------------------------------------------------------------------------\n{Fore.RESET}')
+    print(f'{delimit_color}-------------------------------------------------------------------------------\n')
 
 
 start = True
@@ -593,16 +610,23 @@ try:
                 zdanie = ogarnij_zdanie(zdanie_input())  # Aby wyłączyć dodawanie zdania w bulk wystarczy -pz off
                 if config['bulk_free_def']:
                     definicje = choice_func(*definicje_input(), connector=' ')
+                    if skip_check == 1:
+                        break
                 else:
                     definicje = choice_func(wybor=config['def_bulk'], gloss_content=definicje, connector='<br>')
                 czesci_mowy = wybierz_czesci_mowy(wybor_czesci_mowy=config['pos_bulk'], connector=' | ')
                 etymologia = choice_func(wybor=config['etym_bulk'], gloss_content=etymologia, connector='<br>')
                 if config['disambiguation']:
+                    disambiguator(url_synsearch='http://wordnetweb.princeton.edu/perl/webwn?s=' + word)
                     if config['bulk_free_syn']:
                         disamb_synonimy = choice_func(*disamb_input_syn(), connector=' ')
                     else:
                         disamb_synonimy = choice_func(wybor=config['syn_bulk'], gloss_content=grupa_synonimow, connector=' ')
+                        if skip_check == 1:
+                            break
                     disamb_przyklady = choice_func(wybor=config['psyn_bulk'], gloss_content=grupa_przykladow, connector=' ')
+                    if skip_check == 1:
+                        break
 
             if skip_check == 0 and config['tworz_karte']:
                 wyswietl_karte()

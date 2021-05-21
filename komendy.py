@@ -3,12 +3,12 @@ import colorama
 import yaml
 import sys
 
-# Nie może być True, bo na windowsie nie można tak po prostu pokolorować pól na input, trzeba użyć print
-colorama.init(autoreset=False)
+colorama.init(autoreset=True)
 if sys.platform.startswith('linux'):
     BOLD = '\033[1m'
     END = '\033[0m'
 else:
+    # Windows nie lubi pogrubionej czcionki
     BOLD = ''
     END = ''
 
@@ -28,7 +28,10 @@ syndef_color = eval(config['syndef_color'])
 error_color = eval(config['error_color'])
 delimit_color = eval(config['delimit_color'])
 input_color = eval(config['input_color'])
-inputtext_color = eval(config['inputtext_color'])
+if sys.platform.startswith('linux'):
+    inputtext_color = eval(config['inputtext_color'])
+else:
+    inputtext_color = ''
 
 commands_msg = {
                 '-def': 'Dodawanie definicji: ', '--audio-path': 'Ścieżka zapisu audio: ',
@@ -70,7 +73,7 @@ color_message = {'-syn-color': 'Kolor synonimów', '-index-color': 'Kolor index�
 help_command = f"""{Fore.RESET}\nPo wpisaniu hasła w pole "Szukaj" rozpocznie się cykl dodawania karty
 
 {BOLD}Przy dodawaniu zdania:{END}
-Wpisz swoje własne przykładowe zdanie zawierające wyszukane hasło
+Wpisz swoje przykładowe zdanie
  -s     pomija dodawanie zdania
 
 {BOLD}Przy definicjach:{END}
@@ -80,23 +83,23 @@ Aby wybrać definicję wpisz numer zielonego indeksu.
  0 lub -s       pomija dodawanie elementu
  -1 lub all     dodaje wszystkie elementy
 
- Wpisanie litery pomija dodawanie karty
+ Wpisanie czegokolwiek poza liczbą pomija dodawanie karty
 
- Aby dodać własną definicję, części mowy, etymologię czy synonimy
+ Aby dodać własną definicję, części mowy, etymologię lub synonimy
  zacznij wpisywanie od "/"
  np. "/dwa grzyby" spowoduje dodaniem "dwa grzyby" w pole definicji na karcie
-
+ 
 {BOLD}Przy częściach mowy:{END}
  1            dodaje wszystkie części mowy
  0 lub -s     pomija dodawanie elementu
  
- Wpisanie litery pomija dodawanie karty
+ Wpisanie czegokolwiek poza liczbą pomija dodawanie karty
 
 {BOLD}Przy etymologiach:{END}
 Przy większej ilości etymologii możemy sprecyzować wybór wpisując numer etymologii licząc od góry.
 lub wpisać -1, aby dodać wszystkie dostępne etymologie.
  0 lub -s     pomija dodawanie elementu
-
+ 
 {BOLD}Przy synonimach:{END}
 Synonimy wyświetlane są w grupach zawierających synonimy i przykłady.
 Wybieranie działa tak jak w definicjach
@@ -105,8 +108,8 @@ mamy do wyboru dwa pola:
  - grupę przykładów
 
 {BOLD}Komendy dodawania:{END}
-Aby zmienić wartość opcji wpisz {BOLD}on/off{END} po komendzie
-np. "-pz off", "-disamb on" itd.
+Aby zmienić wartość dla komendy wpisz {BOLD}on/off{END} po komendzie
+np. "-pz off", "-disamb on", "-all off" itd.
 
 {BOLD}[Komenda]    [włącza/wyłącza]         [Wartość]{END}
 -pz          dodawanie zdania           {config['dodaj_wlasne_zdanie']}
@@ -133,6 +136,10 @@ np. "-pz off", "-disamb on" itd.
 
  Na Linuxie:
   "~/.local/share/Anki2/[Nazwa użytkownika Anki]/collection.media"
+  
+ Na Macu:
+  "~/Library/Application Support/Anki2/[Nazwa użytkownika Anki]/collection.media"
+  (jest to ukryty folder)
 
 Aktualna ścieżka zapisu audio: {config['save_path']}
 
@@ -178,15 +185,20 @@ Aby rozpocząć masowe dodawanie należy wkleić listę elementów oddzielonych
 nową linią według szablonu (razem ze spacją)
 [słowo]      <---  musi zostać podane, aby rozpocząć dodawanie
 [zdanie]     <---  zależy od -pz (nie trzeba używać "/")
-[definicja]  <---  zależy od --bulk-free-def
-[synonimy]   <---  zależy od --bulk-free-syn
+[definicja]  <---  zależy od -bulkfdef
+[synonimy]   <---  zależy od -bulkfsyn
 ...
 [ ]          <---  spacja, aby zaznaczyć koniec dodawania
 
-{BOLD}Przykładowy szablon dla -pz on, --bulk-free-def off, --bulk-free-syn on{END}
-"concede"
-"/she conceded reluctantly"
-"/concede, profess, confess"
+{BOLD}Przykładowy szablon dla -pz on, -bulkfdef off, -bulkfsyn on{END}
+"concede"                     <---  dodawane słowo
+"she conceded reluctantly"    <---  przykładowe zdanie
+"/concede, profess, confess"  <---  własne synonimy
+
+{BOLD}Przykładowy szablon dla -pz off, -bulkfdef on, -bulkfsyn on{END}
+"unalloyed"                          <---  dodawane słowo
+"/not in mixture with other metals"  <---  własna definicja
+"-1"                                 <---  własny wybór synonimów
 \n"""
 
 help_colors_command = f"""{Fore.RESET}\n  {BOLD}Dostępne komendy konfiguracji kolorów{END}
@@ -194,6 +206,7 @@ help_colors_command = f"""{Fore.RESET}\n  {BOLD}Dostępne komendy konfiguracji k
 Każda komenda zmiany kolorów musi otrzymać kolor:
 {BOLD}[Komenda] [kolor]{END}
 np. "-syn-color lightblue", "-pos-color magenta" itd.
+
                     {BOLD}[Zmienia kolor]{END}
 -def1-color         {def1_color}nieparzystych definicji{Fore.RESET}
 -def2-color         {def2_color}parzystych definicji{Fore.RESET}
@@ -208,6 +221,6 @@ np. "-syn-color lightblue", "-pos-color magenta" itd.
 -error-color        {error_color}błędów{Fore.RESET}
 -delimit-color      {delimit_color}odkreśleń{Fore.RESET}
 -input-color        {input_color}pól na input (tj. "Szukaj:" itd.){Fore.RESET}
--inputtext-color    {inputtext_color}wpisywanego tekstu{Fore.RESET}
+-inputtext-color    {inputtext_color}wpisywanego tekstu{Fore.RESET}* nie działa na windowsie
 
 -colors             wyświetla dostępne kolory\n"""
