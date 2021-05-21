@@ -34,7 +34,7 @@ else:
     inputtext_color = ''
 
 commands_msg = {
-                '-def': 'Dodawanie definicji: ', '--audio-path': 'Ścieżka zapisu audio: ',
+                '-def': 'Dodawanie definicji: ', '-audio': 'Dodawanie audio: ', '--audio-path': 'Ścieżka zapisu audio: ',
                 '-etym': 'Dodawanie etymologii: ', '-pos': 'Dodawanie części mowy: ', '-fs': 'Filtrowany słownik: ',
                 '-all': 'Dodawanie wszystkiego: ', '-karty': 'Tworzenie kart: ', '-pz': 'Dodawanie zdania: ',
                 '-udef': 'Ukrywanie słowa w definicjach: ', '-upz': 'Ukrywanie słowa w zdaniu: ',
@@ -221,6 +221,6 @@ np. "-syn-color lightblue", "-pos-color magenta" itd.
 -error-color        {error_color}błędów{Fore.RESET}
 -delimit-color      {delimit_color}odkreśleń{Fore.RESET}
 -input-color        {input_color}pól na input (tj. "Szukaj:" itd.){Fore.RESET}
--inputtext-color    {inputtext_color}wpisywanego tekstu{Fore.RESET}* nie działa na windowsie
+-inputtext-color    {inputtext_color}wpisywanego tekstu{Fore.RESET} *(nie działa na win i mac)
 
 -colors             wyświetla dostępne kolory\n"""
