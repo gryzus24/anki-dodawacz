@@ -40,13 +40,12 @@ commands_msg = {
                 '-udef': 'Ukrywanie słowa w definicjach: ', '-upz': 'Ukrywanie słowa w zdaniu: ',
                 '-udisamb': 'Ukrywanie słowa w disamb: ', '-disamb': 'Disambiguation: ', '-syn': 'Dodawanie synonimów: ',
                 '-psyn': 'Dodawanie przykładów synonimów: ', '-bulk': 'Masowe dodawanie: ', '-bulkfdef': 'Swobodne masowe dodawanie definicji: ',
-                '-bulkfsyn': 'Swobodne masowe dodawanie synonimów: '
+                '-bulkfsyn': 'Swobodne masowe dodawanie synonimów: ', '-wraptext': 'Zawijanie tekstu: '
 }
 commands_values = {
-                   'on': True, 'off': False, 'true': True, 'false': False, '1': True, '0': False
+                   'on': True, 'off': False, 'true': True, 'false': False, '1': True, '0': False,
+                   'yin': True, 'yang': False, 'tak': True, 'nie': False
 }
-
-
 search_commands = {
                    '-pz': 'dodaj_wlasne_zdanie', '-def': 'dodaj_definicje', '-pos': 'dodaj_czesci_mowy',
                    '-etym': 'dodaj_etymologie', '-audio': 'dodaj_audio', '-disamb': 'disambiguation',
@@ -55,6 +54,7 @@ search_commands = {
                    '-fs': 'pokazuj_filtrowany_slownik',
                    '-all': '-all',
                    '-upz': 'ukryj_slowo_w_zdaniu', '-udef': 'ukryj_slowo_w_definicji', '-udisamb': 'ukryj_slowo_w_disamb',
+                   '-wraptext': 'wrap_text', '-textwidth': 'textwidth', '-indent': 'indent'
 }
 bool_colors = {False: 'Fore.LIGHTRED_EX', True: 'Fore.LIGHTGREEN_EX'}
 colors = ('black', 'red', 'green', 'yellow', 'blue', 'magenta', 'cyan', 'white',
@@ -96,8 +96,8 @@ Aby wybrać definicję wpisz numer zielonego indeksu.
  Wpisanie czegokolwiek poza liczbą pomija dodawanie karty
 
 {BOLD}Przy etymologiach:{END}
-Przy większej ilości etymologii możemy sprecyzować wybór wpisując numer etymologii licząc od góry.
-lub wpisać -1, aby dodać wszystkie dostępne etymologie.
+Przy większej ilości etymologii możemy sprecyzować wybór wpisując numer
+etymologii licząc od góry lub wpisać -1, aby dodać wszystkie etymologie.
  0 lub -s     pomija dodawanie elementu
  
 {BOLD}Przy synonimach:{END}
@@ -126,40 +126,48 @@ np. "-pz off", "-disamb on", "-all off" itd.
 -karty       dodawanie kart             {config['tworz_karte']}
 
 --audio-path lub --save-path:
- Umożliwia zmianę miejsca zapisu audio (domyślnie: "Karty_audio" w folderze z programem).
+ Umożliwia zmianę miejsca zapisu audio
+ (domyślnie: "Karty_audio" w folderze z programem).
  Aby audio było bezpośrednio dodawane do Anki, zlokalizuj ścieżkę
  i wpisz/skopiuj ją w pole wyświetlone po wpisaniu komendy.
 
  Na Windowsie:
   "C:\\[Users]\\[Nazwa użytkownika]\\AppData\\Roaming\\Anki2\\[Nazwa użytkownika Anki]\\collection.media"
-  (wpisz %appdata%)
+   (wpisz %appdata%)
 
  Na Linuxie:
   "~/.local/share/Anki2/[Nazwa użytkownika Anki]/collection.media"
   
  Na Macu:
   "~/Library/Application Support/Anki2/[Nazwa użytkownika Anki]/collection.media"
-  (jest to ukryty folder)
+   (jest to ukryty folder)
 
 Aktualna ścieżka zapisu audio: {config['save_path']}
 
 {BOLD}Misc komendy:{END}
 Ukrywanie hasła to zamiana wyszukiwanego słowa na "..."
 
-{BOLD}[Komenda]     [on/off]                            [Wartość]{END}
--fs           filtrowanie numeracji w słowniku      {config['pokazuj_filtrowany_slownik']}
--udef         ukrywa hasło w definicjach            {config['ukryj_slowo_w_definicji']}
--upz          ukrywa hasło w zdaniu                 {config['ukryj_slowo_w_zdaniu']}
--udisamb      ukrywa hasło w synonimach             {config['ukryj_slowo_w_disamb']}
--bulk         włącza/wyłącza masowe dodawanie       {config['bulk_add']}
+{BOLD}[Komenda]     [on/off]                             [Wartość]{END}
+-fs           filtrowanie numeracji w słowniku       {config['pokazuj_filtrowany_slownik']}
+-udef         ukrywa hasło w definicjach             {config['ukryj_slowo_w_definicji']}
+-upz          ukrywa hasło w zdaniu                  {config['ukryj_slowo_w_zdaniu']}
+-udisamb      ukrywa hasło w synonimach              {config['ukryj_slowo_w_disamb']}
+-wraptext     zawijanie tekstu                       {config['wrap_text']}
+-bulk         masowe dodawanie                       {config['bulk_add']}
 
---delete-last lub
---delete-recent     usuwa ostatnią dodawaną kartę
+-textwidth [wartość]  szerokość tekstu do momentu
+                       zawinięcia (w znakach)        {config['textwidth']}
+-indent [wartość]     szerokość wcięcia zawiniętego 
+                       tekstu (w znakach)            {config['indent']}
+--delete-last
+--delete-recent       usuwa ostatnią dodawaną kartę
 
---help-colors       wyświetla konfigurację kolorów
--colors             wyświetla dostępne kolory
---config-bulk       rozpoczyna konfigurację bulk
--config             wyświetla informacje o aktualnej konfiguracji
+--config-colors
+--help-colors         wyświetla konfigurację kolorów
+-colors               wyświetla dostępne kolory
+--config-bulk         rozpoczyna konfigurację bulk
+
+-config               wyświetla informacje o aktualnej konfiguracji
 
 {BOLD}Masowe dodawanie (bulk):{END}
 Bulk pozwala na dodawanie wielu kart na raz.
@@ -167,7 +175,7 @@ Wystarczy skopiować tekst według szablonu i wkleić do dodawacza.
 
 --config-bulk     włącza szczegółową konfigurację masowego dodawania
                   gdzie można ustawić opcje dodawania definicji, części mowy,
-                  etymologii, synonimów i ich przykładów
+                  etymologii oraz synonimów i ich przykładów
                 
                   domyślna wartość dla wszystkich elementów to: 0
                 
@@ -175,7 +183,8 @@ Wystarczy skopiować tekst według szablonu i wkleić do dodawacza.
                   i nie zapisuje wprowadzonych zmian
 
 -bulkfdef         włącza swobodne masowe dodawanie definicji
-                  czyli dla każdego hasła musimy sami sprecyzować wybór definicji
+                  czyli dla każdego hasła musimy sami 
+                  sprecyzować wybór definicji
                   możemy dodawać własne definicje używając "/"
                    
 -bulkfsyn         włącza swobodne masowe dodawanie synonimów
@@ -201,10 +210,10 @@ nową linią według szablonu (razem ze spacją)
 "-1"                                 <---  własny wybór synonimów
 \n"""
 
-help_colors_command = f"""{Fore.RESET}\n  {BOLD}Dostępne komendy konfiguracji kolorów{END}
+help_colors_command = f"""{Fore.RESET}\n{BOLD}Konfiguracja kolorów{END}
 
-Każda komenda zmiany kolorów musi otrzymać kolor:
 {BOLD}[Komenda] [kolor]{END}
+Każda komenda zmiany kolorów musi otrzymać kolor:
 np. "-syn-color lightblue", "-pos-color magenta" itd.
 
                     {BOLD}[Zmienia kolor]{END}
@@ -222,5 +231,4 @@ np. "-syn-color lightblue", "-pos-color magenta" itd.
 -delimit-color      {delimit_color}odkreśleń{Fore.RESET}
 -input-color        {input_color}pól na input (tj. "Szukaj:" itd.){Fore.RESET}
 -inputtext-color    {inputtext_color}wpisywanego tekstu{Fore.RESET} *(nie działa na win i mac)
-
--colors             wyświetla dostępne kolory\n"""
+"""

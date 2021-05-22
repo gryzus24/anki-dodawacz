@@ -6,6 +6,7 @@ import requests
 import os.path
 import yaml
 import sys
+import os
 import re
 
 import komendy as k
@@ -119,7 +120,10 @@ def print_config():
         if command == '-fs':
             print(f'\n--audio-path: {config["save_path"]}\n\n{BOLD}[config misc]{END}')
         config_cmd = config[f'{k.search_commands[command]}']
-        color = eval(k.bool_colors[config_cmd])
+        try:
+            color = eval(k.bool_colors[config_cmd])
+        except KeyError:
+            color = ''
         blk_conf = config.get(blkcmd, '')
         if str(blk_conf).isnumeric():  # Aby wartość z minusem była left-aligned
             blk_conf = ' ' + str(blk_conf)
@@ -139,7 +143,7 @@ def koloryfer(color):
 
 
 def pokaz_dostepne_kolory():
-    print(f'{Fore.RESET}\nDostępne kolory to:')
+    print(f'{Fore.RESET}{BOLD}Dostępne kolory to:{END}')
     for index, color in enumerate(k.colors, start=1):
         print(f'{koloryfer(color)}{color}', end=', ')
         if index == 4 or index == 8 or index == 12 or index == 16:
@@ -156,11 +160,72 @@ def kolory(komenda, wartosc):
     save_commands(komenda=komenda.strip('-').replace('-', '_'), wartosc=color)
 
 
+def set_indent(value):
+    try:
+        term_width = str(os.get_terminal_size()).lstrip('os.terminal_size(columns=').split(',')[0]
+    except OSError:
+        term_width = 80
+
+    max_val = int(term_width) // 2
+    try:
+        val = int(value)
+        if -1 <= val <= max_val:
+            print(f'{Fore.LIGHTGREEN_EX}OK')
+            val = val
+        elif val > max_val:
+            print(f'{error_color}Wartość nie może być większa niż {Fore.RESET}{max_val}\n'
+                  f'{Fore.LIGHTYELLOW_EX}Ustawiono: {Fore.RESET}{max_val}')
+            val = max_val
+        else:
+            print(f'{error_color}Wartość nie może być mniejsza niż {Fore.RESET}-1\n'
+                  f'{Fore.LIGHTYELLOW_EX}Ustawiono: {Fore.RESET}-1')
+            val = -1
+        save_commands(komenda='indent', wartosc=val)
+    except ValueError:
+        print(f'''{error_color}Nieobsługiwana wartość
+podaj liczbę w przedziale od {Fore.RESET}-1{error_color} do {Fore.RESET}{max_val}''')
+
+
+def set_width(value):
+    if value.strip() == 'auto' or value.strip() == '1':
+        print(f'{Fore.LIGHTGREEN_EX}OK')
+        return save_commands(komenda='textwidth', wartosc='auto')
+
+    def manual_width(value):
+        try:
+            term_width_auto = str(os.get_terminal_size()).lstrip('os.terminal_size(columns=').split(',')[0]
+            term_width = int(term_width_auto)
+        except OSError:
+            term_width = 191  # szerokość dla full screen Monospace 12
+        try:
+            val = int(value)
+            if 10 <= val <= term_width:
+                print(f'{Fore.LIGHTGREEN_EX}OK')
+                val = val
+            elif val > term_width:
+                print(f'{error_color}Wartość nie może być większa niż {Fore.RESET}{term_width}\n'
+                      f'{Fore.LIGHTYELLOW_EX}Ustawiono: {Fore.RESET}{term_width}')
+                val = term_width
+            else:
+                print(f'{error_color}Wartość nie może być mniejsza niż {Fore.RESET}10\n'
+                      f'{Fore.LIGHTYELLOW_EX}Ustawiono: {Fore.RESET}10')
+                val = 10
+            save_commands(komenda='textwidth', wartosc=val)
+        except ValueError:
+            print(f'''{error_color}Nieobsługiwana wartość
+podaj liczbę w przedziale od {Fore.RESET}10{error_color} do {Fore.RESET}{term_width}{error_color} lub {Fore.RESET}auto''')
+    manual_width(value)
+
+
 def komendo(word):
     loc_word = word.lower() + ' '
     cmd_tuple = loc_word.split(' ')
     if cmd_tuple[0] in k.search_commands:
-        if cmd_tuple[1] in k.commands_values:
+        if cmd_tuple[0] == '-indent':
+            set_indent(value=cmd_tuple[1])
+        elif cmd_tuple[0] == '-textwidth':
+            set_width(value=cmd_tuple[1])
+        elif cmd_tuple[1] in k.commands_values:
             komenda = k.search_commands[cmd_tuple[0]]
             wartosc = k.commands_values[cmd_tuple[1]]
             msg_color = eval(k.bool_colors[wartosc])
@@ -169,13 +234,15 @@ def komendo(word):
             save_commands(komenda, wartosc)
         else:
             print(f'{error_color}Nieprawidłowa wartość{Fore.RESET}\nUżyj "{cmd_tuple[0]} [on/off]"')
-    elif loc_word == '-colors ':
+    elif loc_word == '-colors ' or loc_word == '-color ':
         pokaz_dostepne_kolory()
     elif loc_word == '--help ' or loc_word == '-h ':
         importlib.reload(k)  # Aby nie trzeba było restartować programu, żeby zobaczyć aktualny stan configu
         print(k.help_command)
-    elif loc_word == '--help-colors ' or loc_word == '--help-color ':
+    elif loc_word == '--help-colors ' or loc_word == '--help-color '\
+            or loc_word == '--config-colors ' or loc_word == '--config-color ':
         print(k.help_colors_command)
+        pokaz_dostepne_kolory()
     elif loc_word == '--delete-last ' or loc_word == '--delete-recent ':
         delete_last_card()
     elif loc_word == '--config-bulk ':
@@ -243,27 +310,87 @@ Karta zostanie dodana bez audio\n""")
         print(f'{error_color}Wystąpił problem podczas szukania pliku audio')
 
 
-# Rysowanie słownika AHD
-def ah_def_print(indexing, meandex, definition):
-    if meandex % 2 == 1:
-        print(f"{index_color}{indexing}  {def1_color}{definition}")
+def wrap_definitions(definition, term_width, index_width):
+    definicja = ''
+    br = ''
+    indent = config['indent'] + index_width
+    definition_divided = definition.split(' ')
+    real_width = int(term_width) - index_width - 2  # -2 to przerwa między indeksami, a definicją
+    if len(definition) > real_width:
+        # individual line length
+        indiv_llen = -index_width
+        for word, nextword in zip(definition_divided, definition_divided[1:]):
+            indiv_llen += len(word) + 1  # 1 to spacja, która znika przy definition.split(' ')
+            if len(nextword) + 1 + indiv_llen > real_width:
+                definicja += word + '\n' + indent*' '
+                indiv_llen = config['indent'] - index_width
+            else:
+                definicja += word + ' '
+                # definicja + ostatnie słowo
+        return definicja + definition_divided[-1] + br
+    return definition + br
+
+
+# Kolorowanie bazując na enumeracji i zawijanie tekstu
+def ah_def_print(indexing, term_width, definition):
+    if config['wrap_text']:
+        definition_aw = wrap_definitions(definition, term_width, index_width=len(str(indexing)))
     else:
-        print(f"{index_color}{indexing}  {def2_color}{definition}")
+        definition_aw = definition
+    if indexing % 2 == 1:
+        print(f"{index_color}{indexing}  {def1_color}{definition_aw}")
+    else:
+        print(f"{index_color}{indexing}  {def2_color}{definition_aw}")
 
 
+def terminal_width():
+    try:
+        term_width_auto = str(os.get_terminal_size()).lstrip('os.terminal_size(columns=').split(',')[0]
+        if config['textwidth'] == 'auto':
+            term_width = int(term_width_auto)
+        else:
+            term_width = int(config['textwidth'])
+    except OSError:
+        term_width_auto = 191
+        if config['textwidth'] != 'auto':
+            term_width = int(config['textwidth'])
+        else:
+            print(f'''{error_color}Wystąpił problem podczas pozyskiwania szerokości okna
+aby wybrać szerokość inną niż {Fore.RESET}79{error_color} użyj {Fore.RESET}"-textwidth [wartość]"''')
+            term_width = 79
+            save_commands(komenda='textwidth', wartosc=79)
+
+    if config['textwidth'] != 'auto':
+        if term_width > int(term_width_auto):
+            term_width = int(term_width_auto)
+            print(f'{error_color}Aktualna szerokość okna jest za wysoka aby wyświetlić słownik\nHasło zostanie wyświetlone z wartością {Fore.RESET}{term_width}')
+            return term_width
+        elif term_width < 10:
+            term_width = 79
+            print(f'{error_color}Aktualna szerokość okna jest za mała aby wyświetlić słownik\nHasło zostanie wyświetlone z domyślną wartością {Fore.RESET}79')
+            return term_width
+        else:
+            return term_width
+    return term_width
+
+
+# Rysowanie AHD
 def rysuj_slownik(url):
     global gloss
     global skip_check
     try:
-        gloss_index = 0
         reqs = requests_session_ah.get(url, timeout=10)
         soup = BeautifulSoup(reqs.content, 'lxml', from_encoding='utf-8')
         word_check = soup.find_all(class_=('ds-list', 'sds-single', 'ds-single', 'ds-list'))
-        indexing = 0
         if len(word_check) == 0:
             print(f'{error_color}Nie znaleziono podanego hasła')
             skip_check = 1
         else:
+            term_width = terminal_width()
+            if config['indent'] > int(term_width) // 2:
+                save_commands(komenda='indent', wartosc=int(term_width) // 2)
+            indexing = 0
+            gloss_index = 0
             for td in soup.find_all('td'):
                 meanings_in_td = td.find_all(class_=('ds-list', 'sds-single', 'ds-single', 'ds-list'))
                 print(f'{delimit_color}-------------------------------------------------------------------------------')
@@ -276,7 +403,7 @@ def rysuj_slownik(url):
                         gloss = gloss_to_print.strip('-').strip('–')
                         print(f'{BOLD}Wyniki dla {gloss_color}{gloss_to_print}{END}'.center(79))
                     print(f'  {gloss_color}{meaning_num.text}')
-                for meandex, meaning in enumerate(meanings_in_td, start=1):  # Rysuje definicje
+                for meaning in meanings_in_td:  # Rysuje definicje
                     indexing += 1
                     rex0 = re.sub("[.][a-z][.]", ".", meaning.text)
                     rex1 = re.sub("[0-9][.]", "", rex0)
@@ -285,9 +412,9 @@ def rysuj_slownik(url):
                     rex4 = rex3.strip()
 
                     if config['pokazuj_filtrowany_slownik']:
-                        ah_def_print(indexing, meandex, definition=rex4.replace('', ''))  # Kolorowanie bazując na enumeracji
+                        ah_def_print(indexing, term_width, definition=rex4.replace('', ''))
                     else:
-                        ah_def_print(indexing, meandex, definition=meaning.text)
+                        ah_def_print(indexing, term_width, definition=meaning.text)
                     if config['ukryj_slowo_w_definicji']:
                         if gloss.endswith('y') and 'ied' in rex4:  # Aby słowa typu "varied" i "married" były częściowo ukrywane
                             definicje.append(rex4.replace(gloss.rstrip("y"), '...').replace(':', ':<br>').replace('', '′'))
@@ -314,7 +441,7 @@ def rysuj_slownik(url):
     except TimeoutError:
         print(f'{error_color}AH Dictionary nie odpowiada')
     except Exception:
-        print(f'{error_color}Nastąpił nieoczekiwany błąd')
+        print(f'{error_color}Wystąpił nieoczekiwany błąd')
         raise
 
 
@@ -421,7 +548,7 @@ def czesci_mowy_input():
             return wybor_czesci_mowy
         else:
             skip_check = 1
-            print(f'{Fore.LIGHTGREEN_EX}Pominięto dodawnie karty')
+            print(f'{Fore.LIGHTGREEN_EX}Pominięto dodawanie karty')
     return 0
 
 
@@ -507,7 +634,7 @@ def disambiguator(url_synsearch):
         print(f'{error_color}WordNet nie odpowiada, spróbuj nawiązać połączenie później')
         skip_check_disamb = 1
     except Exception:
-        print(f'{error_color}Nastąpił nieoczekiwany błąd\n')
+        print(f'{error_color}Wystąpił nieoczekiwany błąd\n')
         skip_check_disamb = 1
 
 

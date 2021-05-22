@@ -17,6 +17,7 @@ error_color: Fore.LIGHTRED_EX
 etym_bulk: 0
 etym_color: Fore.RESET
 gloss_color: Fore.CYAN
+indent: 2
 index_color: Fore.LIGHTGREEN_EX
 input_color: Fore.RESET
 inputtext_color: Fore.RESET
@@ -30,7 +31,9 @@ syn_bulk: 0
 syn_color: Fore.YELLOW
 syndef_color: Fore.RESET
 synpos_color: Fore.RESET
+textwidth: 79
 tworz_karte: true
 ukryj_slowo_w_definicji: true
 ukryj_slowo_w_disamb: true
 ukryj_slowo_w_zdaniu: false
+wrap_text: true
