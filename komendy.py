@@ -27,12 +27,14 @@ synpos_color = eval(config['synpos_color'])
 syndef_color = eval(config['syndef_color'])
 error_color = eval(config['error_color'])
 delimit_color = eval(config['delimit_color'])
-input_color = eval(config['input_color'])
 if sys.platform.startswith('linux'):
     inputtext_color = eval(config['inputtext_color'])
+    input_color = eval(config['input_color'])
 else:
     inputtext_color = ''
+    input_color = ''
 
+card_message = 'Utworzona karta zawiera:'
 commands_msg = {
                 '-def': 'Dodawanie definicji: ', '-audio': 'Dodawanie audio: ', '--audio-path': 'Ścieżka zapisu audio: ',
                 '-etym': 'Dodawanie etymologii: ', '-pos': 'Dodawanie części mowy: ', '-fs': 'Filtrowany słownik: ',
@@ -40,11 +42,12 @@ commands_msg = {
                 '-udef': 'Ukrywanie słowa w definicjach: ', '-upz': 'Ukrywanie słowa w zdaniu: ',
                 '-udisamb': 'Ukrywanie słowa w disamb: ', '-disamb': 'Disambiguation: ', '-syn': 'Dodawanie synonimów: ',
                 '-psyn': 'Dodawanie przykładów synonimów: ', '-bulk': 'Masowe dodawanie: ', '-bulkfdef': 'Swobodne masowe dodawanie definicji: ',
-                '-bulkfsyn': 'Swobodne masowe dodawanie synonimów: ', '-wraptext': 'Zawijanie tekstu: '
+                '-bulkfsyn': 'Swobodne masowe dodawanie synonimów: ', '-wraptext': 'Zawijanie tekstu: ', '-break': 'Nowa linia po każdej definicji: '
 }
 commands_values = {
                    'on': True, 'off': False, 'true': True, 'false': False, '1': True, '0': False,
-                   'yin': True, 'yang': False, 'tak': True, 'nie': False
+                   'yin': True, 'yang': False, 'tak': True, 'nie': False, 'yes': True, 'no': False,
+                   'yay': True, 'nay': False
 }
 search_commands = {
                    '-pz': 'dodaj_wlasne_zdanie', '-def': 'dodaj_definicje', '-pos': 'dodaj_czesci_mowy',
@@ -54,7 +57,8 @@ search_commands = {
                    '-fs': 'pokazuj_filtrowany_slownik',
                    '-all': '-all',
                    '-upz': 'ukryj_slowo_w_zdaniu', '-udef': 'ukryj_slowo_w_definicji', '-udisamb': 'ukryj_slowo_w_disamb',
-                   '-wraptext': 'wrap_text', '-textwidth': 'textwidth', '-indent': 'indent'
+                   '-wraptext': 'wrap_text', '-break': 'break', '-textwidth': 'textwidth', '-indent': 'indent',
+                   '-delimsize': 'delimsize', '-center': 'center'
 }
 bool_colors = {False: 'Fore.LIGHTRED_EX', True: 'Fore.LIGHTGREEN_EX'}
 colors = ('black', 'red', 'green', 'yellow', 'blue', 'magenta', 'cyan', 'white',
@@ -128,7 +132,7 @@ np. "-pz off", "-disamb on", "-all off" itd.
 --audio-path lub --save-path:
  Umożliwia zmianę miejsca zapisu audio
  (domyślnie: "Karty_audio" w folderze z programem).
- Aby audio było bezpośrednio dodawane do Anki, zlokalizuj ścieżkę
+ Aby audio było bezpośrednio dodawane do Anki, zlokalizuj ścieżkę collection.media
  i wpisz/skopiuj ją w pole wyświetlone po wpisaniu komendy.
 
  Na Windowsie:
@@ -147,24 +151,29 @@ Aktualna ścieżka zapisu audio: {config['save_path']}
 {BOLD}Misc komendy:{END}
 Ukrywanie hasła to zamiana wyszukiwanego słowa na "..."
 
-{BOLD}[Komenda]     [on/off]                             [Wartość]{END}
--fs           filtrowanie numeracji w słowniku       {config['pokazuj_filtrowany_slownik']}
--udef         ukrywa hasło w definicjach             {config['ukryj_slowo_w_definicji']}
--upz          ukrywa hasło w zdaniu                  {config['ukryj_slowo_w_zdaniu']}
--udisamb      ukrywa hasło w synonimach              {config['ukryj_slowo_w_disamb']}
--wraptext     zawijanie tekstu                       {config['wrap_text']}
--bulk         masowe dodawanie                       {config['bulk_add']}
+{BOLD}[Komenda]     [on/off]                                 [Wartość]{END}
+-fs           filtrowanie numeracji w słowniku           {config['pokazuj_filtrowany_slownik']}
+-udef         ukrywanie hasła w definicjach              {config['ukryj_slowo_w_definicji']}
+-upz          ukrywanie hasła w zdaniu                   {config['ukryj_slowo_w_zdaniu']}
+-udisamb      ukrywanie hasła w synonimach               {config['ukryj_slowo_w_disamb']}
+-wraptext     zawijanie tekstu                           {config['wrap_text']}
+-break        wstawianie nowej linii po definicji        {config['break']}
 
--textwidth [wartość]  szerokość tekstu do momentu
-                       zawinięcia (w znakach)        {config['textwidth']}
--indent [wartość]     szerokość wcięcia zawiniętego 
-                       tekstu (w znakach)            {config['indent']}
+-textwidth [wartość]  szerokość tekstu do momentu      [Znaków]
+                       zawinięcia                      {config['textwidth']}
+-indent [wartość]     szerokość wcięcia zawiniętego
+                       tekstu                           {config['indent']}
+-delimsize            szerokość odkreśleń              {config['delimsize']}
+-center               wyśrodkowywanie nagłówków        {config['center']}
+
+-center               
 --delete-last
 --delete-recent       usuwa ostatnią dodawaną kartę
 
 --config-colors
 --help-colors         wyświetla konfigurację kolorów
 -colors               wyświetla dostępne kolory
+
 --config-bulk         rozpoczyna konfigurację bulk
 
 -config               wyświetla informacje o aktualnej konfiguracji
@@ -172,6 +181,8 @@ Ukrywanie hasła to zamiana wyszukiwanego słowa na "..."
 {BOLD}Masowe dodawanie (bulk):{END}
 Bulk pozwala na dodawanie wielu kart na raz.
 Wystarczy skopiować tekst według szablonu i wkleić do dodawacza.
+
+-bulk             włącza/wyłącza masowe dodawanie    Aktualnie: {config['bulk_add']}
 
 --config-bulk     włącza szczegółową konfigurację masowego dodawania
                   gdzie można ustawić opcje dodawania definicji, części mowy,
@@ -191,7 +202,7 @@ Wystarczy skopiować tekst według szablonu i wkleić do dodawacza.
 
 {BOLD}Szablon dla masowego dodawania:{END}
 Aby rozpocząć masowe dodawanie należy wkleić listę elementów oddzielonych
-nową linią według szablonu (razem ze spacją)
+nową linią według szablonu (razem ze spacją na końcu)
 [słowo]      <---  musi zostać podane, aby rozpocząć dodawanie
 [zdanie]     <---  zależy od -pz (nie trzeba używać "/")
 [definicja]  <---  zależy od -bulkfdef
@@ -229,6 +240,8 @@ np. "-syn-color lightblue", "-pos-color magenta" itd.
 -gloss-color        {gloss_color}wyszukanego hasła w słowniku{Fore.RESET}
 -error-color        {error_color}błędów{Fore.RESET}
 -delimit-color      {delimit_color}odkreśleń{Fore.RESET}
--input-color        {input_color}pól na input (tj. "Szukaj:" itd.){Fore.RESET}
--inputtext-color    {inputtext_color}wpisywanego tekstu{Fore.RESET} *(nie działa na win i mac)
+-input-color        {input_color}pól na input{error_color}*{Fore.RESET}
+-inputtext-color    {inputtext_color}wpisywanego tekstu{error_color}*{Fore.RESET}
+
+{error_color}*{Fore.RESET} = Nie działa na win i mac
 """
