@@ -89,9 +89,8 @@ Aby wybrać definicję wpisz numer zielonego indeksu.
 
  Wpisanie czegokolwiek poza liczbą pomija dodawanie karty
 
- Aby dodać własną definicję, części mowy, etymologię lub synonimy
- zacznij wpisywanie od "/"
- np. "/dwa grzyby" spowoduje dodaniem "dwa grzyby" w pole definicji na karcie
+ Aby dodać własny tekst w pola na karcie wystarczy zacząć wpisywanie od "/"
+ np. "/dwa grzyby" spowoduje dodaniem "dwa grzyby"
  
 {BOLD}Przy częściach mowy:{END}
  1            dodaje wszystkie części mowy
@@ -159,14 +158,12 @@ Ukrywanie hasła to zamiana wyszukiwanego słowa na "..."
 -wraptext     zawijanie tekstu                           {config['wrap_text']}
 -break        wstawianie nowej linii po definicji        {config['break']}
 
--textwidth [wartość]  szerokość tekstu do momentu      [Znaków]
-                       zawinięcia                      {config['textwidth']}
--indent [wartość]     szerokość wcięcia zawiniętego
-                       tekstu                           {config['indent']}
--delimsize            szerokość odkreśleń              {config['delimsize']}
--center               wyśrodkowywanie nagłówków        {config['center']}
+                                                                  [Znaków]
+-textwidth [wartość]    szerokość tekstu do momentu zawinięcia    {str(config['textwidth']).center(8)}
+-indent [wartość]       szerokość wcięcia zawiniętego tekstu      {str(config['indent']).center(8)}
+-delimsize [wartość]    szerokość odkreśleń                       {str(config['delimsize']).center(8)}
+-center [wartość]       wyśrodkowywanie nagłówków                 {str(config['center']).center(8)}
 
--center               
 --delete-last
 --delete-recent       usuwa ostatnią dodawaną kartę
 
@@ -243,5 +240,5 @@ np. "-syn-color lightblue", "-pos-color magenta" itd.
 -input-color        {input_color}pól na input{error_color}*{Fore.RESET}
 -inputtext-color    {inputtext_color}wpisywanego tekstu{error_color}*{Fore.RESET}
 
-{error_color}*{Fore.RESET} = Nie działa na win i mac
+{error_color}*{Fore.RESET} = nie działa na win i mac
 """

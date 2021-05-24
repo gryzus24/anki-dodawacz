@@ -24,7 +24,7 @@ if sys.platform.startswith('linux'):
 if not os.path.exists('Karty_audio') and config['save_path'] == 'Karty_audio':
     os.mkdir('Karty_audio')  # Aby nie trzeba było tworzyć folderu ręcznie
 
-print(f"""{BOLD}- Dodawacz kart do Anki v0.5.0 -{END}\n
+print(f"""{BOLD}- Dodawacz kart do Anki v0.5.1 -{END}\n
 Wpisz "--help", aby wyświetlić pomoc\n\n""")
 
 # Ustawia kolory
@@ -45,7 +45,7 @@ if sys.platform.startswith('linux'):
     input_color = eval(config['input_color'])
     # Aby nie kombinować z robieniem tych kolorów na windowsie,
     # bo to wymaga rozwiązań co tylko zaśmiecają kod
-    # i powodują denerwujący wizualny bug
+    # i powodują denerwujący wizualny bug podczas zmiany wielkości okna
 else:
     inputtext_color = ''
     input_color = ''
@@ -101,7 +101,8 @@ def config_bulk():
                 print(f'{Fore.LIGHTGREEN_EX}OK')
             else:
                 values_to_save.append(0)
-                print(f'{error_color}Podano nieobsługiwaną wartość\n{Fore.RESET}{input_msg} {error_color}zmieniona na: {Fore.RESET}0')
+                print(f'{error_color}Podano nieobsługiwaną wartość\n'
+                      f'{Fore.RESET}{input_msg} {error_color}zmieniona na: {Fore.RESET}0')
     except ValueError:
         print(f'{Fore.LIGHTYELLOW_EX}Opuszczam konfigurację\nWprowadzone zmiany nie zostaną zapisane')
         return None
@@ -115,20 +116,21 @@ def config_bulk():
 
 def print_config():
     commands = list(dict.keys(k.search_commands))
+    commands.pop(13)  # usuwa -all
     cmds = commands[:12]
+    cmds.insert(9, '')
     misccmds = commands[12:]
     print(f'\n{Fore.RESET}{BOLD}[config dodawania]      [config miscellaneous]      [config bulk]{END}')
     for command, misccmd, blkcmd in zip_longest(cmds, misccmds, bulk_cmds, fillvalue=''):
-        if misccmd == '-all':
-            continue
-        if command == '-bulk':
-            print()
-        config_cmd = config[f'{k.search_commands[command]}']
+        config_cmd = config.get(f'{k.search_commands.get(command, "")}', '')
         config_misc_bool = config.get(f'{k.search_commands.get(misccmd, "")}', '')
         config_misc_print = '  ' + str(config.get(f'{k.search_commands.get(misccmd, "")}', ''))
         if '*' in config_misc_print:
             config_misc_print = config_misc_print.lstrip()
-        color_cmd = eval(k.bool_colors[config_cmd])
+        try:
+            color_cmd = eval(k.bool_colors[config_cmd])
+        except KeyError:
+            color_cmd = ''
         try:
             color_misc = eval(k.bool_colors[config_misc_bool])
         except KeyError:
@@ -197,64 +199,76 @@ podaj liczbę w przedziale od {Fore.RESET}-1{error_color} do {Fore.RESET}{max_va
 
 
 def set_width(value):
+    max_val = 382  # 4k monospace 12
 
-    def manual_width(value, term_width):
+    def manual_width(value):
         try:
             val = int(value)
-            if 10 <= val <= term_width:
+            if 10 <= val <= max_val:
                 print(f'{Fore.LIGHTGREEN_EX}OK')
                 val = val
-            elif val > term_width:
-                print(f'{error_color}Wartość nie może być większa niż {Fore.RESET}{term_width}\n'
-                      f'{Fore.LIGHTYELLOW_EX}Ustawiono: {Fore.RESET}{term_width}')
-                val = term_width
+            elif val > max_val:
+                print(f'{error_color}Wartość nie może być większa niż {Fore.RESET}{max_val}\n'
+                      f'{Fore.LIGHTYELLOW_EX}Ustawiono: {Fore.RESET}{max_val}')
+                val = max_val
             else:
                 print(f'{error_color}Wartość nie może być mniejsza niż {Fore.RESET}10\n'
                       f'{Fore.LIGHTYELLOW_EX}Ustawiono: {Fore.RESET}10')
                 val = 10
             save_commands(komenda='textwidth', wartosc=val)
         except ValueError:
-            print(f'''{error_color}Nieobsługiwana wartość
-podaj liczbę w przedziale od {Fore.RESET}10{error_color} do {Fore.RESET}{term_width}{error_color} lub {Fore.RESET}auto''')
+            if not term_er:
+                print(f'''{error_color}Nieobsługiwana wartość
+podaj liczbę w przedziale od {Fore.RESET}10{error_color} do {Fore.RESET}{max_val}{error_color} lub {Fore.RESET}auto''')
+            else:
+                print(f'''{error_color}Nieobsługiwana wartość
+podaj liczbę w przedziale od {Fore.RESET}10{error_color} do {Fore.RESET}{max_val}''')
 
     try:
         term_width_auto = str(os.get_terminal_size()).lstrip('os.terminal_size(columns=').split(',')[0]
         term_width = int(term_width_auto)
+        term_er = False
     except OSError:
-        term_width_auto = 191
-        term_width = 79
-    if value.strip() == 'auto' or value.strip() == '1':
-        print(f'{Fore.LIGHTGREEN_EX}OK')
-        return save_commands(komenda='textwidth', wartosc=f'{term_width}* auto')
-    manual_width(value, int(term_width_auto))
+        term_er = True
+    else:
+        if value.strip() == 'auto':
+            print(f'{Fore.LIGHTGREEN_EX}OK')
+            return save_commands(komenda='textwidth', wartosc=f'{term_width}* auto')
+    manual_width(value)
 
 
 def set_delimit_center(command, value):
     try:
         term_width_auto = str(os.get_terminal_size()).lstrip('os.terminal_size(columns=').split(',')[0]
         term_width = int(term_width_auto)
+        term_er = False
     except OSError:
-        term_width = 191
-
-    if value == 'auto' or value == '1':
-        print(f'{Fore.LIGHTGREEN_EX}OK')
-        return save_commands(komenda=command.strip('-'), wartosc=f'{term_width}* auto')
+        term_er = True
+    else:
+        if value == 'auto':
+            print(f'{Fore.LIGHTGREEN_EX}OK')
+            return save_commands(komenda=command.strip('-'), wartosc=f'{term_width}* auto')
+    max_val = 382  # 4k monospace 12
     try:
         val = int(value)
-        if 0 <= val <= term_width:
+        if 0 <= val <= max_val:
             print(f'{Fore.LIGHTGREEN_EX}OK')
             val = val
-        elif val > term_width:
-            print(f'{error_color}Wartość nie może być większa niż {Fore.RESET}{term_width}\n'
-                  f'{Fore.LIGHTYELLOW_EX}Ustawiono: {Fore.RESET}{term_width}')
-            val = term_width
+        elif val > max_val:
+            print(f'{error_color}Wartość nie może być większa niż {Fore.RESET}{max_val}\n'
+                  f'{Fore.LIGHTYELLOW_EX}Ustawiono: {Fore.RESET}{max_val}')
+            val = max_val
         else:
             print(f'{error_color}Wartość nie może być ujemna\n{Fore.LIGHTYELLOW_EX}Ustawiono: {Fore.RESET}0')
             val = 0
         save_commands(komenda=command.strip('-'), wartosc=val)
     except ValueError:
-        print(f'''{error_color}Nieobsługiwana wartość
-podaj liczbę w przedziale od {Fore.RESET}0{error_color} do {Fore.RESET}{term_width}{error_color} lub {Fore.RESET}auto''')
+        if not term_er:
+            print(f'''{error_color}Nieobsługiwana wartość
+podaj liczbę w przedziale od {Fore.RESET}0{error_color} do {Fore.RESET}{max_val}{error_color} lub {Fore.RESET}auto''')
+        else:
+            print(f'''{error_color}Nieobsługiwana wartość
+podaj liczbę w przedziale od {Fore.RESET}0{error_color} do {Fore.RESET}{max_val}''')
 
 
 def komendo(word):
@@ -281,7 +295,7 @@ def komendo(word):
     elif loc_word == '--help ' or loc_word == '-h ':
         importlib.reload(k)  # Aby nie trzeba było restartować programu, żeby zobaczyć aktualny stan configu
         print(k.help_command)
-    elif loc_word == '--help-colors ' or loc_word == '--help-color '\
+    elif loc_word == '--help-colors ' or loc_word == '--help-color ' \
             or loc_word == '--config-colors ' or loc_word == '--config-color ':
         print(k.help_colors_command)
         pokaz_dostepne_kolory()
@@ -299,7 +313,8 @@ def komendo(word):
         if cmd_tuple[1] in k.colors:
             kolory(komenda=cmd_tuple[0], wartosc=cmd_tuple[1])
         else:
-            print(f'{error_color}Nie znaleziono koloru{Fore.RESET}\nAby wyświetlić listę dostępnych kolorów wpisz "-colors"')
+            print(f'{error_color}Nie znaleziono koloru{Fore.RESET}\n'
+                  f'Aby wyświetlić listę dostępnych kolorów wpisz "-colors"')
     else:
         return word
 
@@ -350,33 +365,35 @@ Karta zostanie dodana bez audio\n""")
         print(f'{error_color}Wystąpił problem podczas szukania pliku audio')
 
 
-def wrap_definitions(definition, term_width, index_width):
+def wrap_text(string, term_width, index_width, indento, gap, break_allowed):
     br = ''
-    if config['break']:
-        br = '\n'
-    definicja = ''
-    indent = config['indent'] + index_width
-    definition_divided = definition.split(' ')
-    real_width = int(term_width) - index_width - 2  # -2 to przerwa między indeksami, a definicją
-    if len(definition) > real_width:
+    if break_allowed:
+        if config['break']:
+            br = '\n'
+    wrapped_text = ''
+    indent = indento + index_width
+    string_divided = string.split(' ')
+    real_width = int(term_width) - index_width - gap  # gap to przerwa między indeksami, a definicją
+    if len(string) > real_width:
         # individual line length
         indiv_llen = 0
-        for word, nextword in zip(definition_divided, definition_divided[1:]):
-            indiv_llen += len(word) + 1  # 1 to spacja, która znika przy definition.split(' ')
+        for word, nextword in zip(string_divided, string_divided[1:]):
+            indiv_llen += len(word) + 1  # 1 to spacja, która znika przy string.split(' ')
             if len(nextword) + 1 + indiv_llen > real_width:
-                definicja += word + '\n' + indent*' '
-                indiv_llen = config['indent'] - 2
+                wrapped_text += word + '\n' + indent * ' '
+                indiv_llen = indento - gap
             else:
-                definicja += word + ' '
+                wrapped_text += word + ' '
                 # definicja + ostatnie słowo
-        return definicja + definition_divided[-1] + br
-    return definition + br
+        return wrapped_text + string_divided[-1] + br
+    return string + br
 
 
 # Kolorowanie bazując na enumeracji i zawijanie tekstu
 def ah_def_print(indexing, term_width, definition):
     if config['wrap_text']:
-        definition_aw = wrap_definitions(definition, term_width, index_width=len(str(indexing)))
+        definition_aw = wrap_text(definition, term_width, index_width=len(str(indexing)), indento=config['indent'],
+                                  gap=2, break_allowed=True)
     else:
         definition_aw = definition
     if indexing % 2 == 1:
@@ -391,24 +408,25 @@ def terminal_width():
         term_width_auto = str(os.get_terminal_size()).lstrip('os.terminal_size(columns=').split(',')[0]
         term_width_auto = int(term_width_auto)
     except OSError:
-        term_width_auto = 191
         if '* auto' in term_width:
             print(f'''{error_color}Wystąpił problem podczas pozyskiwania szerokości okna
 aby wybrać szerokość inną niż {Fore.RESET}{term_width.rstrip('* auto')}{error_color} użyj {Fore.RESET}"-textwidth [wartość]"''')
             save_commands(komenda='textwidth', wartosc=term_width.rstrip('* auto'))
-
-    if '* auto' in term_width:
-        if int(term_width.rstrip('* auto')) != term_width_auto:
+        return int(term_width.rstrip('* auto'))
+    else:
+        if '* auto' in term_width:
             save_commands(komenda='textwidth', wartosc=f'{term_width_auto}* auto')
-        term_width = int(term_width_auto)
-        return int(term_width)
-    if int(term_width) > int(term_width_auto):
-        print(f'{error_color}Aktualna szerokość okna {Fore.RESET}{term_width}{error_color} jest za wysoka aby wyświetlić słownik\n'
-              f'Hasło zostanie wyświetlone z wartością {Fore.RESET}{term_width_auto}')
-        term_width = int(term_width_auto)
-    return int(term_width)
+            term_width = int(term_width_auto)
+            return term_width
+        elif int(term_width.rstrip('* auto')) > term_width_auto:
+            print(
+                f'{error_color}Aktualna szerokość okna {Fore.RESET}{term_width}{error_color} jest za wysoka aby wyświetlić słownik\n'
+                f'Hasło zostanie wyświetlone z wartością {Fore.RESET}{term_width_auto}')
+            term_width = term_width_auto
+        return conf_to_int(term_width)
 
-# Funkcja do konwertowania configu do f'' stringów
+
+# Funkcja do konwertowania configu dla f'' stringów
 def conf_to_int(conf_val):
     string = str(conf_val).rstrip('* auto')
     return int(string)
@@ -437,15 +455,17 @@ def rysuj_slownik(url):
             gloss_index = 0
             for td in soup.find_all('td'):
                 meanings_in_td = td.find_all(class_=('ds-list', 'sds-single', 'ds-single', 'ds-list'))
-                print(f'{delimit_color}{conf_to_int(config["delimsize"])*"-"}')
+                print(f'{delimit_color}{conf_to_int(config["delimsize"]) * "-"}')
                 for meaning_num in td.find_all('font', {'color': '#006595'}, 'sup'):  # Rysuje glossy, czyli bat·ter 1, bat·ter 2 itd.
                     gloss_index += 1  # Aby przy wpisaniu nieprawidłowego glossa, np. "impeachment" zamiast "impeach", dodało "impeach"
                     if gloss_index == 1:
                         gloss0 = meaning_num.text
                         gloss1 = gloss0.replace('·', '')
                         gloss_to_print = re.sub(r'\d', '', gloss1).strip()
-                        gloss = gloss_to_print.strip('-').strip('–')       # Z jakiegoś powodu, żeby było równo musi tu być 14
-                        print(f'{BOLD}Wyniki dla {gloss_color}{gloss_to_print}{END}'.center(conf_to_int(config['center']) + 14))
+                        gloss = gloss_to_print.strip('-').strip(
+                            '–')  # Z jakiegoś powodu, żeby było równo musi tu być 14
+                        print(f'{BOLD}Wyniki dla {gloss_color}{gloss_to_print}{END}'.center(
+                            conf_to_int(config['center']) + 14))
                     print(f'  {gloss_color}{meaning_num.text}')
                 for meaning in meanings_in_td:  # Rysuje definicje
                     indexing += 1
@@ -475,9 +495,11 @@ def rysuj_slownik(url):
                 if not str(czesci_mowy).startswith('[]'):
                     print()
                 for etym in td.find_all(class_='etyseg'):  # Dodaje etymologie
-                    print(f'{etym_color}{etym.text}')
+                    print(f'{etym_color}'
+                          f'{wrap_text(etym.text, term_width, index_width=0, indento=0, gap=0, break_allowed=False)}')
                     etymologia.append(etym.text)
-            if not str(etymologia).startswith('[]'):  # Aby przy hasłach bez etymologii lub części mowy nie było niepotrzebnych spacji
+            if not str(etymologia).startswith(
+                    '[]'):  # Aby przy hasłach bez etymologii lub części mowy nie było niepotrzebnych spacji
                 print()
     except ConnectionError:
         print(f'{error_color}Nie udało się połączyć ze słownikiem, sprawdź swoje połączenie i spróbuj ponownie')
@@ -495,9 +517,9 @@ def ogarnij_zdanie(zdanie):
         if not config['ukryj_slowo_w_zdaniu']:
             return zdanie
         else:
-            return zdanie.replace(gloss, '...')\
-                .replace(gloss.upper(), '...')\
-                .replace(gloss.lower(), '...')\
+            return zdanie.replace(gloss, '...') \
+                .replace(gloss.upper(), '...') \
+                .replace(gloss.lower(), '...') \
                 .replace(gloss.capitalize(), '...')
     elif zdanie == ' ':  # Aby przy wyłączonym dodawaniu zdania nie pytało o zdanie_check
         return zdanie
@@ -536,9 +558,9 @@ def input_func(in_put):
         return -1
     elif in_put.startswith('/'):
         if config['ukryj_slowo_w_definicji']:
-            return in_put.replace(gloss, '...')\
-                .replace(gloss.lower(), '...')\
-                .replace(gloss.upper(), '...')\
+            return in_put.replace(gloss, '...') \
+                .replace(gloss.lower(), '...') \
+                .replace(gloss.upper(), '...') \
                 .replace(gloss.capitalize(), '...')  # To jest szybsze niż regex i obejmuje wszystkie sensowne sytuacje
         return in_put
     return -2
@@ -592,7 +614,7 @@ def czesci_mowy_input():
 # Bierze wybór z input_func i wydaje adekwatne informacje na kartę
 def choice_func(wybor, gloss_content, connector):
     global skip_check
-    if isinstance(wybor, str):  # Nie podoba mi się przechodzenie przez ten if. Ale isinstance jest chyba najlepszym rozwiązaniem
+    if isinstance(wybor, str):  # Nie podoba mi się ten if. Ale isinstance jest chyba najlepszym rozwiązaniem
         return wybor.lstrip('/')
     elif len(gloss_content) >= wybor > 0:
         return gloss_content[wybor - 1]
@@ -634,17 +656,22 @@ def rysuj_synonimy(syn_soup):
 
         synonimy1 = re.sub(r"\([^()]*\)", "", synonimy0)  # usuwa pierwszy miot nawiasów
         synonimy2 = re.sub(r"\(.*\)", "", synonimy1)  # usuwa resztę nawiasów
-        synonimy3 = re.sub(r"\s{2}", "", synonimy2)  # gotowe do wyświetlenia w karcie
+        synonimy3 = re.sub(r"\s{2}", "", synonimy2) + '\n   '  # \n tylko do wyświetlenia
 
         if config['ukryj_slowo_w_disamb']:
-            grupa_synonimow.append(synonimy3.replace(gloss, '...'))
-            grupa_przykladow.append(przyklady2.replace(gloss, '...'))
+            grupa_synonimow.append(synonimy3.replace(gloss, '...').replace('\n', ''))
+            grupa_przykladow.append(przyklady2.replace(gloss, '...').replace('\n', ''))
         else:
-            grupa_synonimow.append(synonimy3)
-            grupa_przykladow.append(przyklady2)
-
+            grupa_synonimow.append(synonimy3.replace('\n', ''))
+            grupa_przykladow.append(przyklady2.replace('\n', ''))
+        syn_tp = wrap_text(synonimy3, term_width=conf_to_int(config['textwidth']), index_width=len(str(index)),
+                           indento=3, gap=3 + len(str(pos)), break_allowed=False)
+        syndef_tp = wrap_text(syndef, term_width=conf_to_int(config['textwidth']), index_width=len(str(index)),
+                              indento=3, gap=3, break_allowed=False)
+        # w syndef_tp gap=3 to '\n   ' spacje z "synonimy3"
         if not config['bulk_add']:  # Aby ograniczyć przesuwanie podczas bulk, wordnet nie jest wyświetlany
-            print(f'{index_color}{index} :{synpos_color}{pos} {syn_color}{synonimy3} {syndef_color}{syndef}{psyn_color}{przyklady4}\n')
+            print(f'{index_color}{index} : {synpos_color}{pos.lstrip()} {syn_color}{syn_tp} {syndef_color}'
+                  f'{syndef_tp}{psyn_color}{przyklady4}\n')
         else:
             ''
 
@@ -662,7 +689,7 @@ def disambiguator(url_synsearch):
             print(f'{error_color}\nNie znaleziono {gloss_color}{gloss} {error_color}na {Fore.RESET}WordNecie')
             skip_check_disamb = 1
         else:
-            print(f'{delimit_color}{conf_to_int(config["delimsize"])*"-"}')
+            print(f'{delimit_color}{conf_to_int(config["delimsize"]) * "-"}')
             print(f'{Fore.LIGHTWHITE_EX}{"WordNet".center(conf_to_int(config["center"]))}\n')
             rysuj_synonimy(syn_soup)
     except ConnectionError:
@@ -692,17 +719,30 @@ Jeżeli problem wystąpi ponownie, zrestartuj program""")
 
 
 def wyswietl_karte():
-    print(f'{delimit_color}{conf_to_int(config["delimsize"])*"-"}')
-    print(f"{def1_color}{definicje.replace('<br>', ' ').center(conf_to_int(config['center']))}")  # center() się psuje jak zamieni się "<br>" na "\n" :/
-    print(f'{syn_color}{disamb_synonimy.center(conf_to_int(config["center"]))}')
-    print(f'{psyn_color}{disamb_przyklady.center(conf_to_int(config["center"]))}')
-    print(f'{delimit_color}{conf_to_int(config["delimsize"])*"-"}')
-    print(f'{gloss_color}{gloss.center(conf_to_int(config["center"]))}')
-    print(f'{zdanie.center(conf_to_int(config["center"]))}')
-    print(f'{pos_color}{czesci_mowy.center(conf_to_int(config["center"]))}')
-    print(f'{etym_color}{etymologia.center(conf_to_int(config["center"]))}')
-    print(audiofile_name.center(conf_to_int(config["center"])))
-    print(f'{delimit_color}{conf_to_int(config["delimsize"])*"-"}\n')
+    delimit = conf_to_int(config["delimsize"])
+    centr = conf_to_int(config['center'])
+    options = (conf_to_int(config['textwidth']), 0, 0, 0, False)
+    definitions_list = wrap_text(definicje, *options).replace('<br>', ' ').split('\n')
+    disamb_list = wrap_text(disamb_synonimy, *options).split('\n')
+    disamb_przyklady_list = wrap_text(disamb_przyklady, *options).split('\n')
+    zdanie_list = wrap_text(zdanie, *options).split('\n')
+    etym_list = wrap_text(etymologia, *options).split('\n')
+    print(f'{delimit_color}{delimit * "-"}')
+    for definition_tp in definitions_list:
+        print(f"{def1_color}{definition_tp.center(centr)}")
+    for disamb_tp in disamb_list:
+        print(f'{syn_color}{disamb_tp.center(centr)}')
+    for disamb_psyn_tp in disamb_przyklady_list:
+        print(f'{psyn_color}{disamb_psyn_tp.center(centr)}')
+    print(f'{delimit_color}{delimit * "-"}')
+    print(f'{gloss_color}{gloss.center(centr)}')
+    for zdanie_tp in zdanie_list:
+        print(zdanie_tp.center(centr))
+    print(f'{pos_color}{czesci_mowy.center(centr)}')
+    for etym_tp in etym_list:
+        print(f'{etym_color}{etym_tp.center(centr)}')
+    print(audiofile_name.center(centr))
+    print(f'{delimit_color}{delimit * "-"}\n')
 
 
 start = True
@@ -785,16 +825,18 @@ try:
                     if config['bulk_free_syn']:
                         disamb_synonimy = choice_func(*disamb_input_syn(), connector=' ')
                     else:
-                        disamb_synonimy = choice_func(wybor=config['syn_bulk'], gloss_content=grupa_synonimow, connector=' ')
+                        disamb_synonimy = choice_func(wybor=config['syn_bulk'], gloss_content=grupa_synonimow,
+                                                      connector=' ')
                         if skip_check == 1:
                             break
-                    disamb_przyklady = choice_func(wybor=config['psyn_bulk'], gloss_content=grupa_przykladow, connector=' ')
+                    disamb_przyklady = choice_func(wybor=config['psyn_bulk'], gloss_content=grupa_przykladow,
+                                                   connector=' ')
                     if skip_check == 1:
                         break
 
             if skip_check == 0 and config['tworz_karte']:
-                wyswietl_karte()
                 utworz_karte()
+                wyswietl_karte()
             break
 except KeyboardInterrupt:
     print(f'{Fore.RESET}\nZakończono')  # Fore.RESET musi tu być, aby kolory z "inputtext" nie wchodziły

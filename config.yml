@@ -2,12 +2,12 @@ break: false
 bulk_add: false
 bulk_free_def: false
 bulk_free_syn: false
-center: 79
+center: 79* auto
 def1_color: Fore.RESET
 def2_color: Fore.RESET
 def_bulk: 0
 delimit_color: Fore.RESET
-delimsize: 79
+delimsize: 79* auto
 disambiguation: true
 dodaj_audio: true
 dodaj_czesci_mowy: true
