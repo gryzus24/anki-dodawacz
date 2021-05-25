@@ -464,7 +464,8 @@ def rysuj_slownik(url):
                         gloss_to_print = re.sub(r'\d', '', gloss1).strip()
                         gloss = gloss_to_print.strip('-').strip('–')
                         if gloss_index == 1:
-                            print(f'{BOLD}Wyniki dla {gloss_color}{gloss_to_print}{END}'.center(conf_to_int(config['center'])))
+                            wdg = f'{BOLD}Wyniki dla {gloss_color}{gloss_to_print}{END}'
+                            print(wdg.center(conf_to_int(config['center']) + 9))  # RESET i BOLD jest brane pod uwagę przy center
                     print(f'  {gloss_color}{meaning_num.text}')
                 for meaning in meanings_in_td:  # Rysuje definicje
                     indexing += 1
@@ -689,11 +690,12 @@ def disambiguator(url_synsearch):
         syn_soup = BeautifulSoup(reqs_syn.content, 'lxml', from_encoding='iso-8859-1')
         no_word = syn_soup.find('h3')
         if len(str(no_word)) == 48 or len(str(no_word)) == 117:
-            print(f'{error_color}\nNie znaleziono {gloss_color}{gloss} {error_color}na {Fore.RESET}WordNecie')
+            print(f'{error_color}\nNie znaleziono {gloss_color}{gloss}{error_color} na {Fore.RESET}WordNecie')
             skip_check_disamb = 1
         else:
-            print(f'{delimit_color}{conf_to_int(config["delimsize"]) * "-"}')
-            print(f'{Fore.LIGHTWHITE_EX}{"WordNet".center(conf_to_int(config["center"]))}\n')
+            if not config['bulk_add']:
+                print(f'{delimit_color}{conf_to_int(config["delimsize"]) * "-"}')
+                print(f'{Fore.LIGHTWHITE_EX}{"WordNet".center(conf_to_int(config["center"]))}\n')
             rysuj_synonimy(syn_soup)
     except ConnectionError:
         print(f'{error_color}Nie udało się połączyć z WordNetem, sprawdź swoje połączenie i spróbuj ponownie')
@@ -800,25 +802,22 @@ try:
                     break
                 if config['disambiguation']:
                     disambiguator(url_synsearch='http://wordnetweb.princeton.edu/perl/webwn?s=' + gloss)
-                    if skip_check_disamb == 1:  # Aby tylko pominęło dodawanie synonimów, a nie tworzenie karty
-                        break
-                    disamb_synonimy = choice_func(*disamb_input_syn(), connector=' ')
-                    if skip_check == 1:
-                        break
-                    disamb_przyklady = choice_func(*disamb_input_przyklady(), connector=' ')
-                    if skip_check == 1:
-                        break
-                    if config['dodaj_synonimy'] and config['dodaj_przyklady_synonimow']:
-                        disambiguation = disamb_synonimy + '<br>' + disamb_przyklady
-                    else:
-                        disambiguation = disamb_synonimy + disamb_przyklady
+                    if skip_check_disamb == 0:
+                        disamb_synonimy = choice_func(*disamb_input_syn(), connector=' ')
+                        if skip_check == 1:
+                            break
+                        disamb_przyklady = choice_func(*disamb_input_przyklady(), connector=' ')
+                        if skip_check == 1:
+                            break
+                        if config['dodaj_synonimy'] and config['dodaj_przyklady_synonimow']:
+                            disambiguation = disamb_synonimy + '<br>' + disamb_przyklady
+                        else:
+                            disambiguation = disamb_synonimy + disamb_przyklady
 
             if config['tworz_karte'] and config['bulk_add']:
                 zdanie = ogarnij_zdanie(zdanie_input())  # Aby wyłączyć dodawanie zdania w bulk wystarczy -pz off
                 if config['bulk_free_def']:
                     definicje = choice_func(*definicje_input(), connector=' ')
-                    if skip_check == 1:
-                        break
                 else:
                     definicje = choice_func(wybor=config['def_bulk'], gloss_content=definicje, connector='<br>')
                 czesci_mowy = wybierz_czesci_mowy(wybor_czesci_mowy=config['pos_bulk'], connector=' | ')
@@ -827,16 +826,14 @@ try:
                     disambiguator(url_synsearch='http://wordnetweb.princeton.edu/perl/webwn?s=' + word)
                     if config['bulk_free_syn']:
                         disamb_synonimy = choice_func(*disamb_input_syn(), connector=' ')
+                        disambiguation = disamb_synonimy
                     else:
-                        disamb_synonimy = choice_func(wybor=config['syn_bulk'], gloss_content=grupa_synonimow,
-                                                      connector=' ')
-                        if skip_check == 1:
-                            break
-                    disamb_przyklady = choice_func(wybor=config['psyn_bulk'], gloss_content=grupa_przykladow,
-                                                   connector=' ')
-                    if skip_check == 1:
-                        break
-
+                        disamb_synonimy = choice_func(wybor=config['syn_bulk'], gloss_content=grupa_synonimow, connector=' ')
+                        disamb_przyklady = choice_func(wybor=config['psyn_bulk'], gloss_content=grupa_przykladow, connector=' ')
+                        if config['dodaj_synonimy'] and config['dodaj_przyklady_synonimow']:
+                            disambiguation = disamb_synonimy + '<br>' + disamb_przyklady
+                        else:
+                            disambiguation = disamb_synonimy + disamb_przyklady
             if skip_check == 0 and config['tworz_karte']:
                 utworz_karte()
                 wyswietl_karte()
