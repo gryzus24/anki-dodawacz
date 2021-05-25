@@ -234,7 +234,7 @@ np. "-syn-color lightblue", "-pos-color magenta" itd.
 -syndef-color       {syndef_color}definicji przy synonimach{Fore.RESET}
 -synpos-color       {synpos_color}części mowy przy synonimach{Fore.RESET}
 -index-color        {index_color}indeksów w słowniku{Fore.RESET}
--gloss-color        {gloss_color}wyszukanego hasła w słowniku{Fore.RESET}
+-gloss-color        {gloss_color}wyszukanego w słowniku hasła{Fore.RESET}
 -error-color        {error_color}błędów{Fore.RESET}
 -delimit-color      {delimit_color}odkreśleń{Fore.RESET}
 -input-color        {input_color}pól na input{error_color}*{Fore.RESET}

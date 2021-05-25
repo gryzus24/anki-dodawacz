@@ -458,14 +458,13 @@ def rysuj_slownik(url):
                 print(f'{delimit_color}{conf_to_int(config["delimsize"]) * "-"}')
                 for meaning_num in td.find_all('font', {'color': '#006595'}, 'sup'):  # Rysuje glossy, czyli bat·ter 1, bat·ter 2 itd.
                     gloss_index += 1  # Aby przy wpisaniu nieprawidłowego glossa, np. "impeachment" zamiast "impeach", dodało "impeach"
-                    if gloss_index == 1:
+                    if gloss_index == 1 or gloss_index == 2:  # Aby preferować lowercase wersję glossa
                         gloss0 = meaning_num.text
                         gloss1 = gloss0.replace('·', '')
                         gloss_to_print = re.sub(r'\d', '', gloss1).strip()
-                        gloss = gloss_to_print.strip('-').strip(
-                            '–')  # Z jakiegoś powodu, żeby było równo musi tu być 14
-                        print(f'{BOLD}Wyniki dla {gloss_color}{gloss_to_print}{END}'.center(
-                            conf_to_int(config['center']) + 14))
+                        gloss = gloss_to_print.strip('-').strip('–')
+                        if gloss_index == 1:
+                            print(f'{BOLD}Wyniki dla {gloss_color}{gloss_to_print}{END}'.center(conf_to_int(config['center'])))
                     print(f'  {gloss_color}{meaning_num.text}')
                 for meaning in meanings_in_td:  # Rysuje definicje
                     indexing += 1
@@ -481,9 +480,11 @@ def rysuj_slownik(url):
                         ah_def_print(indexing, term_width, definition=meaning.text)
                     if config['ukryj_slowo_w_definicji']:
                         if gloss.endswith('y') and 'ied' in rex4:  # Aby słowa typu "varied" i "married" były częściowo ukrywane
-                            definicje.append(rex4.replace(gloss.rstrip("y"), '...').replace(':', ':<br>').replace('', '′'))
+                            definicje.append(rex4.replace(gloss.rstrip("y"), '...').replace(gloss.capitalize(), '...')
+                                             .replace(':', ':<br>').replace('', '′'))
                         else:
-                            definicje.append(rex4.replace(gloss, '...').replace(':', ':<br>').replace('', '′'))
+                            definicje.append(rex4.replace(gloss, '...').replace(gloss.capitalize(), '...')
+                                             .replace(':', ':<br>').replace('', '′'))
                     else:
                         definicje.append(rex4.replace(':', ':<br>').replace('', '′'))
 
@@ -656,19 +657,21 @@ def rysuj_synonimy(syn_soup):
 
         synonimy1 = re.sub(r"\([^()]*\)", "", synonimy0)  # usuwa pierwszy miot nawiasów
         synonimy2 = re.sub(r"\(.*\)", "", synonimy1)  # usuwa resztę nawiasów
-        synonimy3 = re.sub(r"\s{2}", "", synonimy2) + '\n   '  # \n tylko do wyświetlenia
+        synonimy3 = re.sub(r"\s{2}", "", synonimy2)
 
         if config['ukryj_slowo_w_disamb']:
-            grupa_synonimow.append(synonimy3.replace(gloss, '...').replace('\n', ''))
-            grupa_przykladow.append(przyklady2.replace(gloss, '...').replace('\n', ''))
+            grupa_synonimow.append(synonimy3.replace(gloss, '...'))
+            if gloss.endswith('y') and 'ied' in przyklady2 or 'ies' in przyklady2:  # Aby słowa typu "varied" i "married" były częściowo ukrywane
+                grupa_przykladow.append(przyklady2.replace(gloss.rstrip('y'), '...').replace(gloss.capitalize(), '...'))  # Tylko słowa w przykładach będą tak ukrywane
+            else:
+                grupa_przykladow.append(przyklady2.replace(gloss, '...').replace(gloss.capitalize(), '...'))
         else:
-            grupa_synonimow.append(synonimy3.replace('\n', ''))
-            grupa_przykladow.append(przyklady2.replace('\n', ''))
-        syn_tp = wrap_text(synonimy3, term_width=conf_to_int(config['textwidth']), index_width=len(str(index)),
+            grupa_synonimow.append(synonimy3)
+            grupa_przykladow.append(przyklady2)
+        syn_tp = wrap_text(synonimy3 + '\n   ', term_width=conf_to_int(config['textwidth']), index_width=len(str(index)),
                            indento=3, gap=3 + len(str(pos)), break_allowed=False)
         syndef_tp = wrap_text(syndef, term_width=conf_to_int(config['textwidth']), index_width=len(str(index)),
                               indento=3, gap=3, break_allowed=False)
-        # w syndef_tp gap=3 to '\n   ' spacje z "synonimy3"
         if not config['bulk_add']:  # Aby ograniczyć przesuwanie podczas bulk, wordnet nie jest wyświetlany
             print(f'{index_color}{index} : {synpos_color}{pos.lstrip()} {syn_color}{syn_tp} {syndef_color}'
                   f'{syndef_tp}{psyn_color}{przyklady4}\n')
