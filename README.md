@@ -9,24 +9,23 @@ który konwencjonalnie odbywa się za pomocą powtarzalnych ruchów myszką i pr
 informacji do edytora kart. Z Anki-dodawaczem ten proces odbywa się w prawie stu procentach
 za pomocą klawiatury.
 
-Częstym powodem dla nieużywania Anki przez wiele osób jest trudność w robieniu wysokiej jakości kart. 
-Wierzę, że otwarty na konfigurację program produkujący wysokiej jakości karty przekona do Anki większą ilość osób.
+## Instalacja:
 
-## Linki do pobrania:
+[link do pobrania v0.5.1.zip](https://github.com/funky-trellis/anki-dodawacz/archive/refs/tags/v0.5.1-1.zip)
+:-
+##### Po rozpakowaniu folderu:<br>
+Aby uruchomić program potrzebujemy Pythona 3.7 lub nowszego.<br>
+Pythona pobieramy z oficjalnej strony: https://www.python.org/downloads/<br>
+Przy instalacji zaznaczamy "Add python to PATH"
 
-| [Windows v0.4.0 ](https://github.com/funky-trellis/anki-dodawacz/releases/download/v0.4.0/AnkiDodawacz_v0_4_0.zip) |
-|-
-| [Windows v0.3.2.1 ](https://github.com/funky-trellis/anki-dodawacz/releases/download/v0.3.2.1/AnkiDodawacz.zip) |
+##### Po zainstalowaniu Pythona:<br>
+Otwieramy terminal (cmd na windowsie) i pobieramy wymagane biblioteki wpisując:<br>
+<code> pip install BeautifulSoup4 colorama pyyaml requests lxml cchardet </code><br>
+(cchardet jest opcjonalny, ale przyspiesza wyświetlanie słownika)
 
+Teraz uruchamiamy AnkiDodawacz.py i jesteśmy gotowi do dodawania!
 
-
-Należy rozpakować folder w dogodnej lokacji i uruchomić plik "AnkiDodawacz.exe".
-(Jeżeli nie chcesz używać pliku .exe, możesz uruchomić program używając Pythona (3.6?) 3.7+ z podanymi niżej bibliotekami)
-
-Aby korzystać z zupełnie najnowszej wersji programu należy sklonować repozytorium "git clone [link]".
-Na wersji starszej od 0.4.1.1, jeżeli w folderze z programem nie ma folderu "Karty_audio" to należy go stworzyć.
-
-# Konfiguracja i działanie programu
+## Konfiguracja i działanie programu
 
 Cykl dodawanie jest bardzo prosty.
 Wyszukujemy słowo i przechodzimy przez różne pola: przykładowego zdania, definicji, części mowy, etymologii i synonimów.
@@ -46,7 +45,7 @@ Tutaj możemy dostosować program do naszych preferencji.
 
 ![image](https://user-images.githubusercontent.com/82805891/116147106-999c3080-a6df-11eb-85ec-40de05b43a90.png)
 
-# Konfiguracja Anki i notatki
+## Konfiguracja Anki i notatki
 
 Program na chwilę obecną wykorzystuje siedem pól naszej notatki, aby prawidłowo dodawać karty.
 Są to:
@@ -92,7 +91,7 @@ https://pastebin.com/9ZfWMpNu.
 Po stworzeniu notatki z odpowiednimi polami i utworzeniu stylu możemy przejść do importowania dodanych kart.
 
 
-# Importowanie
+## Importowanie
 
 Aby zaimportować karty do Anki, na górnym pasku klikami w "Plik" i "Importuj..." lub "Ctrl+Shift+I".
 - Nawigujemy do folderu z AnkiDodawaczem i wybieramy plik "karty.txt".
@@ -112,7 +111,7 @@ Po dodaniu kart możemy usunąć zawartość pliku "karty.txt", jednak gdy zosta
 nie powinno zostać skompromitowane dzięki opcji "Ignoruj linie, których pierwsze pole pasuje do istniejącej notatki".
 Warto o tym pamiętać.
 
-# Kod
+## Kod
 
 Jestem początkujący, jeżeli chodzi o programowanie. Jest to mój pierwszy projekt i jakość kodu z pewnością jest daleka od perfekcji.
 Pomimo tego, mam bardzo ambitne plany, jeżeli chodzi o funkcjonalność Anki-dodawacza, planuję:
