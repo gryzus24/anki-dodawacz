@@ -64,6 +64,8 @@ def delete_last_card():
         print(f'{error_color}Plik {Fore.RESET}"karty.txt" {error_color}jest pusty, nie ma co usuwać')
     except FileNotFoundError:
         print(f'{error_color}Plik {Fore.RESET}"karty.txt" {error_color}nie istnieje, nie ma co usuwać')
+    except UnicodeDecodeError:
+        print(f'{error_color}Usuwanie karty nie powiodło się z powodu nieznanego znaku (prawdopodobnie w etymologii)')
     except Exception:
         print(f'{error_color}Coś poszło nie tak podczas usuwania karty *_*')
 
