@@ -247,7 +247,7 @@ def set_delimit_center(command, value):
     else:
         if value == 'auto':
             print(f'{Fore.LIGHTGREEN_EX}OK')
-            return save_commands(komenda=command.strip('-'), wartosc=f'{term_width}* auto')
+            return save_commands(komenda=command.strip('-'), wartosc=f'{term_width - 1}* auto')
     max_val = 382  # 4k monospace 12
     try:
         val = int(value)
@@ -448,9 +448,9 @@ def rysuj_slownik(url):
             if config['indent'] > term_width // 2:
                 save_commands(komenda='indent', wartosc=term_width // 2)
             if '* auto' in str(config['delimsize']):
-                save_commands(komenda='delimsize', wartosc=f'{term_width}* auto')
+                save_commands(komenda='delimsize', wartosc=f'{term_width - 1}* auto')
             if '* auto' in str(config['center']):
-                save_commands(komenda='center', wartosc=f'{term_width}* auto')
+                save_commands(komenda='center', wartosc=f'{term_width - 1}* auto')
             indexing = 0
             gloss_index = 0
             for td in soup.find_all('td'):
