@@ -65,7 +65,7 @@ def delete_last_card():
     except FileNotFoundError:
         print(f'{error_color}Plik {Fore.RESET}"karty.txt" {error_color}nie istnieje, nie ma co usuwać')
     except UnicodeDecodeError:
-        print(f'{error_color}Usuwanie karty nie powiodło się z powodu nieznanego znaku (prawdopodobnie w etymologii)')
+        print(f'{error_color}Usuwanie karty nie powiodło się z powodu nieznanego znaku (prawdopodobnie w etymologii)')  # wolfram
     except Exception:
         print(f'{error_color}Coś poszło nie tak podczas usuwania karty *_*')
 
@@ -174,58 +174,7 @@ def kolory(komenda, wartosc):
     save_commands(komenda=komenda.strip('-').replace('-', '_'), wartosc=color)
 
 
-def set_indent(value):
-    try:
-        term_width = str(os.get_terminal_size()).lstrip('os.terminal_size(columns=').split(',')[0]
-    except OSError:
-        term_width = 80
-
-    max_val = int(term_width) // 2
-    try:
-        val = int(value)
-        if -1 <= val <= max_val:
-            print(f'{Fore.LIGHTGREEN_EX}OK')
-            val = val
-        elif val > max_val:
-            print(f'{error_color}Wartość nie może być większa niż {Fore.RESET}{max_val}\n'
-                  f'{Fore.LIGHTYELLOW_EX}Ustawiono: {Fore.RESET}{max_val}')
-            val = max_val
-        else:
-            print(f'{error_color}Wartość nie może być mniejsza niż {Fore.RESET}-1\n'
-                  f'{Fore.LIGHTYELLOW_EX}Ustawiono: {Fore.RESET}-1')
-            val = -1
-        save_commands(komenda='indent', wartosc=val)
-    except ValueError:
-        print(f'''{error_color}Nieobsługiwana wartość
-podaj liczbę w przedziale od {Fore.RESET}-1{error_color} do {Fore.RESET}{max_val}''')
-
-
-def set_width(value):
-    max_val = 382  # 4k monospace 12
-
-    def manual_width(value):
-        try:
-            val = int(value)
-            if 10 <= val <= max_val:
-                print(f'{Fore.LIGHTGREEN_EX}OK')
-                val = val
-            elif val > max_val:
-                print(f'{error_color}Wartość nie może być większa niż {Fore.RESET}{max_val}\n'
-                      f'{Fore.LIGHTYELLOW_EX}Ustawiono: {Fore.RESET}{max_val}')
-                val = max_val
-            else:
-                print(f'{error_color}Wartość nie może być mniejsza niż {Fore.RESET}10\n'
-                      f'{Fore.LIGHTYELLOW_EX}Ustawiono: {Fore.RESET}10')
-                val = 10
-            save_commands(komenda='textwidth', wartosc=val)
-        except ValueError:
-            if not term_er:
-                print(f'''{error_color}Nieobsługiwana wartość
-podaj liczbę w przedziale od {Fore.RESET}10{error_color} do {Fore.RESET}{max_val}{error_color} lub {Fore.RESET}auto''')
-            else:
-                print(f'''{error_color}Nieobsługiwana wartość
-podaj liczbę w przedziale od {Fore.RESET}10{error_color} do {Fore.RESET}{max_val}''')
-
+def set_width_settings(command, value):
     try:
         term_width_auto = str(os.get_terminal_size()).lstrip('os.terminal_size(columns=').split(',')[0]
         term_width = int(term_width_auto)
@@ -233,24 +182,12 @@ podaj liczbę w przedziale od {Fore.RESET}10{error_color} do {Fore.RESET}{max_va
     except OSError:
         term_er = True
     else:
-        if value.strip() == 'auto':
+        if value == 'auto' and not command == '-indent':
             print(f'{Fore.LIGHTGREEN_EX}OK')
-            return save_commands(komenda='textwidth', wartosc=f'{term_width}* auto')
-    manual_width(value)
-
-
-def set_delimit_center(command, value):
-    try:
-        term_width_auto = str(os.get_terminal_size()).lstrip('os.terminal_size(columns=').split(',')[0]
-        term_width = int(term_width_auto)
-        term_er = False
-    except OSError:
-        term_er = True
-    else:
-        if value == 'auto':
-            print(f'{Fore.LIGHTGREEN_EX}OK')
-            return save_commands(komenda=command.strip('-'), wartosc=f'{term_width - 1}* auto')
+            return save_commands(komenda=command.strip('-'), wartosc=f'{term_width}* auto')
     max_val = 382  # 4k monospace 12
+    if command == '-indent':
+        max_val = conf_to_int(config['textwidth']) // 2
     try:
         val = int(value)
         if 0 <= val <= max_val:
@@ -265,7 +202,7 @@ def set_delimit_center(command, value):
             val = 0
         save_commands(komenda=command.strip('-'), wartosc=val)
     except ValueError:
-        if not term_er:
+        if not term_er and not command == '-indent':
             print(f'''{error_color}Nieobsługiwana wartość
 podaj liczbę w przedziale od {Fore.RESET}0{error_color} do {Fore.RESET}{max_val}{error_color} lub {Fore.RESET}auto''')
         else:
@@ -277,12 +214,8 @@ def komendo(word):
     loc_word = word.lower() + ' '
     cmd_tuple = loc_word.split(' ')
     if cmd_tuple[0] in k.search_commands:
-        if cmd_tuple[0] == '-indent':
-            set_indent(value=cmd_tuple[1])
-        elif cmd_tuple[0] == '-textwidth':
-            set_width(value=cmd_tuple[1])
-        elif cmd_tuple[0] == '-delimsize' or cmd_tuple[0] == '-center':
-            set_delimit_center(command=cmd_tuple[0], value=cmd_tuple[1])
+        if cmd_tuple[0] in ('-textwidth', '-indent', '-delimsize', '-center'):
+            set_width_settings(command=cmd_tuple[0], value=cmd_tuple[1])
         elif cmd_tuple[1] in k.commands_values:
             komenda = k.search_commands[cmd_tuple[0]]
             wartosc = k.commands_values[cmd_tuple[1]]
@@ -349,55 +282,56 @@ Aktualna ścieżka zapisu audio to {Fore.RESET}"{config['save_path']}"
 
 
 def search_for_audio(url):
-    try:
-        reqs = requests_session_ah.get(url)
-        soup = BeautifulSoup(reqs.content, 'lxml', from_encoding='utf-8')
-        audio = soup.find('a', {'target': '_blank'}).get('href')
-        if audio == 'http://www.hmhco.com':
-            print(f"""{error_color}Hasło nie posiada pliku audio!
+    if config['dodaj_audio']:
+        try:
+            reqs = requests_session_ah.get(url)
+            soup = BeautifulSoup(reqs.content, 'lxml', from_encoding='utf-8')
+            audio = soup.find('a', {'target': '_blank'}).get('href')
+            if audio == 'http://www.hmhco.com':
+                print(f"""{error_color}Hasło nie posiada pliku audio!
 Karta zostanie dodana bez audio\n""")
-            return ' '
-        else:
-            audio_end = audio.split('/')[-1]
-            audio_end = audio_end.split('.')[0]
-            audio_link = 'https://www.ahdictionary.com'
-            audio_link += audio
-            return get_audio(audio_link, audio_end)
-    except Exception:
-        print(f'{error_color}Wystąpił problem podczas szukania pliku audio')
+                return ' '
+            else:
+                audio_end = audio.split('/')[-1]
+                audio_end = audio_end.split('.')[0]
+                audio_link = 'https://www.ahdictionary.com'
+                audio_link += audio
+                return get_audio(audio_link, audio_end)
+        except Exception:
+            print(f'{error_color}Wystąpił problem podczas szukania pliku audio')
+    return ' '
 
 
-def wrap_text(string, term_width, index_width, indento, gap, break_allowed):
+def print_elems(string, term_width, index_width, indento, gap, break_allowed):
     br = ''
     if break_allowed:
         if config['break']:
             br = '\n'
-    wrapped_text = ''
-    indent = indento + index_width
-    string_divided = string.split(' ')
-    real_width = int(term_width) - index_width - gap  # gap to przerwa między indeksami, a definicją
-    if len(string) > real_width:
-        # individual line length
-        indiv_llen = 0
-        for word, nextword in zip(string_divided, string_divided[1:]):
-            indiv_llen += len(word) + 1  # 1 to spacja, która znika przy string.split(' ')
-            if len(nextword) + 1 + indiv_llen > real_width:
-                wrapped_text += word + '\n' + indent * ' '
-                indiv_llen = indento - gap
-            else:
-                wrapped_text += word + ' '
-                # definicja + ostatnie słowo
-        return wrapped_text + string_divided[-1] + br
+    if config['wrap_text']:
+        wrapped_text = ''
+        indent = indento + index_width
+        string_divided = string.split(' ')
+        real_width = int(term_width) - index_width - gap  # gap to przerwa między indeksami, a definicją
+        if len(string) > real_width:
+            # individual line length
+            indiv_llen = 0
+            for word, nextword in zip(string_divided, string_divided[1:]):
+                indiv_llen += len(word) + 1  # 1 to spacja, która znika przy string.split(' ')
+                if len(nextword) + 1 + indiv_llen > real_width:
+                    wrapped_text += word + '\n' + indent * ' '
+                    indiv_llen = indento - gap
+                else:
+                    wrapped_text += word + ' '
+                    # definicja + ostatnie słowo
+            return wrapped_text + string_divided[-1] + br
+        return string + br
     return string + br
 
 
-# Kolorowanie bazując na enumeracji i zawijanie tekstu
+# Kolorowanie bazując na enumeracji
 def ah_def_print(indexing, term_width, definition):
-    if config['wrap_text']:
-        definition_aw = wrap_text(definition, term_width, index_width=len(str(indexing)), indento=config['indent'],
-                                  gap=2, break_allowed=True)
-    else:
-        definition_aw = definition
+    definition_aw = print_elems(definition, term_width, index_width=len(str(indexing)), indento=config['indent'],
+                                gap=2, break_allowed=True)
     if indexing % 2 == 1:
         print(f"{index_color}{indexing}  {def1_color}{definition_aw}")
     else:
@@ -450,16 +384,18 @@ def rysuj_slownik(url):
             if config['indent'] > term_width // 2:
                 save_commands(komenda='indent', wartosc=term_width // 2)
             if '* auto' in str(config['delimsize']):
-                save_commands(komenda='delimsize', wartosc=f'{term_width - 1}* auto')
+                save_commands(komenda='delimsize', wartosc=f'{term_width}* auto')
             if '* auto' in str(config['center']):
-                save_commands(komenda='center', wartosc=f'{term_width - 1}* auto')
+                save_commands(komenda='center', wartosc=f'{term_width}* auto')
             indexing = 0
             gloss_index = 0
             for td in soup.find_all('td'):
                 meanings_in_td = td.find_all(class_=('ds-list', 'sds-single', 'ds-single', 'ds-list'))
                 print(f'{delimit_color}{conf_to_int(config["delimsize"]) * "-"}')
-                for meaning_num in td.find_all('font', {'color': '#006595'}, 'sup'):  # Rysuje glossy, czyli bat·ter 1, bat·ter 2 itd.
-                    gloss_index += 1  # Aby przy wpisaniu nieprawidłowego glossa, np. "impeachment" zamiast "impeach", dodało "impeach"
+                for meaning_num in td.find_all('font', {'color': '#006595'}, 'sup'):
+                    # Rysuje glossy, czyli bat·ter 1, bat·ter 2 itd.
+                    # Aby przy wpisaniu nieprawidłowego glossa, np. "impeachment" zamiast "impeach", dodało "impeach"
+                    gloss_index += 1
                     if gloss_index == 1 or gloss_index == 2:  # Aby preferować lowercase wersję glossa
                         gloss0 = meaning_num.text
                         gloss1 = gloss0.replace('·', '')
@@ -467,7 +403,8 @@ def rysuj_slownik(url):
                         gloss = gloss_to_print.strip('-').strip('–')
                         if gloss_index == 1:
                             wdg = f'{BOLD}Wyniki dla {gloss_color}{gloss_to_print}{END}'
-                            print(wdg.center(conf_to_int(config['center']) + 9))  # RESET i BOLD jest brane pod uwagę przy center
+                            # RESET i BOLD jest brane pod uwagę przy center
+                            print(wdg.center(conf_to_int(config['center']) + 9))
                     print(f'  {gloss_color}{meaning_num.text}')
                 for meaning in meanings_in_td:  # Rysuje definicje
                     indexing += 1
@@ -482,7 +419,8 @@ def rysuj_slownik(url):
                     else:
                         ah_def_print(indexing, term_width, definition=meaning.text)
                     if config['ukryj_slowo_w_definicji']:
-                        if gloss.endswith('y') and 'ied' in rex4:  # Aby słowa typu "varied" i "married" były częściowo ukrywane
+                        # Aby słowa typu "varied" i "married" były częściowo ukrywane
+                        if gloss.endswith('y') and 'ied' in rex4:
                             definicje.append(rex4.replace(gloss.rstrip("y"), '...').replace(gloss.capitalize(), '...')
                                              .replace(':', ':<br>').replace('', '′'))
                         else:
@@ -500,16 +438,17 @@ def rysuj_slownik(url):
                     print()
                 for etym in td.find_all(class_='etyseg'):  # Dodaje etymologie
                     print(f'{etym_color}'
-                          f'{wrap_text(etym.text, term_width, index_width=0, indento=0, gap=0, break_allowed=False)}')
+                          f'{print_elems(etym.text, term_width, index_width=0, indento=0, gap=0, break_allowed=False)}')
                     etymologia.append(etym.text)
-            if not str(etymologia).startswith(
-                    '[]'):  # Aby przy hasłach bez etymologii lub części mowy nie było niepotrzebnych spacji
+            # Aby przy hasłach bez etymologii lub części mowy nie było niepotrzebnych spacji
+            if not str(etymologia).startswith('[]'):
                 print()
     except ConnectionError:
         print(f'{error_color}Nie udało się połączyć ze słownikiem, sprawdź swoje połączenie i spróbuj ponownie')
         skip_check = 1
     except TimeoutError:
         print(f'{error_color}AH Dictionary nie odpowiada')
+        skip_check = 1
     except Exception:
         print(f'{error_color}Wystąpił nieoczekiwany błąd')
         raise
@@ -664,18 +603,21 @@ def rysuj_synonimy(syn_soup):
 
         if config['ukryj_slowo_w_disamb']:
             grupa_synonimow.append(synonimy3.replace(gloss, '...'))
-            if gloss.endswith('y') and 'ied' in przyklady2 or 'ies' in przyklady2:  # Aby słowa typu "varied" i "married" były częściowo ukrywane
-                grupa_przykladow.append(przyklady2.replace(gloss.rstrip('y'), '...').replace(gloss.capitalize(), '...'))  # Tylko słowa w przykładach będą tak ukrywane
+            # Aby słowa typu "varied" i "married" były częściowo ukrywane
+            if gloss.endswith('y') and 'ied' in przyklady2 or 'ies' in przyklady2:
+                # Tylko słowa w przykładach będą tak ukrywane
+                grupa_przykladow.append(przyklady2.replace(gloss.rstrip('y'), '...').replace(gloss.capitalize(), '...'))
             else:
                 grupa_przykladow.append(przyklady2.replace(gloss, '...').replace(gloss.capitalize(), '...'))
         else:
             grupa_synonimow.append(synonimy3)
             grupa_przykladow.append(przyklady2)
-        syn_tp = wrap_text(synonimy3 + '\n   ', term_width=conf_to_int(config['textwidth']), index_width=len(str(index)),
-                           indento=3, gap=3 + len(str(pos)), break_allowed=False)
-        syndef_tp = wrap_text(syndef, term_width=conf_to_int(config['textwidth']), index_width=len(str(index)),
-                              indento=3, gap=3, break_allowed=False)
         if not config['bulk_add']:  # Aby ograniczyć przesuwanie podczas bulk, wordnet nie jest wyświetlany
+            syn_tp = print_elems(synonimy3 + '\n   ', term_width=conf_to_int(config['textwidth']),
+                                 index_width=len(str(index)),
+                                 indento=3, gap=3 + len(str(pos)), break_allowed=False)
+            syndef_tp = print_elems(syndef, term_width=conf_to_int(config['textwidth']), index_width=len(str(index)),
+                                    indento=3, gap=3, break_allowed=False)
             print(f'{index_color}{index} : {synpos_color}{pos.lstrip()} {syn_color}{syn_tp} {syndef_color}'
                   f'{syndef_tp}{psyn_color}{przyklady4}\n')
         else:
@@ -707,7 +649,7 @@ def disambiguator(url_synsearch):
         skip_check_disamb = 1
     except Exception:
         print(f'{error_color}Wystąpił nieoczekiwany błąd\n')
-        skip_check_disamb = 1
+        raise
 
 
 # Tworzenie karty
@@ -729,24 +671,20 @@ def wyswietl_karte():
     delimit = conf_to_int(config["delimsize"])
     centr = conf_to_int(config['center'])
     options = (conf_to_int(config['textwidth']), 0, 0, 0, False)
-    definitions_list = wrap_text(definicje, *options).replace('<br>', ' ').split('\n')
-    disamb_list = wrap_text(disamb_synonimy, *options).split('\n')
-    disamb_przyklady_list = wrap_text(disamb_przyklady, *options).split('\n')
-    zdanie_list = wrap_text(zdanie, *options).split('\n')
-    etym_list = wrap_text(etymologia, *options).split('\n')
-    print(f'{delimit_color}{delimit * "-"}')
-    for definition_tp in definitions_list:
+
+    print(f'\n{delimit_color}{delimit * "-"}')
+    for definition_tp in print_elems(definicje, *options).replace('<br>', ' ').split('\n'):
         print(f"{def1_color}{definition_tp.center(centr)}")
-    for disamb_tp in disamb_list:
+    for disamb_tp in print_elems(disamb_synonimy, *options).split('\n'):
         print(f'{syn_color}{disamb_tp.center(centr)}')
-    for disamb_psyn_tp in disamb_przyklady_list:
+    for disamb_psyn_tp in print_elems(disamb_przyklady, *options).split('\n'):
         print(f'{psyn_color}{disamb_psyn_tp.center(centr)}')
     print(f'{delimit_color}{delimit * "-"}')
     print(f'{gloss_color}{gloss.center(centr)}')
-    for zdanie_tp in zdanie_list:
+    for zdanie_tp in print_elems(zdanie, *options).split('\n'):
         print(zdanie_tp.center(centr))
     print(f'{pos_color}{czesci_mowy.center(centr)}')
-    for etym_tp in etym_list:
+    for etym_tp in print_elems(etymologia, *options).split('\n'):
         print(f'{etym_color}{etym_tp.center(centr)}')
     print(audiofile_name.center(centr))
     print(f'{delimit_color}{delimit * "-"}\n')
@@ -776,69 +714,61 @@ try:
                 continue
             break
         while skip_check == 0:
+            rysuj_slownik(url)
+            if skip_check == 1:
+                break
             if config['tworz_karte']:
-                rysuj_slownik(url)
-                if skip_check == 1:
-                    break
-                if config['dodaj_audio'] and skip_check == 0:
-                    audiofile_name = search_for_audio(url='https://www.ahdictionary.com/word/search.html?q=' + gloss)
-            else:
-                rysuj_slownik(url)
-                if skip_check == 1:
-                    break
-                if config['disambiguation'] and skip_check == 0:
-                    disambiguator(url_synsearch='http://wordnetweb.princeton.edu/perl/webwn?s=' + gloss)
-
-            if skip_check == 0 and config['tworz_karte'] and not config['bulk_add']:
-                zdanie = ogarnij_zdanie(zdanie_input())
-                if skip_check == 1:
-                    break
-                definicje = choice_func(*definicje_input(), connector='<br>')
-                if skip_check == 1:
-                    break
-                czesci_mowy = wybierz_czesci_mowy(czesci_mowy_input(), connector=' | ')
-                if skip_check == 1:
-                    break
-                etymologia = choice_func(*etymologia_input(), connector='<br>')
-                if skip_check == 1:
-                    break
-                if config['disambiguation']:
-                    disambiguator(url_synsearch='http://wordnetweb.princeton.edu/perl/webwn?s=' + gloss)
-                    if skip_check_disamb == 0:
-                        disamb_synonimy = choice_func(*disamb_input_syn(), connector=' ')
-                        if skip_check == 1:
-                            break
-                        disamb_przyklady = choice_func(*disamb_input_przyklady(), connector=' ')
-                        if skip_check == 1:
-                            break
-                        if config['dodaj_synonimy'] and config['dodaj_przyklady_synonimow']:
-                            disambiguation = disamb_synonimy + '<br>' + disamb_przyklady
-                        else:
-                            disambiguation = disamb_synonimy + disamb_przyklady
-
-            if config['tworz_karte'] and config['bulk_add']:
+                audiofile_name = search_for_audio(url='https://www.ahdictionary.com/word/search.html?q=' + gloss)
                 zdanie = ogarnij_zdanie(zdanie_input())  # Aby wyłączyć dodawanie zdania w bulk wystarczy -pz off
-                if config['bulk_free_def']:
-                    definicje = choice_func(*definicje_input(), connector=' ')
-                else:
-                    definicje = choice_func(wybor=config['def_bulk'], gloss_content=definicje, connector='<br>')
-                czesci_mowy = wybierz_czesci_mowy(wybor_czesci_mowy=config['pos_bulk'], connector=' | ')
-                etymologia = choice_func(wybor=config['etym_bulk'], gloss_content=etymologia, connector='<br>')
-                if config['disambiguation']:
-                    disambiguator(url_synsearch='http://wordnetweb.princeton.edu/perl/webwn?s=' + word)
-                    if config['bulk_free_syn']:
-                        disamb_synonimy = choice_func(*disamb_input_syn(), connector=' ')
-                        disambiguation = disamb_synonimy
+                if skip_check == 1:  # ten skip_check jest niemożliwy przy bulk
+                    break
+
+                if skip_check == 0 and not config['bulk_add']:
+                    definicje = choice_func(*definicje_input(), connector='<br>')
+                    if skip_check == 1:
+                        break
+                    czesci_mowy = wybierz_czesci_mowy(czesci_mowy_input(), connector=' | ')
+                    if skip_check == 1:
+                        break
+                    etymologia = choice_func(*etymologia_input(), connector='<br>')
+                    if skip_check == 1:
+                        break
+                    if config['disambiguation']:
+                        disambiguator(url_synsearch='http://wordnetweb.princeton.edu/perl/webwn?s=' + gloss)
+                        if skip_check_disamb == 0:
+                            disamb_synonimy = choice_func(*disamb_input_syn(), connector=' ')
+                            if skip_check == 1:
+                                break
+                            disamb_przyklady = choice_func(*disamb_input_przyklady(), connector=' ')
+                            if skip_check == 1:
+                                break
+                if config['bulk_add']:
+                    if config['bulk_free_def']:
+                        definicje = choice_func(*definicje_input(), connector=' ')
                     else:
-                        disamb_synonimy = choice_func(wybor=config['syn_bulk'], gloss_content=grupa_synonimow, connector=' ')
-                        disamb_przyklady = choice_func(wybor=config['psyn_bulk'], gloss_content=grupa_przykladow, connector=' ')
-                        if config['dodaj_synonimy'] and config['dodaj_przyklady_synonimow']:
-                            disambiguation = disamb_synonimy + '<br>' + disamb_przyklady
+                        definicje = choice_func(wybor=config['def_bulk'], gloss_content=definicje, connector='<br>')
+                    czesci_mowy = wybierz_czesci_mowy(wybor_czesci_mowy=config['pos_bulk'], connector=' | ')
+                    etymologia = choice_func(wybor=config['etym_bulk'], gloss_content=etymologia, connector='<br>')
+                    if config['disambiguation'] and config['syn_bulk'] != 0 or config['psyn_bulk'] != 0\
+                            or config['bulk_free_syn']:
+                        disambiguator(url_synsearch='http://wordnetweb.princeton.edu/perl/webwn?s=' + word)
+                        if config['bulk_free_syn']:
+                            disamb_synonimy = choice_func(*disamb_input_syn(), connector=' ')
                         else:
-                            disambiguation = disamb_synonimy + disamb_przyklady
-            if skip_check == 0 and config['tworz_karte']:
-                utworz_karte()
-                wyswietl_karte()
+                            disamb_synonimy = choice_func(wybor=config['syn_bulk'], gloss_content=grupa_synonimow,
+                                                          connector=' ')
+                        disamb_przyklady = choice_func(wybor=config['psyn_bulk'], gloss_content=grupa_przykladow,
+                                                       connector=' ')
+                if config['disambiguation'] and skip_check == 0:
+                    if config['dodaj_synonimy'] and config['dodaj_przyklady_synonimow']:
+                        disambiguation = disamb_synonimy + '<br>' + disamb_przyklady
+                    else:
+                        disambiguation = disamb_synonimy + disamb_przyklady
+                if skip_check == 0:
+                    utworz_karte()
+                    wyswietl_karte()
+            else:
+                disambiguator(url_synsearch='http://wordnetweb.princeton.edu/perl/webwn?s=' + gloss)
             break
 except KeyboardInterrupt:
     print(f'{Fore.RESET}\nZakończono')  # Fore.RESET musi tu być, aby kolory z "inputtext" nie wchodziły
