@@ -20,7 +20,7 @@ psyn_color = eval(config['psyn_color'])
 def1_color = eval(config['def1_color'])
 def2_color = eval(config['def2_color'])
 index_color = eval(config['index_color'])
-gloss_color = eval(config['gloss_color'])
+word_color = eval(config['word_color'])
 pos_color = eval(config['pos_color'])
 etym_color = eval(config['etym_color'])
 synpos_color = eval(config['synpos_color'])
@@ -64,10 +64,10 @@ bool_colors = {False: 'Fore.LIGHTRED_EX', True: 'Fore.LIGHTGREEN_EX'}
 colors = ('black', 'red', 'green', 'yellow', 'blue', 'magenta', 'cyan', 'white',
           'lightblack', 'lightred', 'lightgreen', 'lightyellow', 'lightblue', 'lightmagenta', 'lightcyan', 'lightwhite',
           'reset')
-color_commands = ('-syn-color', '-index-color', '-gloss-color', '-psyn-color', '-def1-color', '-def2-color',
+color_commands = ('-syn-color', '-index-color', '-word-color', '-psyn-color', '-def1-color', '-def2-color',
                   '-pos-color', '-etym-color', '-synpos-color', '-syndef-color', '-error-color', '-delimit-color',
                   '-input-color', '-inputtext-color')
-color_message = {'-syn-color': 'Kolor synonimów', '-index-color': 'Kolor indexów', '-gloss-color': 'Kolor glossów',
+color_message = {'-syn-color': 'Kolor synonimów', '-index-color': 'Kolor indexów', '-word-color': 'Kolor hasła',
                  '-psyn-color': 'Kolor przykładów synonimów', '-def1-color': 'Kolor nieparzystych definicji',
                  '-def2-color': 'Kolor parzystych definicji', '-pos-color': 'Kolor części mowy', '-etym-color': 'Kolor etymologii',
                  '-synpos-color': 'Kolor części mowy przy synonimach', '-syndef-color': 'Kolor definicji przy synonimach',
@@ -234,7 +234,7 @@ np. "-syn-color lightblue", "-pos-color magenta" itd.
 -syndef-color       {syndef_color}definicji przy synonimach{Fore.RESET}
 -synpos-color       {synpos_color}części mowy przy synonimach{Fore.RESET}
 -index-color        {index_color}indeksów w słowniku{Fore.RESET}
--gloss-color        {gloss_color}wyszukanego w słowniku hasła{Fore.RESET}
+-word-color         {word_color}wyszukanego w słowniku hasła{Fore.RESET}
 -error-color        {error_color}błędów{Fore.RESET}
 -delimit-color      {delimit_color}odkreśleń{Fore.RESET}
 -input-color        {input_color}pól na input{error_color}*{Fore.RESET}

@@ -33,7 +33,7 @@ psyn_color = eval(config['psyn_color'])
 def1_color = eval(config['def1_color'])
 def2_color = eval(config['def2_color'])
 index_color = eval(config['index_color'])
-gloss_color = eval(config['gloss_color'])
+word_color = eval(config['word_color'])
 pos_color = eval(config['pos_color'])
 etym_color = eval(config['etym_color'])
 synpos_color = eval(config['synpos_color'])
@@ -370,7 +370,7 @@ def conf_to_int(conf_val):
 
 # Rysowanie AHD
 def rysuj_slownik(url):
-    global gloss
+    global correct_word
     global skip_check
     try:
         reqs = requests_session_ah.get(url, timeout=10)
@@ -388,24 +388,24 @@ def rysuj_slownik(url):
             if '* auto' in str(config['center']):
                 save_commands(komenda='center', wartosc=f'{term_width}* auto')
             indexing = 0
-            gloss_index = 0
+            correct_word_index = 0
             for td in soup.find_all('td'):
                 meanings_in_td = td.find_all(class_=('ds-list', 'sds-single', 'ds-single', 'ds-list'))
                 print(f'{delimit_color}{conf_to_int(config["delimsize"]) * "-"}')
                 for meaning_num in td.find_all('font', {'color': '#006595'}, 'sup'):
-                    # Rysuje glossy, czyli bat·ter 1, bat·ter 2 itd.
-                    # Aby przy wpisaniu nieprawidłowego glossa, np. "impeachment" zamiast "impeach", dodało "impeach"
-                    gloss_index += 1
-                    if gloss_index == 1 or gloss_index == 2:  # Aby preferować lowercase wersję glossa
-                        gloss0 = meaning_num.text
-                        gloss1 = gloss0.replace('·', '')
-                        gloss_to_print = re.sub(r'\d', '', gloss1).strip()
-                        gloss = gloss_to_print.strip('-').strip('–')
-                        if gloss_index == 1:
-                            wdg = f'{BOLD}Wyniki dla {gloss_color}{gloss_to_print}{END}'
+                    # Rysuje correct_wordy, czyli bat·ter 1, bat·ter 2 itd.
+                    # Aby przy wpisaniu nieprawidłowego correct_worda, np. "impeachment" zamiast "impeach", dodało "impeach"
+                    correct_word_index += 1
+                    if correct_word_index == 1 or correct_word_index == 2:  # Aby preferować lowercase wersję correct_worda
+                        correct_word0 = meaning_num.text
+                        correct_word1 = correct_word0.replace('·', '')
+                        correct_word_to_print = re.sub(r'\d', '', correct_word1).strip()
+                        correct_word = correct_word_to_print.strip('-').strip('–')
+                        if correct_word_index == 1:
+                            wdg = f'{BOLD}Wyniki dla {word_color}{correct_word_to_print}{END}'
                             # RESET i BOLD jest brane pod uwagę przy center
                             print(wdg.center(conf_to_int(config['center']) + 9))
-                    print(f'  {gloss_color}{meaning_num.text}')
+                    print(f'  {word_color}{meaning_num.text}')
                 for meaning in meanings_in_td:  # Rysuje definicje
                     indexing += 1
                     rex0 = re.sub("[.][a-z][.]", ".", meaning.text)
@@ -420,11 +420,11 @@ def rysuj_slownik(url):
                         ah_def_print(indexing, term_width, definition=meaning.text)
                     if config['ukryj_slowo_w_definicji']:
                         # Aby słowa typu "varied" i "married" były częściowo ukrywane
-                        if gloss.endswith('y') and 'ied' in rex4:
-                            definicje.append(rex4.replace(gloss.rstrip("y"), '...').replace(gloss.capitalize(), '...')
+                        if correct_word.endswith('y') and 'ied' in rex4:
+                            definicje.append(rex4.replace(correct_word.rstrip("y"), '...').replace(correct_word.capitalize(), '...')
                                              .replace(':', ':<br>').replace('', '′'))
                         else:
-                            definicje.append(rex4.replace(gloss, '...').replace(gloss.capitalize(), '...')
+                            definicje.append(rex4.replace(correct_word, '...').replace(correct_word.capitalize(), '...')
                                              .replace(':', ':<br>').replace('', '′'))
                     else:
                         definicje.append(rex4.replace(':', ':<br>').replace('', '′'))
@@ -456,14 +456,14 @@ def rysuj_slownik(url):
 
 def ogarnij_zdanie(zdanie):
     global skip_check
-    if gloss.lower() in zdanie.lower():
+    if correct_word.lower() in zdanie.lower():
         if not config['ukryj_slowo_w_zdaniu']:
             return zdanie
         else:
-            return zdanie.replace(gloss, '...') \
-                .replace(gloss.upper(), '...') \
-                .replace(gloss.lower(), '...') \
-                .replace(gloss.capitalize(), '...')
+            return zdanie.replace(correct_word, '...') \
+                .replace(correct_word.upper(), '...') \
+                .replace(correct_word.lower(), '...') \
+                .replace(correct_word.capitalize(), '...')
     elif zdanie == ' ':  # Aby przy wyłączonym dodawaniu zdania nie pytało o zdanie_check
         return zdanie
     elif zdanie == '-s':
@@ -501,23 +501,27 @@ def input_func(in_put):
         return -1
     elif in_put.startswith('/'):
         if config['ukryj_slowo_w_definicji']:
-            return in_put.replace(gloss, '...') \
-                .replace(gloss.lower(), '...') \
-                .replace(gloss.upper(), '...') \
-                .replace(gloss.capitalize(), '...')  # To jest szybsze niż regex i obejmuje wszystkie sensowne sytuacje
+            return in_put.replace(correct_word, '...') \
+                .replace(correct_word.lower(), '...') \
+                .replace(correct_word.upper(), '...') \
+                .replace(correct_word.capitalize(), '...')  # To jest szybsze niż regex i obejmuje wszystkie sensowne sytuacje
         return in_put
     return -2
 
 
 # Adekwatne pola input dla pól wyboru
 def disamb_input_syn():
-    if config['dodaj_synonimy']:
+    if config['bulk_add'] and config['dodaj_synonimy'] and not config['bulk_free_syn']:
+        return config['syn_bulk'], grupa_synonimow
+    if config['dodaj_synonimy'] or (config['bulk_add'] and config['bulk_free_syn']):
         wybor_disamb_syn = input(f'{input_color}Wybierz grupę synonimów:{inputtext_color} ')
         return input_func(wybor_disamb_syn), grupa_synonimow
     return 0, grupa_synonimow
 
 
 def disamb_input_przyklady():
+    if config['bulk_add'] and config['dodaj_przyklady_synonimow']:
+        return config['psyn_bulk'], grupa_przykladow
     if config['dodaj_przyklady_synonimow']:
         wybor_disamb_przyklady = input(f'{input_color}Wybierz grupę przykładów:{inputtext_color} ')
         return input_func(wybor_disamb_przyklady), grupa_przykladow
@@ -525,6 +529,8 @@ def disamb_input_przyklady():
 
 
 def etymologia_input():
+    if config['bulk_add'] and config['dodaj_etymologie']:
+        return config['etym_bulk'], etymologia
     if config['dodaj_etymologie']:
         wybor_etymologii = input(f'{input_color}Wybierz etymologię:{inputtext_color} ')
         return input_func(wybor_etymologii), etymologia
@@ -532,37 +538,40 @@ def etymologia_input():
 
 
 def definicje_input():
-    if config['dodaj_definicje']:
+    if config['bulk_add'] and config['dodaj_definicje'] and not config['bulk_free_def']:
+        return config['def_bulk'], definicje
+    if config['dodaj_definicje'] or (config['bulk_add'] and config['bulk_free_def']):
         wybor_definicji = input(f'{input_color}\nWybierz definicję:{inputtext_color} ')
         return input_func(wybor_definicji), definicje
     return 0, definicje
 
 
 def czesci_mowy_input():
-    global skip_check
-    if config['dodaj_czesci_mowy']:
+    if not config['dodaj_czesci_mowy']:
+        return 0
+    if config['bulk_add']:
+        wybor_czesci_mowy = str(config['pos_bulk'])  # Aby isnumeric się aplikowało
+    else:
         wybor_czesci_mowy = input(f'{input_color}Dołączyć części mowy? [1/0]:{inputtext_color} ')
-        if wybor_czesci_mowy.isnumeric() or wybor_czesci_mowy == '-1':
-            return int(wybor_czesci_mowy)
-        elif wybor_czesci_mowy == '' or wybor_czesci_mowy == '-s':
-            return 0
-        elif wybor_czesci_mowy.startswith('/'):
-            return wybor_czesci_mowy
-        else:
-            skip_check = 1
-            print(f'{Fore.LIGHTGREEN_EX}Pominięto dodawanie karty')
-    return 0
+
+    if wybor_czesci_mowy.isnumeric() or wybor_czesci_mowy == '-1':
+        return int(wybor_czesci_mowy)
+    elif wybor_czesci_mowy == '' or wybor_czesci_mowy == '-s':
+        return 0
+    elif wybor_czesci_mowy.startswith('/'):
+        return wybor_czesci_mowy
+    return -2
 
 
 # Bierze wybór z input_func i wydaje adekwatne informacje na kartę
-def choice_func(wybor, gloss_content, connector):
+def choice_func(wybor, correct_word_content, connector):
     global skip_check
     if isinstance(wybor, str):  # Nie podoba mi się ten if. Ale isinstance jest chyba najlepszym rozwiązaniem
         return wybor.lstrip('/')
-    elif len(gloss_content) >= wybor > 0:
-        return gloss_content[wybor - 1]
-    elif wybor > len(gloss_content) or wybor == -1:
-        return connector.join(gloss_content)  # Pola z disambiguation nie potrzebują "<br>", bo nie są aż tak obszerne
+    elif len(correct_word_content) >= wybor > 0:
+        return correct_word_content[wybor - 1]
+    elif wybor > len(correct_word_content) or wybor == -1:
+        return connector.join(correct_word_content)  # Pola z disambiguation nie potrzebują "<br>", bo nie są aż tak obszerne
     elif wybor == -2:
         skip_check = 1
         print(f'{Fore.LIGHTGREEN_EX}Pominięto dodawanie karty')
@@ -576,6 +585,9 @@ def wybierz_czesci_mowy(wybor_czesci_mowy, connector):
         return wybor_czesci_mowy.lstrip('/')
     elif wybor_czesci_mowy > 0 or wybor_czesci_mowy == -1:
         return connector.join(czesci_mowy)
+    elif wybor_czesci_mowy == -2:
+        skip_check = 1
+        print(f'{Fore.LIGHTGREEN_EX}Pominięto dodawanie karty')
     else:
         return ' '
 
@@ -602,13 +614,13 @@ def rysuj_synonimy(syn_soup):
         synonimy3 = re.sub(r"\s{2}", "", synonimy2)
 
         if config['ukryj_slowo_w_disamb']:
-            grupa_synonimow.append(synonimy3.replace(gloss, '...'))
+            grupa_synonimow.append(synonimy3.replace(correct_word, '...'))
             # Aby słowa typu "varied" i "married" były częściowo ukrywane
-            if gloss.endswith('y') and 'ied' in przyklady2 or 'ies' in przyklady2:
+            if correct_word.endswith('y') and 'ied' in przyklady2 or 'ies' in przyklady2:
                 # Tylko słowa w przykładach będą tak ukrywane
-                grupa_przykladow.append(przyklady2.replace(gloss.rstrip('y'), '...').replace(gloss.capitalize(), '...'))
+                grupa_przykladow.append(przyklady2.replace(correct_word.rstrip('y'), '...').replace(correct_word.capitalize(), '...'))
             else:
-                grupa_przykladow.append(przyklady2.replace(gloss, '...').replace(gloss.capitalize(), '...'))
+                grupa_przykladow.append(przyklady2.replace(correct_word, '...').replace(correct_word.capitalize(), '...'))
         else:
             grupa_synonimow.append(synonimy3)
             grupa_przykladow.append(przyklady2)
@@ -634,7 +646,7 @@ def disambiguator(url_synsearch):
         syn_soup = BeautifulSoup(reqs_syn.content, 'lxml', from_encoding='iso-8859-1')
         no_word = syn_soup.find('h3')
         if len(str(no_word)) == 48 or len(str(no_word)) == 117:
-            print(f'{error_color}\nNie znaleziono {gloss_color}{gloss}{error_color} na {Fore.RESET}WordNecie')
+            print(f'{error_color}\nNie znaleziono {word_color}{correct_word}{error_color} na {Fore.RESET}WordNecie')
             skip_check_disamb = 1
         else:
             if not config['bulk_add']:
@@ -657,7 +669,7 @@ def utworz_karte():
     try:
         with open('karty.txt', 'a', encoding='utf-8') as twor:
             twor.write(f'{definicje}\t{disambiguation}\t'
-                       f'{gloss}\t'
+                       f'{correct_word}\t'
                        f'{zdanie}\t'
                        f'{czesci_mowy}\t'
                        f'{etymologia}\t{audiofile_name}\n')
@@ -680,7 +692,7 @@ def wyswietl_karte():
     for disamb_psyn_tp in print_elems(disamb_przyklady, *options).split('\n'):
         print(f'{psyn_color}{disamb_psyn_tp.center(centr)}')
     print(f'{delimit_color}{delimit * "-"}')
-    print(f'{gloss_color}{gloss.center(centr)}')
+    print(f'{word_color}{correct_word.center(centr)}')
     for zdanie_tp in print_elems(zdanie, *options).split('\n'):
         print(zdanie_tp.center(centr))
     print(f'{pos_color}{czesci_mowy.center(centr)}')
@@ -697,7 +709,7 @@ try:
         # to niektóre pola będą zapisywane na karcie nie zważając na zmiany ustawień
         skip_check = 0
         skip_check_disamb = 0
-        gloss = ''
+        correct_word = ''
         word = ''
         audiofile_name = ''
         disambiguation = ''
@@ -718,57 +730,38 @@ try:
             if skip_check == 1:
                 break
             if config['tworz_karte']:
-                audiofile_name = search_for_audio(url='https://www.ahdictionary.com/word/search.html?q=' + gloss)
+                audiofile_name = search_for_audio(url='https://www.ahdictionary.com/word/search.html?q=' + correct_word)
                 zdanie = ogarnij_zdanie(zdanie_input())  # Aby wyłączyć dodawanie zdania w bulk wystarczy -pz off
                 if skip_check == 1:  # ten skip_check jest niemożliwy przy bulk
                     break
-
-                if skip_check == 0 and not config['bulk_add']:
-                    definicje = choice_func(*definicje_input(), connector='<br>')
-                    if skip_check == 1:
-                        break
-                    czesci_mowy = wybierz_czesci_mowy(czesci_mowy_input(), connector=' | ')
-                    if skip_check == 1:
-                        break
-                    etymologia = choice_func(*etymologia_input(), connector='<br>')
-                    if skip_check == 1:
-                        break
-                    if config['disambiguation']:
-                        disambiguator(url_synsearch='http://wordnetweb.princeton.edu/perl/webwn?s=' + gloss)
-                        if skip_check_disamb == 0:
-                            disamb_synonimy = choice_func(*disamb_input_syn(), connector=' ')
-                            if skip_check == 1:
-                                break
-                            disamb_przyklady = choice_func(*disamb_input_przyklady(), connector=' ')
-                            if skip_check == 1:
-                                break
-                if config['bulk_add']:
-                    if config['bulk_free_def']:
-                        definicje = choice_func(*definicje_input(), connector=' ')
-                    else:
-                        definicje = choice_func(wybor=config['def_bulk'], gloss_content=definicje, connector='<br>')
-                    czesci_mowy = wybierz_czesci_mowy(wybor_czesci_mowy=config['pos_bulk'], connector=' | ')
-                    etymologia = choice_func(wybor=config['etym_bulk'], gloss_content=etymologia, connector='<br>')
-                    if config['disambiguation'] and config['syn_bulk'] != 0 or config['psyn_bulk'] != 0\
-                            or config['bulk_free_syn']:
-                        disambiguator(url_synsearch='http://wordnetweb.princeton.edu/perl/webwn?s=' + word)
-                        if config['bulk_free_syn']:
-                            disamb_synonimy = choice_func(*disamb_input_syn(), connector=' ')
+                definicje = choice_func(*definicje_input(), connector='<br>')
+                if skip_check == 1:
+                    break
+                czesci_mowy = wybierz_czesci_mowy(czesci_mowy_input(), connector=' | ')
+                if skip_check == 1:
+                    break
+                etymologia = choice_func(*etymologia_input(), connector='<br>')
+                if skip_check == 1:
+                    break
+                if config['disambiguation'] and not config['bulk_add']\
+                        or config['disambiguation'] and config['bulk_add'] and \
+                        (config['syn_bulk'] != 0 or config['psyn_bulk'] != 0 or config['bulk_free_syn']):
+                    disambiguator(url_synsearch='http://wordnetweb.princeton.edu/perl/webwn?s=' + correct_word)
+                    if skip_check_disamb == 0:
+                        disamb_synonimy = choice_func(*disamb_input_syn(), connector=' ')
+                        if skip_check == 1:
+                            break
+                        disamb_przyklady = choice_func(*disamb_input_przyklady(), connector=' ')
+                        if skip_check == 1:
+                            break
+                        if config['dodaj_synonimy'] and config['dodaj_przyklady_synonimow']:
+                            disambiguation = disamb_synonimy + '<br>' + disamb_przyklady
                         else:
-                            disamb_synonimy = choice_func(wybor=config['syn_bulk'], gloss_content=grupa_synonimow,
-                                                          connector=' ')
-                        disamb_przyklady = choice_func(wybor=config['psyn_bulk'], gloss_content=grupa_przykladow,
-                                                       connector=' ')
-                if config['disambiguation'] and skip_check == 0:
-                    if config['dodaj_synonimy'] and config['dodaj_przyklady_synonimow']:
-                        disambiguation = disamb_synonimy + '<br>' + disamb_przyklady
-                    else:
-                        disambiguation = disamb_synonimy + disamb_przyklady
-                if skip_check == 0:
-                    utworz_karte()
-                    wyswietl_karte()
+                            disambiguation = disamb_synonimy + disamb_przyklady
+                utworz_karte()
+                wyswietl_karte()
             else:
-                disambiguator(url_synsearch='http://wordnetweb.princeton.edu/perl/webwn?s=' + gloss)
+                disambiguator(url_synsearch='http://wordnetweb.princeton.edu/perl/webwn?s=' + correct_word)
             break
 except KeyboardInterrupt:
     print(f'{Fore.RESET}\nZakończono')  # Fore.RESET musi tu być, aby kolory z "inputtext" nie wchodziły
