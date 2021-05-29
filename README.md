@@ -35,7 +35,7 @@ Po zakończonej sesji dodawania, program tworzy dokument "karty.txt", który od 
 Audio domyślnie zapisywane jest w folderze "Karty_audio" w folderze z programem.
 Możemy zmienić ścieżkę zapisu audio, jak i wszystkie domyślne ustawienia używając komend.
 
-Najlepiej dodać ścieżkę do folderu "collection.media", aby audio było automatycznie odtwarzane w Anki bez potrzeby ręcznego przenosznia zawartości "Karty_audio".
+Najlepiej dodać ścieżkę do folderu "collection.media", aby audio było automatycznie odtwarzane w Anki bez potrzeby ręcznego przenoszenia zawartości "Karty_audio".
 
 ![image](https://user-images.githubusercontent.com/82805891/115930678-2fd71900-a48a-11eb-9163-4abfba9c1df9.png)
 
