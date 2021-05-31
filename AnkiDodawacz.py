@@ -355,9 +355,6 @@ aby wybrać szerokość inną niż {Fore.RESET}{term_width.rstrip('* auto')}{err
             term_width = int(term_width_auto)
             return term_width
         elif int(term_width.rstrip('* auto')) > term_width_auto:
-            print(
-                f'{error_color}Aktualna szerokość okna {Fore.RESET}{term_width}{error_color} jest za wysoka aby wyświetlić słownik\n'
-                f'Hasło zostanie wyświetlone z wartością {Fore.RESET}{term_width_auto}')
             term_width = term_width_auto
         return conf_to_int(term_width)
 
@@ -393,10 +390,10 @@ def rysuj_slownik(url):
                 meanings_in_td = td.find_all(class_=('ds-list', 'sds-single', 'ds-single', 'ds-list'))
                 print(f'{delimit_color}{conf_to_int(config["delimsize"]) * "-"}')
                 for meaning_num in td.find_all('font', {'color': '#006595'}, 'sup'):
-                    # Rysuje correct_wordy, czyli bat·ter 1, bat·ter 2 itd.
-                    # Aby przy wpisaniu nieprawidłowego correct_worda, np. "impeachment" zamiast "impeach", dodało "impeach"
+                    # Rysuje wpisy, czyli bat·ter 1, bat·ter 2 itd.
+                    # Aby przy wyszukiwaniu nieprawidłowego wpisu, np. "impeachment" zamiast "impeach", dodało "impeach"
                     correct_word_index += 1
-                    if correct_word_index == 1 or correct_word_index == 2:  # Aby preferować lowercase wersję correct_worda
+                    if correct_word_index == 1 or correct_word_index == 2:  # Aby preferować lowercase wersję słowa
                         correct_word0 = meaning_num.text
                         correct_word1 = correct_word0.replace('·', '')
                         correct_word_to_print = re.sub(r'\d', '', correct_word1).strip()
@@ -511,84 +508,65 @@ def input_func(in_put):
 
 # Adekwatne pola input dla pól wyboru
 def disamb_input_syn():
-    if config['bulk_add'] and config['dodaj_synonimy'] and not config['bulk_free_syn']:
-        return config['syn_bulk'], grupa_synonimow
-    if config['dodaj_synonimy'] or (config['bulk_add'] and config['bulk_free_syn']):
-        wybor_disamb_syn = input(f'{input_color}Wybierz grupę synonimów:{inputtext_color} ')
-        return input_func(wybor_disamb_syn), grupa_synonimow
+    if config['dodaj_synonimy']:
+        if config['bulk_add'] and not config['bulk_free_syn']:
+            return config['syn_bulk'], grupa_synonimow
+        if not config['bulk_add'] or config['bulk_free_syn']:
+            wybor_disamb_syn = input(f'{input_color}Wybierz grupę synonimów:{inputtext_color} ')
+            return input_func(wybor_disamb_syn), grupa_synonimow
     return 0, grupa_synonimow
 
 
 def disamb_input_przyklady():
-    if config['bulk_add'] and config['dodaj_przyklady_synonimow']:
-        return config['psyn_bulk'], grupa_przykladow
     if config['dodaj_przyklady_synonimow']:
+        if config['bulk_add']:
+            return config['psyn_bulk'], grupa_przykladow
         wybor_disamb_przyklady = input(f'{input_color}Wybierz grupę przykładów:{inputtext_color} ')
         return input_func(wybor_disamb_przyklady), grupa_przykladow
     return 0, grupa_przykladow
 
 
 def etymologia_input():
-    if config['bulk_add'] and config['dodaj_etymologie']:
-        return config['etym_bulk'], etymologia
     if config['dodaj_etymologie']:
+        if config['bulk_add']:
+            return config['etym_bulk'], etymologia
         wybor_etymologii = input(f'{input_color}Wybierz etymologię:{inputtext_color} ')
         return input_func(wybor_etymologii), etymologia
     return 0, etymologia
 
 
+def czesci_mowy_input():
+    if config['dodaj_czesci_mowy']:
+        if config['bulk_add']:
+            return config['pos_bulk'], czesci_mowy
+        wybor_czesci_mowy = input(f'{input_color}Dołączyć części mowy? [1/0]:{inputtext_color} ')
+        return input_func(wybor_czesci_mowy), czesci_mowy
+    return 0, czesci_mowy
+
+
 def definicje_input():
-    if config['bulk_add'] and config['dodaj_definicje'] and not config['bulk_free_def']:
-        return config['def_bulk'], definicje
-    if config['dodaj_definicje'] or (config['bulk_add'] and config['bulk_free_def']):
-        wybor_definicji = input(f'{input_color}\nWybierz definicję:{inputtext_color} ')
-        return input_func(wybor_definicji), definicje
+    if config['dodaj_definicje']:
+        if config['bulk_add'] and not config['bulk_free_def']:
+            return config['def_bulk'], definicje
+        if not config['bulk_add'] or config['bulk_free_def']:
+            wybor_definicji = input(f'{input_color}\nWybierz definicję:{inputtext_color} ')
+            return input_func(wybor_definicji), definicje
     return 0, definicje
 
 
-def czesci_mowy_input():
-    if not config['dodaj_czesci_mowy']:
-        return 0
-    if config['bulk_add']:
-        wybor_czesci_mowy = str(config['pos_bulk'])  # Aby isnumeric się aplikowało
-    else:
-        wybor_czesci_mowy = input(f'{input_color}Dołączyć części mowy? [1/0]:{inputtext_color} ')
-
-    if wybor_czesci_mowy.isnumeric() or wybor_czesci_mowy == '-1':
-        return int(wybor_czesci_mowy)
-    elif wybor_czesci_mowy == '' or wybor_czesci_mowy == '-s':
-        return 0
-    elif wybor_czesci_mowy.startswith('/'):
-        return wybor_czesci_mowy
-    return -2
-
-
 # Bierze wybór z input_func i wydaje adekwatne informacje na kartę
-def choice_func(wybor, correct_word_content, connector):
+def choice_func(wybor, elem_content, connector):
     global skip_check
     if isinstance(wybor, str):  # Nie podoba mi się ten if. Ale isinstance jest chyba najlepszym rozwiązaniem
         return wybor.lstrip('/')
-    elif len(correct_word_content) >= wybor > 0:
-        return correct_word_content[wybor - 1]
-    elif wybor > len(correct_word_content) or wybor == -1:
-        return connector.join(correct_word_content)  # Pola z disambiguation nie potrzebują "<br>", bo nie są aż tak obszerne
+    elif len(elem_content) >= wybor > 0 and connector != ' | ':
+        return elem_content[wybor - 1]
+    elif wybor > len(elem_content) or wybor == -1 or wybor >= 1 and connector == ' | ':
+        return connector.join(elem_content)  # Pola z disambiguation nie potrzebują "<br>", bo nie są aż tak obszerne
     elif wybor == -2:
         skip_check = 1
         print(f'{Fore.LIGHTGREEN_EX}Pominięto dodawanie karty')
-    else:
-        return ' '
-
-
-def wybierz_czesci_mowy(wybor_czesci_mowy, connector):
-    global skip_check
-    if isinstance(wybor_czesci_mowy, str):
-        return wybor_czesci_mowy.lstrip('/')
-    elif wybor_czesci_mowy > 0 or wybor_czesci_mowy == -1:
-        return connector.join(czesci_mowy)
-    elif wybor_czesci_mowy == -2:
-        skip_check = 1
-        print(f'{Fore.LIGHTGREEN_EX}Pominięto dodawanie karty')
-    else:
+    else:  # czyli 0
         return ' '
 
 
@@ -631,7 +609,7 @@ def rysuj_synonimy(syn_soup):
             syndef_tp = print_elems(syndef, term_width=conf_to_int(config['textwidth']), index_width=len(str(index)),
                                     indento=3, gap=3, break_allowed=False)
             print(f'{index_color}{index} : {synpos_color}{pos.lstrip()} {syn_color}{syn_tp} {syndef_color}'
-                  f'{syndef_tp}{psyn_color}{przyklady4}\n')
+                  f'{syndef_tp}{psyn_color}{przyklady4}\n')  # przykładów się nie opłaca zawijać
         else:
             ''
 
@@ -737,27 +715,27 @@ try:
                 definicje = choice_func(*definicje_input(), connector='<br>')
                 if skip_check == 1:
                     break
-                czesci_mowy = wybierz_czesci_mowy(czesci_mowy_input(), connector=' | ')
+                czesci_mowy = choice_func(*czesci_mowy_input(), connector=' | ')
                 if skip_check == 1:
                     break
                 etymologia = choice_func(*etymologia_input(), connector='<br>')
                 if skip_check == 1:
                     break
-                if config['disambiguation'] and not config['bulk_add']\
-                        or config['disambiguation'] and config['bulk_add'] and \
-                        (config['syn_bulk'] != 0 or config['psyn_bulk'] != 0 or config['bulk_free_syn']):
-                    disambiguator(url_synsearch='http://wordnetweb.princeton.edu/perl/webwn?s=' + correct_word)
-                    if skip_check_disamb == 0:
-                        disamb_synonimy = choice_func(*disamb_input_syn(), connector=' ')
-                        if skip_check == 1:
-                            break
-                        disamb_przyklady = choice_func(*disamb_input_przyklady(), connector=' ')
-                        if skip_check == 1:
-                            break
-                        if config['dodaj_synonimy'] and config['dodaj_przyklady_synonimow']:
-                            disambiguation = disamb_synonimy + '<br>' + disamb_przyklady
-                        else:
-                            disambiguation = disamb_synonimy + disamb_przyklady
+                if config['disambiguation']:
+                    if not config['bulk_add'] or config['bulk_add'] and \
+                            (config['syn_bulk'] != 0 or config['psyn_bulk'] != 0 or config['bulk_free_syn']):
+                        disambiguator(url_synsearch='http://wordnetweb.princeton.edu/perl/webwn?s=' + correct_word)
+                        if skip_check_disamb == 0:
+                            disamb_synonimy = choice_func(*disamb_input_syn(), connector=' ')
+                            if skip_check == 1:
+                                break
+                            disamb_przyklady = choice_func(*disamb_input_przyklady(), connector=' ')
+                            if skip_check == 1:
+                                break
+                            if config['dodaj_synonimy'] and config['dodaj_przyklady_synonimow']:
+                                disambiguation = disamb_synonimy + '<br>' + disamb_przyklady
+                            else:
+                                disambiguation = disamb_synonimy + disamb_przyklady
                 utworz_karte()
                 wyswietl_karte()
             else:
