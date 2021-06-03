@@ -24,12 +24,13 @@ if sys.platform.startswith('linux'):
 if not os.path.exists('Karty_audio') and config['save_path'] == 'Karty_audio':
     os.mkdir('Karty_audio')  # Aby nie trzeba było tworzyć folderu ręcznie
 
-print(f"""{BOLD}- Dodawacz kart do Anki v0.5.1 -{END}\n
+print(f"""{BOLD}- Dodawacz kart do Anki v0.5.2 -{END}\n
 Wpisz "--help", aby wyświetlić pomoc\n\n""")
 
 # Ustawia kolory
 syn_color = eval(config['syn_color'])
 psyn_color = eval(config['psyn_color'])
+pidiom_color = eval(config['pidiom_color'])
 def1_color = eval(config['def1_color'])
 def2_color = eval(config['def2_color'])
 index_color = eval(config['index_color'])
@@ -89,8 +90,8 @@ def save_commands(komenda, wartosc):
 
 input_list = ['Wartość dla definicji', 'Wartość dla części mowy',
               'Wartość dla etymologii', 'Wartość dla synonimów',
-              'Wartość dla przykładów synonimów']
-bulk_cmds = ['def_bulk', 'pos_bulk', 'etym_bulk', 'syn_bulk', 'psyn_bulk']
+              'Wartość dla przykładów synonimów', 'Wartość dla przykładów idiomów']
+bulk_cmds = ['def_blk', 'pos_blk', 'etym_blk', 'syn_blk', 'psyn_blk', 'pidiom_blk']
 
 
 def config_bulk():
@@ -118,10 +119,10 @@ def config_bulk():
 
 def print_config():
     commands = list(dict.keys(k.search_commands))
-    commands.pop(13)  # usuwa -all
-    cmds = commands[:12]
-    cmds.insert(9, '')
-    misccmds = commands[12:]
+    commands.pop(14)  # usuwa -all
+    cmds = commands[:13]
+    cmds.insert(10, '')
+    misccmds = commands[13:]
     print(f'\n{Fore.RESET}{BOLD}[config dodawania]      [config miscellaneous]      [config bulk]{END}')
     for command, misccmd, blkcmd in zip_longest(cmds, misccmds, bulk_cmds, fillvalue=''):
         config_cmd = config.get(f'{k.search_commands.get(command, "")}', '')
@@ -266,39 +267,90 @@ def szukaj():
         return url
 
 
-# Pozyskiwanie audio z AHD
-def get_audio(audio_link, audio_end):
-    audiofile_name = audio_end + '.wav'
+def get_audio(audio_link, audiofile_name):
     try:
         with open(os.path.join(config['save_path'], audiofile_name), 'wb') as file:
             response = requests_session_ah.get(audio_link)
             file.write(response.content)
         return f'[sound:{audiofile_name}]'
-    except Exception:
+    except IsADirectoryError:  # jest to efekt zapisywania pliku o nazwie ''
+        return ' '
+    except FileNotFoundError:
         print(f"""{error_color}Zapisywanie pliku audio {Fore.RESET}"{audiofile_name}" {error_color}nie powiodło się
 Aktualna ścieżka zapisu audio to {Fore.RESET}"{config['save_path']}"
 {error_color}Upewnij się, że taki folder istnieje i spróbuj ponownie""")
         return ' '
+    except Exception:
+        print(f'{error_color}Wystąpił nieoczekiwany błąd podczas zapisywania audio')
+        raise
 
 
-def search_for_audio(url):
+def audio_diki(url, lock):
+    reqs = requests.get(url)
+    audiosoup = BeautifulSoup(reqs.content, 'lxml', from_encoding='utf-8')
+    url_box = audiosoup.find('span', {'class': 'recordingsAndTranscriptions'})
+    try:
+        url_box = str(url_box).split('data-audio-url=')[1]
+        url_box = url_box.split(' tabindex')[0].strip('"')
+        audiofile_name = url_box.split('/')[-1]
+
+        # Aby diki nie linkowało audio pierwszego słowa z idiomu, którego nie ma na diki
+        diki_link = correct_word.replace('(', '').replace(')', '')
+        faudio_check = diki_link.split(' ')[-1]
+        if not audiofile_name.split('.mp3')[0].endswith(faudio_check):
+            raise IndexError
+    except IndexError:
+        if not lock:
+            print(f"""{error_color}Diki nie posiada pożądanego audio!
+{Fore.LIGHTYELLOW_EX}Sprawdzam AHD...""")
+            return audio_ahd(url='https://www.ahdictionary.com/word/search.html?q=' + correct_word, lock=True)
+        else:
+            print(f"""{error_color}Żaden serwer nie posiada pożądanego audio!
+Karta zostanie dodana bez audio""")
+            return '', ''
+    else:
+        audio_link = 'https://www.diki.pl' + url_box
+        if lock:
+            print(f'{Fore.LIGHTGREEN_EX}Sukces\n')
+        return audio_link, audiofile_name
+
+
+def audio_ahd(url, lock):
+    reqs = requests_session_ah.get(url)
+    soup = BeautifulSoup(reqs.content, 'lxml', from_encoding='utf-8')
+    audio = soup.find('a', {'target': '_blank'}).get('href')
+    if audio == 'http://www.hmhco.com':
+        if not lock:
+            print(f"""{error_color}AHD nie posiada pożądanego audio!
+{Fore.LIGHTYELLOW_EX}Sprawdzam diki...""")
+            diki_link = correct_word.replace('(', '').replace(')', '')
+            return audio_diki(url='https://www.diki.pl/slownik-angielskiego?q=' + diki_link, lock=True)
+        else:
+            print(f"""{error_color}Żaden serwer nie posiada pożądanego audio!
+Karta zostanie dodana bez audio""")
+            return '', ''
+    else:
+        audiofile_name = audio.split('/')[-1]
+        audiofile_name = audiofile_name.split('.')[0] + '.wav'
+        audio_link = 'https://www.ahdictionary.com'
+        audio_link += audio
+        if lock:
+            print(f'{Fore.LIGHTGREEN_EX}Sukces\n')
+        return audio_link, audiofile_name
+
+
+def search_for_audio(server):
     if config['dodaj_audio']:
         try:
-            reqs = requests_session_ah.get(url)
-            soup = BeautifulSoup(reqs.content, 'lxml', from_encoding='utf-8')
-            audio = soup.find('a', {'target': '_blank'}).get('href')
-            if audio == 'http://www.hmhco.com':
-                print(f"""{error_color}Hasło nie posiada pliku audio!
-Karta zostanie dodana bez audio\n""")
-                return ' '
+            if server == 'ahd':
+                audio_link, audio_end = audio_ahd(url='https://www.ahdictionary.com/word/search.html?q=' + correct_word, lock=False)
             else:
-                audio_end = audio.split('/')[-1]
-                audio_end = audio_end.split('.')[0]
-                audio_link = 'https://www.ahdictionary.com'
-                audio_link += audio
-                return get_audio(audio_link, audio_end)
+                diki_link = correct_word.replace('(', '').replace(')', '')
+                audio_link, audio_end = audio_diki(url='https://www.diki.pl/slownik-angielskiego?q=' + diki_link, lock=False)
+            return get_audio(audio_link, audio_end)
         except Exception:
             print(f'{error_color}Wystąpił problem podczas szukania pliku audio')
+            raise
     return ' '
 
 
@@ -369,28 +421,28 @@ def conf_to_int(conf_val):
 def rysuj_slownik(url):
     global correct_word
     global skip_check
+    term_width = terminal_width()
+    if config['indent'] > term_width // 2:
+        save_commands(komenda='indent', wartosc=term_width // 2)
+    if '* auto' in str(config['delimsize']):
+        save_commands(komenda='delimsize', wartosc=f'{term_width}* auto')
+    if '* auto' in str(config['center']):
+        save_commands(komenda='center', wartosc=f'{term_width}* auto')
     try:
         reqs = requests_session_ah.get(url, timeout=10)
         soup = BeautifulSoup(reqs.content, 'lxml', from_encoding='utf-8')
         word_check = soup.find_all(class_=('ds-list', 'sds-single', 'ds-single', 'ds-list'))
         if len(word_check) == 0:
-            print(f'{error_color}Nie znaleziono podanego hasła')
+            print(f'{error_color}Nie znaleziono podanego hasła w AH Dictionary\n{Fore.LIGHTYELLOW_EX}Szukam w idiomach...')
             skip_check = 1
         else:
-            term_width = terminal_width()
-            if config['indent'] > term_width // 2:
-                save_commands(komenda='indent', wartosc=term_width // 2)
-            if '* auto' in str(config['delimsize']):
-                save_commands(komenda='delimsize', wartosc=f'{term_width}* auto')
-            if '* auto' in str(config['center']):
-                save_commands(komenda='center', wartosc=f'{term_width}* auto')
             indexing = 0
             correct_word_index = 0
             for td in soup.find_all('td'):
                 meanings_in_td = td.find_all(class_=('ds-list', 'sds-single', 'ds-single', 'ds-list'))
                 print(f'{delimit_color}{conf_to_int(config["delimsize"]) * "-"}')
                 for meaning_num in td.find_all('font', {'color': '#006595'}, 'sup'):
-                    # Rysuje wpisy, czyli bat·ter 1, bat·ter 2 itd.
+                    # Rysuje bat·ter 1, bat·ter 2 itd.
                     # Aby przy wyszukiwaniu nieprawidłowego wpisu, np. "impeachment" zamiast "impeach", dodało "impeach"
                     correct_word_index += 1
                     if correct_word_index == 1 or correct_word_index == 2:  # Aby preferować lowercase wersję słowa
@@ -510,7 +562,7 @@ def input_func(in_put):
 def disamb_input_syn():
     if config['dodaj_synonimy']:
         if config['bulk_add'] and not config['bulk_free_syn']:
-            return config['syn_bulk'], grupa_synonimow
+            return config['syn_blk'], grupa_synonimow
         if not config['bulk_add'] or config['bulk_free_syn']:
             wybor_disamb_syn = input(f'{input_color}Wybierz grupę synonimów:{inputtext_color} ')
             return input_func(wybor_disamb_syn), grupa_synonimow
@@ -520,16 +572,25 @@ def disamb_input_syn():
 def disamb_input_przyklady():
     if config['dodaj_przyklady_synonimow']:
         if config['bulk_add']:
-            return config['psyn_bulk'], grupa_przykladow
+            return config['psyn_blk'], grupa_przykladow
         wybor_disamb_przyklady = input(f'{input_color}Wybierz grupę przykładów:{inputtext_color} ')
         return input_func(wybor_disamb_przyklady), grupa_przykladow
     return 0, grupa_przykladow
 
 
+def farlex_input_przyklady():
+    if config['dodaj_przyklady_idiomow']:
+        if config['bulk_add']:
+            return config['pidiom_blk'], ilustracje
+        wybor_przykladow_idiomow = input(f'{input_color}Wybierz przykład:{inputtext_color} ')
+        return input_func(wybor_przykladow_idiomow), ilustracje
+    return 0, ilustracje
+
+
 def etymologia_input():
     if config['dodaj_etymologie']:
         if config['bulk_add']:
-            return config['etym_bulk'], etymologia
+            return config['etym_blk'], etymologia
         wybor_etymologii = input(f'{input_color}Wybierz etymologię:{inputtext_color} ')
         return input_func(wybor_etymologii), etymologia
     return 0, etymologia
@@ -538,7 +599,7 @@ def etymologia_input():
 def czesci_mowy_input():
     if config['dodaj_czesci_mowy']:
         if config['bulk_add']:
-            return config['pos_bulk'], czesci_mowy
+            return config['pos_blk'], czesci_mowy
         wybor_czesci_mowy = input(f'{input_color}Dołączyć części mowy? [1/0]:{inputtext_color} ')
         return input_func(wybor_czesci_mowy), czesci_mowy
     return 0, czesci_mowy
@@ -547,7 +608,7 @@ def czesci_mowy_input():
 def definicje_input():
     if config['dodaj_definicje']:
         if config['bulk_add'] and not config['bulk_free_def']:
-            return config['def_bulk'], definicje
+            return config['def_blk'], definicje
         if not config['bulk_add'] or config['bulk_free_def']:
             wybor_definicji = input(f'{input_color}\nWybierz definicję:{inputtext_color} ')
             return input_func(wybor_definicji), definicje
@@ -642,6 +703,69 @@ def disambiguator(url_synsearch):
         raise
 
 
+def farlex_idioms_appender(content, group_of_elems):
+    if config['ukryj_slowo_w_idiom']:
+        hidden_content = content
+        words_th = correct_word.split(' ')
+        nonoes = ('a', 'A', 'the', 'The', 'or', 'Or', 'as', 'As')
+        for word_th in words_th:
+            if word_th not in nonoes:
+                hidden_content = hidden_content.replace(word_th, '...')
+        group_of_elems.append(hidden_content)
+    else:
+        group_of_elems.append(content)
+
+
+def farlex_idioms(url_idiomsearch):
+    global skip_check
+    global correct_word
+    reqs_idioms = requests.get(url_idiomsearch, timeout=10)
+    idiom_soup = BeautifulSoup(reqs_idioms.content, 'lxml', from_encoding='utf-8')
+    idiom_div = idiom_soup.find('section', {'data-src': 'FarlexIdi'})
+    try:
+        idiom = idiom_div.h2.text
+    except AttributeError:
+        print(f'{error_color}Nie znaleziono podanego hasła')
+        skip_check = 1
+    else:
+        indek = 0
+        idiom_defs = idiom_div.findAll(class_=('ds-list', 'ds-single'))
+        print(f'{conf_to_int(config["delimsize"])*"-"}')
+        print(f'  {word_color}{idiom}')
+        correct_word = idiom
+        for inx, defin in enumerate(idiom_defs, start=1):
+            illustration = defin.find(text=True, recursive=False)
+            idiom_def = re.sub('\\d. ', '', illustration)
+            idiom_def = idiom_def.split(' In this usage, a noun or pronoun can')[0]
+            idiom_def = idiom_def.split(' A noun or pronoun can be used between')[0]
+            idiom_def = idiom_def.split(' A noun or pronoun does not have to')[0]
+            idiom_def = idiom_def.split(' Often used in passive constructions')[0]
+            idiom_def_tp = print_elems(idiom_def.strip(),
+                                       term_width=conf_to_int(config['textwidth']),
+                                       index_width=len(str(inx)), indento=config['indent']+1,
+                                       gap=3, break_allowed=False)
+
+            farlex_idioms_appender(idiom_def, definicje)
+
+            if indek == 0:
+                print(f'{index_color}{inx} : {def1_color}{idiom_def_tp}')
+            else:
+                print(f'\n{index_color}{inx} : {def1_color}{idiom_def_tp}')
+
+            idiom_illustrations = defin.findAll('span', {'class': 'illustration'})
+            for illustration in idiom_illustrations:
+                indek += 1
+                illustration_tp = print_elems(illustration.text,
+                                              term_width=conf_to_int(config['textwidth']),
+                                              index_width=len(str(inx)), indento=config['indent']+4,
+                                              gap=8, break_allowed=False)
+
+                farlex_idioms_appender(illustration.text, ilustracje)
+
+                print(f"{index_color}    {indek} {pidiom_color}'{illustration_tp}'")
+        print()
+
+
 # Tworzenie karty
 def utworz_karte():
     try:
@@ -663,7 +787,7 @@ def wyswietl_karte():
     options = (conf_to_int(config['textwidth']), 0, 0, 0, False)
 
     print(f'\n{delimit_color}{delimit * "-"}')
-    for definition_tp in print_elems(definicje, *options).replace('<br>', ' ').split('\n'):
+    for definition_tp in print_elems(definicje, *options).split('\n'):
         print(f"{def1_color}{definition_tp.center(centr)}")
     for disamb_tp in print_elems(disamb_synonimy, *options).split('\n'):
         print(f'{syn_color}{disamb_tp.center(centr)}')
@@ -687,40 +811,69 @@ try:
         # to niektóre pola będą zapisywane na karcie nie zważając na zmiany ustawień
         skip_check = 0
         skip_check_disamb = 0
+        farlex = False
         correct_word = ''
         word = ''
         audiofile_name = ''
         disambiguation = ''
         disamb_synonimy = ''
         disamb_przyklady = ''
+        idiom_przyklady = ''
         definicje = []
         czesci_mowy = []
         etymologia = []
         grupa_przykladow = []
         grupa_synonimow = []
+        ilustracje = []
         while True:
             url = szukaj()
             if url is None:
                 continue
             break
         while skip_check == 0:
-            rysuj_slownik(url)
-            if skip_check == 1:
-                break
+            if not word.startswith('-idi'):
+                rysuj_slownik(url)
+                if skip_check == 1:
+                    skip_check = 0
+                    farlex_idioms(url_idiomsearch='https://idioms.thefreedictionary.com/' + word)
+                    farlex = True
+                    if skip_check == 1:
+                        break
+            else:
+                farlex_idioms(url_idiomsearch='https://idioms.thefreedictionary.com/' + word.lstrip('-idi '))
+                farlex = True
+                if skip_check == 1:
+                    break
             if config['tworz_karte']:
-                audiofile_name = search_for_audio(url='https://www.ahdictionary.com/word/search.html?q=' + correct_word)
-                zdanie = ogarnij_zdanie(zdanie_input())  # Aby wyłączyć dodawanie zdania w bulk wystarczy -pz off
-                if skip_check == 1:  # ten skip_check jest niemożliwy przy bulk
-                    break
-                definicje = choice_func(*definicje_input(), connector='<br>')
-                if skip_check == 1:
-                    break
-                czesci_mowy = choice_func(*czesci_mowy_input(), connector=' | ')
-                if skip_check == 1:
-                    break
-                etymologia = choice_func(*etymologia_input(), connector='<br>')
-                if skip_check == 1:
-                    break
+                if not farlex:
+                    audiofile_name = search_for_audio(server='ahd')
+                    zdanie = ogarnij_zdanie(zdanie_input())  # Aby wyłączyć dodawanie zdania w bulk wystarczy -pz off
+                    if skip_check == 1:  # ten skip_check jest niemożliwy przy bulk
+                        break
+                    definicje = choice_func(*definicje_input(), connector='<br>')
+                    if skip_check == 1:
+                        break
+                    czesci_mowy = choice_func(*czesci_mowy_input(), connector=' | ')
+                    if skip_check == 1:
+                        break
+                    etymologia = choice_func(*etymologia_input(), connector='<br>')
+                    if skip_check == 1:
+                        break
+                else:
+                    audiofile_name = search_for_audio(server='diki')
+                    zdanie = ogarnij_zdanie(zdanie_input())
+                    definicje = choice_func(*definicje_input(), connector='<br>')
+                    if skip_check == 1:
+                        break
+                    czesci_mowy = ''
+                    etymologia = ''
+                    idiom_przyklady = choice_func(*farlex_input_przyklady(), connector=' ')
+                    if skip_check == 1:
+                        break
+                    if len(idiom_przyklady) > 1:
+                        definicje = definicje + '<br>' + idiom_przyklady
+                    else:
+                        definicje = definicje
                 if config['disambiguation']:
                     if not config['bulk_add'] or config['bulk_add'] and \
                             (config['syn_bulk'] != 0 or config['psyn_bulk'] != 0 or config['bulk_free_syn']):

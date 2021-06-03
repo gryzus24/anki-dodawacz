@@ -17,6 +17,7 @@ with open("config.yml", "r") as readconfig:
 
 syn_color = eval(config['syn_color'])
 psyn_color = eval(config['psyn_color'])
+pidiom_color = eval(config['pidiom_color'])
 def1_color = eval(config['def1_color'])
 def2_color = eval(config['def2_color'])
 index_color = eval(config['index_color'])
@@ -40,8 +41,10 @@ commands_msg = {
                 '-etym': 'Dodawanie etymologii: ', '-pos': 'Dodawanie części mowy: ', '-fs': 'Filtrowany słownik: ',
                 '-all': 'Dodawanie wszystkiego: ', '-karty': 'Tworzenie kart: ', '-pz': 'Dodawanie zdania: ',
                 '-udef': 'Ukrywanie słowa w definicjach: ', '-upz': 'Ukrywanie słowa w zdaniu: ',
-                '-udisamb': 'Ukrywanie słowa w disamb: ', '-disamb': 'Disambiguation: ', '-syn': 'Dodawanie synonimów: ',
-                '-psyn': 'Dodawanie przykładów synonimów: ', '-bulk': 'Masowe dodawanie: ', '-bulkfdef': 'Swobodne masowe dodawanie definicji: ',
+                '-udisamb': 'Ukrywanie słowa w disamb: ', '-uidiom': 'Ukrywanie słowa w idiomach: ',
+                '-disamb': 'Disambiguation: ', '-syn': 'Dodawanie synonimów: ',
+                '-psyn': 'Dodawanie przykładów synonimów: ', '-pidiom': 'Dodawanie przykładów idiomów: ',
+                '-bulk': 'Masowe dodawanie: ', '-bulkfdef': 'Swobodne masowe dodawanie definicji: ',
                 '-bulkfsyn': 'Swobodne masowe dodawanie synonimów: ', '-wraptext': 'Zawijanie tekstu: ', '-break': 'Nowa linia po każdej definicji: '
 }
 commands_values = {
@@ -52,24 +55,25 @@ commands_values = {
 search_commands = {
                    '-pz': 'dodaj_wlasne_zdanie', '-def': 'dodaj_definicje', '-pos': 'dodaj_czesci_mowy',
                    '-etym': 'dodaj_etymologie', '-audio': 'dodaj_audio', '-disamb': 'disambiguation',
-                   '-syn': 'dodaj_synonimy', '-psyn': 'dodaj_przyklady_synonimow', '-karty': 'tworz_karte',
-                   '-bulk': 'bulk_add', '-bulkfdef': 'bulk_free_def', '-bulkfsyn': 'bulk_free_syn',
-                   '-fs': 'pokazuj_filtrowany_slownik',
+                   '-syn': 'dodaj_synonimy', '-psyn': 'dodaj_przyklady_synonimow', '-pidiom': 'dodaj_przyklady_idiomow',
+                   '-karty': 'tworz_karte', '-bulk': 'bulk_add', '-bulkfdef': 'bulk_free_def',
+                   '-bulkfsyn': 'bulk_free_syn', '-fs': 'pokazuj_filtrowany_slownik',
                    '-all': '-all',
                    '-upz': 'ukryj_slowo_w_zdaniu', '-udef': 'ukryj_slowo_w_definicji', '-udisamb': 'ukryj_slowo_w_disamb',
-                   '-wraptext': 'wrap_text', '-break': 'break', '-textwidth': 'textwidth', '-indent': 'indent',
-                   '-delimsize': 'delimsize', '-center': 'center'
+                   '-uidiom': 'ukryj_slowo_w_idiom', '-wraptext': 'wrap_text', '-break': 'break',
+                   '-textwidth': 'textwidth', '-indent': 'indent', '-delimsize': 'delimsize', '-center': 'center'
 }
 bool_colors = {False: 'Fore.LIGHTRED_EX', True: 'Fore.LIGHTGREEN_EX'}
 colors = ('black', 'red', 'green', 'yellow', 'blue', 'magenta', 'cyan', 'white',
           'lightblack', 'lightred', 'lightgreen', 'lightyellow', 'lightblue', 'lightmagenta', 'lightcyan', 'lightwhite',
           'reset')
-color_commands = ('-syn-color', '-index-color', '-word-color', '-psyn-color', '-def1-color', '-def2-color',
-                  '-pos-color', '-etym-color', '-synpos-color', '-syndef-color', '-error-color', '-delimit-color',
-                  '-input-color', '-inputtext-color')
+color_commands = ('-syn-color', '-index-color', '-word-color', '-psyn-color', '-pidiom-color',
+                  '-def1-color', '-def2-color', '-pos-color', '-etym-color', '-synpos-color',
+                  '-syndef-color', '-error-color', '-delimit-color', '-input-color', '-inputtext-color')
 color_message = {'-syn-color': 'Kolor synonimów', '-index-color': 'Kolor indexów', '-word-color': 'Kolor hasła',
-                 '-psyn-color': 'Kolor przykładów synonimów', '-def1-color': 'Kolor nieparzystych definicji',
-                 '-def2-color': 'Kolor parzystych definicji', '-pos-color': 'Kolor części mowy', '-etym-color': 'Kolor etymologii',
+                 '-psyn-color': 'Kolor przykładów synonimów', '-pidiom-color': 'Kolor przykładów idiomów',
+                 '-def1-color': 'Kolor nieparzystych definicji', '-def2-color': 'Kolor parzystych definicji',
+                 '-pos-color': 'Kolor części mowy', '-etym-color': 'Kolor etymologii',
                  '-synpos-color': 'Kolor części mowy przy synonimach', '-syndef-color': 'Kolor definicji przy synonimach',
                  '-error-color': 'Kolor błędów', '-delimit-color': 'Kolor odkreśleń',
                  '-input-color': 'Kolor pól na input', '-inputtext-color': 'Kolor wpisywanego tekstu'}
@@ -225,12 +229,13 @@ Każda komenda zmiany kolorów musi otrzymać kolor:
 np. "-syn-color lightblue", "-pos-color magenta" itd.
 
                     {BOLD}[Zmienia kolor]{END}
--def1-color         {def1_color}nieparzystych definicji{Fore.RESET}
+-def1-color         {def1_color}nieparzystych definicji oraz definicji idiomów{Fore.RESET}
 -def2-color         {def2_color}parzystych definicji{Fore.RESET}
 -pos-color          {pos_color}części mowy w słowniku{Fore.RESET}
 -etym-color         {etym_color}etymologii w słowniku{Fore.RESET}
 -syn-color          {syn_color}synonimów na WordNecie{Fore.RESET}
 -psyn-color         {psyn_color}przykładów pod synonimami{Fore.RESET}
+-pidiom-color       {pidiom_color}przykładów pod idiomami{Fore.RESET}
 -syndef-color       {syndef_color}definicji przy synonimach{Fore.RESET}
 -synpos-color       {synpos_color}części mowy przy synonimach{Fore.RESET}
 -index-color        {index_color}indeksów w słowniku{Fore.RESET}

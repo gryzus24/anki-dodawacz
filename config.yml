@@ -5,7 +5,7 @@ bulk_free_syn: false
 center: 79* auto
 def1_color: Fore.RESET
 def2_color: Fore.RESET
-def_bulk: 0
+def_blk: 0
 delimit_color: Fore.RESET
 delimsize: 79* auto
 disambiguation: true
@@ -13,23 +13,26 @@ dodaj_audio: true
 dodaj_czesci_mowy: true
 dodaj_definicje: true
 dodaj_etymologie: true
+dodaj_przyklady_idiomow: true
 dodaj_przyklady_synonimow: true
 dodaj_synonimy: true
 dodaj_wlasne_zdanie: true
 error_color: Fore.LIGHTRED_EX
-etym_bulk: 0
+etym_blk: 0
 etym_color: Fore.RESET
 indent: 2
 index_color: Fore.LIGHTGREEN_EX
 input_color: Fore.RESET
 inputtext_color: Fore.RESET
+pidiom_blk: 0
+pidiom_color: Fore.RESET
 pokazuj_filtrowany_slownik: true
-pos_bulk: 0
+pos_blk: 0
 pos_color: Fore.YELLOW
-psyn_bulk: 0
+psyn_blk: 0
 psyn_color: Fore.RESET
 save_path: Karty_audio
-syn_bulk: 0
+syn_blk: 0
 syn_color: Fore.YELLOW
 syndef_color: Fore.RESET
 synpos_color: Fore.RESET
@@ -37,6 +40,7 @@ textwidth: 79
 tworz_karte: true
 ukryj_slowo_w_definicji: true
 ukryj_slowo_w_disamb: true
+ukryj_slowo_w_idiom: true
 ukryj_slowo_w_zdaniu: false
 word_color: Fore.CYAN
 wrap_text: true
