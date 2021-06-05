@@ -74,6 +74,7 @@ def delete_last_card():
 # Komendy i input słowa
 def save_commands(komenda, wartosc):
     if komenda == '-all':
+        config['dodaj_przyklady_idiomow'] = wartosc
         config['dodaj_przyklady_synonimow'] = wartosc
         config['dodaj_wlasne_zdanie'] = wartosc
         config['dodaj_czesci_mowy'] = wartosc
@@ -267,7 +268,7 @@ def szukaj():
         return url
 
 
-def get_audio(audio_link, audiofile_name):
+def get_audio_response(audio_link, audiofile_name):
     try:
         with open(os.path.join(config['save_path'], audiofile_name), 'wb') as file:
             response = requests_session_ah.get(audio_link)
@@ -285,7 +286,7 @@ Aktualna ścieżka zapisu audio to {Fore.RESET}"{config['save_path']}"
         raise
 
 
-def audio_diki(url, lock):
+def audio_diki(url, diki_link, lock):
     reqs = requests.get(url)
     audiosoup = BeautifulSoup(reqs.content, 'lxml', from_encoding='utf-8')
     url_box = audiosoup.find('span', {'class': 'recordingsAndTranscriptions'})
@@ -293,49 +294,51 @@ def audio_diki(url, lock):
         url_box = str(url_box).split('data-audio-url=')[1]
         url_box = url_box.split(' tabindex')[0].strip('"')
         audiofile_name = url_box.split('/')[-1]
-
-        # Aby diki nie linkowało audio pierwszego słowa z idiomu, którego nie ma na diki
-        diki_link = correct_word.replace('(', '').replace(')', '')
-        faudio_check = diki_link.split(' ')[-1]
-        if not audiofile_name.split('.mp3')[0].endswith(faudio_check):
+        # Aby diki nie linkowało audio pierwszego słowa z idiomu
+        last_word_in_af = diki_link.split(' ')[-1]
+        audiofile_added_in_full = audiofile_name.split('.mp3')[0].endswith(last_word_in_af)
+        # gdy lock is true, lepsze nic niż rydz
+        if not audiofile_added_in_full and not lock or\
+                len(audiofile_name.split('.mp3')[0]) < 4 and len(diki_link.split(' ')) > 2 and lock:
             raise IndexError
     except IndexError:
         if not lock:
             print(f"""{error_color}Diki nie posiada pożądanego audio!
-{Fore.LIGHTYELLOW_EX}Sprawdzam AHD...""")
-            return audio_ahd(url='https://www.ahdictionary.com/word/search.html?q=' + correct_word, lock=True)
+{Fore.LIGHTYELLOW_EX}Spróbuję dodać co łaska...""")
+            if correct_word.startswith('('):
+                attempt = correct_word.split(') ')[-1]
+            elif correct_word.endswith(')'):
+                attempt = correct_word.split(' (')[0]
+            else:
+                attempt = correct_word.split(' (')[0] + correct_word.split(')')[-1]
+            return audio_diki(url='https://www.diki.pl/slownik-angielskiego?q=' + attempt, diki_link=attempt, lock=True)
         else:
-            print(f"""{error_color}Żaden serwer nie posiada pożądanego audio!
+            print(f"""{error_color}Nie udało się pozyskać audio!
 Karta zostanie dodana bez audio""")
             return '', ''
     else:
         audio_link = 'https://www.diki.pl' + url_box
         if lock:
-            print(f'{Fore.LIGHTGREEN_EX}Sukces\n')
+            print(f'{Fore.LIGHTGREEN_EX}Sukces')
         return audio_link, audiofile_name
 
 
-def audio_ahd(url, lock):
+def audio_ahd(url):
     reqs = requests_session_ah.get(url)
     soup = BeautifulSoup(reqs.content, 'lxml', from_encoding='utf-8')
     audio = soup.find('a', {'target': '_blank'}).get('href')
     if audio == 'http://www.hmhco.com':
-        if not lock:
-            print(f"""{error_color}AHD nie posiada pożądanego audio!
+        print(f"""{error_color}AHD nie posiada pożądanego audio!
 {Fore.LIGHTYELLOW_EX}Sprawdzam diki...""")
-            diki_link = correct_word.replace('(', '').replace(')', '')
-            return audio_diki(url='https://www.diki.pl/slownik-angielskiego?q=' + diki_link, lock=True)
-        else:
-            print(f"""{error_color}Żaden serwer nie posiada pożądanego audio!
-Karta zostanie dodana bez audio""")
-            return '', ''
+        diki_link = correct_word.replace('(', '').replace(')', '')
+        # Tutaj jest True, bo wyszukania na AHD nie mają nawiasów, a trudno jest znaleźć słowo, które nie ma wymowy
+        # na AHD, a na diki jest niewyszukiwalne
+        return audio_diki(url='https://www.diki.pl/slownik-angielskiego?q=' + diki_link, diki_link=diki_link, lock=True)
     else:
         audiofile_name = audio.split('/')[-1]
         audiofile_name = audiofile_name.split('.')[0] + '.wav'
         audio_link = 'https://www.ahdictionary.com'
         audio_link += audio
-        if lock:
-            print(f'{Fore.LIGHTGREEN_EX}Sukces\n')
         return audio_link, audiofile_name
 
 
@@ -343,11 +346,12 @@ def search_for_audio(server):
     if config['dodaj_audio']:
         try:
             if server == 'ahd':
-                audio_link, audio_end = audio_ahd(url='https://www.ahdictionary.com/word/search.html?q=' + correct_word, lock=False)
+                audio_link, audio_end = audio_ahd(url='https://www.ahdictionary.com/word/search.html?q=' + correct_word)
             else:
-                diki_link = correct_word.replace('(', '').replace(')', '')
-                audio_link, audio_end = audio_diki(url='https://www.diki.pl/slownik-angielskiego?q=' + diki_link, lock=False)
-            return get_audio(audio_link, audio_end)
+                diki_link0 = correct_word.replace('(', '').replace(')', '')
+                diki_link = diki_link0.replace(' or something', '').replace('someone', 'somebody')
+                audio_link, audio_end = audio_diki(url='https://www.diki.pl/slownik-angielskiego?q=' + diki_link, diki_link=diki_link, lock=False)
+            return get_audio_response(audio_link, audio_end)
         except Exception:
             print(f'{error_color}Wystąpił problem podczas szukania pliku audio')
             raise
@@ -356,9 +360,8 @@ def search_for_audio(server):
 
 def print_elems(string, term_width, index_width, indento, gap, break_allowed):
     br = ''
-    if break_allowed:
-        if config['break']:
-            br = '\n'
+    if break_allowed and config['break']:
+        br = '\n'
     if config['wrap_text']:
         wrapped_text = ''
         indent = indento + index_width
@@ -467,16 +470,8 @@ def rysuj_slownik(url):
                         ah_def_print(indexing, term_width, definition=rex4.replace('', ''))
                     else:
                         ah_def_print(indexing, term_width, definition=meaning.text)
-                    if config['ukryj_slowo_w_definicji']:
-                        # Aby słowa typu "varied" i "married" były częściowo ukrywane
-                        if correct_word.endswith('y') and 'ied' in rex4:
-                            definicje.append(rex4.replace(correct_word.rstrip("y"), '...').replace(correct_word.capitalize(), '...')
-                                             .replace(':', ':<br>').replace('', '′'))
-                        else:
-                            definicje.append(rex4.replace(correct_word, '...').replace(correct_word.capitalize(), '...')
-                                             .replace(':', ':<br>').replace('', '′'))
-                    else:
-                        definicje.append(rex4.replace(':', ':<br>').replace('', '′'))
+
+                    hide_and_append(rex4, definicje, hide='ukryj_slowo_w_definicji')
 
                 print()
                 for pos in td.find_all(class_='runseg'):  # Dodaje części mowy
@@ -652,17 +647,9 @@ def rysuj_synonimy(syn_soup):
         synonimy2 = re.sub(r"\(.*\)", "", synonimy1)  # usuwa resztę nawiasów
         synonimy3 = re.sub(r"\s{2}", "", synonimy2)
 
-        if config['ukryj_slowo_w_disamb']:
-            grupa_synonimow.append(synonimy3.replace(correct_word, '...'))
-            # Aby słowa typu "varied" i "married" były częściowo ukrywane
-            if correct_word.endswith('y') and 'ied' in przyklady2 or 'ies' in przyklady2:
-                # Tylko słowa w przykładach będą tak ukrywane
-                grupa_przykladow.append(przyklady2.replace(correct_word.rstrip('y'), '...').replace(correct_word.capitalize(), '...'))
-            else:
-                grupa_przykladow.append(przyklady2.replace(correct_word, '...').replace(correct_word.capitalize(), '...'))
-        else:
-            grupa_synonimow.append(synonimy3)
-            grupa_przykladow.append(przyklady2)
+        hide_and_append(przyklady2, grupa_przykladow, hide='ukryj_slowo_w_disamb')
+        hide_and_append(synonimy3, grupa_synonimow, hide='ukryj_slowo_w_disamb')
+
         if not config['bulk_add']:  # Aby ograniczyć przesuwanie podczas bulk, wordnet nie jest wyświetlany
             syn_tp = print_elems(synonimy3 + '\n   ', term_width=conf_to_int(config['textwidth']),
                                  index_width=len(str(index)),
@@ -699,18 +686,45 @@ def disambiguator(url_synsearch):
         print(f'{error_color}WordNet nie odpowiada, spróbuj nawiązać połączenie później')
         skip_check_disamb = 1
     except Exception:
-        print(f'{error_color}Wystąpił nieoczekiwany błąd\n')
+        print(f'{error_color}Wystąpił nieoczekiwany błąd podczas wyświetlania WordNetu\n')
         raise
 
 
-def farlex_idioms_appender(content, group_of_elems):
-    if config['ukryj_slowo_w_idiom']:
+def hide_and_append(content, group_of_elems, hide):
+    if config[hide]:
         hidden_content = content
-        words_th = correct_word.split(' ')
-        nonoes = ('a', 'A', 'the', 'The', 'or', 'Or', 'as', 'As')
+        nonoes = ('a', 'A', 'an', 'An', 'the', 'The', 'or', 'Or', 'be', 'Be', 'do', 'Do', 'does', 'Does', 'not', 'Not',
+                  'if', 'If')
+        prepositions = ()
+        if hide == 'ukryj_slowo_w_idiom' and not config['ukryj_przyimki']:
+            prepositions = ('about', 'above', 'across', 'after', 'against', 'along', 'among', 'around', 'as', 'at',
+                            'before', 'behind', 'below', 'beneath', 'beside', 'between', 'beyond', 'by', 'despite',
+                            'down', 'during', 'except', 'for', 'from', 'in', 'inside', 'into', 'like', 'near', 'of',
+                            'off', 'on', 'onto', 'opposite', 'out', 'outside', 'over', 'past', 'round', 'since', 'than',
+                            'through', 'to', 'towards', 'under', 'underneath', 'unlike', 'until', 'up', 'upon', 'via',
+                            'with', 'within', 'without')
+
+        words_th = correct_word.lower().split(' ')
+        words_th_s_exceptions = [x.rstrip('y')+'ies' for x in words_th if x.endswith('y')]
+        words_th_ing_exceptions = [x.rstrip('e')+'ing' for x in words_th if x.endswith('e') and x not in prepositions]
+        words_th_ing_exceptions2 = [x.rstrip('ie')+'ying' for x in words_th if x.endswith('ie')]
+        words_th_ed_exceptions = [x.rstrip('y')+'ied' for x in words_th if x.endswith('y')]
+
         for word_th in words_th:
-            if word_th not in nonoes:
-                hidden_content = hidden_content.replace(word_th, '...')
+            if word_th not in nonoes and word_th not in prepositions:
+                hidden_content = hidden_content.replace(word_th, '...').replace(word_th.capitalize(), '...')
+
+        for wthse in words_th_s_exceptions:
+            hidden_content = hidden_content.replace(wthse, '...s').replace(wthse.capitalize(), '...s')
+
+        for wthinge in words_th_ing_exceptions:
+            hidden_content = hidden_content.replace(wthinge, '...ing').replace(wthinge.capitalize(), '...ing')
+
+        for wthinge2 in words_th_ing_exceptions2:
+            hidden_content = hidden_content.replace(wthinge2, '...ying').replace(wthinge2.capitalize(), '...ying')
+
+        for wthede in words_th_ed_exceptions:
+            hidden_content = hidden_content.replace(wthede, '...ed').replace(wthede.capitalize(), '...ed')
         group_of_elems.append(hidden_content)
     else:
         group_of_elems.append(content)
@@ -719,51 +733,67 @@ def farlex_idioms_appender(content, group_of_elems):
 def farlex_idioms(url_idiomsearch):
     global skip_check
     global correct_word
-    reqs_idioms = requests.get(url_idiomsearch, timeout=10)
-    idiom_soup = BeautifulSoup(reqs_idioms.content, 'lxml', from_encoding='utf-8')
-    idiom_div = idiom_soup.find('section', {'data-src': 'FarlexIdi'})
     try:
-        idiom = idiom_div.h2.text
-    except AttributeError:
-        print(f'{error_color}Nie znaleziono podanego hasła')
+        reqs_idioms = requests.get(url_idiomsearch, timeout=10)
+        idiom_soup = BeautifulSoup(reqs_idioms.content, 'lxml', from_encoding='utf-8')
+        idiom_div = idiom_soup.find('section', {'data-src': 'FarlexIdi'})
+        try:
+            idiom = idiom_div.h2.text
+        except AttributeError:
+            print(f'{error_color}Nie znaleziono podanego hasła')
+            skip_check = 1
+        else:
+            indek = 0
+            idiom_defs = idiom_div.findAll(class_=('ds-list', 'ds-single'))
+            print(f'{conf_to_int(config["delimsize"])*"-"}')
+            print(f'  {word_color}{idiom}')
+            correct_word = idiom
+            for inx, defin in enumerate(idiom_defs, start=1):
+                idiom_definition = defin.find(text=True, recursive=False)
+                if len(str(idiom_definition)) < 5:
+                    idiom_definition = str(defin).split('</i> ')[-1]
+                    idiom_definition = idiom_definition.split(' <span class=')[0]
+                idiom_def = re.sub(r'\d. ', '', str(idiom_definition))
+                idiom_def = re.sub(r'\A\d', '', idiom_def)  # aby po indeksach większych od 9 nic nie zostało
+                idiom_def = idiom_def.split(' In this usage, a noun or pronoun can')[0]
+                idiom_def = idiom_def.split(' In this usage, the phrase is usually')[0]
+                idiom_def = idiom_def.split(' In this usage, a reflexive pronoun is')[0]
+                idiom_def = idiom_def.split(' A noun or pronoun can be used between')[0]
+                idiom_def = idiom_def.split(' A noun or pronoun does not have to')[0]
+                idiom_def = idiom_def.split(' Often used in passive constructions')[0]
+                idiom_def_tp = print_elems(idiom_def.strip(),
+                                           term_width=conf_to_int(config['textwidth']),
+                                           index_width=len(str(inx)), indento=config['indent']+1,
+                                           gap=3, break_allowed=False)
+
+                hide_and_append(idiom_def, definicje, hide='ukryj_slowo_w_idiom')
+
+                if indek == 0:
+                    print(f'{index_color}{inx} : {def1_color}{idiom_def_tp}')
+                else:
+                    print(f'\n{index_color}{inx} : {def1_color}{idiom_def_tp}')
+
+                idiom_illustrations = defin.findAll('span', {'class': 'illustration'})
+                for illustration in idiom_illustrations:
+                    indek += 1
+                    illustration_tp = print_elems(illustration.text,
+                                                  term_width=conf_to_int(config['textwidth']),
+                                                  index_width=len(str(inx)), indento=config['indent']+4,
+                                                  gap=8, break_allowed=False)
+
+                    hide_and_append(illustration.text, ilustracje, hide='ukryj_slowo_w_idiom')
+
+                    print(f"{index_color}    {indek} {pidiom_color}'{illustration_tp}'")
+            print()
+    except ConnectionError:
+        print(f'{error_color}Nie udało się połączyć ze słownikiem idiomów, sprawdź swoje połączenie i spróbuj ponownie')
         skip_check = 1
-    else:
-        indek = 0
-        idiom_defs = idiom_div.findAll(class_=('ds-list', 'ds-single'))
-        print(f'{conf_to_int(config["delimsize"])*"-"}')
-        print(f'  {word_color}{idiom}')
-        correct_word = idiom
-        for inx, defin in enumerate(idiom_defs, start=1):
-            illustration = defin.find(text=True, recursive=False)
-            idiom_def = re.sub('\\d. ', '', illustration)
-            idiom_def = idiom_def.split(' In this usage, a noun or pronoun can')[0]
-            idiom_def = idiom_def.split(' A noun or pronoun can be used between')[0]
-            idiom_def = idiom_def.split(' A noun or pronoun does not have to')[0]
-            idiom_def = idiom_def.split(' Often used in passive constructions')[0]
-            idiom_def_tp = print_elems(idiom_def.strip(),
-                                       term_width=conf_to_int(config['textwidth']),
-                                       index_width=len(str(inx)), indento=config['indent']+1,
-                                       gap=3, break_allowed=False)
-
-            farlex_idioms_appender(idiom_def, definicje)
-
-            if indek == 0:
-                print(f'{index_color}{inx} : {def1_color}{idiom_def_tp}')
-            else:
-                print(f'\n{index_color}{inx} : {def1_color}{idiom_def_tp}')
-
-            idiom_illustrations = defin.findAll('span', {'class': 'illustration'})
-            for illustration in idiom_illustrations:
-                indek += 1
-                illustration_tp = print_elems(illustration.text,
-                                              term_width=conf_to_int(config['textwidth']),
-                                              index_width=len(str(inx)), indento=config['indent']+4,
-                                              gap=8, break_allowed=False)
-
-                farlex_idioms_appender(illustration.text, ilustracje)
-
-                print(f"{index_color}    {indek} {pidiom_color}'{illustration_tp}'")
-        print()
+    except TimeoutError:
+        print(f'{error_color}Słownik idiomów nie odpowiada, spróbuj nawiązać połączenie później')
+        skip_check = 1
+    except Exception:
+        print(f'{error_color}Wystąpił nieoczekiwany błąd podczas wyświetlania słownika idiomów\n')
+        raise
 
 
 # Tworzenie karty
@@ -840,7 +870,7 @@ try:
                     if skip_check == 1:
                         break
             else:
-                farlex_idioms(url_idiomsearch='https://idioms.thefreedictionary.com/' + word.lstrip('-idi '))
+                farlex_idioms(url_idiomsearch='https://idioms.thefreedictionary.com/' + word.replace('-idi', '').strip())
                 farlex = True
                 if skip_check == 1:
                     break
@@ -875,20 +905,21 @@ try:
                     else:
                         definicje = definicje
                 if config['disambiguation']:
-                    if not config['bulk_add'] or config['bulk_add'] and \
-                            (config['syn_bulk'] != 0 or config['psyn_bulk'] != 0 or config['bulk_free_syn']):
-                        disambiguator(url_synsearch='http://wordnetweb.princeton.edu/perl/webwn?s=' + correct_word)
-                        if skip_check_disamb == 0:
-                            disamb_synonimy = choice_func(*disamb_input_syn(), connector=' ')
-                            if skip_check == 1:
-                                break
-                            disamb_przyklady = choice_func(*disamb_input_przyklady(), connector=' ')
-                            if skip_check == 1:
-                                break
-                            if config['dodaj_synonimy'] and config['dodaj_przyklady_synonimow']:
-                                disambiguation = disamb_synonimy + '<br>' + disamb_przyklady
-                            else:
-                                disambiguation = disamb_synonimy + disamb_przyklady
+                    disambiguator(url_synsearch='http://wordnetweb.princeton.edu/perl/webwn?s=' + correct_word)
+                if not config['bulk_add'] or config['bulk_add'] and \
+                        (config['syn_blk'] != 0 or config['psyn_blk'] != 0 or config['bulk_free_syn']):
+
+                    if skip_check_disamb == 0:
+                        disamb_synonimy = choice_func(*disamb_input_syn(), connector=' ')
+                        if skip_check == 1:
+                            break
+                        disamb_przyklady = choice_func(*disamb_input_przyklady(), connector=' ')
+                        if skip_check == 1:
+                            break
+                        if config['dodaj_synonimy'] and config['dodaj_przyklady_synonimow']:
+                            disambiguation = disamb_synonimy + '<br>' + disamb_przyklady
+                        else:
+                            disambiguation = disamb_synonimy + disamb_przyklady
                 utworz_karte()
                 wyswietl_karte()
             else:

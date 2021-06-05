@@ -45,7 +45,8 @@ commands_msg = {
                 '-disamb': 'Disambiguation: ', '-syn': 'Dodawanie synonimów: ',
                 '-psyn': 'Dodawanie przykładów synonimów: ', '-pidiom': 'Dodawanie przykładów idiomów: ',
                 '-bulk': 'Masowe dodawanie: ', '-bulkfdef': 'Swobodne masowe dodawanie definicji: ',
-                '-bulkfsyn': 'Swobodne masowe dodawanie synonimów: ', '-wraptext': 'Zawijanie tekstu: ', '-break': 'Nowa linia po każdej definicji: '
+                '-bulkfsyn': 'Swobodne masowe dodawanie synonimów: ', '-wraptext': 'Zawijanie tekstu: ', '-break': 'Nowa linia po każdej definicji: ',
+                '-upreps': 'Ukrywanie przyimków w idiomach: '
 }
 commands_values = {
                    'on': True, 'off': False, 'true': True, 'false': False, '1': True, '0': False,
@@ -60,7 +61,7 @@ search_commands = {
                    '-bulkfsyn': 'bulk_free_syn', '-fs': 'pokazuj_filtrowany_slownik',
                    '-all': '-all',
                    '-upz': 'ukryj_slowo_w_zdaniu', '-udef': 'ukryj_slowo_w_definicji', '-udisamb': 'ukryj_slowo_w_disamb',
-                   '-uidiom': 'ukryj_slowo_w_idiom', '-wraptext': 'wrap_text', '-break': 'break',
+                   '-uidiom': 'ukryj_slowo_w_idiom', '-upreps': 'ukryj_przyimki', '-wraptext': 'wrap_text', '-break': 'break',
                    '-textwidth': 'textwidth', '-indent': 'indent', '-delimsize': 'delimsize', '-center': 'center'
 }
 bool_colors = {False: 'Fore.LIGHTRED_EX', True: 'Fore.LIGHTGREEN_EX'}
@@ -80,6 +81,11 @@ color_message = {'-syn-color': 'Kolor synonimów', '-index-color': 'Kolor index�
 
 help_command = f"""{Fore.RESET}\nPo wpisaniu hasła w pole "Szukaj" rozpocznie się cykl dodawania karty
 
+Najpierw pytany jest AH Dictionary, jeżeli nie posiada szukanego hasła
+to zapytanie przechodzi do Farlex Idioms.
+ 
+Aby bezpośrednio zapytać Farlexa należy przed zapytaniem wpisać "-idi"
+np. "-idi tap out", "-idi double down" itd.
 {BOLD}Przy dodawaniu zdania:{END}
 Wpisz swoje przykładowe zdanie
  -s     pomija dodawanie zdania
@@ -114,6 +120,18 @@ mamy do wyboru dwa pola:
  - grupę synonimów
  - grupę przykładów
 
+synonimy i przykłady wchodzą w skład pola "Disambiguation"
+
+{BOLD}Przy idiomach:{END}
+Idiomy wyświetlane są podobnie jak synonimy.
+Wybieranie też działa podobnie, ale mamy kontrolę
+nad wyborem pojedynczych przykładów.
+Dostępne pola:
+ - definicja
+ - przykłady
+ 
+definicje i przykłady w idiomach wchodzą w skład pola "Definicja"
+
 {BOLD}Komendy dodawania:{END}
 Aby zmienić wartość dla komendy wpisz {BOLD}on/off{END} po komendzie
 np. "-pz off", "-disamb on", "-all off" itd.
@@ -125,7 +143,8 @@ np. "-pz off", "-disamb on", "-all off" itd.
 -etym        dodawanie etymologii       {config['dodaj_etymologie']}
 -disamb      pokazywanie synonimów      {config['disambiguation']}
 -syn         dodawanie synonimów        {config['dodaj_synonimy']}
--psyn        dodawanie przykładów       {config['dodaj_przyklady_synonimow']}
+-psyn        dodawanie przykładów syn.  {config['dodaj_przyklady_synonimow']}
+-pidiom      dodawanie przyk. idiomów   {config['dodaj_przyklady_idiomow']}
 -audio       dodawanie audio            {config['dodaj_audio']}
 
 -all         zmienia wartości powyższych ustawień
@@ -144,10 +163,11 @@ np. "-pz off", "-disamb on", "-all off" itd.
 
  Na Linuxie:
   "~/.local/share/Anki2/[Nazwa użytkownika Anki]/collection.media"
-  
+   (zamiast ~ pełna ścieżka)
+
  Na Macu:
   "~/Library/Application Support/Anki2/[Nazwa użytkownika Anki]/collection.media"
-   (jest to ukryty folder)
+   (jest to ukryty folder i prawdopodobnie zamiast ~ też pełna ścieżka)
 
 Aktualna ścieżka zapisu audio: {config['save_path']}
 
@@ -159,6 +179,8 @@ Ukrywanie hasła to zamiana wyszukiwanego słowa na "..."
 -udef         ukrywanie hasła w definicjach              {config['ukryj_slowo_w_definicji']}
 -upz          ukrywanie hasła w zdaniu                   {config['ukryj_slowo_w_zdaniu']}
 -udisamb      ukrywanie hasła w synonimach               {config['ukryj_slowo_w_disamb']}
+-uidiom       ukrywanie hasła w idiomach                 {config['ukryj_slowo_w_idiom']}
+-upreps       ukrywanie przyimków w idiomach             {config['ukryj_przyimki']}
 -wraptext     zawijanie tekstu                           {config['wrap_text']}
 -break        wstawianie nowej linii po definicji        {config['break']}
 

@@ -38,6 +38,7 @@ syndef_color: Fore.RESET
 synpos_color: Fore.RESET
 textwidth: 79
 tworz_karte: true
+ukryj_przyimki: false
 ukryj_slowo_w_definicji: true
 ukryj_slowo_w_disamb: true
 ukryj_slowo_w_idiom: true
