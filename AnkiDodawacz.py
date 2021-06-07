@@ -1,3 +1,4 @@
+from requests.exceptions import Timeout
 from itertools import zip_longest
 from bs4 import BeautifulSoup
 from colorama import Fore
@@ -41,15 +42,15 @@ synpos_color = eval(config['synpos_color'])
 syndef_color = eval(config['syndef_color'])
 error_color = eval(config['error_color'])
 delimit_color = eval(config['delimit_color'])
+
+inputtext_color = ''
+input_color = ''
 if sys.platform.startswith('linux'):
     inputtext_color = eval(config['inputtext_color'])
     input_color = eval(config['input_color'])
     # Aby nie kombinować z robieniem tych kolorów na windowsie,
     # bo to wymaga rozwiązań co tylko zaśmiecają kod
     # i powodują denerwujący wizualny bug podczas zmiany wielkości okna
-else:
-    inputtext_color = ''
-    input_color = ''
 
 
 def delete_last_card():
@@ -74,31 +75,21 @@ def delete_last_card():
 # Komendy i input słowa
 def save_commands(komenda, wartosc):
     if komenda == '-all':
-        config['dodaj_przyklady_idiomow'] = wartosc
-        config['dodaj_przyklady_synonimow'] = wartosc
-        config['dodaj_wlasne_zdanie'] = wartosc
-        config['dodaj_czesci_mowy'] = wartosc
-        config['dodaj_etymologie'] = wartosc
-        config['dodaj_definicje'] = wartosc
-        config['disambiguation'] = wartosc
-        config['dodaj_synonimy'] = wartosc
-        config['dodaj_audio'] = wartosc
+        for command in list(dict.values(k.search_commands))[:9]:
+            config[command] = wartosc
     else:
         config[komenda] = wartosc
     with open("config.yml", "w") as conf_file:
         yaml.dump(config, conf_file)
 
 
-input_list = ['Wartość dla definicji', 'Wartość dla części mowy',
-              'Wartość dla etymologii', 'Wartość dla synonimów',
-              'Wartość dla przykładów synonimów', 'Wartość dla przykładów idiomów']
-bulk_cmds = ['def_blk', 'pos_blk', 'etym_blk', 'syn_blk', 'psyn_blk', 'pidiom_blk']
-
-
 def config_bulk():
+    input_list = ('Wartość dla definicji', 'Wartość dla części mowy',
+                  'Wartość dla etymologii', 'Wartość dla synonimów',
+                  'Wartość dla przykładów synonimów', 'Wartość dla przykładów idiomów')
     values_to_save = []
     try:
-        for input_msg, command in zip(input_list, bulk_cmds):
+        for input_msg, command in zip(input_list, k.bulk_cmds):
             value = int(input(f'{input_color}{input_msg}:{inputtext_color} '))
             if value >= -1:
                 values_to_save.append(value)
@@ -112,7 +103,7 @@ def config_bulk():
         return None
 
     print(f'\n{Fore.LIGHTGREEN_EX}Konfiguracja masowego dodawania zapisana pomyślnie')
-    for cmd, value_ts, input_mesg in zip(bulk_cmds, values_to_save, input_list):
+    for cmd, value_ts, input_mesg in zip(k.bulk_cmds, values_to_save, input_list):
         print(f'{input_mesg}: {value_ts}')
         save_commands(komenda=cmd, wartosc=value_ts)
     print()
@@ -125,7 +116,7 @@ def print_config():
     cmds.insert(10, '')
     misccmds = commands[13:]
     print(f'\n{Fore.RESET}{BOLD}[config dodawania]      [config miscellaneous]      [config bulk]{END}')
-    for command, misccmd, blkcmd in zip_longest(cmds, misccmds, bulk_cmds, fillvalue=''):
+    for command, misccmd, blkcmd in zip_longest(cmds, misccmds, k.bulk_cmds, fillvalue=''):
         config_cmd = config.get(f'{k.search_commands.get(command, "")}', '')
         config_misc_bool = config.get(f'{k.search_commands.get(misccmd, "")}', '')
         config_misc_print = '  ' + str(config.get(f'{k.search_commands.get(misccmd, "")}', ''))
@@ -303,7 +294,7 @@ def audio_diki(url, diki_link, lock):
             raise IndexError
     except IndexError:
         if not lock:
-            print(f"""{error_color}Diki nie posiada pożądanego audio!
+            print(f"""{error_color}Diki nie posiada pożądanego audio
 {Fore.LIGHTYELLOW_EX}Spróbuję dodać co łaska...""")
             if correct_word.startswith('('):
                 attempt = correct_word.split(') ')[-1]
@@ -328,7 +319,7 @@ def audio_ahd(url):
     soup = BeautifulSoup(reqs.content, 'lxml', from_encoding='utf-8')
     audio = soup.find('a', {'target': '_blank'}).get('href')
     if audio == 'http://www.hmhco.com':
-        print(f"""{error_color}AHD nie posiada pożądanego audio!
+        print(f"""{error_color}AHD nie posiada pożądanego audio
 {Fore.LIGHTYELLOW_EX}Sprawdzam diki...""")
         diki_link = correct_word.replace('(', '').replace(')', '')
         # Tutaj jest True, bo wyszukania na AHD nie mają nawiasów, a trudno jest znaleźć słowo, które nie ma wymowy
@@ -490,7 +481,7 @@ def rysuj_slownik(url):
     except ConnectionError:
         print(f'{error_color}Nie udało się połączyć ze słownikiem, sprawdź swoje połączenie i spróbuj ponownie')
         skip_check = 1
-    except TimeoutError:
+    except Timeout:
         print(f'{error_color}AH Dictionary nie odpowiada')
         skip_check = 1
     except Exception:
@@ -515,11 +506,13 @@ def ogarnij_zdanie(zdanie):
         return ' '
     else:
         if not config['bulk_add']:
+            yes = ('t', 'y', '1', 'tak', 'yes', '')
+            no = ('n', '0', 'nie', 'no')
             print(f'\n{error_color}Zdanie nie zawiera podanego hasła')
             zdanie_check = input(f'{input_color}Czy dodać w takiej formie? [T/n]:{inputtext_color} ')
-            if zdanie_check.lower() == 't' or zdanie_check.lower() == 'y' or zdanie_check.lower() == '1':
+            if zdanie_check.lower() in yes:
                 return zdanie
-            elif zdanie_check.lower() == 'n' or zdanie_check.lower() == '0':
+            elif zdanie_check.lower() in no:
                 return ogarnij_zdanie(zdanie_input())
             else:
                 skip_check = 1
@@ -536,20 +529,22 @@ def zdanie_input():
 
 
 # Sprawdzanie co wpisano w polach input
-def input_func(in_put):
-    if in_put.isnumeric() or in_put == '-1':
-        return int(in_put)
-    elif in_put == '' or in_put == '-s':
+def input_func(_input, hide):
+    if _input.isnumeric() or _input == '-1':
+        return int(_input)
+    elif ',' in _input:
+        return _input.strip().split(',')
+    elif _input == '' or _input == '-s':
         return 0
-    elif in_put == 'all':
+    elif _input == 'all':
         return -1
-    elif in_put.startswith('/'):
-        if config['ukryj_slowo_w_definicji']:
-            return in_put.replace(correct_word, '...') \
+    elif _input.startswith('/'):
+        if config[hide]:
+            return _input.replace(correct_word, '...') \
                 .replace(correct_word.lower(), '...') \
                 .replace(correct_word.upper(), '...') \
                 .replace(correct_word.capitalize(), '...')  # To jest szybsze niż regex i obejmuje wszystkie sensowne sytuacje
-        return in_put
+        return _input
     return -2
 
 
@@ -560,7 +555,7 @@ def disamb_input_syn():
             return config['syn_blk'], grupa_synonimow
         if not config['bulk_add'] or config['bulk_free_syn']:
             wybor_disamb_syn = input(f'{input_color}Wybierz grupę synonimów:{inputtext_color} ')
-            return input_func(wybor_disamb_syn), grupa_synonimow
+            return input_func(wybor_disamb_syn, 'ukryj_slowo_w_disamb'), grupa_synonimow
     return 0, grupa_synonimow
 
 
@@ -569,7 +564,7 @@ def disamb_input_przyklady():
         if config['bulk_add']:
             return config['psyn_blk'], grupa_przykladow
         wybor_disamb_przyklady = input(f'{input_color}Wybierz grupę przykładów:{inputtext_color} ')
-        return input_func(wybor_disamb_przyklady), grupa_przykladow
+        return input_func(wybor_disamb_przyklady, 'ukryj_slowo_w_disamb'), grupa_przykladow
     return 0, grupa_przykladow
 
 
@@ -578,7 +573,7 @@ def farlex_input_przyklady():
         if config['bulk_add']:
             return config['pidiom_blk'], ilustracje
         wybor_przykladow_idiomow = input(f'{input_color}Wybierz przykład:{inputtext_color} ')
-        return input_func(wybor_przykladow_idiomow), ilustracje
+        return input_func(wybor_przykladow_idiomow, 'ukryj_slowo_w_idiom'), ilustracje
     return 0, ilustracje
 
 
@@ -587,7 +582,7 @@ def etymologia_input():
         if config['bulk_add']:
             return config['etym_blk'], etymologia
         wybor_etymologii = input(f'{input_color}Wybierz etymologię:{inputtext_color} ')
-        return input_func(wybor_etymologii), etymologia
+        return input_func(wybor_etymologii, 'ukryj_slowo_w_definicji'), etymologia
     return 0, etymologia
 
 
@@ -596,7 +591,7 @@ def czesci_mowy_input():
         if config['bulk_add']:
             return config['pos_blk'], czesci_mowy
         wybor_czesci_mowy = input(f'{input_color}Dołączyć części mowy? [1/0]:{inputtext_color} ')
-        return input_func(wybor_czesci_mowy), czesci_mowy
+        return input_func(wybor_czesci_mowy, 'ukryj_slowo_w_definicji'), czesci_mowy
     return 0, czesci_mowy
 
 
@@ -606,15 +601,28 @@ def definicje_input():
             return config['def_blk'], definicje
         if not config['bulk_add'] or config['bulk_free_def']:
             wybor_definicji = input(f'{input_color}\nWybierz definicję:{inputtext_color} ')
-            return input_func(wybor_definicji), definicje
+            return input_func(wybor_definicji, 'ukryj_slowo_w_definicji'), definicje
     return 0, definicje
 
 
 # Bierze wybór z input_func i wydaje adekwatne informacje na kartę
 def choice_func(wybor, elem_content, connector):
     global skip_check
-    if isinstance(wybor, str):  # Nie podoba mi się ten if. Ale isinstance jest chyba najlepszym rozwiązaniem
+    # To nie powinno tak wyglądać, trzeba poprawić tu logikę
+    if isinstance(wybor, str):
         return wybor.lstrip('/')
+    elif isinstance(wybor, list):
+        to_return = []
+        choice_nr = ''
+        for choice in wybor:
+            try:
+                if int(choice) > 0:
+                    to_return.append(elem_content[int(choice) - 1])
+                    choice_nr += choice.strip() + ', '
+            except (ValueError, IndexError, TypeError):
+                continue
+        print(f'{Fore.LIGHTYELLOW_EX}Dodane elementy: {choice_nr.rstrip(", ")}')
+        return connector.join(to_return)
     elif len(elem_content) >= wybor > 0 and connector != ' | ':
         return elem_content[wybor - 1]
     elif wybor > len(elem_content) or wybor == -1 or wybor >= 1 and connector == ' | ':
@@ -682,7 +690,7 @@ def disambiguator(url_synsearch):
     except ConnectionError:
         print(f'{error_color}Nie udało się połączyć z WordNetem, sprawdź swoje połączenie i spróbuj ponownie')
         skip_check_disamb = 1
-    except TimeoutError:
+    except Timeout:
         print(f'{error_color}WordNet nie odpowiada, spróbuj nawiązać połączenie później')
         skip_check_disamb = 1
     except Exception:
@@ -705,10 +713,10 @@ def hide_and_append(content, group_of_elems, hide):
                             'with', 'within', 'without')
 
         words_th = correct_word.lower().split(' ')
-        words_th_s_exceptions = [x.rstrip('y')+'ies' for x in words_th if x.endswith('y')]
-        words_th_ing_exceptions = [x.rstrip('e')+'ing' for x in words_th if x.endswith('e') and x not in prepositions]
-        words_th_ing_exceptions2 = [x.rstrip('ie')+'ying' for x in words_th if x.endswith('ie')]
-        words_th_ed_exceptions = [x.rstrip('y')+'ied' for x in words_th if x.endswith('y')]
+        words_th_s_exceptions = (x.rstrip('y')+'ies' for x in words_th if x.endswith('y'))
+        words_th_ing_exceptions = (x.rstrip('e')+'ing' for x in words_th if x.endswith('e') and x not in prepositions)
+        words_th_ing_exceptions2 = (x.rstrip('ie')+'ying' for x in words_th if x.endswith('ie'))
+        words_th_ed_exceptions = (x.rstrip('y')+'ied' for x in words_th if x.endswith('y'))
 
         for word_th in words_th:
             if word_th not in nonoes and word_th not in prepositions:
@@ -788,7 +796,7 @@ def farlex_idioms(url_idiomsearch):
     except ConnectionError:
         print(f'{error_color}Nie udało się połączyć ze słownikiem idiomów, sprawdź swoje połączenie i spróbuj ponownie')
         skip_check = 1
-    except TimeoutError:
+    except Timeout:
         print(f'{error_color}Słownik idiomów nie odpowiada, spróbuj nawiązać połączenie później')
         skip_check = 1
     except Exception:
@@ -870,7 +878,7 @@ try:
                     if skip_check == 1:
                         break
             else:
-                farlex_idioms(url_idiomsearch='https://idioms.thefreedictionary.com/' + word.replace('-idi', '').strip())
+                farlex_idioms(url_idiomsearch='https://idioms.thefreedictionary.com/' + word.replace('-idi ', ''))
                 farlex = True
                 if skip_check == 1:
                     break

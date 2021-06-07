@@ -4,13 +4,13 @@ import yaml
 import sys
 
 colorama.init(autoreset=True)
+
+# Windows nie lubi pogrubionej czcionki
+BOLD = ''
+END = ''
 if sys.platform.startswith('linux'):
     BOLD = '\033[1m'
     END = '\033[0m'
-else:
-    # Windows nie lubi pogrubionej czcionki
-    BOLD = ''
-    END = ''
 
 with open("config.yml", "r") as readconfig:
     config = yaml.load(readconfig, Loader=yaml.Loader)
@@ -28,14 +28,16 @@ synpos_color = eval(config['synpos_color'])
 syndef_color = eval(config['syndef_color'])
 error_color = eval(config['error_color'])
 delimit_color = eval(config['delimit_color'])
+
+inputtext_color = ''
+input_color = ''
 if sys.platform.startswith('linux'):
     inputtext_color = eval(config['inputtext_color'])
     input_color = eval(config['input_color'])
-else:
-    inputtext_color = ''
-    input_color = ''
 
 card_message = 'Utworzona karta zawiera:'
+bulk_cmds = ('def_blk', 'pos_blk', 'etym_blk', 'syn_blk', 'psyn_blk', 'pidiom_blk')
+
 commands_msg = {
                 '-def': 'Dodawanie definicji: ', '-audio': 'Dodawanie audio: ', '--audio-path': 'Ścieżka zapisu audio: ',
                 '-etym': 'Dodawanie etymologii: ', '-pos': 'Dodawanie części mowy: ', '-fs': 'Filtrowany słownik: ',
@@ -92,12 +94,14 @@ Wpisz swoje przykładowe zdanie
 
 {BOLD}Przy definicjach:{END}
 Aby wybrać definicję wpisz numer zielonego indeksu.
+Aby wybrać więcej definicji oddziel wybór przecinkiem.
 
- np. 3          dodaje trzecią definicję
+ np. 3          dodaje trzeci element
+ np. 2, 5       dodaje drugi i piąty element
  0 lub -s       pomija dodawanie elementu
  -1 lub all     dodaje wszystkie elementy
 
- Wpisanie czegokolwiek poza liczbą pomija dodawanie karty
+ Wpisanie czegokolwiek poza regułą pomija dodawanie karty
 
  Aby dodać własny tekst w pola na karcie wystarczy zacząć wpisywanie od "/"
  np. "/dwa grzyby" spowoduje dodaniem "dwa grzyby"
@@ -106,7 +110,7 @@ Aby wybrać definicję wpisz numer zielonego indeksu.
  1            dodaje wszystkie części mowy
  0 lub -s     pomija dodawanie elementu
  
- Wpisanie czegokolwiek poza liczbą pomija dodawanie karty
+ Wpisanie czegokolwiek poza regułą pomija dodawanie karty
 
 {BOLD}Przy etymologiach:{END}
 Przy większej ilości etymologii możemy sprecyzować wybór wpisując numer
