@@ -11,7 +11,7 @@ za pomocą klawiatury.
 
 ## Instalacja:
 
-[link do pobrania v0.5.1.zip](https://github.com/funky-trellis/anki-dodawacz/archive/refs/tags/v0.5.1-4.zip)
+[link do pobrania v0.5.1.zip](https://github.com/funky-trellis/anki-dodawacz/archive/refs/tags/v0.5.2-3.zip)
 :-
 ##### Po rozpakowaniu folderu:<br>
 Aby uruchomić program potrzebujemy Pythona 3.7 lub nowszego.<br>
