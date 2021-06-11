@@ -1,10 +1,12 @@
 from requests.exceptions import Timeout
+from urllib.error import URLError
 from itertools import zip_longest
 from bs4 import BeautifulSoup
 from colorama import Fore
-import importlib
+import urllib.request
 import requests
 import os.path
+import json
 import yaml
 import sys
 import os
@@ -17,6 +19,9 @@ requests_session_ah = requests.Session()
 with open("config.yml", "r") as f:
     config = yaml.load(f, Loader=yaml.Loader)
 
+with open("ankiconnect.yml", "r") as a:
+    ankiconf = yaml.load(a, Loader=yaml.Loader)
+
 if sys.platform.startswith('linux'):
     # Zapisywanie historii komend. Ten moduł jest niepotrzebny i nie działa na windowsie
     import readline
@@ -25,7 +30,7 @@ if sys.platform.startswith('linux'):
 if not os.path.exists('Karty_audio') and config['save_path'] == 'Karty_audio':
     os.mkdir('Karty_audio')  # Aby nie trzeba było tworzyć folderu ręcznie
 
-print(f"""{BOLD}- Dodawacz kart do Anki v0.5.2 -{END}\n
+print(f"""{BOLD}- Dodawacz kart do Anki v0.6.0 -{END}\n
 Wpisz "--help", aby wyświetlić pomoc\n\n""")
 
 # Ustawia kolory
@@ -63,9 +68,9 @@ def delete_last_card():
             write.write(new_file)
         print(f'{Fore.LIGHTYELLOW_EX}Usunięto: \n{Fore.RESET}"{deleted_line[:64]}..."')
     except IndexError:
-        print(f'{error_color}Plik {Fore.RESET}"karty.txt" {error_color}jest pusty, nie ma co usuwać')
+        print(f'{error_color}Plik {Fore.RESET}karty.txt {error_color}jest pusty, nie ma co usuwać')
     except FileNotFoundError:
-        print(f'{error_color}Plik {Fore.RESET}"karty.txt" {error_color}nie istnieje, nie ma co usuwać')
+        print(f'{error_color}Plik {Fore.RESET}karty.txt {error_color}nie istnieje, nie ma co usuwać')
     except UnicodeDecodeError:
         print(f'{error_color}Usuwanie karty nie powiodło się z powodu nieznanego znaku (prawdopodobnie w etymologii)')  # wolfram
     except Exception:
@@ -114,12 +119,14 @@ def print_config():
     commands.pop(14)  # usuwa -all
     cmds = commands[:13]
     cmds.insert(10, '')
-    misccmds = commands[13:]
+    sndcolumn = commands[13:]
+    sndcolumn.insert(12, '')
+    sndcolumn.insert(13, f'{BOLD}[config ankiconnect]{END}')
     print(f'\n{Fore.RESET}{BOLD}[config dodawania]      [config miscellaneous]      [config bulk]{END}')
-    for command, misccmd, blkcmd in zip_longest(cmds, misccmds, k.bulk_cmds, fillvalue=''):
-        config_cmd = config.get(f'{k.search_commands.get(command, "")}', '')
-        config_misc_bool = config.get(f'{k.search_commands.get(misccmd, "")}', '')
-        config_misc_print = '  ' + str(config.get(f'{k.search_commands.get(misccmd, "")}', ''))
+    for cmd, sndcmd, erdcolumn in zip_longest(cmds, sndcolumn, k.bulk_cmds, fillvalue=''):
+        config_cmd = config.get(f'{k.search_commands.get(cmd, "")}', '')
+        config_misc_bool = config.get(f'{k.search_commands.get(sndcmd, "")}', '')
+        config_misc_print = '  ' + str(config.get(f'{k.search_commands.get(sndcmd, "")}', ''))
         if '*' in config_misc_print:
             config_misc_print = config_misc_print.lstrip()
         try:
@@ -130,32 +137,16 @@ def print_config():
             color_misc = eval(k.bool_colors[config_misc_bool])
         except KeyError:
             color_misc = ''
-        blk_conf = config.get(blkcmd, '')
+        blk_conf = config.get(erdcolumn, '')
         if str(blk_conf).isnumeric():  # Aby wartość z minusem była left-aligned
             blk_conf = ' ' + str(blk_conf)
         blk_conf = blk_conf
         print('{:12s} {}{:11s}{}{:14s}{}{:14s}{}{:11s}{:}'
-              .format(command, color_cmd, str(config_cmd), Fore.RESET,
-                      misccmd, color_misc, str(config_misc_print).center(6),
-                      Fore.RESET, blkcmd, blk_conf))
+              .format(cmd, color_cmd, str(config_cmd), Fore.RESET,
+                      sndcmd, color_misc, str(config_misc_print).center(6),
+                      Fore.RESET, erdcolumn, blk_conf))
     print(f'\n--audio-path: {config["save_path"]}')
-    print('\nkonfiguracja kolorów: --help-colors\n')
-
-
-def koloryfer(color):
-    color = 'Fore.' + color.upper()
-    if 'light' in color.lower():
-        color = color + '_EX'
-    return eval(color)
-
-
-def pokaz_dostepne_kolory():
-    print(f'{Fore.RESET}{BOLD}Dostępne kolory to:{END}')
-    for index, color in enumerate(k.colors, start=1):
-        print(f'{koloryfer(color)}{color}', end=', ')
-        if index == 4 or index == 8 or index == 12 or index == 16:
-            print()
-    print('\n')
+    print('\nkonfiguracja kolorów --help-colors\n')
 
 
 def kolory(komenda, wartosc):
@@ -204,11 +195,27 @@ podaj liczbę w przedziale od {Fore.RESET}0{error_color} do {Fore.RESET}{max_val
 
 
 def komendo(word):
-    loc_word = word.lower() + ' '
+    one_word_commands = {'-colors': k.pokaz_dostepne_kolory, '-color': k.pokaz_dostepne_kolory,
+                         '--delete-last': delete_last_card, '--delete-recent': delete_last_card,
+                         '--config-bulk': config_bulk, '-conf': print_config, '-config': print_config,
+                         '-configuration': print_config, '-h': k.help_command, '--help': k.help_command,
+                         '--help-colors': k.color_command, '--help-color': k.color_command,
+                         '--config-colors': k.color_command, '--config-color': k.color_command}
+    loc_word = word + ' '
     cmd_tuple = loc_word.split(' ')
+    cmd_tuple[0] = cmd_tuple[0].lower()
     if cmd_tuple[0] in k.search_commands:
         if cmd_tuple[0] in ('-textwidth', '-indent', '-delimsize', '-center'):
             set_width_settings(command=cmd_tuple[0], value=cmd_tuple[1])
+        elif cmd_tuple[0] == '-note' or cmd_tuple[0] == '-deck':
+            value = " ".join(cmd_tuple[1:]).strip()
+            msgdiff = {'-note': 'według', '-deck': 'do'}
+            save_commands(cmd_tuple[0].lstrip('-'), value)
+            print(f'{Fore.LIGHTYELLOW_EX}Karty będą dodawane {msgdiff[cmd_tuple[0]]}: {Fore.RESET}"{value}"')
+        elif cmd_tuple[0] == '-tags':
+            tagi = "".join(cmd_tuple[1:]).strip().lower().replace(',', ', ')  # tagi w anki są zawsze lowercase
+            save_commands(cmd_tuple[0].lstrip('-'), tagi)
+            print(f'{Fore.LIGHTYELLOW_EX}Tagi dla AnkiConnect: {Fore.RESET}"{tagi}"')
         elif cmd_tuple[1] in k.commands_values:
             komenda = k.search_commands[cmd_tuple[0]]
             wartosc = k.commands_values[cmd_tuple[1]]
@@ -218,25 +225,11 @@ def komendo(word):
             save_commands(komenda, wartosc)
         else:
             print(f'{error_color}Nieprawidłowa wartość{Fore.RESET}\nUżyj "{cmd_tuple[0]} [on/off]"')
-    elif loc_word == '-colors ' or loc_word == '-color ':
-        pokaz_dostepne_kolory()
-    elif loc_word == '--help ' or loc_word == '-h ':
-        importlib.reload(k)  # Aby nie trzeba było restartować programu, żeby zobaczyć aktualny stan configu
-        print(k.help_command)
-    elif loc_word == '--help-colors ' or loc_word == '--help-color ' \
-            or loc_word == '--config-colors ' or loc_word == '--config-color ':
-        print(k.help_colors_command)
-        pokaz_dostepne_kolory()
-    elif loc_word == '--delete-last ' or loc_word == '--delete-recent ':
-        delete_last_card()
-    elif loc_word == '--config-bulk ':
-        config_bulk()
-    elif loc_word == '-conf ' or loc_word == '-config ' or loc_word == '-configuration ':
-        print_config()
-    elif loc_word == '--audio-path ' or loc_word == '--save-path ':
-        save_path = str(input(f'{input_color}Wprowadź ścieżkę zapisu audio:{inputtext_color} '))
-        print(f'{Fore.LIGHTYELLOW_EX}Pliki audio będą zapisywane w: {Fore.RESET}"{save_path}"')
-        save_commands(komenda='save_path', wartosc=save_path)
+    elif cmd_tuple[0] in one_word_commands:
+        one_word_commands[cmd_tuple[0]]()
+    elif cmd_tuple[0] == '--audio-path' or cmd_tuple[0] == '--save-path':
+        print(f'{Fore.LIGHTYELLOW_EX}Pliki audio będą zapisywane w: {Fore.RESET}"{cmd_tuple[1]}"')
+        save_commands(komenda='save_path', wartosc=cmd_tuple[1])
     elif cmd_tuple[0] in k.color_commands:
         if cmd_tuple[1] in k.colors:
             kolory(komenda=cmd_tuple[0], wartosc=cmd_tuple[1])
@@ -253,10 +246,9 @@ def szukaj():
     word = komendo(word)
     if word is None:
         return word
-    else:
-        url0 = 'https://www.ahdictionary.com/word/search.html?q='
-        url = url0 + word
-        return url
+    url0 = 'https://www.ahdictionary.com/word/search.html?q='
+    url = url0 + word
+    return url
 
 
 def get_audio_response(audio_link, audiofile_name):
@@ -266,12 +258,12 @@ def get_audio_response(audio_link, audiofile_name):
             file.write(response.content)
         return f'[sound:{audiofile_name}]'
     except IsADirectoryError:  # jest to efekt zapisywania pliku o nazwie ''
-        return ' '
+        return ''
     except FileNotFoundError:
-        print(f"""{error_color}Zapisywanie pliku audio {Fore.RESET}"{audiofile_name}" {error_color}nie powiodło się
-Aktualna ścieżka zapisu audio to {Fore.RESET}"{config['save_path']}"
+        print(f"""{error_color}Zapisywanie pliku audio {Fore.RESET}{audiofile_name} {error_color}nie powiodło się
+Aktualna ścieżka zapisu audio to {Fore.RESET}{config['save_path']}
 {error_color}Upewnij się, że taki folder istnieje i spróbuj ponownie""")
-        return ' '
+        return ''
     except Exception:
         print(f'{error_color}Wystąpił nieoczekiwany błąd podczas zapisywania audio')
         raise
@@ -304,7 +296,7 @@ def audio_diki(url, diki_link, lock):
                 attempt = correct_word.split(' (')[0] + correct_word.split(')')[-1]
             return audio_diki(url='https://www.diki.pl/slownik-angielskiego?q=' + attempt, diki_link=attempt, lock=True)
         else:
-            print(f"""{error_color}Nie udało się pozyskać audio!
+            print(f"""{error_color}Nie udało się pozyskać audio
 Karta zostanie dodana bez audio""")
             return '', ''
     else:
@@ -346,7 +338,7 @@ def search_for_audio(server):
         except Exception:
             print(f'{error_color}Wystąpił problem podczas szukania pliku audio')
             raise
-    return ' '
+    return ''
 
 
 def print_elems(string, term_width, index_width, indento, gap, break_allowed):
@@ -370,7 +362,6 @@ def print_elems(string, term_width, index_width, indento, gap, break_allowed):
                     wrapped_text += word + ' '
                     # definicja + ostatnie słowo
             return wrapped_text + string_divided[-1] + br
-        return string + br
     return string + br
 
 
@@ -392,7 +383,7 @@ def terminal_width():
     except OSError:
         if '* auto' in term_width:
             print(f'''{error_color}Wystąpił problem podczas pozyskiwania szerokości okna
-aby wybrać szerokość inną niż {Fore.RESET}{term_width.rstrip('* auto')}{error_color} użyj {Fore.RESET}"-textwidth [wartość]"''')
+aby wybrać szerokość inną niż {Fore.RESET}{term_width.rstrip('* auto')}{error_color} użyj {Fore.RESET}-textwidth [wartość]''')
             save_commands(komenda='textwidth', wartosc=term_width.rstrip('* auto'))
         return int(term_width.rstrip('* auto'))
     else:
@@ -499,11 +490,11 @@ def ogarnij_zdanie(zdanie):
                 .replace(correct_word.upper(), '...') \
                 .replace(correct_word.lower(), '...') \
                 .replace(correct_word.capitalize(), '...')
-    elif zdanie == ' ':  # Aby przy wyłączonym dodawaniu zdania nie pytało o zdanie_check
+    elif zdanie == '':  # Aby przy wyłączonym dodawaniu zdania nie pytało o zdanie_check
         return zdanie
     elif zdanie == '-s':
         print(f'{Fore.LIGHTGREEN_EX}Pominięto dodawanie zdania')
-        return ' '
+        return ''
     else:
         if not config['bulk_add']:
             yes = ('t', 'y', '1', 'tak', 'yes', '')
@@ -525,7 +516,7 @@ def zdanie_input():
     if config['dodaj_wlasne_zdanie']:
         zdanie = str(input(f'{input_color}Dodaj przykładowe zdanie:{inputtext_color} '))
         return zdanie
-    return ' '
+    return ''
 
 
 # Sprawdzanie co wpisano w polach input
@@ -608,7 +599,7 @@ def definicje_input():
 # Bierze wybór z input_func i wydaje adekwatne informacje na kartę
 def choice_func(wybor, elem_content, connector):
     global skip_check
-    # To nie powinno tak wyglądać, trzeba poprawić tu logikę
+    # To nie powinno tak wyglądać, trzeba się pozbyć isinstance jakoś
     if isinstance(wybor, str):
         return wybor.lstrip('/')
     elif isinstance(wybor, list):
@@ -631,7 +622,7 @@ def choice_func(wybor, elem_content, connector):
         skip_check = 1
         print(f'{Fore.LIGHTGREEN_EX}Pominięto dodawanie karty')
     else:  # czyli 0
-        return ' '
+        return ''
 
 
 def rysuj_synonimy(syn_soup):
@@ -804,8 +795,108 @@ def farlex_idioms(url_idiomsearch):
         raise
 
 
+def request(action, **params):
+    return {'action': action, 'params': params, 'version': 6}
+
+
+def invoke(action, **params):
+    requestjson = json.dumps(request(action, **params)).encode('utf-8')
+    response = json.load(urllib.request.urlopen(urllib.request.Request('http://localhost:8765', requestjson)))
+    if len(response) != 2:
+        raise Exception('response has an unexpected number of fields')
+    if 'error' not in response:
+        raise Exception('response is missing required error field')
+    if 'result' not in response:
+        raise Exception('response is missing required result field')
+    if response['error'] is None:
+        return response['result']
+    if response['error'].startswith('model was not found:'):
+        return 'no note'
+    if response['error'].startswith('cannot create note because it is empty'):
+        return 'empty'
+    if response['error'].startswith('cannot create note because it is a duplicate'):
+        return 'duplicate'
+    if response['error'].startswith('collection is not available'):
+        return 'out of reach'
+    if response['error'].startswith('deck was not found'):
+        return 'no deck'
+    if response['error'] is not None:
+        raise Exception(response['error'])
+    return response['result']
+
+
+def organize_notes(bf, adqt_mf_conf):
+    usable_fields = invoke('modelFieldNames', modelName=config['note'])
+    if usable_fields == 'no note':
+        print(f'{error_color}Karta nie została dodana\n'
+              f'Nie znaleziono notatki {Fore.RESET}{config["note"]}{error_color}\n'
+              f'Aby zmienić notatkę użyj {Fore.RESET}-note [nazwa notatki]')
+        return None
+    if usable_fields == 'out of reach':
+        print(f'{error_color}Karta nie została dodana, bo kolekcja jest nieosiągalna\n'
+              f'Sprawdź czy Anki jest w pełni otwarte')
+        return 'out of reach'
+
+    for ufield in usable_fields:
+        for base_field in bf:
+            if base_field in ufield.lower():
+                adqt_mf_conf[ufield] = base_field
+    if adqt_mf_conf != {}:  # aby puste notatki nie były zapisywane w ankiconf
+        ankiconf[config['note']] = adqt_mf_conf
+        with open('ankiconnect.yml', 'w') as ank:
+            yaml.dump(ankiconf, ank)
+
+
 # Tworzenie karty
 def utworz_karte():
+    if config['ankiconnect']:
+        base_fields = {'defin': definicje, 'gloss': definicje, 'disamb': disambiguation, 'słowo': correct_word,
+                       'slowo': correct_word, 'word': correct_word, 'zdanie': zdanie, 'czesci': czesci_mowy,
+                       'części': czesci_mowy, 'etym': etymologia, 'audio': audiofile_name, 'sound': audiofile_name,
+                       'pronunciation': audiofile_name}
+        adqt_model_fields = {}
+        adqt_model_fields_conf = {}
+        try:
+            err_reach = None  # aby out of reach error się nie powtarzał przy organize_notes i r
+            if config['note'] not in ankiconf:  # aby nie sprawdzać dla znajomej notatki
+                err_reach = organize_notes(base_fields, adqt_model_fields_conf)
+
+            config_note = ankiconf.get(config['note'], '')
+
+            # przywołanie pól notatki z ankiconf
+            for field in config_note:
+                adqt_model_fields[field] = base_fields[config_note[field]]
+            # r to id karty, albo error
+            r = invoke('addNote', note={'deckName': config['deck'], 'modelName': config['note'], 'fields': adqt_model_fields,
+                                        'options': {'allowDuplicate': config['duplicates']}, 'tags': config['tags'].split(', ')})
+            if r == 'empty':
+                print(f'{error_color}Karta nie została dodana\n'
+                      f'Pierwsze pole notatki nie zostało wypełnione\n'
+                      f'Sprawdź czy notatka {Fore.RESET}{config["note"]}{error_color} zawiera wymagane pola\n'
+                      f'lub dodaj element odpowiadający pierwszemu polu notatki')
+            if r == 'duplicate':
+                print(f'{error_color}Karta nie została dodana, bo jest duplikatem\n'
+                      f'Aby zezwolić na dodawanie duplikatów wpisz {Fore.RESET}-duplicates on')
+            if r == 'out of reach' and err_reach is None:
+                print(f'{error_color}Karta nie została dodana, bo kolekcja jest nieosiągalna\n'
+                      f'Sprawdź czy Anki jest w pełni otwarte')
+            if r == 'no deck':
+                print(f'{error_color}Karta nie została dodana, bo talia {Fore.RESET}{config["deck"]}{error_color} nie istnieje\n'
+                      f'Aby zmienić talię wpisz {Fore.RESET}-deck [nazwa talii]')
+            if r not in ('no note', 'duplicate', 'out of reach', 'empty', 'no deck'):
+                print(f'{Fore.LIGHTGREEN_EX}Karta dodana pomyślnie\n'
+                      f'{Fore.LIGHTYELLOW_EX}Wykorzystane pola:')
+                added_fields = (x for x in adqt_model_fields if adqt_model_fields[x] != '')
+                for afield in added_fields:
+                    print(f'- {afield}')
+                print()
+            else:
+                print(f'{Fore.LIGHTYELLOW_EX}Karta zapisana wyłącznie do pliku\n')
+        except URLError:
+            print(f'{error_color}Nie udało się połączyć z AnkiConnect\n'
+                  f'Otwórz Anki i spróbuj ponownie\n'
+                  f'{Fore.LIGHTYELLOW_EX}Karta zapisana wyłącznie do pliku\n')
+
     try:
         with open('karty.txt', 'a', encoding='utf-8') as twor:
             twor.write(f'{definicje}\t{disambiguation}\t'
@@ -815,8 +906,8 @@ def utworz_karte():
                        f'{etymologia}\t{audiofile_name}\n')
             return None
     except NameError:
-        print(f"""{error_color}Dodawanie karty nie powiodło się.
-Jeżeli problem wystąpi ponownie, zrestartuj program""")
+        print(f"{error_color}Dodawanie karty do pliku nie powiodło się\n"
+              f"Jeżeli problem wystąpi ponownie, zrestartuj program")
 
 
 def wyswietl_karte():
@@ -900,6 +991,8 @@ try:
                 else:
                     audiofile_name = search_for_audio(server='diki')
                     zdanie = ogarnij_zdanie(zdanie_input())
+                    if skip_check == 1:
+                        break
                     definicje = choice_func(*definicje_input(), connector='<br>')
                     if skip_check == 1:
                         break
@@ -928,8 +1021,8 @@ try:
                             disambiguation = disamb_synonimy + '<br>' + disamb_przyklady
                         else:
                             disambiguation = disamb_synonimy + disamb_przyklady
-                utworz_karte()
                 wyswietl_karte()
+                utworz_karte()
             else:
                 disambiguator(url_synsearch='http://wordnetweb.princeton.edu/perl/webwn?s=' + correct_word)
             break

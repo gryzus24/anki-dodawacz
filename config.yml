@@ -1,8 +1,10 @@
+ankiconnect: false
 break: false
 bulk_add: false
 bulk_free_def: false
 bulk_free_syn: false
 center: 79* auto
+deck: '-'
 def1_color: Fore.RESET
 def2_color: Fore.RESET
 def_blk: 0
@@ -17,6 +19,7 @@ dodaj_przyklady_idiomow: true
 dodaj_przyklady_synonimow: true
 dodaj_synonimy: true
 dodaj_wlasne_zdanie: true
+duplicates: false
 error_color: Fore.LIGHTRED_EX
 etym_blk: 0
 etym_color: Fore.RESET
@@ -24,6 +27,7 @@ indent: 2
 index_color: Fore.LIGHTGREEN_EX
 input_color: Fore.RESET
 inputtext_color: Fore.RESET
+note: '-'
 pidiom_blk: 0
 pidiom_color: Fore.RESET
 pokazuj_filtrowany_slownik: true
@@ -36,6 +40,7 @@ syn_blk: 0
 syn_color: Fore.YELLOW
 syndef_color: Fore.RESET
 synpos_color: Fore.RESET
+tags: dodawacz
 textwidth: 79
 tworz_karte: true
 ukryj_przyimki: false
