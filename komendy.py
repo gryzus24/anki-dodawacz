@@ -93,6 +93,7 @@ commands_msg = {
                 '-bulkfsyn': 'Swobodne masowe dodawanie synonimów: ', '-wraptext': 'Zawijanie tekstu: ',
                 '-break': 'Nowa linia po każdej definicji: ', '-upreps': 'Ukrywanie przyimków w idiomach: ',
                 '-duplicates': 'Dodawanie duplikatów poprzez AnkiConnect: ',
+                '-showcard': 'Pokazywanie podglądu karty: ',
                 '-ankiconnect': 'Dodawanie kart poprzez AnkiConnect: '
 }
 commands_values = {
@@ -108,10 +109,10 @@ search_commands = {
                    '-bulkfsyn': 'bulk_free_syn', '-fs': 'pokazuj_filtrowany_slownik',
                    '-all': '-all',
                    '-upz': 'ukryj_slowo_w_zdaniu', '-udef': 'ukryj_slowo_w_definicji', '-udisamb': 'ukryj_slowo_w_disamb',
-                   '-uidiom': 'ukryj_slowo_w_idiom', '-upreps': 'ukryj_przyimki', '-wraptext': 'wrap_text',
-                   '-break': 'break', '-textwidth': 'textwidth', '-indent': 'indent', '-delimsize': 'delimsize',
-                   '-center': 'center', '-ankiconnect': 'ankiconnect', '-duplicates': 'duplicates', '-note': 'note',
-                   '-tags': 'tags', '-deck': 'deck'
+                   '-uidiom': 'ukryj_slowo_w_idiom', '-upreps': 'ukryj_przyimki', '-showcard': 'showcard',
+                   '-wraptext': 'wrap_text', '-break': 'break', '-textwidth': 'textwidth', '-indent': 'indent',
+                   '-delimsize': 'delimsize', '-center': 'center', '-ankiconnect': 'ankiconnect',
+                   '-duplicates': 'duplicates', '-note': 'note', '-deck': 'deck', '-tags': 'tags'
 }
 bool_colors = {False: 'Fore.LIGHTRED_EX', True: 'Fore.LIGHTGREEN_EX'}
 colors = ('black', 'red', 'green', 'yellow', 'blue', 'magenta', 'cyan', 'white',
