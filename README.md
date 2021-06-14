@@ -1,8 +1,8 @@
 # Anki-dodawacz
 
-Prosty i otwarty na konfigurację program do tworzenia monojęzycznych kart do Anki.
-Pozyskuje on informacje z American Heritage Dictionary i pozwala na szybki wybór definicji, części mowy, etymologii i audio.
-Możemy też natychmiastowo dodawać własne przykładowe zdania, a także synonimy i przykłady z WordNet 3.1.
+Prosty i otwarty na konfigurację program do tworzenia monojęzycznych kart do Anki.<br>
+Pozyskuje informacje z American Heritage Dictionary, Farlex Dictionary of Idioms i Wordnet 3.1.<br>
+Pozwala na szybki wybór definicji, części mowy, etymologii, synonimów, przykładowych zdań i audio.
 
 Celem programu jest ułatwić i uprzyjemnić żmudny i zniechęcający proces dodawania kart,
 który konwencjonalnie odbywa się za pomocą powtarzalnych ruchów myszką i przekopiowywania
@@ -21,7 +21,7 @@ Przy instalacji zaznaczamy "Add python to PATH"
 ##### Po zainstalowaniu Pythona:<br>
 Otwieramy terminal (cmd na windowsie) i pobieramy wymagane biblioteki wpisując:<br>
 <code> pip install BeautifulSoup4 colorama pyyaml requests lxml cchardet </code><br>
-(cchardet jest opcjonalny, ale przyspiesza wyświetlanie słownika)
+(cchardet jest opcjonalny, ale przyspiesza wyświetlanie słowników)
 
 Teraz uruchamiamy AnkiDodawacz.py i jesteśmy gotowi do dodawania!
 
@@ -29,15 +29,15 @@ Teraz uruchamiamy AnkiDodawacz.py i jesteśmy gotowi do dodawania!
 
 Cykl dodawanie jest bardzo prosty.
 Wyszukujemy słowo i przechodzimy przez różne pola: przykładowego zdania, definicji, części mowy, etymologii i synonimów.
-Po przejściu przez wszystkie pola program zapisuje nasz wybór w dokumencie tekstowym i pokazuje zawartość notatki i jej domyślną konfigurację.
-Po zakończonej sesji dodawania, program tworzy dokument "karty.txt", który od razu jest gotowy do zaimportowania do Anki.
+Po przejściu przez wszystkie pola program zapisuje nasz wybór w dokumencie tekstowym "karty.txt",<br>
+który od razu jest gotowy do zaimportowania do Anki.
 
 Audio domyślnie zapisywane jest w folderze "Karty_audio" w folderze z programem.
 Możemy zmienić ścieżkę zapisu audio, jak i wszystkie domyślne ustawienia używając komend.
 
 Najlepiej dodać ścieżkę do folderu "collection.media", aby audio było automatycznie odtwarzane w Anki bez potrzeby ręcznego przenoszenia zawartości "Karty_audio".
 
-![image](https://user-images.githubusercontent.com/82805891/115930678-2fd71900-a48a-11eb-9163-4abfba9c1df9.png)
+![image](https://user-images.githubusercontent.com/82805891/121968515-ff14b100-cd61-11eb-81ea-3255876ada7c.png)
 
 Anki-dodawacz jest programem CLI i wszelka customizacja jest zależna od naszego emulatora terminala.
 Na Windowsie 10, aby zmienić czcionkę, przeźroczystość czy wielkość okna należy kliknąć górny pasek > właściwości.
@@ -49,15 +49,15 @@ Tutaj możemy dostosować program do naszych preferencji.
 
 Program na chwilę obecną wykorzystuje siedem pól naszej notatki, aby prawidłowo dodawać karty.
 Są to:
+- Słowo
 - Definicja
 - Disambiguation
-- Słowo
 - Przykładowe zdanie
 - Części mowy
 - Etymologia
 - Audio
 
-Musimy stworzyć notatkę, która zawiera te pola w podanej kolejności.
+Aby stworzyć notatkę, która zawiera te pola:
 Gdy mamy otwarte Anki, na górnym pasku klikamy w "Narzędzia" > "Zarządzaj typami notatek".
 - Klikamy "Dodaj"
 - Wybieramy "Dodaj: Podstawowy"
@@ -67,7 +67,8 @@ Gdy mamy otwarte Anki, na górnym pasku klikamy w "Narzędzia" > "Zarządzaj typ
 
 Nasze pola powinny wyglądać tak:
 
-![image](https://user-images.githubusercontent.com/82805891/116594831-f0de1300-a922-11eb-8af7-65688c721c8d.png)
+![image](https://user-images.githubusercontent.com/82805891/121968947-cd501a00-cd62-11eb-8622-21e40093e68e.png)
+
 
 (Możesz nazwać je inaczej, jeżeli tworzysz własną notatkę, jednak jeżeli planujesz użyć mojej przykładowej,
 to wszelkie nazwy pól trzeba uwzględnić w ustawieniach karty).
