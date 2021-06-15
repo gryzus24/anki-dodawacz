@@ -86,8 +86,8 @@ Dla nowych użytkowników, którzy niezaznajomieni są jeszcze z tym typem custo
 oferuję moją przykładową notatkę na wypróbowanie:
 https://pastebin.com/9ZfWMpNu.
  
+![image](https://user-images.githubusercontent.com/82805891/122020987-c8b45180-cdb4-11eb-9c1f-20fbfb44d0d4.png)
 
-![image](https://user-images.githubusercontent.com/82805891/115956831-67cc7380-a4ff-11eb-8648-7a6599e45c1f.png)
 
 Po stworzeniu notatki z odpowiednimi polami i utworzeniu stylu możemy przejść do importowania dodanych kart.
 
