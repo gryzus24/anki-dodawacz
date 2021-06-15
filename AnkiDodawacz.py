@@ -127,8 +127,8 @@ def print_config():
     cmds = commands[:13]
     cmds.insert(10, '')
     sndcolumn = commands[13:]
-    sndcolumn.insert(13, '')
-    sndcolumn.insert(14, f'{BOLD}[config ankiconnect]{END}')
+    sndcolumn.insert(14, '')
+    sndcolumn.insert(15, f'{BOLD}[config ankiconnect]{END}')
     print(f'\n{R}{BOLD}[config dodawania]      [config miscellaneous]      [config bulk]{END}')
     for cmd, sndcmd, erdcolumn in zip_longest(cmds, sndcolumn, k.bulk_cmds, fillvalue=''):
         config_cmd = config.get(f'{k.search_commands.get(cmd, "")}', '')
@@ -216,7 +216,7 @@ def add_notes(note_name):
         print(f'{R}{BOLD}Dostępne notatki to:{END}\n{available_notes}\n')
 
 
-def change_field_order(numb, field_name):
+def change_fields_order(numb, field_name):
     default_field_order = {'1': 'definicje', '2': 'disambiguation', '3': 'correct_word', '4': 'zdanie',
                            '5': 'czesci_mowy', '6': 'etymologia', '7': 'audiofile'}
     field_order = config['fieldorder']
@@ -268,7 +268,7 @@ def komendo(word):
             print(f'{YEX}Tagi dla AnkiConnect: {R}"{tagi}"')
         elif cmd_tuple[0] == '-dupscope':
             # ten strip, aby wywalić te znaki jak sie je przypadkowo naciśnie przy wciskaniu enter
-            scope_val = cmd_tuple[1].strip("']\\,. ").lower()
+            scope_val = cmd_tuple[1].strip(r"']\,. ").lower()
             msgdiff = {'deck': 'talii', 'collection': 'całej kolekcji'}
             if scope_val == 'deck' or scope_val == 'collection':
                 save_commands(cmd_tuple[0].lstrip('-'), scope_val)
@@ -289,14 +289,14 @@ def komendo(word):
         one_word_commands[cmd_tuple[0]]()
     elif cmd_tuple[0] == '--add-note':
         add_notes(note_name=cmd_tuple[1])
-    elif cmd_tuple[0] == '--change-fieldorder' or cmd_tuple[0] == '--change-fo':
+    elif cmd_tuple[0] in ('--change-fieldsorder', '--change-fieldorder', '--change-fo'):
         try:
-            numb = cmd_tuple[1].lower().strip("']\\,. ")
-            field_name = cmd_tuple[2].lower().strip("']\\,. ")
+            numb = cmd_tuple[1].lower().strip(r"']\,. ")
+            field_name = cmd_tuple[2].lower().strip(r"']\,. ")
         except IndexError:
             numb = '-'
             field_name = '-'
-        change_field_order(numb, field_name)
+        change_fields_order(numb, field_name)
         print()
     elif cmd_tuple[0] == '--audio-path' or cmd_tuple[0] == '--save-path':
         print(f'{YEX}Pliki audio będą zapisywane w: {R}"{cmd_tuple[1]}"')
@@ -312,14 +312,9 @@ def komendo(word):
 
 
 def szukaj():
-    global word
     word = input(f'{input_color}Szukaj:{inputtext_color} ').strip()
     word = komendo(word)
-    if word is None:
-        return word
-    url = 'https://www.ahdictionary.com/word/search.html?q='
-    url = url + word
-    return url
+    return word
 
 
 def get_audio_response(audio_link, audiofile_name):
@@ -331,9 +326,9 @@ def get_audio_response(audio_link, audiofile_name):
     except IsADirectoryError:  # jest to efekt zapisywania pliku o nazwie ''
         return ''
     except FileNotFoundError:
-        print(f"""{error_color}Zapisywanie pliku audio {R}{audiofile_name} {error_color}nie powiodło się
-Aktualna ścieżka zapisu audio to {R}{config['save_path']}
-{error_color}Upewnij się, że taki folder istnieje i spróbuj ponownie""")
+        print(f"{error_color}Zapisywanie pliku audio {R}{audiofile_name} {error_color}nie powiodło się\n"
+              f"Aktualna ścieżka zapisu audio to {R}{config['save_path']}\n"
+              f"{error_color}Upewnij się, że taki folder istnieje i spróbuj ponownie\n")
         return ''
     except Exception:
         print(f'{error_color}Wystąpił nieoczekiwany błąd podczas zapisywania audio')
@@ -366,8 +361,7 @@ def audio_diki(url, diki_link, lock):
                 attempt = correct_word.split(' (')[0] + correct_word.split(')')[-1]
             return audio_diki(url='https://www.diki.pl/slownik-angielskiego?q=' + attempt, diki_link=attempt, lock=True)
         else:
-            print(f"""{error_color}Nie udało się pozyskać audio
-Karta zostanie dodana bez audio""")
+            print(f"{error_color}Nie udało się pozyskać audio\nKarta zostanie dodana bez audio")
             return '', ''
     else:
         audio_link = 'https://www.diki.pl' + url_box
@@ -504,7 +498,7 @@ def rysuj_slownik(url):
                         correct_word0 = meaning_num.text
                         correct_word1 = correct_word0.replace('·', '')
                         correct_word_to_print = re.sub(r'\d', '', correct_word1).strip()
-                        correct_word = correct_word_to_print.strip('-').strip('–')
+                        correct_word = correct_word_to_print.strip('-–')
                         if correct_word_index == 1:
                             wdg = f'{BOLD}Wyniki dla {word_color}{correct_word_to_print}{END}'
                             # RESET i BOLD jest brane pod uwagę przy center
@@ -552,42 +546,22 @@ def rysuj_slownik(url):
         raise
 
 
-def ogarnij_zdanie(zdanie):
+def ogarnij_zdanie(exsentence):
     global skip_check
-    if correct_word.replace('(', '').replace(')', '').lower() in zdanie.lower():
-        if not config['ukryj_slowo_w_zdaniu']:
-            return zdanie
-        else:
-            return zdanie.replace(correct_word, '...') \
-                .replace(correct_word.upper(), '...') \
-                .replace(correct_word.lower(), '...') \
-                .replace(correct_word.capitalize(), '...')
-    elif zdanie == '':  # Aby przy wyłączonym dodawaniu zdania nie pytało o zdanie_check
-        return zdanie
-    elif zdanie == '-s':
+    if exsentence == '-s' or exsentence == '':
         print(f'{GEX}Pominięto dodawanie zdania')
         return ''
+    elif exsentence == '-sc':
+        skip_check = 1
+        print(f'{GEX}Pominięto dodawanie karty')
     else:
-        if not config['bulk_add']:
-            yes = ('t', 'y', '1', 'tak', 'yes', '')
-            no = ('n', '0', 'nie', 'no')
-            print(f'\n{error_color}Zdanie nie zawiera podanego hasła')
-            zdanie_check = input(f'{input_color}Czy dodać w takiej formie? [T/n]:{inputtext_color} ')
-            if zdanie_check.lower() in yes:
-                return zdanie
-            elif zdanie_check.lower() in no:
-                return ogarnij_zdanie(zdanie_input())
-            else:
-                skip_check = 1
-                print(f'{GEX}Pominięto dodawanie karty')
-        else:
-            return zdanie
+        return hide_and_append(exsentence, 'zdanie', 'ukryj_slowo_w_zdaniu')
 
 
 def zdanie_input():
     if config['dodaj_wlasne_zdanie']:
-        zdanie = str(input(f'{input_color}Dodaj przykładowe zdanie:{inputtext_color} '))
-        return zdanie
+        exsentence = str(input(f'{input_color}Dodaj przykładowe zdanie:{inputtext_color} '))
+        return exsentence
     return ''
 
 
@@ -721,7 +695,7 @@ def rysuj_synonimy(syn_soup):
         hide_and_append(przyklady2, grupa_przykladow, hide='ukryj_slowo_w_disamb')
         hide_and_append(synonimy3, grupa_synonimow, hide='ukryj_slowo_w_disamb')
 
-        if not config['bulk_add']:  # Aby ograniczyć przesuwanie podczas bulk, wordnet nie jest wyświetlany
+        if config['showdisamb']:
             syn_tp = print_elems(synonimy3 + '\n   ', term_width=conf_to_int(config['textwidth']),
                                  index_width=len(str(index)),
                                  indento=3, gap=3 + len(str(pos)), break_allowed=False)
@@ -746,7 +720,7 @@ def disambiguator(url_synsearch):
             print(f'{error_color}\nNie znaleziono {word_color}{correct_word}{error_color} na {R}WordNecie')
             skip_check_disamb = 1
         else:
-            if not config['bulk_add']:
+            if config['showdisamb']:
                 print(f'{delimit_color}{conf_to_int(config["delimsize"]) * "-"}')
                 print(f'{Fore.LIGHTWHITE_EX}{"WordNet".center(conf_to_int(config["center"]))}\n')
             rysuj_synonimy(syn_soup)
@@ -796,8 +770,12 @@ def hide_and_append(content, group_of_elems, hide):
 
         for wthede in words_th_ed_exceptions:
             hidden_content = hidden_content.replace(wthede, '...ed').replace(wthede.capitalize(), '...ed')
+        if group_of_elems == 'zdanie':
+            return hidden_content
         group_of_elems.append(hidden_content)
     else:
+        if group_of_elems == 'zdanie':
+            return content
         group_of_elems.append(content)
 
 
@@ -969,13 +947,9 @@ def utworz_karte():
                 for afield in added_fields:
                     print(f'- {afield}')
                 print()
-            else:
-                print(f'{YEX}Karta zapisana wyłącznie do pliku\n')
         except URLError:
             print(f'{error_color}Nie udało się połączyć z AnkiConnect\n'
-                  f'Otwórz Anki i spróbuj ponownie\n'
-                  f'{YEX}Karta zapisana wyłącznie do pliku\n')
-
+                  f'Otwórz Anki i spróbuj ponownie\n')
     try:
         with open('karty.txt', 'a', encoding='utf-8') as twor:
             twor.write(f'{eval(config["fieldorder"]["1"])}\t'
@@ -1059,7 +1033,6 @@ try:
         skip_check_disamb = 0
         farlex = False
         correct_word = ''
-        word = ''
         zdanie = ''
         audiofile = ''
         disambiguation = ''
@@ -1073,21 +1046,21 @@ try:
         grupa_synonimow = []
         ilustracje = []
         while True:
-            ahd_url = szukaj()
-            if ahd_url is None:
+            link_word = szukaj()
+            if link_word is None:
                 continue
             break
         while skip_check == 0:
-            if not word.startswith('-idi'):
-                rysuj_slownik(ahd_url)
+            if not link_word.startswith('-idi'):
+                rysuj_slownik('https://www.ahdictionary.com/word/search.html?q=' + link_word)
                 if skip_check == 1:
                     skip_check = 0
-                    farlex_idioms(url_idiomsearch='https://idioms.thefreedictionary.com/' + word)
+                    farlex_idioms(url_idiomsearch='https://idioms.thefreedictionary.com/' + link_word)
                     farlex = True
                     if skip_check == 1:
                         break
             else:
-                farlex_idioms(url_idiomsearch='https://idioms.thefreedictionary.com/' + word.replace('-idi ', ''))
+                farlex_idioms(url_idiomsearch='https://idioms.thefreedictionary.com/' + link_word.replace('-idi ', ''))
                 farlex = True
                 if skip_check == 1:
                     break

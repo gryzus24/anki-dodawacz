@@ -46,6 +46,7 @@ psyn_blk: 0
 psyn_color: Fore.RESET
 save_path: Karty_audio
 showcard: true
+showdisamb: true
 syn_blk: 0
 syn_color: Fore.YELLOW
 syndef_color: Fore.RESET
