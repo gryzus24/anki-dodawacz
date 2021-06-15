@@ -1,16 +1,17 @@
-from requests.exceptions import Timeout
-from urllib.error import URLError
+import json  # dla ankiconnect invoke
+import os
+import os.path
+import re
+import sys
+import urllib.request
 from itertools import zip_longest
+from urllib.error import URLError
+
+import requests
+import yaml
 from bs4 import BeautifulSoup
 from colorama import Fore
-import urllib.request
-import requests
-import os.path
-import json  # dla ankiconnect invoke
-import yaml
-import sys
-import os
-import re
+from requests.exceptions import Timeout
 
 import komendy as k
 import notatki
@@ -72,7 +73,7 @@ def delete_last_card():
             deleted_line = lines.pop().replace('\n', '')
             new_file = ''.join(lines)
             write.write(new_file)
-        print(f'{YEX}Usunięto: \n{R}"{deleted_line[:64]}..."')
+        print(f'{YEX}Usunięto z karty.txt: \n{R}"{deleted_line[:64]}..."')
     except IndexError:
         print(f'{error_color}Plik {R}karty.txt {error_color}jest pusty, nie ma co usuwać')
     except FileNotFoundError:
@@ -80,7 +81,7 @@ def delete_last_card():
     except UnicodeDecodeError:
         print(f'{error_color}Usuwanie karty nie powiodło się z powodu nieznanego znaku (prawdopodobnie w etymologii)')  # wolfram
     except Exception:
-        print(f'{error_color}Coś poszło nie tak podczas usuwania karty *_*')
+        print(f'{error_color}Coś poszło nie tak podczas usuwania karty, ale karty są {GEX}bezpieczne')
 
 
 # Komendy i input słowa
@@ -215,6 +216,34 @@ def add_notes(note_name):
         print(f'{R}{BOLD}Dostępne notatki to:{END}\n{available_notes}\n')
 
 
+def change_field_order(numb, field_name):
+    default_field_order = {'1': 'definicje', '2': 'disambiguation', '3': 'correct_word', '4': 'zdanie',
+                           '5': 'czesci_mowy', '6': 'etymologia', '7': 'audiofile'}
+    field_order = config['fieldorder']
+    if numb in default_field_order.keys() and field_name in default_field_order.values():
+        field_order[numb] = field_name
+    elif numb.lower() == 'default':
+        field_order = default_field_order
+        print(f'{GEX}Przywrócono domyślną kolejność pól:')
+    elif numb == '-' and field_name == '-':
+        print(f'{BOLD}Aktualna kolejność pól:{END}')
+    else:
+        print(f'{error_color}Podano nieprawidłowe parametry')
+        return None
+    save_commands(komenda='fieldorder', wartosc=field_order)
+    for numb, numb_def in zip(field_order, default_field_order):
+        yex = ''
+        default = ''
+        if field_order[numb] != default_field_order[numb_def]:
+            yex = YEX
+            default = f'# {default_field_order[numb_def]}'
+        printe = '{}{}{}{:20s}{}{}{}'.format(yex, numb, ': ', field_order[numb], END, R, default)
+        if numb == '1':
+            print(f' {BOLD}{printe}')
+        else:
+            print(f' {printe}')
+
+
 def komendo(word):
     one_word_commands = {'-colors': k.pokaz_dostepne_kolory, '-color': k.pokaz_dostepne_kolory,
                          '--delete-last': delete_last_card, '--delete-recent': delete_last_card,
@@ -237,6 +266,16 @@ def komendo(word):
             tagi = "".join(cmd_tuple[1:]).strip(', ').lower().replace(',', ', ')  # tagi w anki są zawsze lowercase
             save_commands(cmd_tuple[0].lstrip('-'), tagi)
             print(f'{YEX}Tagi dla AnkiConnect: {R}"{tagi}"')
+        elif cmd_tuple[0] == '-dupscope':
+            # ten strip, aby wywalić te znaki jak sie je przypadkowo naciśnie przy wciskaniu enter
+            scope_val = cmd_tuple[1].strip("']\\,. ").lower()
+            msgdiff = {'deck': 'talii', 'collection': 'całej kolekcji'}
+            if scope_val == 'deck' or scope_val == 'collection':
+                save_commands(cmd_tuple[0].lstrip('-'), scope_val)
+                print(f'{YEX}Duplikaty sprawdzane w obrębie {R}{msgdiff[scope_val]}')
+            else:
+                print(f'{BOLD}Dostępne opcje:{END}\n'
+                      f'deck, collection\n')
         elif cmd_tuple[1] in k.commands_values:
             komenda = k.search_commands[cmd_tuple[0]]
             wartosc = k.commands_values[cmd_tuple[1]]
@@ -250,6 +289,15 @@ def komendo(word):
         one_word_commands[cmd_tuple[0]]()
     elif cmd_tuple[0] == '--add-note':
         add_notes(note_name=cmd_tuple[1])
+    elif cmd_tuple[0] == '--change-fieldorder' or cmd_tuple[0] == '--change-fo':
+        try:
+            numb = cmd_tuple[1].lower().strip("']\\,. ")
+            field_name = cmd_tuple[2].lower().strip("']\\,. ")
+        except IndexError:
+            numb = '-'
+            field_name = '-'
+        change_field_order(numb, field_name)
+        print()
     elif cmd_tuple[0] == '--audio-path' or cmd_tuple[0] == '--save-path':
         print(f'{YEX}Pliki audio będą zapisywane w: {R}"{cmd_tuple[1]}"')
         save_commands(komenda='save_path', wartosc=cmd_tuple[1])
@@ -269,8 +317,8 @@ def szukaj():
     word = komendo(word)
     if word is None:
         return word
-    url0 = 'https://www.ahdictionary.com/word/search.html?q='
-    url = url0 + word
+    url = 'https://www.ahdictionary.com/word/search.html?q='
+    url = url + word
     return url
 
 
@@ -506,7 +554,7 @@ def rysuj_slownik(url):
 
 def ogarnij_zdanie(zdanie):
     global skip_check
-    if correct_word.lower() in zdanie.lower():
+    if correct_word.replace('(', '').replace(')', '').lower() in zdanie.lower():
         if not config['ukryj_slowo_w_zdaniu']:
             return zdanie
         else:
@@ -874,14 +922,15 @@ def organize_notes(bf, adqt_mf_conf):
 # Tworzenie karty
 def utworz_karte():
     if config['ankiconnect']:
-        base_fields = {'defin': definicje, 'gloss': definicje, 'disamb': disambiguation, 'słowo': correct_word,
-                       'slowo': correct_word, 'word': correct_word, 'zdanie': zdanie, 'czesci': czesci_mowy,
-                       'części': czesci_mowy, 'etym': etymologia, 'audio': audiofile_name, 'sound': audiofile_name,
-                       'pronunciation': audiofile_name}
+        base_fields = {'słowo': correct_word, 'slowo': correct_word, 'word': correct_word, 'defin': definicje,
+                       'gloss': definicje, 'disamb': disambiguation, 'synon': disambiguation, 'zdanie': zdanie,
+                       'sentence': zdanie, 'części': czesci_mowy, 'czesci': czesci_mowy, 'parts of speech': czesci_mowy,
+                       'part of speech': czesci_mowy, 'etym': etymologia, 'audio': audiofile, 'sound': audiofile,
+                       'pronunciation': audiofile, 'wymowa': audiofile, 'dźwięk': audiofile, 'dzwiek': audiofile}
         adqt_model_fields = {}
         adqt_model_fields_conf = {}
         try:
-            err_org = None  # aby wiadomości błędów się nie powielały
+            err_org = ''  # aby wiadomości błędów się nie powielały
             if config['note'] not in ankiconf:  # aby nie sprawdzać dla znajomej notatki
                 err_org = organize_notes(base_fields, adqt_model_fields_conf)
 
@@ -892,7 +941,8 @@ def utworz_karte():
                 adqt_model_fields[field] = base_fields[config_note[field]]
             # r to id karty, albo error
             r = invoke('addNote', note={'deckName': config['deck'], 'modelName': config['note'], 'fields': adqt_model_fields,
-                                        'options': {'allowDuplicate': config['duplicates']}, 'tags': config['tags'].split(', ')})
+                                        'options': {'allowDuplicate': config['duplicates'], 'duplicateScope': config['dupscope']},
+                                        'tags': config['tags'].split(', ')})
             if r == 'empty':
                 print(f'{error_color}Karta nie została dodana\n'
                       f'Pierwsze pole notatki nie zostało wypełnione\n'
@@ -900,7 +950,8 @@ def utworz_karte():
                       f'lub dodaj element odpowiadający pierwszemu polu notatki')
             if r == 'duplicate':
                 print(f'{error_color}Karta nie została dodana, bo jest duplikatem\n'
-                      f'Aby zezwolić na dodawanie duplikatów wpisz {R}-duplicates on')
+                      f'Zezwól na dodawanie duplikatów wpisując {R}-duplicates on\n'
+                      f'{error_color}lub zmień zasięg sprawdzania duplikatów {R}-dupscope [deck/collection]')
             if r == 'out of reach' and err_org != 'out of reach':
                 print(f'{error_color}Karta nie została dodana, bo kolekcja jest nieosiągalna\n'
                       f'Sprawdź czy Anki jest w pełni otwarte')
@@ -927,15 +978,18 @@ def utworz_karte():
 
     try:
         with open('karty.txt', 'a', encoding='utf-8') as twor:
-            twor.write(f'{definicje}\t{disambiguation}\t'
-                       f'{correct_word}\t'
-                       f'{zdanie}\t'
-                       f'{czesci_mowy}\t'
-                       f'{etymologia}\t{audiofile_name}\n')
+            twor.write(f'{eval(config["fieldorder"]["1"])}\t'
+                       f'{eval(config["fieldorder"]["2"])}\t'
+                       f'{eval(config["fieldorder"]["3"])}\t'
+                       f'{eval(config["fieldorder"]["4"])}\t'
+                       f'{eval(config["fieldorder"]["5"])}\t'
+                       f'{eval(config["fieldorder"]["6"])}\t'
+                       f'{eval(config["fieldorder"]["7"])}\n')
+            print(f'{YEX}Karta zapisana do pliku\n')
             return None
-    except NameError:
+    except (NameError, KeyError):
         print(f"{error_color}Dodawanie karty do pliku nie powiodło się\n"
-              f"Jeżeli problem wystąpi ponownie, zrestartuj program")
+              f"Aby przywrócić domyślną kolejność pól wpisz {R}--change-fo default\n")
 
 
 def wyswietl_karte():
@@ -957,7 +1011,7 @@ def wyswietl_karte():
     print(f'{pos_color}{czesci_mowy.center(centr)}')
     for etym_tp in print_elems(etymologia, *options).split('\n'):
         print(f'{etym_color}{etym_tp.center(centr)}')
-    print(audiofile_name.center(centr))
+    print(audiofile.center(centr))
     print(f'{delimit_color}{delimit * "-"}')
 
 
@@ -1006,7 +1060,8 @@ try:
         farlex = False
         correct_word = ''
         word = ''
-        audiofile_name = ''
+        zdanie = ''
+        audiofile = ''
         disambiguation = ''
         disamb_synonimy = ''
         disamb_przyklady = ''
@@ -1018,13 +1073,13 @@ try:
         grupa_synonimow = []
         ilustracje = []
         while True:
-            url = szukaj()
-            if url is None:
+            ahd_url = szukaj()
+            if ahd_url is None:
                 continue
             break
         while skip_check == 0:
             if not word.startswith('-idi'):
-                rysuj_slownik(url)
+                rysuj_slownik(ahd_url)
                 if skip_check == 1:
                     skip_check = 0
                     farlex_idioms(url_idiomsearch='https://idioms.thefreedictionary.com/' + word)
@@ -1038,7 +1093,7 @@ try:
                     break
             if config['tworz_karte']:
                 if not farlex:
-                    audiofile_name = search_for_audio(server='ahd')
+                    audiofile = search_for_audio(server='ahd')
                     zdanie = ogarnij_zdanie(zdanie_input())  # Aby wyłączyć dodawanie zdania w bulk wystarczy -pz off
                     if skip_check == 1:  # ten skip_check jest niemożliwy przy bulk
                         break
@@ -1052,7 +1107,7 @@ try:
                     if skip_check == 1:
                         break
                 else:
-                    audiofile_name = search_for_audio(server='diki')
+                    audiofile = search_for_audio(server='diki')
                     zdanie = ogarnij_zdanie(zdanie_input())
                     if skip_check == 1:
                         break

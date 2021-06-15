@@ -32,7 +32,6 @@ gryzus_card_css = '''html { height: 100%; }
   text-align: center;
   background-color: #060606;
 }
-
 .card.night_mode {
   background-color: #060606;
 }
@@ -58,7 +57,6 @@ gryzus_card_css = '''html { height: 100%; }
   border-radius: 1.2em;
   background-color: 0;
 }
-
 .night_mode #answerBox {
   background-color: 0;
 }
@@ -67,7 +65,6 @@ gryzus_card_css = '''html { height: 100%; }
   color: #FFFFFF;
   margin-bottom: 0.7em;
 }
-
 .night_mode #definition {
   color: #FFFFFF;
 }
@@ -76,7 +73,6 @@ gryzus_card_css = '''html { height: 100%; }
   font-size: 1em;
   color: #ADD8E6
 }
-
 .night_mode #stopgap {
   color: #ADD8E6;
 }
@@ -86,7 +82,6 @@ gryzus_card_css = '''html { height: 100%; }
   color: #cca;
   margin-top: 1em;
 }
-
 .night_mode #PoS {
   color: #cca;
 }
@@ -153,7 +148,7 @@ text-align: left;
 }
 .night_mode #etym {
   color: #777;
-'''
+}'''
 
 available_notes = {
     'gryzus-dark': {
@@ -162,9 +157,9 @@ available_notes = {
         'front': gryzus_card_front,
         'back': gryzus_card_back,
         'fields': [
-            'Słowo',
             'Definicja',
             'Disambiguation',
+            'Słowo',
             'Przykładowe zdanie',
             'Części mowy',
             'Etymologia',

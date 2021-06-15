@@ -20,9 +20,18 @@ dodaj_przyklady_synonimow: true
 dodaj_synonimy: true
 dodaj_wlasne_zdanie: true
 duplicates: false
+dupscope: deck
 error_color: Fore.LIGHTRED_EX
 etym_blk: 0
 etym_color: Fore.RESET
+fieldorder:
+  '1': definicje
+  '2': disambiguation
+  '3': correct_word
+  '4': zdanie
+  '5': czesci_mowy
+  '6': etymologia
+  '7': audiofile
 indent: 2
 index_color: Fore.LIGHTGREEN_EX
 input_color: Fore.RESET

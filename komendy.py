@@ -112,7 +112,7 @@ search_commands = {
                    '-uidiom': 'ukryj_slowo_w_idiom', '-upreps': 'ukryj_przyimki', '-showcard': 'showcard',
                    '-wraptext': 'wrap_text', '-break': 'break', '-textwidth': 'textwidth', '-indent': 'indent',
                    '-delimsize': 'delimsize', '-center': 'center', '-ankiconnect': 'ankiconnect',
-                   '-duplicates': 'duplicates', '-note': 'note', '-deck': 'deck', '-tags': 'tags'
+                   '-duplicates': 'duplicates', '-dupscope': 'dupscope', '-note': 'note', '-deck': 'deck', '-tags': 'tags'
 }
 bool_colors = {False: 'Fore.LIGHTRED_EX', True: 'Fore.LIGHTGREEN_EX'}
 colors = ('black', 'red', 'green', 'yellow', 'blue', 'magenta', 'cyan', 'white',
