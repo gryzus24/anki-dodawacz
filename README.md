@@ -49,9 +49,9 @@ Tutaj możemy dostosować program do naszych preferencji.
 
 Program na chwilę obecną wykorzystuje siedem pól naszej notatki, aby prawidłowo dodawać karty.
 Są to:
-- Słowo
 - Definicja
 - Disambiguation
+- Słowo
 - Przykładowe zdanie
 - Części mowy
 - Etymologia
@@ -67,7 +67,7 @@ Gdy mamy otwarte Anki, na górnym pasku klikamy w "Narzędzia" > "Zarządzaj typ
 
 Nasze pola powinny wyglądać tak:
 
-![image](https://user-images.githubusercontent.com/82805891/121968947-cd501a00-cd62-11eb-8622-21e40093e68e.png)
+![image](https://user-images.githubusercontent.com/82805891/122019965-dd441a00-cdb3-11eb-8c74-e8ce3c2f4e50.png)
 
 
 (Możesz nazwać je inaczej, jeżeli tworzysz własną notatkę, jednak jeżeli planujesz użyć mojej przykładowej,
