@@ -14,25 +14,28 @@ if sys.platform.startswith('linux'):
 with open("config.yml", "r") as readconfig:
     config = yaml.load(readconfig, Loader=yaml.Loader)
 
-syn_color = eval(config['syn_color'])
-psyn_color = eval(config['psyn_color'])
-pidiom_color = eval(config['pidiom_color'])
-def1_color = eval(config['def1_color'])
-def2_color = eval(config['def2_color'])
-index_color = eval(config['index_color'])
-word_color = eval(config['word_color'])
-pos_color = eval(config['pos_color'])
-etym_color = eval(config['etym_color'])
-synpos_color = eval(config['synpos_color'])
-syndef_color = eval(config['syndef_color'])
-error_color = eval(config['error_color'])
-delimit_color = eval(config['delimit_color'])
+YEX = eval(config['attention_c'])
+R = Fore.RESET
+
+syn_color = eval(config['syn_c'])
+psyn_color = eval(config['psyn_c'])
+pidiom_color = eval(config['pidiom_c'])
+def1_color = eval(config['def1_c'])
+def2_color = eval(config['def2_c'])
+index_color = eval(config['index_c'])
+word_color = eval(config['word_c'])
+pos_color = eval(config['pos_c'])
+etym_color = eval(config['etym_c'])
+synpos_color = eval(config['synpos_c'])
+syndef_color = eval(config['syndef_c'])
+error_color = eval(config['error_c'])
+delimit_color = eval(config['delimit_c'])
 
 inputtext_color = ''
 input_color = ''
 if sys.platform.startswith('linux'):
-    inputtext_color = eval(config['inputtext_color'])
-    input_color = eval(config['input_color'])
+    inputtext_color = eval(config['inputtext_c'])
+    input_color = eval(config['input_c'])
 
 
 def koloryfer(color):
@@ -43,7 +46,7 @@ def koloryfer(color):
 
 
 def pokaz_dostepne_kolory():
-    print(f'{Fore.RESET}{BOLD}Dostępne kolory to:{END}')
+    print(f'{R}{BOLD}Dostępne kolory to:{END}')
     for index, color in enumerate(colors, start=1):
         print(f'{koloryfer(color)}{color}', end=', ')
         if index == 4 or index == 8 or index == 12 or index == 16:
@@ -52,30 +55,32 @@ def pokaz_dostepne_kolory():
 
 
 def color_command():
-    print(f"""{Fore.RESET}\n{BOLD}Konfiguracja kolorów{END}
+    print(f"""{R}\n{BOLD}Konfiguracja kolorów{END}
 
 {BOLD}[Komenda] [kolor]{END}
 Każda komenda zmiany kolorów musi otrzymać kolor:
-np. "-syn-color lightblue", "-pos-color magenta" itd.
+np. "--syn-c lightblue", "--pos-c magenta" itd.
+Aby zastosować kolory, zrestartuj program
 
-                    {BOLD}[Zmienia kolor]{END}
--def1-color         {def1_color}nieparzystych definicji oraz definicji idiomów{Fore.RESET}
--def2-color         {def2_color}parzystych definicji{Fore.RESET}
--pos-color          {pos_color}części mowy w słowniku{Fore.RESET}
--etym-color         {etym_color}etymologii w słowniku{Fore.RESET}
--syn-color          {syn_color}synonimów na WordNecie{Fore.RESET}
--psyn-color         {psyn_color}przykładów pod synonimami{Fore.RESET}
--pidiom-color       {pidiom_color}przykładów pod idiomami{Fore.RESET}
--syndef-color       {syndef_color}definicji przy synonimach{Fore.RESET}
--synpos-color       {synpos_color}części mowy przy synonimach{Fore.RESET}
--index-color        {index_color}indeksów w słowniku{Fore.RESET}
--word-color         {word_color}wyszukanego w słowniku hasła{Fore.RESET}
--error-color        {error_color}błędów{Fore.RESET}
--delimit-color      {delimit_color}odkreśleń{Fore.RESET}
--input-color        {input_color}pól na input{error_color}*{Fore.RESET}
--inputtext-color    {inputtext_color}wpisywanego tekstu{error_color}*{Fore.RESET}
+                 {BOLD}[Zmienia kolor]{END}
+--def1-c         {def1_color}nieparzystych definicji oraz definicji idiomów{R}
+--def2-c         {def2_color}parzystych definicji{R}
+--pos-c          {pos_color}części mowy w słowniku{R}
+--etym-c         {etym_color}etymologii w słowniku{R}
+--syn-c          {syn_color}synonimów na WordNecie{R}
+--psyn-c         {psyn_color}przykładów pod synonimami{R}
+--pidiom-c       {pidiom_color}przykładów pod idiomami{R}
+--syndef-c       {syndef_color}definicji przy synonimach{R}
+--synpos-c       {synpos_color}części mowy przy synonimach{R}
+--index-c        {index_color}indeksów w słowniku{R}
+--word-c         {word_color}wyszukanego w słowniku hasła{R}
+--error-c        {error_color}błędów{R}
+--attention-c    {YEX}zwracający uwagę{R}
+--delimit-c      {delimit_color}odkreśleń{R}
+--input-c        {input_color}pól na input{error_color}*{R}
+--inputtext-c    {inputtext_color}wpisywanego tekstu{error_color}*{R}
 
-{error_color}*{Fore.RESET} = nie działa na win i mac\n""")
+{error_color}*{R} = nie działa na win i mac\n""")
     pokaz_dostepne_kolory()
 
 
@@ -118,31 +123,33 @@ bool_colors = {False: 'Fore.LIGHTRED_EX', True: 'Fore.LIGHTGREEN_EX'}
 colors = ('black', 'red', 'green', 'yellow', 'blue', 'magenta', 'cyan', 'white',
           'lightblack', 'lightred', 'lightgreen', 'lightyellow', 'lightblue', 'lightmagenta', 'lightcyan', 'lightwhite',
           'reset')
-color_commands = ('-syn-color', '-index-color', '-word-color', '-psyn-color', '-pidiom-color',
-                  '-def1-color', '-def2-color', '-pos-color', '-etym-color', '-synpos-color',
-                  '-syndef-color', '-error-color', '-delimit-color', '-input-color', '-inputtext-color')
+color_commands = ('--syn-c', '--index-c', '--word-c', '--psyn-c', '--pidiom-c', '--def1-c', '--def2-c', '--pos-c',
+                  '--etym-c', '--synpos-c', '--syndef-c', '--error-c', '--delimit-c', '--input-c', '--inputtext-c',
+                  '--attention-c')
 color_message = {
-                 '-syn-color': 'Kolor synonimów', '-index-color': 'Kolor indexów', '-word-color': 'Kolor hasła',
-                 '-psyn-color': 'Kolor przykładów synonimów', '-pidiom-color': 'Kolor przykładów idiomów',
-                 '-def1-color': 'Kolor nieparzystych definicji', '-def2-color': 'Kolor parzystych definicji',
-                 '-pos-color': 'Kolor części mowy', '-etym-color': 'Kolor etymologii',
-                 '-synpos-color': 'Kolor części mowy przy synonimach', '-syndef-color': 'Kolor definicji przy synonimach',
-                 '-error-color': 'Kolor błędów', '-delimit-color': 'Kolor odkreśleń',
-                 '-input-color': 'Kolor pól na input', '-inputtext-color': 'Kolor wpisywanego tekstu'}
+                 '--syn-c': 'Kolor synonimów', '--index-c': 'Kolor indexów',
+                 '--word-c': 'Kolor hasła', '--psyn-c': 'Kolor przykładów synonimów',
+                 '--pidiom-c': 'Kolor przykładów idiomów', '--def1-c': 'Kolor nieparzystych definicji',
+                 '--def2-c': 'Kolor parzystych definicji', '--pos-c': 'Kolor części mowy',
+                 '--etym-c': 'Kolor etymologii', '--synpos-c': 'Kolor części mowy przy synonimach',
+                 '--syndef-c': 'Kolor definicji przy synonimach', '--error-c': 'Kolor błędów',
+                 '--attention-c': 'Kolor zwracający uwagę', '--delimit-c': 'Kolor odkreśleń',
+                 '--input-c': 'Kolor pól na input', '--inputtext-c': 'Kolor wpisywanego tekstu'}
 
 
 def help_command():
-    print(f"""{Fore.RESET}\nPo wpisaniu hasła w pole "Szukaj" rozpocznie się cykl dodawania karty
+    print(f"""{R}\nPo wpisaniu hasła w pole "Szukaj" rozpocznie się cykl dodawania karty
 
 Najpierw pytany jest AH Dictionary, jeżeli nie posiada szukanego hasła
 to zapytanie przechodzi do Farlex Idioms.
- 
+
 Aby bezpośrednio zapytać Farlexa należy przed zapytaniem wpisać "-idi"
 np. "-idi tap out", "-idi double down" itd.
 
 {BOLD}Przy dodawaniu zdania:{END}
 Wpisz swoje przykładowe zdanie
  -s     pomija dodawanie zdania
+ -sc    pomija dodawanie karty
 
 {BOLD}Przy definicjach:{END}
 Aby wybrać definicję wpisz numer zielonego indeksu.
@@ -157,23 +164,23 @@ Aby wybrać więcej definicji oddziel wybór przecinkiem.
 
  Aby dodać własny tekst w pola na karcie wystarczy zacząć wpisywanie od "/"
  np. "/dwa grzyby" spowoduje dodaniem "dwa grzyby"
- 
+
 {BOLD}Przy częściach mowy:{END}
  1            dodaje wszystkie części mowy
  0 lub -s     pomija dodawanie elementu
- 
+
  Wpisanie czegokolwiek poza liczbą pomija dodawanie karty
 
  Gdybyśmy z jakiegoś powodu chcieli dodać konkretne części mowy
  to możemy użyć przecinka:
  np. 3,       doda trzeci element od góry
  np. 1, 2     doda pierwszy i drugi element
- 
+
 {BOLD}Przy etymologiach:{END}
 Przy większej ilości etymologii możemy sprecyzować wybór wpisując numer
 etymologii licząc od góry lub wpisać -1, aby dodać wszystkie etymologie.
  0 lub -s     pomija dodawanie elementu
- 
+
 {BOLD}Przy synonimach:{END}
 Synonimy wyświetlane są w grupach zawierających synonimy i przykłady.
 Wybieranie działa tak jak w definicjach
@@ -190,10 +197,17 @@ nad wyborem pojedynczych przykładów.
 Dostępne pola:
  - definicja
  - przykłady
- 
+
 definicje i przykłady w idiomach wchodzą w skład pola "Definicja"
 
-{BOLD}Komendy dodawania:{END}
+--help-commands  wyświetla informacje o komendach
+--help-bulk      wyświetla informacje o masowym dodawaniu
+--help-colors    wyświetla informacje o kolorach
+""")
+
+
+def help_commands_command():
+    print(f"""{R}\n{BOLD}Komendy dodawania:{END}
 Aby zmienić wartość dla komendy wpisz {BOLD}on/off{END}
 np. "-pz off", "-disamb on", "-all off" itd.
 
@@ -210,6 +224,10 @@ np. "-pz off", "-disamb on", "-all off" itd.
 -all         zmienia wartości powyższych ustawień
 
 -karty       dodawanie kart
+
+-bulk        masowe dodawanie
+-bulkfdef    swobodne masowe dodawanie definicji
+-bulkfsyn    swobodne masowe dodawanie synonimów
 
 --audio-path lub --save-path:
  Umożliwia zmianę miejsca zapisu audio
@@ -229,37 +247,69 @@ np. "-pz off", "-disamb on", "-all off" itd.
   "~/Library/Application Support/Anki2/[Nazwa użytkownika Anki]/collection.media"
    (jest to ukryty folder i prawdopodobnie zamiast ~ też pełna ścieżka)
 
-{BOLD}Misc komendy:{END}
+{BOLD}Komendy miscellaneous:{END}
 Ukrywanie hasła to zamiana wyszukiwanego słowa na "..."
 
-{BOLD}[Komenda]     [on/off]{END}
--fs           filtrowanie numeracji w słowniku
--udef         ukrywanie hasła w definicjach
--upz          ukrywanie hasła w zdaniu
--udisamb      ukrywanie hasła w synonimach
--uidiom       ukrywanie hasła w idiomach
--upreps       ukrywanie przyimków w idiomach
--wraptext     zawijanie tekstu
--break        wstawianie nowej linii po definicji
+{BOLD}[Komenda]        [on/off]{END}
+-fs              filtrowanie numeracji w słowniku
+-upz             ukrywanie hasła w zdaniu
+-udef            ukrywanie hasła w definicjach
+-udisamb         ukrywanie hasła w synonimach
+-uidiom          ukrywanie hasła w idiomach
+-upreps          ukrywanie przyimków w idiomach
+-showcard        pokazywanie przykładowego wyglądu karty
+-showdisamb      pokazywanie słownika synonimów
+                 (przydatne do ograniczenia przewijania podczas bulk)
 
+-wraptext        zawijanie tekstu
+-break           wstawianie nowej linii po definicji
 
--textwidth [wartość]    szerokość tekstu do momentu zawinięcia
--indent [wartość]       szerokość wcięcia zawiniętego tekstu
--delimsize [wartość]    szerokość odkreśleń
--center [wartość]       wyśrodkowywanie nagłówków
+-textwidth [wartość]      szerokość tekstu do momentu zawinięcia
+-indent [wartość]         szerokość wcięcia zawiniętego tekstu
+-delimsize [wartość]      szerokość odkreśleń
+-center [wartość]         wyśrodkowywanie nagłówków
 
 --delete-last
---delete-recent       usuwa ostatnią dodawaną kartę
+--delete-recent           usuwa z karty.txt ostatnią dodawaną kartę
 
 --config-colors
---help-colors         wyświetla konfigurację kolorów
--colors               wyświetla dostępne kolory
+--help-colors             wyświetla informacje i konfigurację kolorów
+-colors                   wyświetla dostępne kolory
+--help-bulk               wyświetla informacje o masowym dodawaniu
+--help-commands           wyświetla informacje o komendach
 
---config-bulk         rozpoczyna konfigurację bulk
+--config-bulk             rozpoczyna konfigurację bulk
+-conf
+-config                   wyświetla informacje o aktualnej konfiguracji
 
--config               wyświetla informacje o aktualnej konfiguracji
+--change-fo
+--change-fieldsorder      zmiana kolejności dodawanych pól dla karty.txt
+--change-fo default       przywraca domyślną kolejność pól
+--change-fo [1-7] [pole]  zmienia pole znajdujące się pod podanym
+                          numerem, na wskazane pole
+np. --change-fo 1 audio   zastąpi pole definicje (1) na pole audio
 
-{BOLD}Masowe dodawanie (bulk):{END}
+{BOLD}Komendy AnkiConnect:{END}
+-ankiconnect [on/off]     bezpośrednie dodawanie kart do Anki
+                          poprzez AnkiConnect
+
+-duplicates [on/off]      dodawanie duplikatów
+-dupscope                 określa zasięg sprawdzania duplikatów
+          deck            w obrębie talii
+          collection      w obrębie całej kolekcji
+-note [nazwa notatki]     notatka używana do dodawania kart
+-deck [nazwa talii]       talia używana do otrzymywania kart
+-tags [tagi]              określa dodawane tagi
+                          aby dodać więcej tagów, oddziel je przecinkiem
+
+--add-note                pokazuje gotowe do dodania notatki
+--add-note [notatka]      dodaje notatkę do kolekcji obecnie
+                          zalogowanego użytkownika
+""")
+
+
+def help_bulk_command():
+    print(f"""{R}\n{BOLD}Masowe dodawanie (bulk):{END}
 Bulk pozwala na dodawanie wielu kart na raz.
 Wystarczy skopiować tekst według szablonu i wkleić do dodawacza.
 
@@ -268,9 +318,7 @@ Wystarczy skopiować tekst według szablonu i wkleić do dodawacza.
 --config-bulk     włącza szczegółową konfigurację masowego dodawania
                   gdzie można ustawić opcje dodawania definicji, części mowy,
                   etymologii oraz synonimów i ich przykładów
-                
                   domyślna wartość dla wszystkich elementów to: 0
-                
                   wpisanie litery wychodzi z konfiguracji
                   i nie zapisuje wprowadzonych zmian
 
@@ -300,4 +348,4 @@ nową linią według szablonu (razem ze spacją na końcu)
 "unalloyed"                          <---  dodawane słowo
 "/not in mixture with other metals"  <---  własna definicja
 "-1"                                 <---  własny wybór synonimów
-\n""")
+""")

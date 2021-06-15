@@ -1,14 +1,15 @@
 ankiconnect: false
+attention_c: Fore.LIGHTYELLOW_EX
 break: false
 bulk_add: false
 bulk_free_def: false
 bulk_free_syn: false
 center: 79* auto
 deck: '-'
-def1_color: Fore.RESET
-def2_color: Fore.RESET
+def1_c: Fore.RESET
+def2_c: Fore.RESET
 def_blk: 0
-delimit_color: Fore.RESET
+delimit_c: Fore.RESET
 delimsize: 79* auto
 disambiguation: true
 dodaj_audio: true
@@ -21,9 +22,9 @@ dodaj_synonimy: true
 dodaj_wlasne_zdanie: true
 duplicates: false
 dupscope: deck
-error_color: Fore.LIGHTRED_EX
+error_c: Fore.LIGHTRED_EX
 etym_blk: 0
-etym_color: Fore.RESET
+etym_c: Fore.RESET
 fieldorder:
   '1': definicje
   '2': disambiguation
@@ -33,24 +34,24 @@ fieldorder:
   '6': etymologia
   '7': audiofile
 indent: 2
-index_color: Fore.LIGHTGREEN_EX
-input_color: Fore.RESET
-inputtext_color: Fore.RESET
+index_c: Fore.LIGHTGREEN_EX
+input_c: Fore.RESET
+inputtext_c: Fore.RESET
 note: '-'
 pidiom_blk: 0
-pidiom_color: Fore.RESET
+pidiom_c: Fore.RESET
 pokazuj_filtrowany_slownik: true
 pos_blk: 0
-pos_color: Fore.YELLOW
+pos_c: Fore.YELLOW
 psyn_blk: 0
-psyn_color: Fore.RESET
+psyn_c: Fore.RESET
 save_path: Karty_audio
 showcard: true
 showdisamb: true
 syn_blk: 0
-syn_color: Fore.YELLOW
-syndef_color: Fore.RESET
-synpos_color: Fore.RESET
+syn_c: Fore.YELLOW
+syndef_c: Fore.RESET
+synpos_c: Fore.RESET
 tags: dodawacz
 textwidth: 79
 tworz_karte: true
@@ -59,5 +60,5 @@ ukryj_slowo_w_definicji: true
 ukryj_slowo_w_disamb: true
 ukryj_slowo_w_idiom: true
 ukryj_slowo_w_zdaniu: false
-word_color: Fore.CYAN
+word_c: Fore.CYAN
 wrap_text: true

@@ -37,29 +37,29 @@ Wpisz "--help", aby wyświetlić pomoc\n\n""")
 
 
 # Ustawia kolory
-YEX = Fore.LIGHTYELLOW_EX
+YEX = eval(config['attention_c'])
 GEX = Fore.LIGHTGREEN_EX
 R = Fore.RESET
 
-syn_color = eval(config['syn_color'])
-psyn_color = eval(config['psyn_color'])
-pidiom_color = eval(config['pidiom_color'])
-def1_color = eval(config['def1_color'])
-def2_color = eval(config['def2_color'])
-index_color = eval(config['index_color'])
-word_color = eval(config['word_color'])
-pos_color = eval(config['pos_color'])
-etym_color = eval(config['etym_color'])
-synpos_color = eval(config['synpos_color'])
-syndef_color = eval(config['syndef_color'])
-error_color = eval(config['error_color'])
-delimit_color = eval(config['delimit_color'])
+syn_color = eval(config['syn_c'])
+psyn_color = eval(config['psyn_c'])
+pidiom_color = eval(config['pidiom_c'])
+def1_color = eval(config['def1_c'])
+def2_color = eval(config['def2_c'])
+index_color = eval(config['index_c'])
+word_color = eval(config['word_c'])
+pos_color = eval(config['pos_c'])
+etym_color = eval(config['etym_c'])
+synpos_color = eval(config['synpos_c'])
+syndef_color = eval(config['syndef_c'])
+error_color = eval(config['error_c'])
+delimit_color = eval(config['delimit_c'])
 
 inputtext_color = ''
 input_color = ''
 if sys.platform.startswith('linux'):
-    inputtext_color = eval(config['inputtext_color'])
-    input_color = eval(config['input_color'])
+    inputtext_color = eval(config['inputtext_c'])
+    input_color = eval(config['input_c'])
     # Aby nie kombinować z robieniem tych kolorów na windowsie,
     # bo to wymaga rozwiązań co tylko zaśmiecają kod
     # i powodują denerwujący wizualny bug podczas zmiany wielkości okna
@@ -153,7 +153,7 @@ def print_config():
                       sndcmd, color_misc, str(config_misc_print).center(6),
                       R, erdcolumn, blk_conf))
     print(f'\n--audio-path: {config["save_path"]}')
-    print('\nkonfiguracja kolorów --help-colors\n')
+    print('\nkonfiguracja kolorów --config-colors\n')
 
 
 def kolory(komenda, wartosc):
@@ -248,9 +248,10 @@ def komendo(word):
     one_word_commands = {'-colors': k.pokaz_dostepne_kolory, '-color': k.pokaz_dostepne_kolory,
                          '--delete-last': delete_last_card, '--delete-recent': delete_last_card,
                          '--config-bulk': config_bulk, '-conf': print_config, '-config': print_config,
-                         '-configuration': print_config, '-h': k.help_command, '--help': k.help_command,
-                         '--help-colors': k.color_command, '--help-color': k.color_command,
-                         '--config-colors': k.color_command, '--config-color': k.color_command}
+                         '-h': k.help_command, '--help': k.help_command, '--help-bulk': k.help_bulk_command,
+                         '--help-commands': k.help_commands_command, '--help-colors': k.color_command,
+                         '--help-color': k.color_command, '--config-colors': k.color_command,
+                         '--config-color': k.color_command}
     loc_word = word + ' '
     cmd_tuple = loc_word.split(' ')
     cmd_tuple[0] = cmd_tuple[0].lower()
