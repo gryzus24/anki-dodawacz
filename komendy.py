@@ -92,14 +92,14 @@ commands_msg = {
                 '-all': 'Dodawanie wszystkiego: ', '-karty': 'Tworzenie kart: ', '-pz': 'Dodawanie zdania: ',
                 '-udef': 'Ukrywanie słowa w definicjach: ', '-upz': 'Ukrywanie słowa w zdaniu: ',
                 '-udisamb': 'Ukrywanie słowa w disamb: ', '-uidiom': 'Ukrywanie słowa w idiomach: ',
-                '-disamb': 'Disambiguation: ', '-syn': 'Dodawanie synonimów: ',
+                '-disamb': 'Słownik synonimów: ', '-syn': 'Dodawanie synonimów: ',
                 '-psyn': 'Dodawanie przykładów synonimów: ', '-pidiom': 'Dodawanie przykładów idiomów: ',
                 '-bulk': 'Masowe dodawanie: ', '-bulkfdef': 'Swobodne masowe dodawanie definicji: ',
                 '-bulkfsyn': 'Swobodne masowe dodawanie synonimów: ', '-wraptext': 'Zawijanie tekstu: ',
                 '-break': 'Nowa linia po każdej definicji: ', '-upreps': 'Ukrywanie przyimków w idiomach: ',
                 '-duplicates': 'Dodawanie duplikatów poprzez AnkiConnect: ',
                 '-showcard': 'Pokazywanie podglądu karty: ', '-showdisamb': 'Pokazywanie słownika synonimów: ',
-                '-ankiconnect': 'Dodawanie kart poprzez AnkiConnect: '
+                '-mergedisamb': 'Włączenie przykładów do pola "synonimy": ', '-ankiconnect': 'Dodawanie kart poprzez AnkiConnect: '
 }
 commands_values = {
                    'on': True, 'off': False, 'true': True, 'false': False, '1': True, '0': False,
@@ -115,9 +115,10 @@ search_commands = {
                    '-all': '-all',
                    '-upz': 'ukryj_slowo_w_zdaniu', '-udef': 'ukryj_slowo_w_definicji', '-udisamb': 'ukryj_slowo_w_disamb',
                    '-uidiom': 'ukryj_slowo_w_idiom', '-upreps': 'ukryj_przyimki', '-showcard': 'showcard',
-                   '-showdisamb': 'showdisamb', '-wraptext': 'wrap_text', '-break': 'break', '-textwidth': 'textwidth',
-                   '-indent': 'indent', '-delimsize': 'delimsize', '-center': 'center', '-ankiconnect': 'ankiconnect',
-                   '-duplicates': 'duplicates', '-dupscope': 'dupscope', '-note': 'note', '-deck': 'deck', '-tags': 'tags'
+                   '-showdisamb': 'showdisamb', '-mergedisamb': 'mergedisamb', '-wraptext': 'wrap_text', '-break': 'break',
+                   '-textwidth': 'textwidth', '-indent': 'indent', '-delimsize': 'delimsize', '-center': 'center',
+                   '-ankiconnect': 'ankiconnect', '-duplicates': 'duplicates', '-dupscope': 'dupscope', '-note': 'note',
+                   '-deck': 'deck', '-tags': 'tags'
 }
 bool_colors = {False: 'Fore.LIGHTRED_EX', True: 'Fore.LIGHTGREEN_EX'}
 colors = ('black', 'red', 'green', 'yellow', 'blue', 'magenta', 'cyan', 'white',
@@ -187,8 +188,6 @@ Wybieranie działa tak jak w definicjach
 mamy do wyboru dwa pola:
  - grupę synonimów
  - grupę przykładów
-
-synonimy i przykłady wchodzą w skład pola "Disambiguation"
 
 {BOLD}Przy idiomach:{END}
 Idiomy wyświetlane są podobnie jak synonimy.
@@ -260,6 +259,7 @@ Ukrywanie hasła to zamiana wyszukiwanego słowa na "..."
 -showcard        pokazywanie przykładowego wyglądu karty
 -showdisamb      pokazywanie słownika synonimów
                  (przydatne do ograniczenia przewijania podczas bulk)
+-mergedisamb     dołącza zawartość pola "przykłady" do pola "synonimy"
 
 -wraptext        zawijanie tekstu
 -break           wstawianie nowej linii po definicji
@@ -282,12 +282,12 @@ Ukrywanie hasła to zamiana wyszukiwanego słowa na "..."
 -conf
 -config                   wyświetla informacje o aktualnej konfiguracji
 
---change-fo
---change-fieldsorder      zmiana kolejności dodawanych pól dla karty.txt
---change-fo default       przywraca domyślną kolejność pól
---change-fo [1-7] [pole]  zmienia pole znajdujące się pod podanym
+-fo
+-fieldsorder              zmiana kolejności dodawanych pól dla karty.txt
+-fo default               przywraca domyślną kolejność pól
+-fo [1-7] [pole]          zmienia pole znajdujące się pod podanym
                           numerem, na wskazane pole
-np. --change-fo 1 audio   zastąpi pole definicje (1) na pole audio
+np. -fo 1 audio           zmieni pole "definicja" (1) na pole "audio"
 
 {BOLD}Komendy AnkiConnect:{END}
 -ankiconnect [on/off]     bezpośrednie dodawanie kart do Anki

@@ -26,17 +26,20 @@ error_c: Fore.LIGHTRED_EX
 etym_blk: 0
 etym_c: Fore.RESET
 fieldorder:
-  '1': definicje
-  '2': disambiguation
-  '3': correct_word
-  '4': zdanie
-  '5': czesci_mowy
-  '6': etymologia
-  '7': audiofile
+  '1': definicja
+  '2': synonimy
+  '3': przyklady
+  '4': phrase
+  '5': zdanie
+  '6': czesci_mowy
+  '7': etymologia
+  '8': audio
+fieldorder_d: '3'
 indent: 2
 index_c: Fore.LIGHTGREEN_EX
 input_c: Fore.RESET
 inputtext_c: Fore.RESET
+mergedisamb: false
 note: '-'
 pidiom_blk: 0
 pidiom_c: Fore.RESET

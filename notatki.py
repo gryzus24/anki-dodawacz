@@ -1,47 +1,59 @@
-gryzus_card_front = '''<div id="questionSide">
-  <div id="contentContainer">
-    <div id="questionBox">
-      <div id="definition">{{Definicja}}</div>
-      <div id="etym">{{Disambiguation}}</div>
-      <div>{{type:Słowo}}</div>
-    </div>
+gryzus_std_front = '''<div id="questionSide">
+  <div id="questionBox">
+    <div id="definition">{{Definicja}}</div>
+    <div id="syn">{{Synonimy}}</div>
+    <div id="psyn">{{Przykłady synonimów}}</div>
+    <div>{{type:Słowo}}</div>
+  </div>
 
-    <div id="answerBox">
-      <div id="zdanie">{{Przykładowe zdanie}}</div>
-      <div id="PoS">{{Części mowy}}</div>
-      <div id="etym">{{Etymologia}}</div>
-    </div>
+  <div id="answerBox">
+    <div id="zdanie">{{Przykładowe zdanie}}</div>
+    <div id="pos">{{Części mowy}}</div>
+    <div id="etym">{{Etymologia}}</div>
   </div>
 </div>'''
 
-gryzus_card_back = '''<div id="answerSide">
+gryzus_std_back = '''<div id="answerSide">
   {{FrontSide}}
-  <div id="etym">{{Audio}}</div>
+  <div>{{Audio}}</div>
 </div>'''
 
-gryzus_card_css = '''html { height: 100%; }
-.card {
-  #Height: 100%;
-  display: -webkit-box;
-  -webkit-box-align: stretch;
-  -webkit-box-pack: center;
-  -webkit-box-orient: vertical;
-  margin: 0;
-  padding: 0;
-  font-family;
+gryzus_std_css = '''.card {
+  font-family:;
+  font-size: 30px;
   text-align: center;
-  background-color: #060606;
+  background-color: #F1F9F6;
+  margin-left: 12%;
+  margin-right: 12%;
+  margin-top: 10px;
 }
-.card.night_mode {
+.mobile .card {
+  font-size: 22px;
+}
+.night_mode.card {
   background-color: #060606;
 }
 
 #questionBox {
-  font-size: 24px;
-  margin-left: 12%;
-  margin-right: 12%;
-  margin-top: 1.5em;
-  margin-bottom: 2em;
+  margin-top: 1em;
+}
+@media screen and (max-width: 721px) {
+  #questionBox {
+    margin-left: -10%;
+    margin-right: -10%;
+    margin-top: 0px;
+  }
+}
+
+#answerBox {
+  margin-top: 2em;
+}
+@media screen and (max-width: 721px) {
+  #answerBox { 
+    margin-left: -10%;
+    margin-right: -10%;
+    margin-top: 1em;
+  }
 }
 
 /* Hide answerBox on question side. */
@@ -50,115 +62,142 @@ gryzus_card_css = '''html { height: 100%; }
    visibility: hidden;
 }
 
-#answerBox { 
-  padding: 5px;
-  margin-left: 10%;
-  margin-right: 10%;
-  border-radius: 1.2em;
-  background-color: 0;
-}
-.night_mode #answerBox {
-  background-color: 0;
-}
-
 #definition {
-  color: #FFFFFF;
+  color: black;
   margin-bottom: 0.7em;
 }
 .night_mode #definition {
-  color: #FFFFFF;
+  color: #EEE;
 }
 
-#stopgap {
-  font-size: 1em;
-  color: #ADD8E6
+#syn {
+  font-size: 0.85em;
+  color: #DA8547;
+  margin-bottom: 0em;
 }
-.night_mode #stopgap {
-  color: #ADD8E6;
-}
-
-#PoS  {
-  font-size: 1.6em; 
-  color: #cca;
-  margin-top: 1em;
-}
-.night_mode #PoS {
-  color: #cca;
+.night_mode #syn {
+  color: #DA8547;
 }
 
-.typeGood {
-background: green;
-font-size: 34px;
-color: black;
-border-radius: 0px;
-padding-right: 3px;
-padding-left: 3px;
-margin: 0rem;
+#psyn {
+  font-size: 0.85em;
+  margin-top: 0.25em; 
+  color: #777;
+  margin-bottom: 4em;
 }
-
-.typeBad {
-background: red;
-font-size:34px;
-color: black;
-border-radius: 0px;
-padding-right: 3px;
-padding-left: 3px;
-margin: 0rem;
-}
-
-.typeMissed {
-background: orange;
-color: black;
-font-size: 34px;
-border-radius: 0px;
-padding-right: 3px;
-padding-left: 3px;
-margin: 0rem;
-}
-
-input {
-font-size: 30px !important;
-font-family;
-width: 75% !important;
-color: white;
-background-color: #060606 !important;
-border-style: hidden;
-margin: 0em;
-padding-left: 0.3em;
-text-align: left;
+.night_mode #psyn {
+  color: #c0c0c0;
 }
 
 #zdanie {
-  font-size: 34px;
-  margin-top: 0em; 
-  color: #99a;
+  font-size: 1em;
+  margin-top: 0em;
+  color: #495F75;
 }
 .night_mode #zdanie {
   color: #99a;
 }
 
+#pos  {
+  font-size: 0.8em; 
+  color: #DA8547;
+  margin-top: 1em;
+}
+.night_mode #pos {
+  color: #cca;
+}
+
 #etym {
-  font-size: 1em;
+  font-size: 0.7em;
   margin-top: 0.5em; 
-  color: #777;
-  width: 100%;
-  height: 100%;
-  margin: 7px auto 20px;
-  margin-bottom: 3em;
+  color: grey;
+  margin-bottom: 1em;
 }
 .night_mode #etym {
   color: #777;
+}
+
+input {
+  font-size: 38px !important;
+  width: 80% !important;
+  color: black;
+  background-color: #F1F9F6 !important;
+  border-radius: 6px;
+  border-style: groove;
+  padding-left: 0.3em;
+}
+.night_mode input {
+  color: white;
+  background-color: #060606 !important;
+  border-style: solid;
+  border-color: grey;
+  border-width: thin;
+}
+
+.typeGood {
+  background: #13C700;
+  font-size: 38px;
+  color: black;
+  border-radius: 0px;
+  padding-right: 3px;
+  padding-left: 3px;
+}
+.mobile .typeGood {
+  font-size: 30px;
+}
+.night_mode .typeGood {
+  background: green;
+}
+
+.typeBad {
+  background: red;
+  font-size: 38px;
+  color: black;
+  border-radius: 0px;
+  padding-right: 3px;
+  padding-left: 3px;
+}
+.mobile .typeBad {
+  font-size: 30px;
+}
+
+.typeMissed {
+  background: orange;
+  color: black;
+  font-size: 38px;
+  border-radius: 0px;
+  padding-right: 3px;
+  padding-left: 3px;
+}
+.mobile .typeMissed {
+  font-size: 30px;
+}
+
+.replay-button svg circle {
+  fill: white;
+}
+.replay-button svg path {
+  stroke: white;
+  fill: grey;
+}
+.night_mode .replay-button svg circle {
+  fill: #777;
+}
+.night_mode .replay-button svg path {
+  stroke: #060606;
+  fill: #060606;
 }'''
 
 available_notes = {
-    'gryzus-dark': {
-        'name': 'gryzus-dark',
-        'css': gryzus_card_css,
-        'front': gryzus_card_front,
-        'back': gryzus_card_back,
+    'gryzus-std': {
+        'name': 'gryzus-std',
+        'css': gryzus_std_css,
+        'front': gryzus_std_front,
+        'back': gryzus_std_back,
         'fields': [
             'Definicja',
-            'Disambiguation',
+            'Synonimy',
+            'Przykłady synonimów',
             'Słowo',
             'Przykładowe zdanie',
             'Części mowy',

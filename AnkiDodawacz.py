@@ -124,11 +124,11 @@ def config_bulk():
 def print_config():
     commands = list(dict.keys(k.search_commands))
     commands.pop(14)  # usuwa -all
-    cmds = commands[:13]
+    cmds = commands[:13] + commands[28:]
     cmds.insert(10, '')
-    sndcolumn = commands[13:]
-    sndcolumn.insert(14, '')
-    sndcolumn.insert(15, f'{BOLD}[config ankiconnect]{END}')
+    sndcolumn = commands[13:28]
+    cmds.insert(14, '')
+    cmds.insert(15, f'{BOLD}[config ankiconnect]{END}')
     print(f'\n{R}{BOLD}[config dodawania]      [config miscellaneous]      [config bulk]{END}')
     for cmd, sndcmd, erdcolumn in zip_longest(cmds, sndcolumn, k.bulk_cmds, fillvalue=''):
         config_cmd = config.get(f'{k.search_commands.get(cmd, "")}', '')
@@ -148,7 +148,7 @@ def print_config():
         if str(blk_conf).isnumeric():  # Aby wartość z minusem była left-aligned
             blk_conf = ' ' + str(blk_conf)
         blk_conf = blk_conf
-        print('{:13s}{}{:11s}{}{:13s}{}{:15s}{}{:11s}{:}'
+        print('{:14s}{}{:10s}{}{:14s}{}{:14s}{}{:11s}{:}'
               .format(cmd, color_cmd, str(config_cmd), R,
                       sndcmd, color_misc, str(config_misc_print).center(6),
                       R, erdcolumn, blk_conf))
@@ -217,13 +217,16 @@ def add_notes(note_name):
 
 
 def change_fields_order(numb, field_name):
-    default_field_order = {'1': 'definicje', '2': 'disambiguation', '3': 'correct_word', '4': 'zdanie',
-                           '5': 'czesci_mowy', '6': 'etymologia', '7': 'audiofile'}
+    default_field_order = {'1': 'definicja', '2': 'synonimy', '3': 'przyklady', '4': 'phrase',
+                           '5': 'zdanie', '6': 'czesci_mowy', '7': 'etymologia', '8': 'audio'}
     field_order = config['fieldorder']
     if numb in default_field_order.keys() and field_name in default_field_order.values():
         field_order[numb] = field_name
-    elif numb.lower() == 'default':
+    elif numb == 'd' and field_name in default_field_order.keys():
+        save_commands(komenda='fieldorder_d', wartosc=str(field_name))
+    elif numb == 'default':
         field_order = default_field_order
+        save_commands(komenda='fieldorder_d', wartosc='3')
         print(f'{GEX}Przywrócono domyślną kolejność pól:')
     elif numb == '-' and field_name == '-':
         print(f'{BOLD}Aktualna kolejność pól:{END}')
@@ -242,6 +245,8 @@ def change_fields_order(numb, field_name):
             print(f' {BOLD}{printe}')
         else:
             print(f' {printe}')
+        if numb == config['fieldorder_d']:
+            print(f' {delimit_color}D: -----------{R}')
 
 
 def komendo(word):
@@ -290,7 +295,7 @@ def komendo(word):
         one_word_commands[cmd_tuple[0]]()
     elif cmd_tuple[0] == '--add-note':
         add_notes(note_name=cmd_tuple[1])
-    elif cmd_tuple[0] in ('--change-fieldsorder', '--change-fieldorder', '--change-fo'):
+    elif cmd_tuple[0] in ('-fieldsorder', '-fieldorder', '-fo'):
         try:
             numb = cmd_tuple[1].lower().strip(r"']\,. ")
             field_name = cmd_tuple[2].lower().strip(r"']\,. ")
@@ -354,12 +359,12 @@ def audio_diki(url, diki_link, lock):
     except IndexError:
         if not lock:
             print(f"{error_color}Diki nie posiada pożądanego audio\n{YEX}Spróbuję dodać co łaska...")
-            if correct_word.startswith('('):
-                attempt = correct_word.split(') ')[-1]
-            elif correct_word.endswith(')'):
-                attempt = correct_word.split(' (')[0]
+            if phrase.startswith('('):
+                attempt = phrase.split(') ')[-1]
+            elif phrase.endswith(')'):
+                attempt = phrase.split(' (')[0]
             else:
-                attempt = correct_word.split(' (')[0] + correct_word.split(')')[-1]
+                attempt = phrase.split(' (')[0] + phrase.split(')')[-1]
             return audio_diki(url='https://www.diki.pl/slownik-angielskiego?q=' + attempt, diki_link=attempt, lock=True)
         else:
             print(f"{error_color}Nie udało się pozyskać audio\nKarta zostanie dodana bez audio")
@@ -374,18 +379,18 @@ def audio_diki(url, diki_link, lock):
 def audio_ahd(url):
     reqs = requests_session_ah.get(url)
     soup = BeautifulSoup(reqs.content, 'lxml', from_encoding='utf-8')
-    audio = soup.find('a', {'target': '_blank'}).get('href')
-    if audio == 'http://www.hmhco.com':
+    audio_raw = soup.find('a', {'target': '_blank'}).get('href')
+    if audio_raw == 'http://www.hmhco.com':
         print(f"{error_color}AHD nie posiada pożądanego audio\n{YEX}Sprawdzam diki...")
-        diki_link = correct_word.replace('(', '').replace(')', '')
+        diki_link = phrase.replace('(', '').replace(')', '')
         # Tutaj jest True, bo wyszukania na AHD nie mają nawiasów, a trudno jest znaleźć słowo, które nie ma wymowy
         # na AHD, a na diki jest niewyszukiwalne
         return audio_diki(url='https://www.diki.pl/slownik-angielskiego?q=' + diki_link, diki_link=diki_link, lock=True)
     else:
-        audiofile_name = audio.split('/')[-1]
+        audiofile_name = audio_raw.split('/')[-1]
         audiofile_name = audiofile_name.split('.')[0] + '.wav'
         audio_link = 'https://www.ahdictionary.com'
-        audio_link += audio
+        audio_link += audio_raw
         return audio_link, audiofile_name
 
 
@@ -393,9 +398,9 @@ def search_for_audio(server):
     if config['dodaj_audio']:
         try:
             if server == 'ahd':
-                audio_link, audio_end = audio_ahd(url='https://www.ahdictionary.com/word/search.html?q=' + correct_word)
+                audio_link, audio_end = audio_ahd(url='https://www.ahdictionary.com/word/search.html?q=' + phrase)
             else:
-                diki_link0 = correct_word.replace('(', '').replace(')', '')
+                diki_link0 = phrase.replace('(', '').replace(')', '')
                 diki_link = diki_link0.replace(' or something', '').replace('someone', 'somebody')
                 audio_link, audio_end = audio_diki(url='https://www.diki.pl/slownik-angielskiego?q=' + diki_link,
                                                    diki_link=diki_link, lock=False)
@@ -469,7 +474,7 @@ def conf_to_int(conf_val):
 
 # Rysowanie AHD
 def rysuj_slownik(url):
-    global correct_word
+    global phrase
     global skip_check
     term_width = terminal_width()
     if config['indent'] > term_width // 2:
@@ -499,7 +504,7 @@ def rysuj_slownik(url):
                         correct_word0 = meaning_num.text
                         correct_word1 = correct_word0.replace('·', '')
                         correct_word_to_print = re.sub(r'\d', '', correct_word1).strip()
-                        correct_word = correct_word_to_print.strip('-–')
+                        phrase = correct_word_to_print.strip('-–')
                         if correct_word_index == 1:
                             wdg = f'{BOLD}Wyniki dla {word_color}{correct_word_to_print}{END}'
                             # RESET i BOLD jest brane pod uwagę przy center
@@ -520,7 +525,7 @@ def rysuj_slownik(url):
                     else:
                         ah_def_print(indexing, term_width, definition=meaning.text)
 
-                    hide_and_append(rex5, definicje, hide='ukryj_slowo_w_definicji')
+                    hide_and_append(rex5, definicja, hide='ukryj_slowo_w_definicji')
 
                 print()
                 for pos in td.find_all(class_='runseg'):  # Dodaje części mowy
@@ -578,10 +583,10 @@ def input_func(_input, hide):
         return -1
     elif _input.startswith('/'):
         if config[hide]:
-            return _input.replace(correct_word, '...') \
-                .replace(correct_word.lower(), '...') \
-                .replace(correct_word.upper(), '...') \
-                .replace(correct_word.capitalize(), '...')  # To jest szybsze niż regex i obejmuje wszystkie sensowne sytuacje
+            return _input.replace(phrase, '...') \
+                .replace(phrase.lower(), '...') \
+                .replace(phrase.upper(), '...') \
+                .replace(phrase.capitalize(), '...')  # To jest szybsze niż regex i obejmuje wszystkie sensowne sytuacje
         return _input
     return -2
 
@@ -636,11 +641,11 @@ def czesci_mowy_input():
 def definicje_input():
     if config['dodaj_definicje']:
         if config['bulk_add'] and not config['bulk_free_def']:
-            return config['def_blk'], definicje
+            return config['def_blk'], definicja
         if not config['bulk_add'] or config['bulk_free_def']:
             wybor_definicji = input(f'{input_color}\nWybierz definicję:{inputtext_color} ')
-            return input_func(wybor_definicji, 'ukryj_slowo_w_definicji'), definicje
-    return 0, definicje
+            return input_func(wybor_definicji, 'ukryj_slowo_w_definicji'), definicja
+    return 0, definicja
 
 
 # Bierze wybór z input_func i wydaje adekwatne informacje na kartę
@@ -664,7 +669,7 @@ def choice_func(wybor, elem_content, connector):
     elif len(elem_content) >= wybor > 0 and connector != ' | ':
         return elem_content[wybor - 1]
     elif wybor > len(elem_content) or wybor == -1 or wybor >= 1 and connector == ' | ':
-        return connector.join(elem_content)  # Pola z disambiguation nie potrzebują "<br>", bo nie są aż tak obszerne
+        return connector.join(elem_content)
     elif wybor == -2:
         skip_check = 1
         print(f'{GEX}Pominięto dodawanie karty')
@@ -677,27 +682,27 @@ def rysuj_synonimy(syn_soup):
     for synline in syn_soup.find_all('li'):
         syn_stream.append(synline.text)
     for index, ele in enumerate(syn_stream, start=1):
-        przyklady = re.findall(r'\"(.+?)\"', ele)
-        przyklady2 = re.sub("[][]", "", str(przyklady))  # do wyświetlenia w karcie
-        przyklady3 = re.sub("',", "'\n   ", przyklady2)
-        przyklady4 = re.sub(r"\A[']", "\n    '", przyklady3)  # do narysowania
-        synonimy, sep, tail = ele.partition('"')  # oddziela synonimy od przykładów
-        synonimy0 = synonimy.replace("S:", "")  # do rysowania synonimów z kategoryzacją wordnetu
+        przyklady0 = re.findall(r'\"(.+?)\"', ele)
+        przyklady1 = re.sub("[][]", "", str(przyklady0))  # do wyświetlenia w karcie
+        przyklady2 = re.sub("',", "'\n   ", przyklady1)
+        przyklady4 = re.sub(r"\A[']", "\n    '", przyklady2)  # do narysowania
+        synonimy0, sep, tail = ele.partition('"')  # oddziela synonimy od przykładów
+        synonimy1 = synonimy0.replace("S:", "")  # do rysowania synonimów z kategoryzacją wordnetu
 
-        syndef0 = synonimy0.split('(', 2)[2]
+        syndef0 = synonimy1.split('(', 2)[2]
         syndef = '(' + syndef0
-        pos = synonimy0.split(')')[0]
+        pos = synonimy1.split(')')[0]
         pos = pos + ')'
 
-        synonimy1 = re.sub(r"\([^()]*\)", "", synonimy0)  # usuwa pierwszy miot nawiasów
-        synonimy2 = re.sub(r"\(.*\)", "", synonimy1)  # usuwa resztę nawiasów
-        synonimy3 = re.sub(r"\s{2}", "", synonimy2)
+        synonimy2 = re.sub(r"\([^()]*\)", "", synonimy1)  # usuwa pierwszy miot nawiasów
+        synonimy3 = re.sub(r"\(.*\)", "", synonimy2)  # usuwa resztę nawiasów
+        synonimy4 = re.sub(r"\s{2}", "", synonimy3)
 
-        hide_and_append(przyklady2, grupa_przykladow, hide='ukryj_slowo_w_disamb')
-        hide_and_append(synonimy3, grupa_synonimow, hide='ukryj_slowo_w_disamb')
+        hide_and_append(przyklady1, grupa_przykladow, hide='ukryj_slowo_w_disamb')
+        hide_and_append(synonimy4, grupa_synonimow, hide='ukryj_slowo_w_disamb')
 
         if config['showdisamb']:
-            syn_tp = print_elems(synonimy3 + '\n   ', term_width=conf_to_int(config['textwidth']),
+            syn_tp = print_elems(synonimy4 + '\n   ', term_width=conf_to_int(config['textwidth']),
                                  index_width=len(str(index)),
                                  indento=3, gap=3 + len(str(pos)), break_allowed=False)
             syndef_tp = print_elems(syndef, term_width=conf_to_int(config['textwidth']), index_width=len(str(index)),
@@ -718,7 +723,7 @@ def disambiguator(url_synsearch):
         syn_soup = BeautifulSoup(reqs_syn.content, 'lxml', from_encoding='iso-8859-1')
         no_word = syn_soup.find('h3')
         if len(str(no_word)) == 48 or len(str(no_word)) == 117:
-            print(f'{error_color}\nNie znaleziono {word_color}{correct_word}{error_color} na {R}WordNecie')
+            print(f'{error_color}\nNie znaleziono {word_color}{phrase}{error_color} na {R}WordNecie')
             skip_check_disamb = 1
         else:
             if config['showdisamb']:
@@ -750,7 +755,7 @@ def hide_and_append(content, group_of_elems, hide):
                             'through', 'to', 'towards', 'under', 'underneath', 'unlike', 'until', 'up', 'upon', 'via',
                             'with', 'within', 'without')
 
-        words_th = correct_word.lower().split(' ')
+        words_th = phrase.lower().split(' ')
         words_th_s_exceptions = (x.rstrip('y')+'ies' for x in words_th if x.endswith('y'))
         words_th_ing_exceptions = (x.rstrip('e')+'ing' for x in words_th if x.endswith('e') and x not in prepositions)
         words_th_ing_exceptions2 = (x.rstrip('ie')+'ying' for x in words_th if x.endswith('ie'))
@@ -782,7 +787,7 @@ def hide_and_append(content, group_of_elems, hide):
 
 def farlex_idioms(url_idiomsearch):
     global skip_check
-    global correct_word
+    global phrase
     try:
         reqs_idioms = requests.get(url_idiomsearch, timeout=10)
         idiom_soup = BeautifulSoup(reqs_idioms.content, 'lxml', from_encoding='utf-8')
@@ -797,7 +802,7 @@ def farlex_idioms(url_idiomsearch):
             idiom_defs = idiom_div.findAll(class_=('ds-list', 'ds-single'))
             print(f'{conf_to_int(config["delimsize"])*"-"}')
             print(f'  {word_color}{idiom}')
-            correct_word = idiom
+            phrase = idiom
             for inx, defin in enumerate(idiom_defs, start=1):
                 idiom_definition = defin.find(text=True, recursive=False)
                 if len(str(idiom_definition)) < 5:
@@ -816,7 +821,7 @@ def farlex_idioms(url_idiomsearch):
                                            index_width=len(str(inx)), indento=config['indent']+1,
                                            gap=3, break_allowed=False)
 
-                hide_and_append(idiom_def, definicje, hide='ukryj_slowo_w_idiom')
+                hide_and_append(idiom_def, definicja, hide='ukryj_slowo_w_idiom')
 
                 if indek == 0:
                     print(f'{index_color}{inx} : {def1_color}{idiom_def_tp}')
@@ -900,17 +905,22 @@ def organize_notes(bf, adqt_mf_conf):
 
 # Tworzenie karty
 def utworz_karte():
+    global ankiconf
     if config['ankiconnect']:
-        base_fields = {'słowo': correct_word, 'slowo': correct_word, 'word': correct_word, 'defin': definicje,
-                       'gloss': definicje, 'disamb': disambiguation, 'synon': disambiguation, 'zdanie': zdanie,
-                       'sentence': zdanie, 'części': czesci_mowy, 'czesci': czesci_mowy, 'parts of speech': czesci_mowy,
-                       'part of speech': czesci_mowy, 'etym': etymologia, 'audio': audiofile, 'sound': audiofile,
-                       'pronunciation': audiofile, 'wymowa': audiofile, 'dźwięk': audiofile, 'dzwiek': audiofile}
+        base_fields = {'defin': definicja, 'gloss': definicja,
+                       'disamb': synonimy, 'synon': synonimy, 'usunięcie d': synonimy, 'usuniecie d': synonimy, 'ujednoznacz': synonimy,
+                       'przykłady': przyklady, 'przyklady': przyklady, 'psyn': przyklady, 'examples': przyklady,
+                       'słowo': phrase, 'slowo': phrase, 'phrase': phrase, 'word': phrase,
+                       'zdanie': zdanie, 'pz': zdanie, 'sentence': zdanie,
+                       'części': czesci_mowy, 'czesci': czesci_mowy, 'parts of speech': czesci_mowy, 'part of speech': czesci_mowy,
+                       'etym': etymologia,
+                       'audio': audio, 'sound': audio, 'pronunciation': audio, 'wymowa': audio, 'dźwięk': audio, 'dzwiek': audio}
         adqt_model_fields = {}
         adqt_model_fields_conf = {}
         try:
+            fields_ankiconf = ankiconf.get(config['note'], '')
             err_org = ''  # aby wiadomości błędów się nie powielały
-            if config['note'] not in ankiconf:  # aby nie sprawdzać dla znajomej notatki
+            if fields_ankiconf == {} or config['note'] not in ankiconf:  # aby nie sprawdzać dla znajomej notatki
                 err_org = organize_notes(base_fields, adqt_model_fields_conf)
 
             config_note = ankiconf.get(config['note'], '')
@@ -959,35 +969,33 @@ def utworz_karte():
                        f'{eval(config["fieldorder"]["4"])}\t'
                        f'{eval(config["fieldorder"]["5"])}\t'
                        f'{eval(config["fieldorder"]["6"])}\t'
-                       f'{eval(config["fieldorder"]["7"])}\n')
+                       f'{eval(config["fieldorder"]["7"])}\t'
+                       f'{eval(config["fieldorder"]["8"])}\n')
             print(f'{YEX}Karta zapisana do pliku\n')
-            return None
     except (NameError, KeyError):
-        print(f"{error_color}Dodawanie karty do pliku nie powiodło się\n"
-              f"Aby przywrócić domyślną kolejność pól wpisz {R}--change-fo default\n")
+        print(f'{error_color}Dodawanie karty do pliku nie powiodło się\n'
+              f'Spróbuj przywrócić domyślne ustawienia pól wpisując {R}-fo default\n')
 
 
 def wyswietl_karte():
-    delimit = conf_to_int(config["delimsize"])
+    ctf = {'definicja': def1_color, 'synonimy': syn_color, 'przyklady': psyn_color, 'phrase': word_color,
+           'zdanie': '', 'czesci_mowy': pos_color, 'etymologia': etym_color, 'audio': ''}
+    delimit = conf_to_int(config['delimsize'])
     centr = conf_to_int(config['center'])
     options = (conf_to_int(config['textwidth']), 0, 0, 0, False)
 
-    print(f'\n{delimit_color}{delimit * "-"}')
-    for definition_tp in print_elems(definicje, *options).split('\n'):
-        print(f"{def1_color}{definition_tp.center(centr)}")
-    for disamb_tp in print_elems(disamb_synonimy, *options).split('\n'):
-        print(f'{syn_color}{disamb_tp.center(centr)}')
-    for disamb_psyn_tp in print_elems(disamb_przyklady, *options).split('\n'):
-        print(f'{psyn_color}{disamb_psyn_tp.center(centr)}')
-    print(f'{delimit_color}{delimit * "-"}')
-    print(f'{word_color}{correct_word.center(centr)}')
-    for zdanie_tp in print_elems(zdanie, *options).split('\n'):
-        print(zdanie_tp.center(centr))
-    print(f'{pos_color}{czesci_mowy.center(centr)}')
-    for etym_tp in print_elems(etymologia, *options).split('\n'):
-        print(f'{etym_color}{etym_tp.center(centr)}')
-    print(audiofile.center(centr))
-    print(f'{delimit_color}{delimit * "-"}')
+    try:
+        print(f'\n{delimit_color}{delimit * "-"}')
+        for field in config['fieldorder'].keys():
+            for fi in print_elems(eval(config['fieldorder'][field]), *options).split('\n'):
+                print(f'{ctf[config["fieldorder"][field]]}{fi.center(centr)}')
+            if field == config['fieldorder_d']:
+                print(f'{delimit_color}{delimit * "-"}')
+        print(f'{delimit_color}{delimit * "-"}')
+    except (NameError, KeyError):
+        print(f'{error_color}\nDodawanie karty do pliku nie powiodło się\n'
+              f'Spróbuj przywrócić domyślne ustawienia pól wpisując {R}-fo default\n')
+        return 1  #skip_check
 
 
 def create_note(note_config):
@@ -999,7 +1007,7 @@ def create_note(note_config):
         return f'{error_color}Włącz Anki, aby dodać notatkę'
     try:
         if note_config['name'] in connected:
-            return f'{YEX}Notatka {R}{note_config["name"]}"{YEX} już znajduje się w bazie notatek'
+            return f'{YEX}Notatka {R}"{note_config["name"]}"{YEX} już znajduje się w bazie notatek'
 
         result = invoke('createModel',
                         modelName=note_config['name'],
@@ -1013,7 +1021,7 @@ def create_note(note_config):
         else:
             print(f'{GEX}\nNotatka utworzona pomyślnie\n')
 
-        note_ok = input(f'{YEX}Dodawać karty według {R}"{note_config["name"]}"? [t/N]: ')
+        note_ok = input(f'{YEX}Chcesz ustawić {R}"{note_config["name"]}" {YEX}jako -note?{R} [t/N]: ')
 
         if note_ok.lower() in ('1', 't', 'y', 'tak', 'yes'):
             config['note'] = note_config['name']
@@ -1033,14 +1041,13 @@ try:
         skip_check = 0
         skip_check_disamb = 0
         farlex = False
-        correct_word = ''
+        phrase = ''
         zdanie = ''
-        audiofile = ''
-        disambiguation = ''
-        disamb_synonimy = ''
-        disamb_przyklady = ''
+        audio = ''
+        synonimy = ''
+        przyklady = ''
         idiom_przyklady = ''
-        definicje = []
+        definicja = []
         czesci_mowy = []
         etymologia = []
         grupa_przykladow = []
@@ -1067,11 +1074,11 @@ try:
                     break
             if config['tworz_karte']:
                 if not farlex:
-                    audiofile = search_for_audio(server='ahd')
+                    audio = search_for_audio(server='ahd')
                     zdanie = ogarnij_zdanie(zdanie_input())  # Aby wyłączyć dodawanie zdania w bulk wystarczy -pz off
                     if skip_check == 1:  # ten skip_check jest niemożliwy przy bulk
                         break
-                    definicje = choice_func(*definicje_input(), connector='<br>')
+                    definicja = choice_func(*definicje_input(), connector='<br>')
                     if skip_check == 1:
                         break
                     czesci_mowy = choice_func(*czesci_mowy_input(), connector=' | ')
@@ -1081,11 +1088,11 @@ try:
                     if skip_check == 1:
                         break
                 else:
-                    audiofile = search_for_audio(server='diki')
+                    audio = search_for_audio(server='diki')
                     zdanie = ogarnij_zdanie(zdanie_input())
                     if skip_check == 1:
                         break
-                    definicje = choice_func(*definicje_input(), connector='<br>')
+                    definicja = choice_func(*definicje_input(), connector='<br>')
                     if skip_check == 1:
                         break
                     czesci_mowy = ''
@@ -1094,31 +1101,29 @@ try:
                     if skip_check == 1:
                         break
                     if len(idiom_przyklady) > 1:
-                        definicje = definicje + '<br>' + idiom_przyklady
-                    else:
-                        definicje = definicje
+                        definicja = definicja + '<br>' + idiom_przyklady
                 if config['disambiguation']:
-                    disambiguator(url_synsearch='http://wordnetweb.princeton.edu/perl/webwn?s=' + correct_word)
+                    disambiguator(url_synsearch='http://wordnetweb.princeton.edu/perl/webwn?s=' + phrase)
                 if not config['bulk_add'] or config['bulk_add'] and \
                         (config['syn_blk'] != 0 or config['psyn_blk'] != 0 or config['bulk_free_syn']):
-
                     if skip_check_disamb == 0:
-                        disamb_synonimy = choice_func(*disamb_input_syn(), connector=' ')
+                        synonimy = choice_func(*disamb_input_syn(), connector=' | ')
                         if skip_check == 1:
                             break
-                        disamb_przyklady = choice_func(*disamb_input_przyklady(), connector=' ')
+                        przyklady = choice_func(*disamb_input_przyklady(), connector='<br>')
                         if skip_check == 1:
                             break
-                        if config['dodaj_synonimy'] and config['dodaj_przyklady_synonimow']:
-                            disambiguation = disamb_synonimy + '<br>' + disamb_przyklady
-                        else:
-                            disambiguation = disamb_synonimy + disamb_przyklady
+                    if config['mergedisamb']:
+                        synonimy = synonimy + '<br>' + przyklady
+                        przyklady = ''
                 if config['showcard']:
-                    wyswietl_karte()
+                    skip_check = wyswietl_karte()
+                    if skip_check == 1:
+                        break
                 print()
                 utworz_karte()
             else:
-                disambiguator(url_synsearch='http://wordnetweb.princeton.edu/perl/webwn?s=' + correct_word)
+                disambiguator(url_synsearch='http://wordnetweb.princeton.edu/perl/webwn?s=' + phrase)
             break
 except KeyboardInterrupt:
     print(f'{R}\nZakończono')  # R musi tu być, aby kolory z "inputtext" nie wchodziły
