@@ -11,8 +11,17 @@ if sys.platform.startswith('linux'):
     BOLD = '\033[1m'
     END = '\033[0m'
 
-with open("config.yml", "r") as readconfig:
-    config = yaml.load(readconfig, Loader=yaml.Loader)
+try:
+    with open("config.yml", "r") as readconfig:
+        config = yaml.load(readconfig, Loader=yaml.Loader)
+except FileNotFoundError:
+    with open("config.yml", "w") as writeconfig:
+        writeconfig.write("""attention_c: Fore.LIGHTYELLOW_EX\ndef1_c: Fore.RESET\ndef2_c: Fore.RESET\ndelimit_c: Fore.RESET
+error_c: Fore.LIGHTRED_EX\netym_c: Fore.RESET\nindex_c: Fore.LIGHTGREEN_EX\ninput_c: Fore.RESET\ninputtext_c: Fore.RESET
+pidiom_c: Fore.RESET\npos_c: Fore.YELLOW\npsyn_c: Fore.RESET\nsyn_c: Fore.YELLOW\nsyndef_c: Fore.RESET\nsynpos_c: Fore.RESET
+word_c: Fore.CYAN\nsave_path: ''""")
+    with open("config.yml", "r") as readconfig:
+        config = yaml.load(readconfig, Loader=yaml.Loader)
 
 YEX = eval(config['attention_c'])
 R = Fore.RESET
@@ -63,7 +72,7 @@ np. "--syn-c lightblue", "--pos-c magenta" itd.
 Aby zastosować kolory, zrestartuj program
 
                  {BOLD}[Zmienia kolor]{END}
---def1-c         {def1_color}nieparzystych definicji oraz definicji idiomów{R}
+--def1-c         {def1_color}nieparzystych definicji i definicji idiomów{R}
 --def2-c         {def2_color}parzystych definicji{R}
 --pos-c          {pos_color}części mowy w słowniku{R}
 --etym-c         {etym_color}etymologii w słowniku{R}
@@ -111,11 +120,11 @@ search_commands = {
                    '-etym': 'dodaj_etymologie', '-audio': 'dodaj_audio', '-disamb': 'disambiguation',
                    '-syn': 'dodaj_synonimy', '-psyn': 'dodaj_przyklady_synonimow', '-pidiom': 'dodaj_przyklady_idiomow',
                    '-karty': 'tworz_karte', '-bulk': 'bulk_add', '-bulkfdef': 'bulk_free_def',
-                   '-bulkfsyn': 'bulk_free_syn', '-fs': 'pokazuj_filtrowany_slownik',
+                   '-bulkfsyn': 'bulk_free_syn', '-mergedisamb': 'mergedisamb', '-fs': 'pokazuj_filtrowany_slownik',
                    '-all': '-all',
                    '-upz': 'ukryj_slowo_w_zdaniu', '-udef': 'ukryj_slowo_w_definicji', '-udisamb': 'ukryj_slowo_w_disamb',
                    '-uidiom': 'ukryj_slowo_w_idiom', '-upreps': 'ukryj_przyimki', '-showcard': 'showcard',
-                   '-showdisamb': 'showdisamb', '-mergedisamb': 'mergedisamb', '-wraptext': 'wrap_text', '-break': 'break',
+                   '-showdisamb': 'showdisamb', '-wraptext': 'wrap_text', '-break': 'break',
                    '-textwidth': 'textwidth', '-indent': 'indent', '-delimsize': 'delimsize', '-center': 'center',
                    '-ankiconnect': 'ankiconnect', '-duplicates': 'duplicates', '-dupscope': 'dupscope', '-note': 'note',
                    '-deck': 'deck', '-tags': 'tags'
@@ -136,6 +145,48 @@ color_message = {
                  '--syndef-c': 'Kolor definicji przy synonimach', '--error-c': 'Kolor błędów',
                  '--attention-c': 'Kolor zwracający uwagę', '--delimit-c': 'Kolor odkreśleń',
                  '--input-c': 'Kolor pól na input', '--inputtext-c': 'Kolor wpisywanego tekstu'}
+
+base_fields = {
+    'defin': 'definicja',
+    'gloss': 'definicja',
+
+    'disamb': 'synonimy',
+    'synon': 'synonimy',
+    'usunięcie d': 'synonimy',
+    'usuniecie d': 'synonimy',
+    'ujedn': 'synonimy',
+
+    'przykłady': 'przyklady',
+    'przyklady': 'przyklady',
+    'psyn': 'przyklady',
+    'examples': 'przyklady',
+
+    'słowo': 'phrase',
+    'slowo': 'phrase',
+    'fraz': 'phrase',
+    'phras': 'phrase',
+    'word': 'phrase',
+    'vocab': 'phrase',
+
+    'zdanie': 'zdanie',
+    'pz': 'zdanie',
+    'sentence': 'zdanie',
+
+    'części': 'czesci_mowy',
+    'czesci': 'czesci_mowy',
+    'parts of speech': 'czesci_mowy',
+    'part of speech': 'czesci_mowy',
+
+    'etym': 'etymologia',
+
+    'audio': 'audio',
+    'sound': 'audio',
+    'pronunciation': 'audio',
+    'wymowa': 'audio',
+    'dźwięk': 'audio',
+    'dzwiek': 'audio',
+    'media': 'audio'
+}
 
 
 def help_command():
@@ -210,23 +261,24 @@ def help_commands_command():
 Aby zmienić wartość dla komendy wpisz {BOLD}on/off{END}
 np. "-pz off", "-disamb on", "-all off" itd.
 
-{BOLD}[Komenda]    [włącza/wyłącza]{END}
--pz          dodawanie zdania
--def         dodawanie definicji
--pos         dodawnie części mowy
--etym        dodawanie etymologii
--disamb      pokazywanie synonimów
--syn         dodawanie synonimów
--psyn        dodawanie przykładów syn.
--pidiom      dodawanie przyk. idiomów
--audio       dodawanie audio
--all         zmienia wartości powyższych ustawień
+{BOLD}[Komenda]      [włącza/wyłącza]{END}
+-pz            dodawanie zdania
+-def           dodawanie definicji
+-pos           dodawnie części mowy
+-etym          dodawanie etymologii
+-disamb        pokazywanie synonimów
+-syn           dodawanie synonimów
+-psyn          dodawanie przykładów syn.
+-pidiom        dodawanie przyk. idiomów
+-audio         dodawanie audio
+-all           zmienia wartości powyższych ustawień
 
--karty       dodawanie kart
+-karty         dodawanie kart
+-mergedisamb   dołączanie zawartości pola "przykłady" do pola "synonimy"
 
--bulk        masowe dodawanie
--bulkfdef    swobodne masowe dodawanie definicji
--bulkfsyn    swobodne masowe dodawanie synonimów
+-bulk          masowe dodawanie
+-bulkfdef      swobodne masowe dodawanie definicji
+-bulkfsyn      swobodne masowe dodawanie synonimów
 
 --audio-path lub --save-path:
  Umożliwia zmianę miejsca zapisu audio
@@ -259,7 +311,6 @@ Ukrywanie hasła to zamiana wyszukiwanego słowa na "..."
 -showcard        pokazywanie przykładowego wyglądu karty
 -showdisamb      pokazywanie słownika synonimów
                  (przydatne do ograniczenia przewijania podczas bulk)
--mergedisamb     dołącza zawartość pola "przykłady" do pola "synonimy"
 
 -wraptext        zawijanie tekstu
 -break           wstawianie nowej linii po definicji
@@ -283,11 +334,15 @@ Ukrywanie hasła to zamiana wyszukiwanego słowa na "..."
 -config                   wyświetla informacje o aktualnej konfiguracji
 
 -fo
--fieldsorder              zmiana kolejności dodawanych pól dla karty.txt
+-fieldorder               zmiana kolejności dodawanych pól dla karty.txt
 -fo default               przywraca domyślną kolejność pól
--fo [1-7] [pole]          zmienia pole znajdujące się pod podanym
+-fo [1-8] [pole]          zmienia pole znajdujące się pod podanym
                           numerem, na wskazane pole
+-fo d [1-8]               przesunie odkreślenie (delimitation)
+                          pod pole z podanym numerem
+
 np. -fo 1 audio           zmieni pole "definicja" (1) na pole "audio"
+np. -fo d 5               przesunie odkreślenie pod pole "zdanie" (5)
 
 {BOLD}Komendy AnkiConnect:{END}
 -ankiconnect [on/off]     bezpośrednie dodawanie kart do Anki
@@ -298,6 +353,8 @@ np. -fo 1 audio           zmieni pole "definicja" (1) na pole "audio"
           deck            w obrębie talii
           collection      w obrębie całej kolekcji
 -note [nazwa notatki]     notatka używana do dodawania kart
+-notes refresh            odświeżenie aktualnej notatki
+                          (jeżeli nazwy pól notatki w Anki zostały zmienione)
 -deck [nazwa talii]       talia używana do otrzymywania kart
 -tags [tagi]              określa dodawane tagi
                           aby dodać więcej tagów, oddziel je przecinkiem

@@ -15,7 +15,7 @@ gryzus_std_front = '''<div id="questionSide">
 
 gryzus_std_back = '''<div id="answerSide">
   {{FrontSide}}
-  <div>{{Audio}}</div>
+  {{Audio}}
 </div>'''
 
 gryzus_std_css = '''.card {
@@ -37,7 +37,7 @@ gryzus_std_css = '''.card {
 #questionBox {
   margin-top: 1em;
 }
-@media screen and (max-width: 721px) {
+@media screen and (max-width: 900px) {
   #questionBox {
     margin-left: -10%;
     margin-right: -10%;
@@ -48,7 +48,7 @@ gryzus_std_css = '''.card {
 #answerBox {
   margin-top: 2em;
 }
-@media screen and (max-width: 721px) {
+@media screen and (max-width: 900px) {
   #answerBox { 
     margin-left: -10%;
     margin-right: -10%;

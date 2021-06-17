@@ -1,4 +1,4 @@
-import json  # dla ankiconnect invoke
+import json  # Dla ankiconnect invoke
 import os
 import os.path
 import re
@@ -17,24 +17,31 @@ import komendy as k
 import notatki
 from komendy import BOLD, END
 
-requests_session_ah = requests.Session()
-with open("config.yml", "r") as f:
-    config = yaml.load(f, Loader=yaml.Loader)
-
-with open("ankiconnect.yml", "r") as a:
-    ankiconf = yaml.load(a, Loader=yaml.Loader)
-
 if sys.platform.startswith('linux'):
     # Zapisywanie historii komend. Ten moduł jest niepotrzebny i nie działa na windowsie
     import readline
     readline.read_init_file()
 
+# Nie trzeba tu try i except bo config jest otwierany pierwszy w komendy.py
+with open("config.yml", "r") as f:
+    config = yaml.load(f, Loader=yaml.Loader)
+
 if not os.path.exists('Karty_audio') and config['save_path'] == 'Karty_audio':
     os.mkdir('Karty_audio')  # Aby nie trzeba było tworzyć folderu ręcznie
 
-print(f"""{BOLD}- Dodawacz kart do Anki v0.6.0 -{END}\n
+try:
+    with open("ankiconnect.yml", "r") as a:
+        ankiconf = yaml.load(a, Loader=yaml.Loader)
+except FileNotFoundError:
+    with open("ankiconnect.yml", "w") as a:
+        a.write('{}')
+
+__version__ = 'v0.6.0'
+
+print(f"""{BOLD}- Dodawacz kart do Anki {__version__} -{END}\n
 Wpisz "--help", aby wyświetlić pomoc\n\n""")
 
+requests_session_ah = requests.Session()
 
 # Ustawia kolory
 YEX = eval(config['attention_c'])
@@ -123,12 +130,16 @@ def config_bulk():
 
 def print_config():
     commands = list(dict.keys(k.search_commands))
-    commands.pop(14)  # usuwa -all
-    cmds = commands[:13] + commands[28:]
+    commands.pop(15)  # usuwa -all
+    # pierwsza kolumna do bulkfsyn i od ankiconnect
+    cmds = commands[:14] + commands[28:]
+    # blank po mergedisamb
     cmds.insert(10, '')
-    sndcolumn = commands[13:28]
-    cmds.insert(14, '')
-    cmds.insert(15, f'{BOLD}[config ankiconnect]{END}')
+    # blank po bulkfsyn
+    cmds.insert(15, '')
+    cmds.insert(16, f'{BOLD}[config ankiconnect]{END}')
+    # druga kolumna wszystko co pozostało
+    sndcolumn = commands[14:28]
     print(f'\n{R}{BOLD}[config dodawania]      [config miscellaneous]      [config bulk]{END}')
     for cmd, sndcmd, erdcolumn in zip_longest(cmds, sndcolumn, k.bulk_cmds, fillvalue=''):
         config_cmd = config.get(f'{k.search_commands.get(cmd, "")}', '')
@@ -152,7 +163,7 @@ def print_config():
               .format(cmd, color_cmd, str(config_cmd), R,
                       sndcmd, color_misc, str(config_misc_print).center(6),
                       R, erdcolumn, blk_conf))
-    print(f'\n--audio-path: {config["save_path"]}')
+    print(f'\n--audio-path: {config.get("save_path", "")}')
     print('\nkonfiguracja kolorów --config-colors\n')
 
 
@@ -254,9 +265,9 @@ def komendo(word):
                          '--delete-last': delete_last_card, '--delete-recent': delete_last_card,
                          '--config-bulk': config_bulk, '-conf': print_config, '-config': print_config,
                          '-h': k.help_command, '--help': k.help_command, '--help-bulk': k.help_bulk_command,
-                         '--help-commands': k.help_commands_command, '--help-colors': k.color_command,
-                         '--help-color': k.color_command, '--config-colors': k.color_command,
-                         '--config-color': k.color_command}
+                         '--help-commands': k.help_commands_command, '--help-command': k.help_commands_command,
+                         '--help-colors': k.color_command, '--help-color': k.color_command,
+                         '--config-colors': k.color_command, '--config-color': k.color_command}
     loc_word = word + ' '
     cmd_tuple = loc_word.split(' ')
     cmd_tuple[0] = cmd_tuple[0].lower()
@@ -295,6 +306,9 @@ def komendo(word):
         one_word_commands[cmd_tuple[0]]()
     elif cmd_tuple[0] == '--add-note':
         add_notes(note_name=cmd_tuple[1])
+    elif cmd_tuple[0] == '-notes' and cmd_tuple[1] in ('refresh', 'r'):
+        organize_notes(k.base_fields, adqt_mf_config={})
+        print(f'{YEX}Pola notatki {R}{config["note"]}{YEX} odświeżone')
     elif cmd_tuple[0] in ('-fieldsorder', '-fieldorder', '-fo'):
         try:
             numb = cmd_tuple[1].lower().strip(r"']\,. ")
@@ -320,6 +334,8 @@ def komendo(word):
 def szukaj():
     word = input(f'{input_color}Szukaj:{inputtext_color} ').strip()
     word = komendo(word)
+    if word.strip() == '':
+        return None
     return word
 
 
@@ -446,7 +462,12 @@ def ah_def_print(indexing, term_width, definition):
 
 
 def terminal_width():
-    term_width = str(config['textwidth'])
+    try:
+        term_width = str(config['textwidth'])
+    except KeyError:
+        print(f'{error_color}Plik {R}config.yml{error_color} jest niekompletny\n'
+              f'Wypełnij plik konfiguracyjny')
+        return 79
     try:
         term_width_auto = str(os.get_terminal_size()).lstrip('os.terminal_size(columns=').split(',')[0]
         term_width_auto = int(term_width_auto)
@@ -508,7 +529,7 @@ def rysuj_slownik(url):
                         if correct_word_index == 1:
                             wdg = f'{BOLD}Wyniki dla {word_color}{correct_word_to_print}{END}'
                             # RESET i BOLD jest brane pod uwagę przy center
-                            print(wdg.center(conf_to_int(config['center']) + 9))
+                            print(wdg.center(conf_to_int(config['center']) + 12))
                     print(f'  {word_color}{meaning_num.text}')
                 for meaning in meanings_in_td:  # Rysuje definicje
                     indexing += 1
@@ -521,7 +542,7 @@ def rysuj_slownik(url):
                     rex5 = rex5.split(' See Synonyms at')[0]
 
                     if config['pokazuj_filtrowany_slownik']:
-                        ah_def_print(indexing, term_width, definition=rex4_tp.replace('', ''))
+                        ah_def_print(indexing, term_width, definition=rex4_tp)  # .replace('', '')) trzeba to znaleźć
                     else:
                         ah_def_print(indexing, term_width, definition=meaning.text)
 
@@ -649,7 +670,7 @@ def definicje_input():
 
 
 # Bierze wybór z input_func i wydaje adekwatne informacje na kartę
-def choice_func(wybor, elem_content, connector):
+def choice_func(wybor, elem_content, connector, boolean):
     global skip_check
     # To nie powinno tak wyglądać, trzeba się pozbyć isinstance jakoś
     if isinstance(wybor, str):
@@ -660,16 +681,18 @@ def choice_func(wybor, elem_content, connector):
         for choice in wybor:
             try:
                 if int(choice) > 0:
-                    to_return.append(elem_content[int(choice) - 1])
+                    if elem_content[int(choice) - 1] != '':
+                        to_return.append(elem_content[int(choice) - 1])
                     choice_nr += choice.strip() + ', '
             except (ValueError, IndexError, TypeError):
                 continue
         print(f'{YEX}Dodane elementy: {choice_nr.rstrip(", ")}')
         return connector.join(to_return)
-    elif len(elem_content) >= wybor > 0 and connector != ' | ':
+    elif len(elem_content) >= wybor > 0 and not boolean:
         return elem_content[wybor - 1]
-    elif wybor > len(elem_content) or wybor == -1 or wybor >= 1 and connector == ' | ':
-        return connector.join(elem_content)
+    elif wybor > len(elem_content) or wybor == -1 or wybor >= 1 and boolean:
+        no_blanks = [x for x in elem_content if x != '']
+        return connector.join(no_blanks)
     elif wybor == -2:
         skip_check = 1
         print(f'{GEX}Pominięto dodawanie karty')
@@ -683,7 +706,7 @@ def rysuj_synonimy(syn_soup):
         syn_stream.append(synline.text)
     for index, ele in enumerate(syn_stream, start=1):
         przyklady0 = re.findall(r'\"(.+?)\"', ele)
-        przyklady1 = re.sub("[][]", "", str(przyklady0))  # do wyświetlenia w karcie
+        przyklady1 = re.sub("[][]", "", str(przyklady0))  # do dodania na kartę
         przyklady2 = re.sub("',", "'\n   ", przyklady1)
         przyklady4 = re.sub(r"\A[']", "\n    '", przyklady2)  # do narysowania
         synonimy0, sep, tail = ele.partition('"')  # oddziela synonimy od przykładów
@@ -881,7 +904,7 @@ def invoke(action, **params):
     return response['result']
 
 
-def organize_notes(bf, adqt_mf_conf):
+def organize_notes(base_fields, adqt_mf_config):
     usable_fields = invoke('modelFieldNames', modelName=config['note'])
     if usable_fields == 'no note':
         print(f'{error_color}Karta nie została dodana\n'
@@ -894,11 +917,11 @@ def organize_notes(bf, adqt_mf_conf):
         return 'out of reach'
 
     for ufield in usable_fields:
-        for base_field in bf:
+        for base_field in base_fields:
             if base_field in ufield.lower():
-                adqt_mf_conf[ufield] = base_field
-    if adqt_mf_conf != {}:  # aby puste notatki nie były zapisywane w ankiconf
-        ankiconf[config['note']] = adqt_mf_conf
+                adqt_mf_config[ufield] = base_fields[base_field]
+    if adqt_mf_config != {}:  # aby puste notatki nie były zapisywane w ankiconf
+        ankiconf[config['note']] = adqt_mf_config
         with open('ankiconnect.yml', 'w') as ank:
             yaml.dump(ankiconf, ank)
 
@@ -907,27 +930,19 @@ def organize_notes(bf, adqt_mf_conf):
 def utworz_karte():
     global ankiconf
     if config['ankiconnect']:
-        base_fields = {'defin': definicja, 'gloss': definicja,
-                       'disamb': synonimy, 'synon': synonimy, 'usunięcie d': synonimy, 'usuniecie d': synonimy, 'ujednoznacz': synonimy,
-                       'przykłady': przyklady, 'przyklady': przyklady, 'psyn': przyklady, 'examples': przyklady,
-                       'słowo': phrase, 'slowo': phrase, 'phrase': phrase, 'word': phrase,
-                       'zdanie': zdanie, 'pz': zdanie, 'sentence': zdanie,
-                       'części': czesci_mowy, 'czesci': czesci_mowy, 'parts of speech': czesci_mowy, 'part of speech': czesci_mowy,
-                       'etym': etymologia,
-                       'audio': audio, 'sound': audio, 'pronunciation': audio, 'wymowa': audio, 'dźwięk': audio, 'dzwiek': audio}
         adqt_model_fields = {}
-        adqt_model_fields_conf = {}
         try:
             fields_ankiconf = ankiconf.get(config['note'], '')
-            err_org = ''  # aby wiadomości błędów się nie powielały
+            organize_err = ''  # aby wiadomości błędów się nie powielały
             if fields_ankiconf == {} or config['note'] not in ankiconf:  # aby nie sprawdzać dla znajomej notatki
-                err_org = organize_notes(base_fields, adqt_model_fields_conf)
+                organize_err = organize_notes(k.base_fields, adqt_mf_config={})
 
             config_note = ankiconf.get(config['note'], '')
-
+            field_values = {'definicja': definicja, 'synonimy': synonimy, 'przyklady': przyklady, 'phrase': phrase,
+                            'zdanie': zdanie, 'czesci_mowy': czesci_mowy, 'etymologia': etymologia, 'audio': audio}
             # przywołanie pól notatki z ankiconf
             for field in config_note:
-                adqt_model_fields[field] = base_fields[config_note[field]]
+                adqt_model_fields[field] = field_values[config_note[field]]
             # r to id karty, albo error
             r = invoke('addNote', note={'deckName': config['deck'], 'modelName': config['note'], 'fields': adqt_model_fields,
                                         'options': {'allowDuplicate': config['duplicates'], 'duplicateScope': config['dupscope']},
@@ -936,31 +951,36 @@ def utworz_karte():
                 print(f'{error_color}Karta nie została dodana\n'
                       f'Pierwsze pole notatki nie zostało wypełnione\n'
                       f'Sprawdź czy notatka {R}{config["note"]}{error_color} zawiera wymagane pola\n'
-                      f'lub dodaj element odpowiadający pierwszemu polu notatki')
+                      f'lub jeżeli nazwy pól aktualnej notatki zostały zmienione, wpisz {R}-notes r')
             if r == 'duplicate':
                 print(f'{error_color}Karta nie została dodana, bo jest duplikatem\n'
                       f'Zezwól na dodawanie duplikatów wpisując {R}-duplicates on\n'
                       f'{error_color}lub zmień zasięg sprawdzania duplikatów {R}-dupscope [deck/collection]')
-            if r == 'out of reach' and err_org != 'out of reach':
+            if r == 'out of reach' and organize_err != 'out of reach':
                 print(f'{error_color}Karta nie została dodana, bo kolekcja jest nieosiągalna\n'
                       f'Sprawdź czy Anki jest w pełni otwarte')
             if r == 'no deck':
                 print(f'{error_color}Karta nie została dodana, bo talia {R}{config["deck"]}{error_color} nie istnieje\n'
                       f'Aby zmienić talię wpisz {R}-deck [nazwa talii]')
-            if r == 'no note' and err_org != 'no note':
+            if r == 'no note' and organize_err != 'no note':
                 print(f'{error_color}Karta nie została dodana\n'
                       f'Nie znaleziono notatki {R}{config["note"]}{error_color}\n'
                       f'Aby zmienić notatkę użyj {R}-note [nazwa notatki]')
             if r not in ('no note', 'duplicate', 'out of reach', 'empty', 'no deck'):
                 print(f'{GEX}Karta dodana pomyślnie\n'
                       f'{YEX}Wykorzystane pola:')
-                added_fields = (x for x in adqt_model_fields if adqt_model_fields[x] != '')
+                added_fields = (x for x in adqt_model_fields if adqt_model_fields[x].strip() != '')
                 for afield in added_fields:
                     print(f'- {afield}')
                 print()
         except URLError:
             print(f'{error_color}Nie udało się połączyć z AnkiConnect\n'
                   f'Otwórz Anki i spróbuj ponownie\n')
+        except AttributeError:
+            print(f'{error_color}Karta nie została dodana, bo plik "ankiconnect.yml" był pusty\n'
+                  f'Zrestartuj program i spróbuj dodać ponownie')
+            with open('ankiconnect.yml', 'w') as ank:
+                ank.write('{}')
     try:
         with open('karty.txt', 'a', encoding='utf-8') as twor:
             twor.write(f'{eval(config["fieldorder"]["1"])}\t'
@@ -995,7 +1015,7 @@ def wyswietl_karte():
     except (NameError, KeyError):
         print(f'{error_color}\nDodawanie karty do pliku nie powiodło się\n'
               f'Spróbuj przywrócić domyślne ustawienia pól wpisując {R}-fo default\n')
-        return 1  #skip_check
+        return 1  # skip_check
 
 
 def create_note(note_config):
@@ -1078,13 +1098,13 @@ try:
                     zdanie = ogarnij_zdanie(zdanie_input())  # Aby wyłączyć dodawanie zdania w bulk wystarczy -pz off
                     if skip_check == 1:  # ten skip_check jest niemożliwy przy bulk
                         break
-                    definicja = choice_func(*definicje_input(), connector='<br>')
+                    definicja = choice_func(*definicje_input(), connector='<br>', boolean=False)
                     if skip_check == 1:
                         break
-                    czesci_mowy = choice_func(*czesci_mowy_input(), connector=' | ')
+                    czesci_mowy = choice_func(*czesci_mowy_input(), connector=' | ', boolean=True)
                     if skip_check == 1:
                         break
-                    etymologia = choice_func(*etymologia_input(), connector='<br>')
+                    etymologia = choice_func(*etymologia_input(), connector='<br>', boolean=False)
                     if skip_check == 1:
                         break
                 else:
@@ -1092,12 +1112,12 @@ try:
                     zdanie = ogarnij_zdanie(zdanie_input())
                     if skip_check == 1:
                         break
-                    definicja = choice_func(*definicje_input(), connector='<br>')
+                    definicja = choice_func(*definicje_input(), connector='<br>', boolean=False)
                     if skip_check == 1:
                         break
                     czesci_mowy = ''
                     etymologia = ''
-                    idiom_przyklady = choice_func(*farlex_input_przyklady(), connector=' ')
+                    idiom_przyklady = choice_func(*farlex_input_przyklady(), connector=' ', boolean=False)
                     if skip_check == 1:
                         break
                     if len(idiom_przyklady) > 1:
@@ -1107,10 +1127,10 @@ try:
                 if not config['bulk_add'] or config['bulk_add'] and \
                         (config['syn_blk'] != 0 or config['psyn_blk'] != 0 or config['bulk_free_syn']):
                     if skip_check_disamb == 0:
-                        synonimy = choice_func(*disamb_input_syn(), connector=' | ')
+                        synonimy = choice_func(*disamb_input_syn(), connector=' | ', boolean=False)
                         if skip_check == 1:
                             break
-                        przyklady = choice_func(*disamb_input_przyklady(), connector='<br>')
+                        przyklady = choice_func(*disamb_input_przyklady(), connector='<br>', boolean=False)
                         if skip_check == 1:
                             break
                     if config['mergedisamb']:
@@ -1123,7 +1143,8 @@ try:
                 print()
                 utworz_karte()
             else:
-                disambiguator(url_synsearch='http://wordnetweb.princeton.edu/perl/webwn?s=' + phrase)
+                if config['disambiguation']:
+                    disambiguator(url_synsearch='http://wordnetweb.princeton.edu/perl/webwn?s=' + phrase)
             break
 except KeyboardInterrupt:
     print(f'{R}\nZakończono')  # R musi tu być, aby kolory z "inputtext" nie wchodziły
