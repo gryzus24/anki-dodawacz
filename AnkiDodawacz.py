@@ -334,7 +334,7 @@ def komendo(word):
 def szukaj():
     word = input(f'{input_color}Szukaj:{inputtext_color} ').strip()
     word = komendo(word)
-    if word  == '':
+    if word == '':
         return None
     return word
 
