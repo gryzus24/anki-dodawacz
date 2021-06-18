@@ -307,8 +307,14 @@ def komendo(word):
     elif cmd_tuple[0] == '--add-note':
         add_notes(note_name=cmd_tuple[1])
     elif cmd_tuple[0] == '-notes' and cmd_tuple[1] in ('refresh', 'r'):
-        organize_notes(k.base_fields, adqt_mf_config={})
-        print(f'{YEX}Pola notatki {R}{config["note"]}{YEX} odświeżone')
+        try:
+            with open('ankiconnect.yml', 'w') as ank:
+                ank.write('{}')
+        except FileNotFoundError:
+            print(f'{error_color}Plik {R}ankiconnect.yml{error_color} nie istnieje')
+        else:
+            organize_notes(k.base_fields, adqt_mf_config={}, print_errors=False)
+            print(f'{YEX}Notatki przebudowane')
     elif cmd_tuple[0] in ('-fieldsorder', '-fieldorder', '-fo'):
         try:
             numb = cmd_tuple[1].lower().strip(r"']\,. ")
@@ -904,22 +910,25 @@ def invoke(action, **params):
     return response['result']
 
 
-def organize_notes(base_fields, adqt_mf_config):
+def organize_notes(base_fields, adqt_mf_config, print_errors):
     usable_fields = invoke('modelFieldNames', modelName=config['note'])
     if usable_fields == 'no note':
-        print(f'{error_color}Karta nie została dodana\n'
-              f'Nie znaleziono notatki {R}{config["note"]}{error_color}\n'
-              f'Aby zmienić notatkę użyj {R}-note [nazwa notatki]')
+        if print_errors:
+            print(f'{error_color}Nie znaleziono notatki {R}{config["note"]}{error_color}\n'
+                  f'Aby zmienić notatkę użyj {R}-note [nazwa notatki]')
         return 'no note'
     if usable_fields == 'out of reach':
-        print(f'{error_color}Karta nie została dodana, bo kolekcja jest nieosiągalna\n'
-              f'Sprawdź czy Anki jest w pełni otwarte')
+        if print_errors:
+            print(f'{error_color}Karta nie została dodana, bo kolekcja jest nieosiągalna\n'
+                  f'Sprawdź czy Anki jest w pełni otwarte')
         return 'out of reach'
 
     for ufield in usable_fields:
         for base_field in base_fields:
-            if base_field in ufield.lower():
+            if base_field in ufield.lower().split()[0]:
                 adqt_mf_config[ufield] = base_fields[base_field]
+                break
+
     if adqt_mf_config != {}:  # aby puste notatki nie były zapisywane w ankiconf
         ankiconf[config['note']] = adqt_mf_config
         with open('ankiconnect.yml', 'w') as ank:
@@ -935,7 +944,7 @@ def utworz_karte():
             fields_ankiconf = ankiconf.get(config['note'], '')
             organize_err = ''  # aby wiadomości błędów się nie powielały
             if fields_ankiconf == {} or config['note'] not in ankiconf:  # aby nie sprawdzać dla znajomej notatki
-                organize_err = organize_notes(k.base_fields, adqt_mf_config={})
+                organize_err = organize_notes(k.base_fields, adqt_mf_config={}, print_errors=True)
 
             config_note = ankiconf.get(config['note'], '')
             field_values = {'definicja': definicja, 'synonimy': synonimy, 'przyklady': przyklady, 'phrase': phrase,

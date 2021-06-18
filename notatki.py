@@ -197,7 +197,7 @@ available_notes = {
         'fields': [
             'Definicja',
             'Synonimy',
-            'Przykłady synonimów',
+            'Przykłady',
             'Słowo',
             'Przykładowe zdanie',
             'Części mowy',

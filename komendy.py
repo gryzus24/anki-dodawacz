@@ -150,16 +150,17 @@ base_fields = {
     'defin': 'definicja',
     'gloss': 'definicja',
 
-    'disamb': 'synonimy',
     'synon': 'synonimy',
-    'usunięcie d': 'synonimy',
-    'usuniecie d': 'synonimy',
+    'disamb': 'synonimy',
+    'usunięcie': 'synonimy',
+    'usuniecie': 'synonimy',
     'ujedn': 'synonimy',
 
     'przykłady': 'przyklady',
     'przyklady': 'przyklady',
-    'psyn': 'przyklady',
+    'illust': 'przyklady',
     'examples': 'przyklady',
+    'psyn': 'przyklady',
 
     'słowo': 'phrase',
     'slowo': 'phrase',
@@ -169,22 +170,24 @@ base_fields = {
     'vocab': 'phrase',
 
     'zdanie': 'zdanie',
-    'pz': 'zdanie',
+    'przykładowe': 'zdanie',
+    'przykladowe': 'zdanie',
     'sentence': 'zdanie',
+    'pz': 'zdanie',
 
     'części': 'czesci_mowy',
     'czesci': 'czesci_mowy',
-    'parts of speech': 'czesci_mowy',
-    'part of speech': 'czesci_mowy',
+    'parts': 'czesci_mowy',
+    'part': 'czesci_mowy',
 
     'etym': 'etymologia',
 
     'audio': 'audio',
-    'sound': 'audio',
-    'pronunciation': 'audio',
     'wymowa': 'audio',
     'dźwięk': 'audio',
     'dzwiek': 'audio',
+    'pronunciation': 'audio',
+    'sound': 'audio',
     'media': 'audio'
 }
 
