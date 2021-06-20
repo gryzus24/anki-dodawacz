@@ -248,6 +248,7 @@ def change_fields_order(numb, field_name):
     for numb, numb_def in zip(field_order, default_field_order):
         yex = ''
         default = ''
+        # wyświetla domyślną konfigurację pól
         if field_order[numb] != default_field_order[numb_def]:
             yex = YEX
             default = f'# {default_field_order[numb_def]}'
@@ -258,6 +259,17 @@ def change_fields_order(numb, field_name):
             print(f' {printe}')
         if numb == config['fieldorder_d']:
             print(f' {delimit_color}D: -----------{R}')
+
+
+def refresh_notes():
+    try:
+        with open('ankiconnect.yml', 'w') as ank:
+            ank.write('{}')
+    except FileNotFoundError:
+        print(f'{error_color}Plik {R}ankiconnect.yml{error_color} nie istnieje')
+    else:
+        organize_notes(k.base_fields, adqt_mf_config={}, print_errors=False)
+        print(f'{YEX}Notatki przebudowane')
 
 
 def komendo(word):
@@ -307,14 +319,7 @@ def komendo(word):
     elif cmd_tuple[0] == '--add-note':
         add_notes(note_name=cmd_tuple[1])
     elif cmd_tuple[0] == '-notes' and cmd_tuple[1] in ('refresh', 'r'):
-        try:
-            with open('ankiconnect.yml', 'w') as ank:
-                ank.write('{}')
-        except FileNotFoundError:
-            print(f'{error_color}Plik {R}ankiconnect.yml{error_color} nie istnieje')
-        else:
-            organize_notes(k.base_fields, adqt_mf_config={}, print_errors=False)
-            print(f'{YEX}Notatki przebudowane')
+        refresh_notes()
     elif cmd_tuple[0] in ('-fieldsorder', '-fieldorder', '-fo'):
         try:
             numb = cmd_tuple[1].lower().strip(r"']\,. ")
@@ -405,28 +410,45 @@ def audio_ahd(url):
     if audio_raw == 'http://www.hmhco.com':
         print(f"{error_color}AHD nie posiada pożądanego audio\n{YEX}Sprawdzam diki...")
         diki_link = phrase.replace('(', '').replace(')', '')
-        # Tutaj jest True, bo wyszukania na AHD nie mają nawiasów, a trudno jest znaleźć słowo, które nie ma wymowy
+        # Tutaj jest True, bo wyszukania na AHD raczej nie mają nawiasów, a trudno jest znaleźć słowo, które nie ma wymowy
         # na AHD, a na diki jest niewyszukiwalne
         return audio_diki(url='https://www.diki.pl/slownik-angielskiego?q=' + diki_link, diki_link=diki_link, lock=True)
-    else:
-        audiofile_name = audio_raw.split('/')[-1]
-        audiofile_name = audiofile_name.split('.')[0] + '.wav'
-        audio_link = 'https://www.ahdictionary.com'
-        audio_link += audio_raw
-        return audio_link, audiofile_name
+    audiofile_name = audio_raw.split('/')[-1]
+    audiofile_name = audiofile_name.split('.')[0] + '.wav'
+    audio_link = 'https://www.ahdictionary.com'
+    audio_link += audio_raw
+    return audio_link, audiofile_name
+
+
+def audio_lexico(url):
+    reqs = requests.get(url)
+    soup = BeautifulSoup(reqs.content, 'lxml', from_encoding='utf-8')
+    audio_url_box = soup.find('a', class_='speaker')
+    if audio_url_box is None:
+        print(f"{error_color}Lexico nie posiada pożądanego audio\n{YEX}Sprawdzam diki...")
+        diki_link = phrase
+        return audio_diki(url='https://www.diki.pl/slownik-angielskiego?q=' + diki_link, diki_link=diki_link, lock=True)
+    full_audio_link = str(audio_url_box).split('src="')[-1].split('">')[0]
+    audiofile_name = full_audio_link.split('/')[-1]
+    return full_audio_link, audiofile_name
 
 
 def search_for_audio(server):
     if config['dodaj_audio']:
         try:
             if server == 'ahd':
-                audio_link, audio_end = audio_ahd(url='https://www.ahdictionary.com/word/search.html?q=' + phrase)
+                audio_link, audiofile_name = audio_ahd(url='https://www.ahdictionary.com/word/search.html?q=' + phrase)
+            elif server == 'lexico':
+                # audiofile_name = phrase.replace(' ', '_') + '_gb_1.mp3'
+                # return get_audio_response(audio_link='https://lex-audio.useremarkable.com/mp3/' + audiofile_name, audiofile_name=audiofile_name)
+                lexico_url = 'https://www.lexico.com/definition/'
+                audio_link, audiofile_name = audio_lexico(url=lexico_url + phrase.replace(' ', '_'))
             else:
                 diki_link0 = phrase.replace('(', '').replace(')', '')
                 diki_link = diki_link0.replace(' or something', '').replace('someone', 'somebody')
-                audio_link, audio_end = audio_diki(url='https://www.diki.pl/slownik-angielskiego?q=' + diki_link,
-                                                   diki_link=diki_link, lock=False)
-            return get_audio_response(audio_link, audio_end)
+                audio_link, audiofile_name = audio_diki(url='https://www.diki.pl/slownik-angielskiego?q=' + diki_link,
+                                                        diki_link=diki_link, lock=False)
+            return get_audio_response(audio_link, audiofile_name)
         except Exception:
             print(f'{error_color}Wystąpił problem podczas szukania pliku audio')
             raise
@@ -1035,14 +1057,15 @@ def create_note(note_config):
     except URLError:
         return f'{error_color}Włącz Anki, aby dodać notatkę'
     try:
-        if note_config['name'] in connected:
-            return f'{YEX}Notatka {R}"{note_config["name"]}"{YEX} już znajduje się w bazie notatek'
+        if note_config['modelName'] in connected:
+            return f'{YEX}Notatka {R}"{note_config["modelName"]}"{YEX} już znajduje się w bazie notatek'
 
         result = invoke('createModel',
-                        modelName=note_config['name'],
+                        modelName=note_config['modelName'],
                         inOrderFields=note_config['fields'],
                         css=note_config['css'],
-                        cardTemplates=[{'Front': note_config['front'],
+                        cardTemplates=[{'Name': note_config['cardName'],
+                                        'Front': note_config['front'],
                                         'Back': note_config['back']}])
         if result == 'out of reach':
             return f'{error_color}Nie można nawiązać połączenia z Anki\n' \
@@ -1050,10 +1073,10 @@ def create_note(note_config):
         else:
             print(f'{GEX}\nNotatka utworzona pomyślnie\n')
 
-        note_ok = input(f'{YEX}Chcesz ustawić {R}"{note_config["name"]}" {YEX}jako -note?{R} [t/N]: ')
+        note_ok = input(f'{YEX}Chcesz ustawić {R}"{note_config["modelName"]}" {YEX}jako -note?{R} [T/n]: ')
 
-        if note_ok.lower() in ('1', 't', 'y', 'tak', 'yes'):
-            config['note'] = note_config['name']
+        if note_ok.lower() in ('1', 't', 'y', 'tak', 'yes', ''):
+            config['note'] = note_config['modelName']
             with open('config.yml', 'w') as conf_f:
                 yaml.dump(config, conf_f)
         return None

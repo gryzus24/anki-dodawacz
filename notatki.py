@@ -2,7 +2,7 @@ gryzus_std_front = '''<div id="questionSide">
   <div id="questionBox">
     <div id="definition">{{Definicja}}</div>
     <div id="syn">{{Synonimy}}</div>
-    <div id="psyn">{{Przykłady synonimów}}</div>
+    <div id="psyn">{{Przykłady}}</div>
     <div>{{type:Słowo}}</div>
   </div>
 
@@ -90,8 +90,8 @@ gryzus_std_css = '''.card {
 }
 
 #zdanie {
-  font-size: 1em;
-  margin-top: 0em;
+  font-size: 1.15em;
+  margin-bottom: 1.5em;
   color: #495F75;
 }
 .night_mode #zdanie {
@@ -190,7 +190,8 @@ input {
 
 available_notes = {
     'gryzus-std': {
-        'name': 'gryzus-std',
+        'modelName': 'gryzus-std',
+        'cardName': 'Definition-vocab card',
         'css': gryzus_std_css,
         'front': gryzus_std_front,
         'back': gryzus_std_back,
