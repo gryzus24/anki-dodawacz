@@ -23,41 +23,59 @@ word_c: Fore.CYAN\nsave_path: ''""")
     with open("config.yml", "r") as readconfig:
         config = yaml.load(readconfig, Loader=yaml.Loader)
 
-YEX = eval(config['attention_c'])
+# KOLORY
 R = Fore.RESET
 
-syn_color = eval(config['syn_c'])
-psyn_color = eval(config['psyn_c'])
-pidiom_color = eval(config['pidiom_c'])
-def1_color = eval(config['def1_c'])
-def2_color = eval(config['def2_c'])
-index_color = eval(config['index_c'])
-word_color = eval(config['word_c'])
-pos_color = eval(config['pos_c'])
-etym_color = eval(config['etym_c'])
-synpos_color = eval(config['synpos_c'])
-syndef_color = eval(config['syndef_c'])
-error_color = eval(config['error_c'])
-delimit_color = eval(config['delimit_c'])
+bool_colors = {False: Fore.LIGHTRED_EX, True: Fore.LIGHTGREEN_EX}
+colors = {
+    'black': Fore.BLACK, 'red': Fore.RED, 'green': Fore.GREEN, 'yellow': Fore.YELLOW,
+    'blue': Fore.BLUE, 'magenta': Fore.MAGENTA, 'cyan': Fore.CYAN, 'white': Fore.WHITE,
+    'lightblack': Fore.LIGHTBLACK_EX, 'lightred': Fore.LIGHTRED_EX, 'lightgreen': Fore.LIGHTGREEN_EX,
+    'lightyellow': Fore.LIGHTYELLOW_EX, 'lightblue': Fore.LIGHTBLUE_EX, 'lightmagenta': Fore.LIGHTMAGENTA_EX,
+    'lightcyan': Fore.LIGHTCYAN_EX, 'lightwhite': Fore.LIGHTWHITE_EX, 'reset': R
+}
+color_commands = (
+    '--syn-c', '--index-c', '--word-c', '--psyn-c', '--pidiom-c', '--def1-c', '--def2-c', '--pos-c',
+    '--etym-c', '--synpos-c', '--syndef-c', '--error-c', '--delimit-c', '--input-c', '--inputtext-c',
+    '--attention-c'
+)
+color_message = {
+    '--syn-c': 'Kolor synonimów', '--index-c': 'Kolor indexów',
+    '--word-c': 'Kolor hasła', '--psyn-c': 'Kolor przykładów synonimów',
+    '--pidiom-c': 'Kolor przykładów idiomów', '--def1-c': 'Kolor nieparzystych definicji',
+    '--def2-c': 'Kolor parzystych definicji', '--pos-c': 'Kolor części mowy',
+    '--etym-c': 'Kolor etymologii', '--synpos-c': 'Kolor części mowy przy synonimach',
+    '--syndef-c': 'Kolor definicji przy synonimach', '--error-c': 'Kolor błędów',
+    '--attention-c': 'Kolor zwracający uwagę', '--delimit-c': 'Kolor odkreśleń',
+    '--input-c': 'Kolor pól na input', '--inputtext-c': 'Kolor wpisywanego tekstu'
+}
+YEX = colors[config['attention_c']]
+
+syn_color = colors[config['syn_c']]
+psyn_color = colors[config['psyn_c']]
+pidiom_color = colors[config['pidiom_c']]
+def1_color = colors[config['def1_c']]
+def2_color = colors[config['def2_c']]
+index_color = colors[config['index_c']]
+word_color = colors[config['word_c']]
+pos_color = colors[config['pos_c']]
+etym_color = colors[config['etym_c']]
+synpos_color = colors[config['synpos_c']]
+syndef_color = colors[config['syndef_c']]
+error_color = colors[config['error_c']]
+delimit_color = colors[config['delimit_c']]
 
 inputtext_color = ''
 input_color = ''
 if sys.platform.startswith('linux'):
-    inputtext_color = eval(config['inputtext_c'])
-    input_color = eval(config['input_c'])
-
-
-def koloryfer(color):
-    color = 'Fore.' + color.upper()
-    if 'light' in color.lower():
-        color = color + '_EX'
-    return eval(color)
+    inputtext_color = colors[config['inputtext_c']]
+    input_color = colors[config['input_c']]
 
 
 def pokaz_dostepne_kolory():
     print(f'{R}{BOLD}Dostępne kolory to:{END}')
     for index, color in enumerate(colors, start=1):
-        print(f'{koloryfer(color)}{color}', end=', ')
+        print(f'{colors[color]}{color}', end=', ')
         if index == 4 or index == 8 or index == 12 or index == 16:
             print()
     print('\n')
@@ -71,7 +89,7 @@ Każda komenda zmiany kolorów musi otrzymać kolor:
 np. "--syn-c lightblue", "--pos-c magenta" itd.
 Aby zastosować kolory, zrestartuj program
 
-                 {BOLD}[Zmienia kolor]{END}
+                 {BOLD}[Zmiana koloru]{END}
 --def1-c         {def1_color}nieparzystych definicji i definicji idiomów{R}
 --def2-c         {def2_color}parzystych definicji{R}
 --pos-c          {pos_color}części mowy w słowniku{R}
@@ -84,7 +102,7 @@ Aby zastosować kolory, zrestartuj program
 --index-c        {index_color}indeksów w słowniku{R}
 --word-c         {word_color}wyszukanego w słowniku hasła{R}
 --error-c        {error_color}błędów{R}
---attention-c    {YEX}zwracający uwagę{R}
+--attention-c    {YEX}zwracającego uwagę{R}
 --delimit-c      {delimit_color}odkreśleń{R}
 --input-c        {input_color}pól na input{error_color}*{R}
 --inputtext-c    {inputtext_color}wpisywanego tekstu{error_color}*{R}
@@ -96,56 +114,40 @@ Aby zastosować kolory, zrestartuj program
 bulk_cmds = ['def_blk', 'pos_blk', 'etym_blk', 'syn_blk', 'psyn_blk', 'pidiom_blk']
 
 commands_msg = {
-                '-def': 'Dodawanie definicji: ', '-audio': 'Dodawanie audio: ', '-etym': 'Dodawanie etymologii: ',
-                '-pos': 'Dodawanie części mowy: ', '-fs': 'Filtrowany słownik: ',
-                '-all': 'Dodawanie wszystkiego: ', '-karty': 'Tworzenie kart: ', '-pz': 'Dodawanie zdania: ',
-                '-udef': 'Ukrywanie słowa w definicjach: ', '-upz': 'Ukrywanie słowa w zdaniu: ',
-                '-udisamb': 'Ukrywanie słowa w disamb: ', '-uidiom': 'Ukrywanie słowa w idiomach: ',
-                '-disamb': 'Słownik synonimów: ', '-syn': 'Dodawanie synonimów: ',
-                '-psyn': 'Dodawanie przykładów synonimów: ', '-pidiom': 'Dodawanie przykładów idiomów: ',
-                '-bulk': 'Masowe dodawanie: ', '-bulkfdef': 'Swobodne masowe dodawanie definicji: ',
-                '-bulkfsyn': 'Swobodne masowe dodawanie synonimów: ', '-wraptext': 'Zawijanie tekstu: ',
-                '-break': 'Nowa linia po każdej definicji: ', '-upreps': 'Ukrywanie przyimków w idiomach: ',
-                '-duplicates': 'Dodawanie duplikatów poprzez AnkiConnect: ',
-                '-showcard': 'Pokazywanie podglądu karty: ', '-showdisamb': 'Pokazywanie słownika synonimów: ',
-                '-mergedisamb': 'Włączenie przykładów do pola "synonimy": ', '-ankiconnect': 'Dodawanie kart poprzez AnkiConnect: '
+    '-def': 'Dodawanie definicji: ', '-audio': 'Dodawanie audio: ', '-etym': 'Dodawanie etymologii: ',
+    '-pos': 'Dodawanie części mowy: ', '-fs': 'Filtrowany słownik: ', '-all': 'Dodawanie wszystkiego: ',
+    '-karty': 'Tworzenie kart: ', '-pz': 'Dodawanie zdania: ', '-udef': 'Ukrywanie słowa w definicjach: ',
+    '-upz': 'Ukrywanie słowa w zdaniu: ', '-udisamb': 'Ukrywanie słowa w disamb: ',
+    '-uidiom': 'Ukrywanie słowa w idiomach: ', '-disamb': 'Słownik synonimów: ', '-syn': 'Dodawanie synonimów: ',
+    '-psyn': 'Dodawanie przykładów synonimów: ', '-pidiom': 'Dodawanie przykładów idiomów: ',
+    '-bulk': 'Masowe dodawanie: ', '-bulkfdef': 'Swobodne masowe dodawanie definicji: ',
+    '-bulkfsyn': 'Swobodne masowe dodawanie synonimów: ', '-wraptext': 'Zawijanie tekstu: ',
+    '-break': 'Nowa linia po każdej definicji: ', '-upreps': 'Ukrywanie przyimków w idiomach: ',
+    '-duplicates': 'Dodawanie duplikatów poprzez AnkiConnect: ', '-showcard': 'Podgląd karty: ',
+    '-showdisamb': 'Pokazywanie słownika synonimów: ', '-mergedisamb': 'Włączenie przykładów do pola "synonimy": ',
+    '-mergeidiom': 'Włączenie przykładów idiomów do pola "definicja": ',
+    '-ankiconnect': 'Dodawanie kart poprzez AnkiConnect: ', '-server': 'Preferowany serwer audio: '
 }
 commands_values = {
-                   'on': True, 'off': False, 'true': True, 'false': False, '1': True, '0': False,
-                   'yin': True, 'yang': False, 'tak': True, 'nie': False, 'yes': True, 'no': False,
-                   'yay': True, 'nay': False, 'y': True, 't': True, 'n': False,
+    'on': True, 'off': False, 'true': True, 'false': False, '1': True, '0': False,
+    'yin': True, 'yang': False, 'tak': True, 'nie': False, 'yes': True, 'no': False,
+    'yay': True, 'nay': False, 'y': True, 't': True, 'n': False,
 }
 search_commands = {
-                   '-pz': 'dodaj_wlasne_zdanie', '-def': 'dodaj_definicje', '-pos': 'dodaj_czesci_mowy',
-                   '-etym': 'dodaj_etymologie', '-audio': 'dodaj_audio', '-disamb': 'disambiguation',
-                   '-syn': 'dodaj_synonimy', '-psyn': 'dodaj_przyklady_synonimow', '-pidiom': 'dodaj_przyklady_idiomow',
-                   '-karty': 'tworz_karte', '-bulk': 'bulk_add', '-bulkfdef': 'bulk_free_def',
-                   '-bulkfsyn': 'bulk_free_syn', '-mergedisamb': 'mergedisamb', '-fs': 'pokazuj_filtrowany_slownik',
-                   '-all': '-all',
-                   '-upz': 'ukryj_slowo_w_zdaniu', '-udef': 'ukryj_slowo_w_definicji', '-udisamb': 'ukryj_slowo_w_disamb',
-                   '-uidiom': 'ukryj_slowo_w_idiom', '-upreps': 'ukryj_przyimki', '-showcard': 'showcard',
-                   '-showdisamb': 'showdisamb', '-wraptext': 'wrap_text', '-break': 'break',
-                   '-textwidth': 'textwidth', '-indent': 'indent', '-delimsize': 'delimsize', '-center': 'center',
-                   '-ankiconnect': 'ankiconnect', '-duplicates': 'duplicates', '-dupscope': 'dupscope', '-note': 'note',
-                   '-deck': 'deck', '-tags': 'tags'
+    '-pz': 'dodaj_wlasne_zdanie', '-def': 'dodaj_definicje', '-pos': 'dodaj_czesci_mowy',
+    '-etym': 'dodaj_etymologie', '-audio': 'dodaj_audio', '-disamb': 'disambiguation',
+    '-syn': 'dodaj_synonimy', '-psyn': 'dodaj_przyklady_synonimow', '-pidiom': 'dodaj_przyklady_idiomow',
+    '-karty': 'tworz_karte', '-bulk': 'bulk_add', '-bulkfdef': 'bulk_free_def',
+    '-bulkfsyn': 'bulk_free_syn', '-mergedisamb': 'mergedisamb', '-mergeidiom': 'mergeidiom',
+    '-fs': 'pokazuj_filtrowany_slownik',
+    '-all': '-all',
+    '-upz': 'ukryj_slowo_w_zdaniu', '-udef': 'ukryj_slowo_w_definicji', '-udisamb': 'ukryj_slowo_w_disamb',
+    '-uidiom': 'ukryj_slowo_w_idiom', '-upreps': 'ukryj_przyimki', '-showcard': 'showcard',
+    '-showdisamb': 'showdisamb', '-wraptext': 'wrap_text', '-break': 'break',
+    '-textwidth': 'textwidth', '-indent': 'indent', '-delimsize': 'delimsize', '-center': 'center',
+    '-ankiconnect': 'ankiconnect', '-duplicates': 'duplicates', '-dupscope': 'dupscope', '-note': 'note',
+    '-deck': 'deck', '-tags': 'tags', '-server': 'server'
 }
-bool_colors = {False: 'Fore.LIGHTRED_EX', True: 'Fore.LIGHTGREEN_EX'}
-colors = ('black', 'red', 'green', 'yellow', 'blue', 'magenta', 'cyan', 'white',
-          'lightblack', 'lightred', 'lightgreen', 'lightyellow', 'lightblue', 'lightmagenta', 'lightcyan', 'lightwhite',
-          'reset')
-color_commands = ('--syn-c', '--index-c', '--word-c', '--psyn-c', '--pidiom-c', '--def1-c', '--def2-c', '--pos-c',
-                  '--etym-c', '--synpos-c', '--syndef-c', '--error-c', '--delimit-c', '--input-c', '--inputtext-c',
-                  '--attention-c')
-color_message = {
-                 '--syn-c': 'Kolor synonimów', '--index-c': 'Kolor indexów',
-                 '--word-c': 'Kolor hasła', '--psyn-c': 'Kolor przykładów synonimów',
-                 '--pidiom-c': 'Kolor przykładów idiomów', '--def1-c': 'Kolor nieparzystych definicji',
-                 '--def2-c': 'Kolor parzystych definicji', '--pos-c': 'Kolor części mowy',
-                 '--etym-c': 'Kolor etymologii', '--synpos-c': 'Kolor części mowy przy synonimach',
-                 '--syndef-c': 'Kolor definicji przy synonimach', '--error-c': 'Kolor błędów',
-                 '--attention-c': 'Kolor zwracający uwagę', '--delimit-c': 'Kolor odkreśleń',
-                 '--input-c': 'Kolor pól na input', '--inputtext-c': 'Kolor wpisywanego tekstu'}
-
 base_fields = {
     'defin': 'definicja',
     'gloss': 'definicja',
@@ -240,8 +242,8 @@ etymologii licząc od góry lub wpisać -1, aby dodać wszystkie etymologie.
 Synonimy wyświetlane są w grupach zawierających synonimy i przykłady.
 Wybieranie działa tak jak w definicjach
 mamy do wyboru dwa pola:
- - grupę synonimów
- - grupę przykładów
+ - synonimy
+ - przykłady
 
 {BOLD}Przy idiomach:{END}
 Idiomy wyświetlane są podobnie jak synonimy.
@@ -251,12 +253,10 @@ Dostępne pola:
  - definicja
  - przykłady
 
-definicje i przykłady w idiomach wchodzą w skład pola "Definicja"
 
 --help-commands  wyświetla informacje o komendach
 --help-bulk      wyświetla informacje o masowym dodawaniu
---help-colors    wyświetla informacje o kolorach
-""")
+--help-colors    wyświetla informacje o kolorach\n""")
 
 
 def help_commands_command():
@@ -277,11 +277,13 @@ np. "-pz off", "-disamb on", "-all off" itd.
 -all           zmienia wartości powyższych ustawień
 
 -karty         dodawanie kart
--mergedisamb   dołączanie zawartości pola "przykłady" do pola "synonimy"
 
 -bulk          masowe dodawanie
 -bulkfdef      swobodne masowe dodawanie definicji
 -bulkfsyn      swobodne masowe dodawanie synonimów
+
+-mergedisamb   dołączanie zawartości pola "przykłady" do pola "synonimy"
+-mergeidiom    dołączanie przykładów synonimów do pola "definicja"
 
 --audio-path lub --save-path:
  Umożliwia zmianę miejsca zapisu audio
@@ -290,15 +292,15 @@ np. "-pz off", "-disamb on", "-all off" itd.
  collection.media i wpisz/skopiuj ją w pole wyświetlone po wpisaniu komendy.
 
  Na Windowsie:
-  "C:\\[Users]\\[Nazwa użytkownika]\\AppData\\Roaming\\Anki2\\[Nazwa użytkownika Anki]\\collection.media"
+  "C:\\[Users]\\[Użytkownik]\\AppData\\Roaming\\Anki2\\[Użytkownik Anki]\\collection.media"
    (wpisz %appdata%)
 
  Na Linuxie:
-  "~/.local/share/Anki2/[Nazwa użytkownika Anki]/collection.media"
+  "~/.local/share/Anki2/[Użytkownik Anki]/collection.media"
    (zamiast ~ pełna ścieżka)
 
  Na Macu:
-  "~/Library/Application Support/Anki2/[Nazwa użytkownika Anki]/collection.media"
+  "~/Library/Application Support/Anki2/[Użytkownik Anki]/collection.media"
    (jest to ukryty folder i prawdopodobnie zamiast ~ też pełna ścieżka)
 
 {BOLD}Komendy miscellaneous:{END}
@@ -365,7 +367,10 @@ np. -fo d 5               przesunie odkreślenie pod pole "zdanie" (5)
 --add-note                pokazuje gotowe do dodania notatki
 --add-note [notatka]      dodaje notatkę do kolekcji obecnie
                           zalogowanego użytkownika
-""")
+
+{BOLD}Komendy audio:{END}
+-server [nazwa serwera]   określa serwer z którego pozyskiwane jest audio dla
+                          haseł wyszukiwanych w American Heritage Dictionary\n""")
 
 
 def help_bulk_command():
@@ -407,5 +412,4 @@ nową linią według szablonu (razem ze spacją na końcu)
 {BOLD}Przykładowy szablon dla -pz off, -bulkfdef on, -bulkfsyn on{END}
 "unalloyed"                          <---  dodawane słowo
 "/not in mixture with other metals"  <---  własna definicja
-"-1"                                 <---  własny wybór synonimów
-""")
+"-1"                                 <---  własny wybór synonimów\n""")

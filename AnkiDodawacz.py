@@ -22,7 +22,7 @@ if sys.platform.startswith('linux'):
     import readline
     readline.read_init_file()
 
-# Nie trzeba tu try i except bo config jest otwierany pierwszy w komendy.py
+# Nie trzeba tu try i except, bo config jest otwierany pierwszy w komendy.py
 with open("config.yml", "r") as f:
     config = yaml.load(f, Loader=yaml.Loader)
 
@@ -36,7 +36,7 @@ except FileNotFoundError:
     with open("ankiconnect.yml", "w") as a:
         a.write('{}')
 
-__version__ = 'v0.6.0'
+__version__ = 'v0.6.0-10'
 
 print(f"""{BOLD}- Dodawacz kart do Anki {__version__} -{END}\n
 Wpisz "--help", aby wyświetlić pomoc\n\n""")
@@ -44,29 +44,29 @@ Wpisz "--help", aby wyświetlić pomoc\n\n""")
 requests_session_ah = requests.Session()
 
 # Ustawia kolory
-YEX = eval(config['attention_c'])
+YEX = k.colors[config['attention_c']]
 GEX = Fore.LIGHTGREEN_EX
 R = Fore.RESET
 
-syn_color = eval(config['syn_c'])
-psyn_color = eval(config['psyn_c'])
-pidiom_color = eval(config['pidiom_c'])
-def1_color = eval(config['def1_c'])
-def2_color = eval(config['def2_c'])
-index_color = eval(config['index_c'])
-word_color = eval(config['word_c'])
-pos_color = eval(config['pos_c'])
-etym_color = eval(config['etym_c'])
-synpos_color = eval(config['synpos_c'])
-syndef_color = eval(config['syndef_c'])
-error_color = eval(config['error_c'])
-delimit_color = eval(config['delimit_c'])
+syn_color = k.colors[config['syn_c']]
+psyn_color = k.colors[config['psyn_c']]
+pidiom_color = k.colors[config['pidiom_c']]
+def1_color = k.colors[config['def1_c']]
+def2_color = k.colors[config['def2_c']]
+index_color = k.colors[config['index_c']]
+word_color = k.colors[config['word_c']]
+pos_color = k.colors[config['pos_c']]
+etym_color = k.colors[config['etym_c']]
+synpos_color = k.colors[config['synpos_c']]
+syndef_color = k.colors[config['syndef_c']]
+error_color = k.colors[config['error_c']]
+delimit_color = k.colors[config['delimit_c']]
 
 inputtext_color = ''
 input_color = ''
 if sys.platform.startswith('linux'):
-    inputtext_color = eval(config['inputtext_c'])
-    input_color = eval(config['input_c'])
+    inputtext_color = k.colors[config['inputtext_c']]
+    input_color = k.colors[config['input_c']]
     # Aby nie kombinować z robieniem tych kolorów na windowsie,
     # bo to wymaga rozwiązań co tylko zaśmiecają kod
     # i powodują denerwujący wizualny bug podczas zmiany wielkości okna
@@ -89,6 +89,7 @@ def delete_last_card():
         print(f'{error_color}Usuwanie karty nie powiodło się z powodu nieznanego znaku (prawdopodobnie w etymologii)')  # wolfram
     except Exception:
         print(f'{error_color}Coś poszło nie tak podczas usuwania karty, ale karty są {GEX}bezpieczne')
+        raise
 
 
 # Komendy i input słowa
@@ -130,50 +131,48 @@ def config_bulk():
 
 def print_config():
     commands = list(dict.keys(k.search_commands))
-    commands.pop(15)  # usuwa -all
-    # pierwsza kolumna do bulkfsyn i od ankiconnect
-    cmds = commands[:14] + commands[28:]
-    # blank po mergedisamb
-    cmds.insert(10, '')
-    # blank po bulkfsyn
-    cmds.insert(15, '')
-    cmds.insert(16, f'{BOLD}[config ankiconnect]{END}')
+    commands.pop(16)      # usuwa -all
+    cmds = commands[:15]  # pierwsza kolumna do -mergeidiom
+    cmds.insert(10, '')   # blank po -karty
+    cmds.insert(14, '')   # blank po -bulkfsyn
     # druga kolumna wszystko co pozostało
-    sndcolumn = commands[14:28]
+    sndcolumn = commands[15:29]
+    sndcolumn.insert(30, '')  # blank po -center
+    sndcolumn.insert(31, f'{BOLD}[config ankiconnect]{END}')
+    sndcolumn += commands[29:35]
+    # trzecia kolumna
+    thrcolumn = k.bulk_cmds + commands[35:]
+    thrcolumn.insert(6, '')
+    thrcolumn.insert(7, f'{BOLD}[config audio]{END}')
     print(f'\n{R}{BOLD}[config dodawania]      [config miscellaneous]      [config bulk]{END}')
-    for cmd, sndcmd, erdcolumn in zip_longest(cmds, sndcolumn, k.bulk_cmds, fillvalue=''):
-        config_cmd = config.get(f'{k.search_commands.get(cmd, "")}', '')
-        config_misc_bool = config.get(f'{k.search_commands.get(sndcmd, "")}', '')
-        config_misc_print = '  ' + str(config.get(f'{k.search_commands.get(sndcmd, "")}', ''))
-        if '*' in config_misc_print:
-            config_misc_print = config_misc_print.lstrip()
-        try:
-            color_cmd = eval(k.bool_colors[config_cmd])
-        except KeyError:
-            color_cmd = ''
-        try:
-            color_misc = eval(k.bool_colors[config_misc_bool])
-        except KeyError:
-            color_misc = ''
-        blk_conf = config.get(erdcolumn, '')
+    for first_column_cmd, second_column_cmd, third_column_cmd in zip_longest(cmds, sndcolumn, thrcolumn, fillvalue=''):
+        # pierwsza kolumna
+        config_cmd = config.get(k.search_commands.get(first_column_cmd, ''), '')
+        cmd_color = k.bool_colors.get(config_cmd, '')
+
+        # druga kolumna
+        config_cmd_misc = '  ' + str(config.get(k.search_commands.get(second_column_cmd, ''), ''))
+        cmd_color_misc = k.bool_colors.get(config.get(k.search_commands.get(second_column_cmd, ''), ''), '')
+        if '*' in config_cmd_misc:
+            config_cmd_misc = config_cmd_misc.lstrip()
+
+        # trzecia kolumna
+        blk_conf = config.get(third_column_cmd.lstrip('-'), '')
         if str(blk_conf).isnumeric():  # Aby wartość z minusem była left-aligned
             blk_conf = ' ' + str(blk_conf)
-        blk_conf = blk_conf
-        print('{:14s}{}{:10s}{}{:14s}{}{:14s}{}{:11s}{:}'
-              .format(cmd, color_cmd, str(config_cmd), R,
-                      sndcmd, color_misc, str(config_misc_print).center(6),
-                      R, erdcolumn, blk_conf))
+
+        print(f'{first_column_cmd:14s}{cmd_color}{str(config_cmd):10s}{R}'
+              f'{second_column_cmd:14s}{cmd_color_misc}{config_cmd_misc:14s}{R}'
+              f'{third_column_cmd:11s}{blk_conf}')
+
     print(f'\n--audio-path: {config.get("save_path", "")}')
     print('\nkonfiguracja kolorów --config-colors\n')
 
 
 def kolory(komenda, wartosc):
-    color = 'Fore.' + wartosc.upper()
-    if 'light' in color.lower():
-        color = color + '_EX'
-    msg_color = eval(color)
+    msg_color = k.colors[wartosc]
     print(f'{R}{k.color_message[komenda]} ustawiony na: {msg_color}{wartosc}')
-    save_commands(komenda=komenda.strip('-').replace('-', '_'), wartosc=color)
+    save_commands(komenda=komenda.strip('-').replace('-', '_'), wartosc=wartosc)
 
 
 def set_width_settings(command, value):
@@ -305,10 +304,19 @@ def komendo(word):
             else:
                 print(f'{BOLD}Dostępne opcje:{END}\n'
                       f'deck, collection\n')
+        elif cmd_tuple[0] == '-server':
+            server_val = cmd_tuple[1].strip(r"']\,. ").lower()
+            if cmd_tuple[1] in ('ahd', 'lexico', 'diki'):
+                save_commands(cmd_tuple[0].lstrip('-'), server_val)
+                print(f'{YEX}Preferowany serwer audio dla AHD: {R}{server_val}')
+            else:
+                print(f'{BOLD}Dostępne serwery audio:{END}\n'
+                      f'ahd, lexico, diki\n')
+
         elif cmd_tuple[1] in k.commands_values:
             komenda = k.search_commands[cmd_tuple[0]]
             wartosc = k.commands_values[cmd_tuple[1]]
-            msg_color = eval(k.bool_colors[wartosc])
+            msg_color = k.bool_colors[wartosc]
             msg = k.commands_msg[cmd_tuple[0]]
             print(f'{R}{msg}{msg_color}{wartosc}')
             save_commands(komenda, wartosc)
@@ -368,37 +376,58 @@ def get_audio_response(audio_link, audiofile_name):
         raise
 
 
-def audio_diki(url, diki_link, lock):
+def audio_diki(url, diki_link, partial_check):
     reqs = requests.get(url)
     audiosoup = BeautifulSoup(reqs.content, 'lxml', from_encoding='utf-8')
-    url_box = audiosoup.find('span', {'class': 'recordingsAndTranscriptions'})
+    url_box = audiosoup.findAll('span', {'class': 'audioIcon icon-sound dontprint soundOnClick'})
+    for recording in url_box:
+        if '_'.join(diki_link.split(' ')) in str(recording):
+            url_box = recording
+            break
     try:
         url_box = str(url_box).split('data-audio-url=')[1]
         url_box = url_box.split(' tabindex')[0].strip('"')
         audiofile_name = url_box.split('/')[-1]
         # Aby diki nie linkowało audio pierwszego słowa z idiomu
+        # dla wyrażeń typu: as ..., if ...
         last_word_in_af = diki_link.split(' ')[-1]
-        audiofile_added_in_full = audiofile_name.split('.mp3')[0].endswith(last_word_in_af)
-        # gdy lock is true, lepsze nic niż rydz
-        if not audiofile_added_in_full and not lock or\
-                len(audiofile_name.split('.mp3')[0]) < 4 and len(diki_link.split(' ')) > 2 and lock:
+        audiofile_name_bare = audiofile_name.split('.mp3')[0]
+        audiofile_added_in_full = audiofile_name_bare.endswith(last_word_in_af)
+        # dla wyrażeń typu: account for, abide by
+        if len(audiofile_name_bare.split('_')) >= len(diki_link.split(' ')) and\
+                audiofile_name_bare.split('_')[-1] in ('something', 'somebody'):
+            pass
+        # gdy partial_check is true, lepsze nic niż rydz
+        elif not audiofile_added_in_full and not partial_check or\
+                len(audiofile_name.split('.mp3')[0]) < 4 and len(diki_link.split(' ')) > 2 and partial_check:
             raise IndexError
     except IndexError:
-        if not lock:
+        if not partial_check:
             print(f"{error_color}Diki nie posiada pożądanego audio\n{YEX}Spróbuję dodać co łaska...")
-            if phrase.startswith('('):
-                attempt = phrase.split(') ')[-1]
-            elif phrase.endswith(')'):
-                attempt = phrase.split(' (')[0]
+            paren_numb = phrase.count(')')
+            if paren_numb == 1:
+                if phrase.startswith('('):
+                    attempt = phrase.split(') ')[-1]
+                elif phrase.endswith(')'):
+                    attempt = phrase.split(' (')[0]
+                else:
+                    attempt = phrase.split(' (')[0] + phrase.split(')')[-1]
+            elif paren_numb > 1:
+                # dla wyrażeń typu: boil (something) down to (something) -> boil down to
+                split_phrase = phrase.split('(')
+                second_sp = ''
+                for sp in split_phrase[:2]:
+                    second_sp = sp.split(') ')[-1]
+                attempt = split_phrase[0] + second_sp.rstrip()
             else:
-                attempt = phrase.split(' (')[0] + phrase.split(')')[-1]
-            return audio_diki(url='https://www.diki.pl/slownik-angielskiego?q=' + attempt, diki_link=attempt, lock=True)
+                attempt = phrase
+            return audio_diki(url='https://www.diki.pl/slownik-angielskiego?q=' + attempt, diki_link=attempt, partial_check=True)
         else:
             print(f"{error_color}Nie udało się pozyskać audio\nKarta zostanie dodana bez audio")
             return '', ''
     else:
         audio_link = 'https://www.diki.pl' + url_box
-        if lock:
+        if partial_check:
             print(f'{GEX}Sukces')
         return audio_link, audiofile_name
 
@@ -409,10 +438,7 @@ def audio_ahd(url):
     audio_raw = soup.find('a', {'target': '_blank'}).get('href')
     if audio_raw == 'http://www.hmhco.com':
         print(f"{error_color}AHD nie posiada pożądanego audio\n{YEX}Sprawdzam diki...")
-        diki_link = phrase.replace('(', '').replace(')', '')
-        # Tutaj jest True, bo wyszukania na AHD raczej nie mają nawiasów, a trudno jest znaleźć słowo, które nie ma wymowy
-        # na AHD, a na diki jest niewyszukiwalne
-        return audio_diki(url='https://www.diki.pl/slownik-angielskiego?q=' + diki_link, diki_link=diki_link, lock=True)
+        return audio_diki(url='https://www.diki.pl/slownik-angielskiego?q=' + phrase, diki_link=phrase, partial_check=True)
     audiofile_name = audio_raw.split('/')[-1]
     audiofile_name = audiofile_name.split('.')[0] + '.wav'
     audio_link = 'https://www.ahdictionary.com'
@@ -426,8 +452,7 @@ def audio_lexico(url):
     audio_url_box = soup.find('a', class_='speaker')
     if audio_url_box is None:
         print(f"{error_color}Lexico nie posiada pożądanego audio\n{YEX}Sprawdzam diki...")
-        diki_link = phrase
-        return audio_diki(url='https://www.diki.pl/slownik-angielskiego?q=' + diki_link, diki_link=diki_link, lock=True)
+        return audio_diki(url='https://www.diki.pl/slownik-angielskiego?q=' + phrase, diki_link=phrase, partial_check=True)
     full_audio_link = str(audio_url_box).split('src="')[-1].split('">')[0]
     audiofile_name = full_audio_link.split('/')[-1]
     return full_audio_link, audiofile_name
@@ -439,15 +464,13 @@ def search_for_audio(server):
             if server == 'ahd':
                 audio_link, audiofile_name = audio_ahd(url='https://www.ahdictionary.com/word/search.html?q=' + phrase)
             elif server == 'lexico':
-                # audiofile_name = phrase.replace(' ', '_') + '_gb_1.mp3'
-                # return get_audio_response(audio_link='https://lex-audio.useremarkable.com/mp3/' + audiofile_name, audiofile_name=audiofile_name)
                 lexico_url = 'https://www.lexico.com/definition/'
                 audio_link, audiofile_name = audio_lexico(url=lexico_url + phrase.replace(' ', '_'))
             else:
-                diki_link0 = phrase.replace('(', '').replace(')', '')
-                diki_link = diki_link0.replace(' or something', '').replace('someone', 'somebody')
+                diki_link = phrase.replace('(', '').replace(')', '')
+                diki_link = diki_link.replace(' or something', '').replace('someone', 'somebody')
                 audio_link, audiofile_name = audio_diki(url='https://www.diki.pl/slownik-angielskiego?q=' + diki_link,
-                                                        diki_link=diki_link, lock=False)
+                                                        diki_link=diki_link, partial_check=False)
             return get_audio_response(audio_link, audiofile_name)
         except Exception:
             print(f'{error_color}Wystąpił problem podczas szukania pliku audio')
@@ -574,7 +597,7 @@ def rysuj_slownik(url):
                     else:
                         ah_def_print(indexing, term_width, definition=meaning.text)
 
-                    hide_and_append(rex5, definicja, hide='ukryj_slowo_w_definicji')
+                    definicja.append(hide_phrase_in(rex5, hide='ukryj_slowo_w_definicji'))
 
                 print()
                 for pos in td.find_all(class_='runseg'):  # Dodaje części mowy
@@ -603,14 +626,16 @@ def rysuj_slownik(url):
 
 def ogarnij_zdanie(exsentence):
     global skip_check
-    if exsentence == '-s' or exsentence == '':
+    if exsentence == '-s':
         print(f'{GEX}Pominięto dodawanie zdania')
+        return ''
+    elif exsentence == '':
         return ''
     elif exsentence == '-sc':
         skip_check = 1
         print(f'{GEX}Pominięto dodawanie karty')
     else:
-        return hide_and_append(exsentence, 'zdanie', 'ukryj_slowo_w_zdaniu')
+        return hide_phrase_in(exsentence, hide='ukryj_slowo_w_zdaniu')
 
 
 def zdanie_input():
@@ -621,104 +646,99 @@ def zdanie_input():
 
 
 # Sprawdzanie co wpisano w polach input
-def input_func(_input, hide):
-    if _input.isnumeric() or _input == '-1':
-        return int(_input)
-    elif ',' in _input:
-        return _input.strip().split(',')
-    elif _input == '' or _input == '-s':
-        return 0
-    elif _input == 'all':
-        return -1
-    elif _input.startswith('/'):
-        if config[hide]:
-            return _input.replace(phrase, '...') \
-                .replace(phrase.lower(), '...') \
-                .replace(phrase.upper(), '...') \
-                .replace(phrase.capitalize(), '...')  # To jest szybsze niż regex i obejmuje wszystkie sensowne sytuacje
-        return _input
-    return -2
+def input_func(choice, elem_content, hide, connector, boolean_choice):
+    if choice.isnumeric() or choice == '-1':
+        return singular_choice(int(choice), elem_content, connector, boolean_choice)
+    elif choice == '' or choice == '-s':
+        return singular_choice(0, elem_content, connector, boolean_choice)
+    elif choice == 'all':
+        return singular_choice(-1, elem_content, connector, boolean_choice)
+
+    elif choice.startswith('/'):
+        return hide_phrase_in(choice.replace('/', '', 1), hide)
+    elif ',' in choice:
+        return multiple_choice(choice.strip().split(','), elem_content, connector)
+    return singular_choice(-2, elem_content, connector, boolean_choice)
 
 
 # Adekwatne pola input dla pól wyboru
 def disamb_input_syn():
     if config['dodaj_synonimy']:
         if config['bulk_add'] and not config['bulk_free_syn']:
-            return config['syn_blk'], grupa_synonimow
+            return str(config['syn_blk'])
         if not config['bulk_add'] or config['bulk_free_syn']:
             wybor_disamb_syn = input(f'{input_color}Wybierz grupę synonimów:{inputtext_color} ')
-            return input_func(wybor_disamb_syn, 'ukryj_slowo_w_disamb'), grupa_synonimow
-    return 0, grupa_synonimow
+            return wybor_disamb_syn
+    return 0
 
 
 def disamb_input_przyklady():
     if config['dodaj_przyklady_synonimow']:
         if config['bulk_add']:
-            return config['psyn_blk'], grupa_przykladow
+            return str(config['psyn_blk'])
         wybor_disamb_przyklady = input(f'{input_color}Wybierz grupę przykładów:{inputtext_color} ')
-        return input_func(wybor_disamb_przyklady, 'ukryj_slowo_w_disamb'), grupa_przykladow
-    return 0, grupa_przykladow
+        return wybor_disamb_przyklady
+    return 0
 
 
 def farlex_input_przyklady():
     if config['dodaj_przyklady_idiomow']:
         if config['bulk_add']:
-            return config['pidiom_blk'], ilustracje
+            return str(config['pidiom_blk'])
         wybor_przykladow_idiomow = input(f'{input_color}Wybierz przykład:{inputtext_color} ')
-        return input_func(wybor_przykladow_idiomow, 'ukryj_slowo_w_idiom'), ilustracje
-    return 0, ilustracje
+        return wybor_przykladow_idiomow
+    return 0
 
 
 def etymologia_input():
     if config['dodaj_etymologie']:
         if config['bulk_add']:
-            return config['etym_blk'], etymologia
+            return str(config['etym_blk'])
         wybor_etymologii = input(f'{input_color}Wybierz etymologię:{inputtext_color} ')
-        return input_func(wybor_etymologii, 'ukryj_slowo_w_definicji'), etymologia
-    return 0, etymologia
+        return wybor_etymologii
+    return 0
 
 
 def czesci_mowy_input():
     if config['dodaj_czesci_mowy']:
         if config['bulk_add']:
-            return config['pos_blk'], czesci_mowy
+            return str(config['pos_blk'])
         wybor_czesci_mowy = input(f'{input_color}Dołączyć części mowy? [1/0]:{inputtext_color} ')
-        return input_func(wybor_czesci_mowy, 'ukryj_slowo_w_definicji'), czesci_mowy
-    return 0, czesci_mowy
+        return wybor_czesci_mowy
+    return 0
 
 
 def definicje_input():
     if config['dodaj_definicje']:
         if config['bulk_add'] and not config['bulk_free_def']:
-            return config['def_blk'], definicja
+            return str(config['def_blk'])
         if not config['bulk_add'] or config['bulk_free_def']:
             wybor_definicji = input(f'{input_color}\nWybierz definicję:{inputtext_color} ')
-            return input_func(wybor_definicji, 'ukryj_slowo_w_definicji'), definicja
-    return 0, definicja
+            return wybor_definicji
+    return 0
+
+
+def multiple_choice(wybor, elem_content, connector):
+    content_list = []
+    choice_nr = ''
+    for choice in wybor:
+        try:
+            if int(choice) > 0:
+                if elem_content[int(choice) - 1] != '':
+                    content_list.append(elem_content[int(choice) - 1])
+                choice_nr += choice.strip() + ', '
+        except (ValueError, IndexError, TypeError):
+            continue
+    print(f'{YEX}Dodane elementy: {choice_nr.rstrip(", ")}')
+    return connector.join(content_list)
 
 
 # Bierze wybór z input_func i wydaje adekwatne informacje na kartę
-def choice_func(wybor, elem_content, connector, boolean):
+def singular_choice(wybor, elem_content, connector, boolean_choice):
     global skip_check
-    # To nie powinno tak wyglądać, trzeba się pozbyć isinstance jakoś
-    if isinstance(wybor, str):
-        return wybor.lstrip('/')
-    elif isinstance(wybor, list):
-        to_return = []
-        choice_nr = ''
-        for choice in wybor:
-            try:
-                if int(choice) > 0:
-                    if elem_content[int(choice) - 1] != '':
-                        to_return.append(elem_content[int(choice) - 1])
-                    choice_nr += choice.strip() + ', '
-            except (ValueError, IndexError, TypeError):
-                continue
-        print(f'{YEX}Dodane elementy: {choice_nr.rstrip(", ")}')
-        return connector.join(to_return)
-    elif len(elem_content) >= wybor > 0 and not boolean:
+    if len(elem_content) >= wybor > 0 and not boolean_choice:
         return elem_content[wybor - 1]
-    elif wybor > len(elem_content) or wybor == -1 or wybor >= 1 and boolean:
+    elif wybor > len(elem_content) or wybor == -1 or boolean_choice and wybor >= 1:
         no_blanks = [x for x in elem_content if x != '']
         return connector.join(no_blanks)
     elif wybor == -2:
@@ -749,8 +769,8 @@ def rysuj_synonimy(syn_soup):
         synonimy3 = re.sub(r"\(.*\)", "", synonimy2)  # usuwa resztę nawiasów
         synonimy4 = re.sub(r"\s{2}", "", synonimy3)
 
-        hide_and_append(przyklady1, grupa_przykladow, hide='ukryj_slowo_w_disamb')
-        hide_and_append(synonimy4, grupa_synonimow, hide='ukryj_slowo_w_disamb')
+        grupa_przykladow.append(hide_phrase_in(przyklady1, hide='ukryj_slowo_w_disamb'))
+        grupa_synonimow.append(hide_phrase_in(synonimy4, hide='ukryj_slowo_w_disamb'))
 
         if config['showdisamb']:
             syn_tp = print_elems(synonimy4 + '\n   ', term_width=conf_to_int(config['textwidth']),
@@ -792,20 +812,24 @@ def disambiguator(url_synsearch):
         raise
 
 
-def hide_and_append(content, group_of_elems, hide):
+def hide_phrase_in(content, hide):
+    if hide == '':
+        return content
     if config[hide]:
         hidden_content = content
-        nonoes = ('a', 'A', 'an', 'An', 'the', 'The', 'or', 'Or', 'be', 'Be', 'do', 'Do', 'does', 'Does', 'not', 'Not',
-                  'if', 'If')
+        nonoes = (
+            'a', 'A', 'an', 'An', 'the', 'The', 'or', 'Or', 'be', 'Be',
+            'do', 'Do', 'does', 'Does', 'not', 'Not', 'if', 'If'
+        )
         prepositions = ()
         if hide == 'ukryj_slowo_w_idiom' and not config['ukryj_przyimki']:
-            prepositions = ('about', 'above', 'across', 'after', 'against', 'along', 'among', 'around', 'as', 'at',
-                            'before', 'behind', 'below', 'beneath', 'beside', 'between', 'beyond', 'by', 'despite',
-                            'down', 'during', 'except', 'for', 'from', 'in', 'inside', 'into', 'like', 'near', 'of',
-                            'off', 'on', 'onto', 'opposite', 'out', 'outside', 'over', 'past', 'round', 'since', 'than',
-                            'through', 'to', 'towards', 'under', 'underneath', 'unlike', 'until', 'up', 'upon', 'via',
-                            'with', 'within', 'without')
-
+            prepositions = (
+                'about', 'above', 'across', 'after', 'against', 'along', 'among', 'around', 'as', 'at', 'before',
+                'behind', 'below', 'beneath', 'beside', 'between', 'beyond', 'by', 'despite', 'down', 'during', 'except',
+                'for', 'from', 'in', 'inside', 'into', 'like', 'near', 'of', 'off', 'on', 'onto', 'opposite', 'out',
+                'outside', 'over', 'past', 'round', 'since', 'than', 'through', 'to', 'towards', 'under', 'underneath',
+                'unlike', 'until', 'up', 'upon', 'via', 'with', 'within', 'without'
+            )
         words_th = phrase.lower().split(' ')
         words_th_s_exceptions = (x.rstrip('y')+'ies' for x in words_th if x.endswith('y'))
         words_th_ing_exceptions = (x.rstrip('e')+'ing' for x in words_th if x.endswith('e') and x not in prepositions)
@@ -827,13 +851,9 @@ def hide_and_append(content, group_of_elems, hide):
 
         for wthede in words_th_ed_exceptions:
             hidden_content = hidden_content.replace(wthede, '...ed').replace(wthede.capitalize(), '...ed')
-        if group_of_elems == 'zdanie':
-            return hidden_content
-        group_of_elems.append(hidden_content)
+        return hidden_content
     else:
-        if group_of_elems == 'zdanie':
-            return content
-        group_of_elems.append(content)
+        return content
 
 
 def farlex_idioms(url_idiomsearch):
@@ -861,18 +881,19 @@ def farlex_idioms(url_idiomsearch):
                     idiom_definition = idiom_definition.split(' <span class=')[0]
                 idiom_def = re.sub(r'\d. ', '', str(idiom_definition))
                 idiom_def = re.sub(r'\A\d', '', idiom_def)  # aby po indeksach większych od 9 nic nie zostało
-                idiom_def = idiom_def.split(' In this usage, a noun or pronoun can')[0]
-                idiom_def = idiom_def.split(' In this usage, the phrase is usually')[0]
-                idiom_def = idiom_def.split(' In this usage, a reflexive pronoun is')[0]
+                idiom_def = idiom_def.split(' In this usage, a noun or pronoun')[0]
+                idiom_def = idiom_def.split(' In this usage, a reflexive pronoun')[0]
                 idiom_def = idiom_def.split(' A noun or pronoun can be used between')[0]
                 idiom_def = idiom_def.split(' A noun or pronoun does not have to')[0]
-                idiom_def = idiom_def.split(' Often used in passive constructions')[0]
+                idiom_def = idiom_def.replace('is be used between', 'is used between')  # czy "be used between" to błąd?
+                idiom_def = idiom_def.replace('. In this usage, the phrase is typically written as one word', ' (typically written as one word)')
+                idiom_def = idiom_def.replace('. In this usage, the phrase is commonly written as one word', ' (commonly written as one word)')
                 idiom_def_tp = print_elems(idiom_def.strip(),
                                            term_width=conf_to_int(config['textwidth']),
                                            index_width=len(str(inx)), indento=config['indent']+1,
                                            gap=3, break_allowed=False)
 
-                hide_and_append(idiom_def, definicja, hide='ukryj_slowo_w_idiom')
+                definicja.append(hide_phrase_in(idiom_def, hide='ukryj_slowo_w_idiom'))
 
                 if indek == 0:
                     print(f'{index_color}{inx} : {def1_color}{idiom_def_tp}')
@@ -887,7 +908,7 @@ def farlex_idioms(url_idiomsearch):
                                                   index_width=len(str(inx)), indento=config['indent']+4,
                                                   gap=8, break_allowed=False)
 
-                    hide_and_append(illustration.text, ilustracje, hide='ukryj_slowo_w_idiom')
+                    ilustracje.append(hide_phrase_in(illustration.text, hide='ukryj_slowo_w_idiom'))
 
                     print(f"{index_color}    {indek} {pidiom_color}'{illustration_tp}'")
             print()
@@ -959,7 +980,8 @@ def organize_notes(base_fields, adqt_mf_config, print_errors):
 
 # Tworzenie karty
 def utworz_karte():
-    global ankiconf
+    field_values = {'definicja': definicja, 'synonimy': synonimy, 'przyklady': przyklady, 'phrase': phrase,
+                    'zdanie': zdanie, 'czesci_mowy': czesci_mowy, 'etymologia': etymologia, 'audio': audio}
     if config['ankiconnect']:
         adqt_model_fields = {}
         try:
@@ -969,8 +991,6 @@ def utworz_karte():
                 organize_err = organize_notes(k.base_fields, adqt_mf_config={}, print_errors=True)
 
             config_note = ankiconf.get(config['note'], '')
-            field_values = {'definicja': definicja, 'synonimy': synonimy, 'przyklady': przyklady, 'phrase': phrase,
-                            'zdanie': zdanie, 'czesci_mowy': czesci_mowy, 'etymologia': etymologia, 'audio': audio}
             # przywołanie pól notatki z ankiconf
             for field in config_note:
                 adqt_model_fields[field] = field_values[config_note[field]]
@@ -1014,14 +1034,14 @@ def utworz_karte():
                 ank.write('{}')
     try:
         with open('karty.txt', 'a', encoding='utf-8') as twor:
-            twor.write(f'{eval(config["fieldorder"]["1"])}\t'
-                       f'{eval(config["fieldorder"]["2"])}\t'
-                       f'{eval(config["fieldorder"]["3"])}\t'
-                       f'{eval(config["fieldorder"]["4"])}\t'
-                       f'{eval(config["fieldorder"]["5"])}\t'
-                       f'{eval(config["fieldorder"]["6"])}\t'
-                       f'{eval(config["fieldorder"]["7"])}\t'
-                       f'{eval(config["fieldorder"]["8"])}\n')
+            twor.write(f'{field_values[config["fieldorder"]["1"]]}\t'
+                       f'{field_values[config["fieldorder"]["2"]]}\t'
+                       f'{field_values[config["fieldorder"]["3"]]}\t'
+                       f'{field_values[config["fieldorder"]["4"]]}\t'
+                       f'{field_values[config["fieldorder"]["5"]]}\t'
+                       f'{field_values[config["fieldorder"]["6"]]}\t'
+                       f'{field_values[config["fieldorder"]["7"]]}\t'
+                       f'{field_values[config["fieldorder"]["8"]]}\n')
             print(f'{YEX}Karta zapisana do pliku\n')
     except (NameError, KeyError):
         print(f'{error_color}Dodawanie karty do pliku nie powiodło się\n'
@@ -1029,6 +1049,8 @@ def utworz_karte():
 
 
 def wyswietl_karte():
+    field_values = {'definicja': definicja, 'synonimy': synonimy, 'przyklady': przyklady, 'phrase': phrase,
+                    'zdanie': zdanie, 'czesci_mowy': czesci_mowy, 'etymologia': etymologia, 'audio': audio}
     ctf = {'definicja': def1_color, 'synonimy': syn_color, 'przyklady': psyn_color, 'phrase': word_color,
            'zdanie': '', 'czesci_mowy': pos_color, 'etymologia': etym_color, 'audio': ''}
     delimit = conf_to_int(config['delimsize'])
@@ -1038,7 +1060,7 @@ def wyswietl_karte():
     try:
         print(f'\n{delimit_color}{delimit * "-"}')
         for field in config['fieldorder'].keys():
-            for fi in print_elems(eval(config['fieldorder'][field]), *options).split('\n'):
+            for fi in print_elems(field_values[config['fieldorder'][field]], *options).split('\n'):
                 print(f'{ctf[config["fieldorder"][field]]}{fi.center(centr)}')
             if field == config['fieldorder_d']:
                 print(f'{delimit_color}{delimit * "-"}')
@@ -1098,7 +1120,6 @@ try:
         audio = ''
         synonimy = ''
         przyklady = ''
-        idiom_przyklady = ''
         definicja = []
         czesci_mowy = []
         etymologia = []
@@ -1126,47 +1147,55 @@ try:
                     break
             if config['tworz_karte']:
                 if not farlex:
-                    audio = search_for_audio(server='ahd')
+                    audio = search_for_audio(server=config['server'])
                     zdanie = ogarnij_zdanie(zdanie_input())  # Aby wyłączyć dodawanie zdania w bulk wystarczy -pz off
                     if skip_check == 1:  # ten skip_check jest niemożliwy przy bulk
                         break
-                    definicja = choice_func(*definicje_input(), connector='<br>', boolean=False)
+                    definicja = input_func(choice=definicje_input(), elem_content=definicja,
+                                           hide='ukryj_slowo_w_definicji', connector='<br>', boolean_choice=False)
                     if skip_check == 1:
                         break
-                    czesci_mowy = choice_func(*czesci_mowy_input(), connector=' | ', boolean=True)
+                    czesci_mowy = input_func(choice=czesci_mowy_input(), elem_content=czesci_mowy,
+                                             hide='', connector=' | ', boolean_choice=True)
                     if skip_check == 1:
                         break
-                    etymologia = choice_func(*etymologia_input(), connector='<br>', boolean=False)
+                    etymologia = input_func(choice=etymologia_input(), elem_content=etymologia,
+                                            hide='', connector='<br>', boolean_choice=False)
                     if skip_check == 1:
                         break
+                    if config['disambiguation']:
+                        disambiguator(url_synsearch='http://wordnetweb.princeton.edu/perl/webwn?s=' + phrase)
+                    if not config['bulk_add'] or config['bulk_add'] and \
+                            (config['syn_blk'] != 0 or config['psyn_blk'] != 0 or config['bulk_free_syn']):
+                        if skip_check_disamb == 0:
+                            synonimy = input_func(choice=disamb_input_syn(), elem_content=grupa_synonimow,
+                                                  hide='ukryj_slowo_w_disamb', connector=' | ', boolean_choice=False)
+                            if skip_check == 1:
+                                break
+                            przyklady = input_func(choice=disamb_input_przyklady(), elem_content=grupa_przykladow,
+                                                   hide='ukryj_slowo_w_disamb', connector='<br>', boolean_choice=False)
+                            if skip_check == 1:
+                                break
+                        if config['mergedisamb']:
+                            synonimy = synonimy + '<br>' + przyklady
+                            przyklady = ''
                 else:
                     audio = search_for_audio(server='diki')
                     zdanie = ogarnij_zdanie(zdanie_input())
                     if skip_check == 1:
                         break
-                    definicja = choice_func(*definicje_input(), connector='<br>', boolean=False)
+                    definicja = input_func(choice=definicje_input(), elem_content=definicja,
+                                           hide='ukryj_slowo_w_definicji', connector='<br>', boolean_choice=False)
                     if skip_check == 1:
                         break
                     czesci_mowy = ''
                     etymologia = ''
-                    idiom_przyklady = choice_func(*farlex_input_przyklady(), connector=' ', boolean=False)
+                    przyklady = input_func(choice=farlex_input_przyklady(), elem_content=ilustracje,
+                                           hide='ukryj_slowo_w_idiom', connector='<br>', boolean_choice=False)
                     if skip_check == 1:
                         break
-                    if len(idiom_przyklady) > 1:
-                        definicja = definicja + '<br>' + idiom_przyklady
-                if config['disambiguation']:
-                    disambiguator(url_synsearch='http://wordnetweb.princeton.edu/perl/webwn?s=' + phrase)
-                if not config['bulk_add'] or config['bulk_add'] and \
-                        (config['syn_blk'] != 0 or config['psyn_blk'] != 0 or config['bulk_free_syn']):
-                    if skip_check_disamb == 0:
-                        synonimy = choice_func(*disamb_input_syn(), connector=' | ', boolean=False)
-                        if skip_check == 1:
-                            break
-                        przyklady = choice_func(*disamb_input_przyklady(), connector='<br>', boolean=False)
-                        if skip_check == 1:
-                            break
-                    if config['mergedisamb']:
-                        synonimy = synonimy + '<br>' + przyklady
+                    if config['mergeidiom']:
+                        definicja = definicja + '<br><br>' + przyklady
                         przyklady = ''
                 if config['showcard']:
                     skip_check = wyswietl_karte()
