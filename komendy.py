@@ -35,19 +35,19 @@ colors = {
     'lightcyan': Fore.LIGHTCYAN_EX, 'lightwhite': Fore.LIGHTWHITE_EX, 'reset': R
 }
 color_commands = (
-    '--syn-c', '--index-c', '--word-c', '--psyn-c', '--pidiom-c', '--def1-c', '--def2-c', '--pos-c',
-    '--etym-c', '--synpos-c', '--syndef-c', '--error-c', '--delimit-c', '--input-c', '--inputtext-c',
-    '--attention-c'
+    'syn-c', 'index-c', 'word-c', 'psyn-c', 'pidiom-c', 'def1-c', 'def2-c', 'pos-c',
+    'etym-c', 'synpos-c', 'syndef-c', 'error-c', 'delimit-c', 'input-c', 'inputtext-c',
+    'attention-c'
 )
 color_message = {
-    '--syn-c': 'Kolor synonimów', '--index-c': 'Kolor indexów',
-    '--word-c': 'Kolor hasła', '--psyn-c': 'Kolor przykładów synonimów',
-    '--pidiom-c': 'Kolor przykładów idiomów', '--def1-c': 'Kolor nieparzystych definicji',
-    '--def2-c': 'Kolor parzystych definicji', '--pos-c': 'Kolor części mowy',
-    '--etym-c': 'Kolor etymologii', '--synpos-c': 'Kolor części mowy przy synonimach',
-    '--syndef-c': 'Kolor definicji przy synonimach', '--error-c': 'Kolor błędów',
-    '--attention-c': 'Kolor zwracający uwagę', '--delimit-c': 'Kolor odkreśleń',
-    '--input-c': 'Kolor pól na input', '--inputtext-c': 'Kolor wpisywanego tekstu'
+    'syn-c': 'Kolor synonimów', 'index-c': 'Kolor indexów',
+    'word-c': 'Kolor hasła', 'psyn-c': 'Kolor przykładów synonimów',
+    'pidiom-c': 'Kolor przykładów idiomów', 'def1-c': 'Kolor nieparzystych definicji',
+    'def2-c': 'Kolor parzystych definicji', 'pos-c': 'Kolor części mowy',
+    'etym-c': 'Kolor etymologii', 'synpos-c': 'Kolor części mowy przy synonimach',
+    'syndef-c': 'Kolor definicji przy synonimach', 'error-c': 'Kolor błędów',
+    'attention-c': 'Kolor zwracający uwagę', 'delimit-c': 'Kolor odkreśleń',
+    'input-c': 'Kolor pól na input', 'inputtext-c': 'Kolor wpisywanego tekstu'
 }
 YEX = colors[config['attention_c']]
 
@@ -86,26 +86,26 @@ def color_command():
 
 {BOLD}[Komenda] [kolor]{END}
 Każda komenda zmiany kolorów musi otrzymać kolor:
-np. "--syn-c lightblue", "--pos-c magenta" itd.
+np. "syn-c lightblue", "pos-c magenta" itd.
 Aby zastosować kolory, zrestartuj program
 
-                 {BOLD}[Zmiana koloru]{END}
---def1-c         {def1_color}nieparzystych definicji i definicji idiomów{R}
---def2-c         {def2_color}parzystych definicji{R}
---pos-c          {pos_color}części mowy w słowniku{R}
---etym-c         {etym_color}etymologii w słowniku{R}
---syn-c          {syn_color}synonimów na WordNecie{R}
---psyn-c         {psyn_color}przykładów pod synonimami{R}
---pidiom-c       {pidiom_color}przykładów pod idiomami{R}
---syndef-c       {syndef_color}definicji przy synonimach{R}
---synpos-c       {synpos_color}części mowy przy synonimach{R}
---index-c        {index_color}indeksów w słowniku{R}
---word-c         {word_color}wyszukanego w słowniku hasła{R}
---error-c        {error_color}błędów{R}
---attention-c    {YEX}zwracającego uwagę{R}
---delimit-c      {delimit_color}odkreśleń{R}
---input-c        {input_color}pól na input{error_color}*{R}
---inputtext-c    {inputtext_color}wpisywanego tekstu{error_color}*{R}
+               {BOLD}[Zmiana koloru]{END}
+def1-c         {def1_color}nieparzystych definicji i definicji idiomów{R}
+def2-c         {def2_color}parzystych definicji{R}
+pos-c          {pos_color}części mowy w słowniku{R}
+etym-c         {etym_color}etymologii w słowniku{R}
+syn-c          {syn_color}synonimów na WordNecie{R}
+psyn-c         {psyn_color}przykładów pod synonimami{R}
+pidiom-c       {pidiom_color}przykładów pod idiomami{R}
+syndef-c       {syndef_color}definicji przy synonimach{R}
+synpos-c       {synpos_color}części mowy przy synonimach{R}
+index-c        {index_color}indeksów w słowniku{R}
+word-c         {word_color}wyszukanego w słowniku hasła{R}
+error-c        {error_color}błędów{R}
+attention-c    {YEX}zwracającego uwagę{R}
+delimit-c      {delimit_color}odkreśleń{R}
+input-c        {input_color}pól na input{error_color}*{R}
+inputtext-c    {inputtext_color}wpisywanego tekstu{error_color}*{R}
 
 {error_color}*{R} = nie działa na win i mac\n""")
     pokaz_dostepne_kolory()

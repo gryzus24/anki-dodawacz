@@ -36,7 +36,7 @@ except FileNotFoundError:
     with open("ankiconnect.yml", "w") as a:
         a.write('{}')
 
-__version__ = 'v0.6.0-10'
+__version__ = 'v0.6.0-11'
 
 print(f"""{BOLD}- Dodawacz kart do Anki {__version__} -{END}\n
 Wpisz "--help", aby wyświetlić pomoc\n\n""")
@@ -108,6 +108,7 @@ def config_bulk():
                   'Wartość dla etymologii', 'Wartość dla synonimów',
                   'Wartość dla przykładów synonimów', 'Wartość dla przykładów idiomów')
     values_to_save = []
+    print(f'{BOLD}Konfiguracja bulk, podaj wartość >= -1{END}')
     try:
         for input_msg, command in zip(input_list, k.bulk_cmds):
             value = int(input(f'{input_color}{input_msg}:{inputtext_color} '))
@@ -230,9 +231,9 @@ def change_fields_order(numb, field_name):
     default_field_order = {'1': 'definicja', '2': 'synonimy', '3': 'przyklady', '4': 'phrase',
                            '5': 'zdanie', '6': 'czesci_mowy', '7': 'etymologia', '8': 'audio'}
     field_order = config['fieldorder']
-    if numb in default_field_order.keys() and field_name in default_field_order.values():
+    if numb in default_field_order and field_name in default_field_order.values():
         field_order[numb] = field_name
-    elif numb == 'd' and field_name in default_field_order.keys():
+    elif numb == 'd' and field_name in default_field_order:
         save_commands(komenda='fieldorder_d', wartosc=str(field_name))
     elif numb == 'default':
         field_order = default_field_order
@@ -376,25 +377,51 @@ def get_audio_response(audio_link, audiofile_name):
         raise
 
 
-def audio_diki(url, diki_link, partial_check):
+def request_diki(url):
     reqs = requests.get(url)
     audiosoup = BeautifulSoup(reqs.content, 'lxml', from_encoding='utf-8')
-    url_box = audiosoup.findAll('span', {'class': 'audioIcon icon-sound dontprint soundOnClick'})
-    for recording in url_box:
-        if '_'.join(diki_link.split(' ')) in str(recording):
+    url_boxes = audiosoup.findAll('span', {'class': 'audioIcon icon-sound dontprint soundOnClick'})
+    return url_boxes
+
+
+def find_audiofile_name_in_diki(url_boxes, dk_filename):
+    url_box = url_boxes
+    for recording in url_boxes:
+        if dk_filename in str(recording):
             url_box = recording
             break
+    return url_box
+
+
+def audio_diki(url, diki_link, partial_check):
+    full_url = url + diki_link
+    url_boxes = request_diki(full_url)
+    dk_filename = '_'.join(diki_link.split(' '))
+    url_box = find_audiofile_name_in_diki(url_boxes, dk_filename)
+    # dla wyrażeń typu: burst the bubble of (somebody)
+    # diki preferuje użycie formy "somebody's" zamiast "of"
+    # pozbycie się "of" daje pożądany wynik
+    if 'of' in diki_link and url_box == url_boxes:  # nie wiem jak najlepiej sprawdzić identity tutaj
+        diki_link = diki_link.replace(' of', '')
+        full_url = url + diki_link
+        # url_box zamiast url_boxes, aby handling przeszedł dalej,
+        # bo usunięcie " of" nie zmieni zachowania find_audiofile_name_in_diki
+        url_box = request_diki(full_url)
     try:
-        url_box = str(url_box).split('data-audio-url=')[1]
-        url_box = url_box.split(' tabindex')[0].strip('"')
-        audiofile_name = url_box.split('/')[-1]
+        end_of_url = str(url_box).split('data-audio-url=')[1]
+        end_of_url = end_of_url.split(' tabindex')[0].strip('"')
+        audiofile_name = end_of_url.split('/')[-1]
         # Aby diki nie linkowało audio pierwszego słowa z idiomu
         # dla wyrażeń typu: as ..., if ...
         last_word_in_af = diki_link.split(' ')[-1]
         audiofile_name_bare = audiofile_name.split('.mp3')[0]
         audiofile_added_in_full = audiofile_name_bare.endswith(last_word_in_af)
+        # to oznacza, że dk_filename zostało znalezione,
+        # jak nie zostanie znalezione to wyniki z linii 398 i 400 są listami
+        if url_box != url_boxes:
+            pass
         # dla wyrażeń typu: account for, abide by
-        if len(audiofile_name_bare.split('_')) >= len(diki_link.split(' ')) and\
+        elif len(audiofile_name_bare.split('_')) >= len(diki_link.split(' ')) and\
                 audiofile_name_bare.split('_')[-1] in ('something', 'somebody'):
             pass
         # gdy partial_check is true, lepsze nic niż rydz
@@ -414,19 +441,24 @@ def audio_diki(url, diki_link, partial_check):
                     attempt = phrase.split(' (')[0] + phrase.split(')')[-1]
             elif paren_numb > 1:
                 # dla wyrażeń typu: boil (something) down to (something) -> boil down to
+                # albo: Zip (up) your lip(s) -> Zip your lip
                 split_phrase = phrase.split('(')
                 second_sp = ''
                 for sp in split_phrase[:2]:
                     second_sp = sp.split(') ')[-1]
                 attempt = split_phrase[0] + second_sp.rstrip()
             else:
-                attempt = phrase
-            return audio_diki(url='https://www.diki.pl/slownik-angielskiego?q=' + attempt, diki_link=attempt, partial_check=True)
+                longest_word = max(diki_link.split(), key=len)
+                if longest_word not in ('somebody', 'something'):
+                    attempt = longest_word
+                else:
+                    attempt = phrase
+            return audio_diki(url='https://www.diki.pl/slownik-angielskiego?q=', diki_link=attempt, partial_check=True)
         else:
             print(f"{error_color}Nie udało się pozyskać audio\nKarta zostanie dodana bez audio")
             return '', ''
     else:
-        audio_link = 'https://www.diki.pl' + url_box
+        audio_link = 'https://www.diki.pl' + end_of_url
         if partial_check:
             print(f'{GEX}Sukces')
         return audio_link, audiofile_name
@@ -438,7 +470,7 @@ def audio_ahd(url):
     audio_raw = soup.find('a', {'target': '_blank'}).get('href')
     if audio_raw == 'http://www.hmhco.com':
         print(f"{error_color}AHD nie posiada pożądanego audio\n{YEX}Sprawdzam diki...")
-        return audio_diki(url='https://www.diki.pl/slownik-angielskiego?q=' + phrase, diki_link=phrase, partial_check=True)
+        return audio_diki(url='https://www.diki.pl/slownik-angielskiego?q=', diki_link=phrase, partial_check=True)
     audiofile_name = audio_raw.split('/')[-1]
     audiofile_name = audiofile_name.split('.')[0] + '.wav'
     audio_link = 'https://www.ahdictionary.com'
@@ -452,7 +484,7 @@ def audio_lexico(url):
     audio_url_box = soup.find('a', class_='speaker')
     if audio_url_box is None:
         print(f"{error_color}Lexico nie posiada pożądanego audio\n{YEX}Sprawdzam diki...")
-        return audio_diki(url='https://www.diki.pl/slownik-angielskiego?q=' + phrase, diki_link=phrase, partial_check=True)
+        return audio_diki(url='https://www.diki.pl/slownik-angielskiego?q=', diki_link=phrase, partial_check=True)
     full_audio_link = str(audio_url_box).split('src="')[-1].split('">')[0]
     audiofile_name = full_audio_link.split('/')[-1]
     return full_audio_link, audiofile_name
@@ -469,7 +501,7 @@ def search_for_audio(server):
             else:
                 diki_link = phrase.replace('(', '').replace(')', '')
                 diki_link = diki_link.replace(' or something', '').replace('someone', 'somebody')
-                audio_link, audiofile_name = audio_diki(url='https://www.diki.pl/slownik-angielskiego?q=' + diki_link,
+                audio_link, audiofile_name = audio_diki(url='https://www.diki.pl/slownik-angielskiego?q=',
                                                         diki_link=diki_link, partial_check=False)
             return get_audio_response(audio_link, audiofile_name)
         except Exception:
@@ -832,7 +864,7 @@ def hide_phrase_in(content, hide):
             )
         words_th = phrase.lower().split(' ')
         words_th_s_exceptions = (x.rstrip('y')+'ies' for x in words_th if x.endswith('y'))
-        words_th_ing_exceptions = (x.rstrip('e')+'ing' for x in words_th if x.endswith('e') and x not in prepositions)
+        words_th_ing_exceptions = (x.rstrip('e')+'ing' for x in words_th if x.endswith('e') and x not in prepositions and x not in nonoes)
         words_th_ing_exceptions2 = (x.rstrip('ie')+'ying' for x in words_th if x.endswith('ie'))
         words_th_ed_exceptions = (x.rstrip('y')+'ied' for x in words_th if x.endswith('y'))
 
@@ -1059,7 +1091,7 @@ def wyswietl_karte():
 
     try:
         print(f'\n{delimit_color}{delimit * "-"}')
-        for field in config['fieldorder'].keys():
+        for field in config['fieldorder']:
             for fi in print_elems(field_values[config['fieldorder'][field]], *options).split('\n'):
                 print(f'{ctf[config["fieldorder"][field]]}{fi.center(centr)}')
             if field == config['fieldorder_d']:
@@ -1177,7 +1209,10 @@ try:
                             if skip_check == 1:
                                 break
                         if config['mergedisamb']:
-                            synonimy = synonimy + '<br>' + przyklady
+                            brek = '<br>'
+                            if synonimy == '' or przyklady == '':
+                                brek = ''
+                            synonimy = synonimy + brek + przyklady
                             przyklady = ''
                 else:
                     audio = search_for_audio(server='diki')
@@ -1195,7 +1230,10 @@ try:
                     if skip_check == 1:
                         break
                     if config['mergeidiom']:
-                        definicja = definicja + '<br><br>' + przyklady
+                        brek = '<br><br>'
+                        if definicja == '' or przyklady == '':
+                            brek = ''
+                        definicja = definicja + brek + przyklady
                         przyklady = ''
                 if config['showcard']:
                     skip_check = wyswietl_karte()
