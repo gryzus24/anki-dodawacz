@@ -1,0 +1,66 @@
+add_audio: true
+add_definitions: true
+add_disambiguation: true
+add_etymologies: true
+add_idiom_examples: true
+add_parts_of_speech: true
+add_sentences: true
+add_synonym_examples: true
+add_synonyms: true
+ankiconnect: false
+attention_c: lightyellow
+audio_path: Karty_audio
+break: false
+center: 79* auto
+create_card: true
+deck: '-'
+def1_c: reset
+def2_c: reset
+def_bulk: '0'
+delimit_c: reset
+delimsize: 79* auto
+dupescope: deck
+duplicates: false
+error_c: lightred
+etym_bulk: '0'
+etym_c: reset
+fieldorder:
+  '1': definicja
+  '2': synonimy
+  '3': przyklady
+  '4': phrase
+  '5': zdanie
+  '6': czesci_mowy
+  '7': etymologia
+  '8': audio
+fieldorder_d: '3'
+filtered_dictionary: true
+hide_definition_word: true
+hide_disamb_word: true
+hide_idiom_word: true
+hide_prepositions: false
+hide_sentence_word: false
+indent: 2
+index_c: lightgreen
+input_c: reset
+inputtext_c: reset
+merge_disambiguation: false
+merge_idioms: true
+note: '-'
+phrase_c: cyan
+pidiom_bulk: '0'
+pidiom_c: reset
+pos_bulk: '0'
+pos_c: yellow
+psyn_bulk: '0'
+psyn_c: reset
+server: ahd
+showcard: true
+showdisamb: true
+syn_bulk: '0'
+syn_c: yellow
+syndef_c: reset
+synpos_c: reset
+tags: dodawacz
+textwidth: 79
+wraptext: true
