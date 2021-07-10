@@ -16,13 +16,13 @@ create_card: true
 deck: '-'
 def1_c: reset
 def2_c: reset
-def_bulk: '0'
+def_bulk: 0
 delimit_c: reset
 delimsize: 79* auto
 dupescope: deck
 duplicates: false
 error_c: lightred
-etym_bulk: '0'
+etym_bulk: 0
 etym_c: reset
 fieldorder:
   '1': definicja
@@ -49,16 +49,16 @@ merge_idioms: true
 note: '-'
 phon_c: lightblack
 phrase_c: cyan
-pidiom_bulk: '0'
+pidiom_bulk: 0
 pidiom_c: reset
-pos_bulk: '0'
+pos_bulk: 0
 pos_c: yellow
-psyn_bulk: '0'
+psyn_bulk: 0
 psyn_c: reset
 server: ahd
 showcard: true
 showdisamb: true
-syn_bulk: '0'
+syn_bulk: 0
 syn_c: yellow
 syndef_c: reset
 synpos_c: reset

@@ -24,6 +24,10 @@ ah_dictionary('https://www.ahdictionary.com/word/search.html?q=' + 'fjord')
 ah_dictionary('https://www.ahdictionary.com/word/search.html?q=' + 'incandescent')
 # No pronunciation phrase
 ah_dictionary('https://www.ahdictionary.com/word/search.html?q=' + 'vicious circle')
+
+# These are problematic with the current implementation
 # Two headwords with 'also' and two phonetic spellings
-# This one is problematic with the current implementation
 ah_dictionary('https://www.ahdictionary.com/word/search.html?q=' + 'mastodon')
+# first headword numbered, second not and two phonetic spellings
+ah_dictionary('https://www.ahdictionary.com/word/search.html?q=' + 'like')
+ah_dictionary('https://www.ahdictionary.com/word/search.html?q=' + 'ok')
