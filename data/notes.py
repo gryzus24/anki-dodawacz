@@ -22,7 +22,7 @@ gryzus_std_css = '''.card {
   font-family:;
   font-size: 30px;
   text-align: center;
-  background-color: #F1F9F6;
+  background-color: #DEFFE8; #F1F9F6;
   margin-left: 12%;
   margin-right: 12%;
   margin-top: 10px;

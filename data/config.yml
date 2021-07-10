@@ -47,6 +47,7 @@ inputtext_c: reset
 merge_disambiguation: false
 merge_idioms: true
 note: '-'
+phon_c: lightblack
 phrase_c: cyan
 pidiom_bulk: '0'
 pidiom_c: reset

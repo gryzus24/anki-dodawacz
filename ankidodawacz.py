@@ -17,25 +17,20 @@ from requests.exceptions import Timeout
 from data import commands as c, notes
 from data.commands import BOLD, END
 from data.commands import (R, YEX, def1_c, def2_c, pos_c, etym_c, syn_c, psyn_c, pidiom_c,
-                           syndef_c, synpos_c, index_c, phrase_c,
+                           syndef_c, synpos_c, index_c, phrase_c, phon_c,
                            err_c, delimit_c, input_c, inputtext_c)
-# config is needed in commands module, so I'm opening it there
-from data.commands import config
+from data.commands import config, dir_
 
 if sys.platform.startswith('linux'):
     # For saving command history, this module doesn't work on windows
     import readline
-
     readline.read_init_file()
 
-if not os.path.exists('Karty_audio') and config['audio_path'] == 'Karty_audio':
-    os.mkdir('Karty_audio')
-
 try:
-    with open('data/ankiconnect.yml', 'r') as a:
+    with open(os.path.join(dir_, 'ankiconnect.yml'), 'r') as a:
         ankiconf = yaml.load(a, Loader=yaml.Loader)
 except FileNotFoundError:
-    with open('data/ankiconnect.yml', 'w') as a:
+    with open(os.path.join(dir_, 'ankiconnect.yml'), 'w') as a:
         a.write('{}')
 
 USER_AGENT = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; rv:78.0) Gecko/20100101 Firefox/78.0'}
@@ -307,7 +302,7 @@ def add_notes(*args):
 def refresh_notes():
     try:
         try:
-            with open('data/ankiconnect.yml', 'w') as ank:
+            with open(os.path.join(dir_, 'ankiconnect.yml'), 'w') as ank:
                 ank.write('{}')
         except FileNotFoundError:
             print(f'{err_c}Plik {R}ankiconnect.yml{err_c} nie istnieje')
@@ -553,11 +548,11 @@ def boolean_commands(*args):
     except IndexError:
         # args[1] index out of range, no argument
         print(f'{YEX}{msg}\n'
-              f'{R}{cmd} {{on/off}}')
+              f'{R}{cmd} {{on|off}}')
     except KeyError:
         # c.commands_values[args[1]] KeyError, value not found
         print(f'{err_c}Nieprawidłowa wartość, użyj:\n'
-              f'{R}{cmd} {{on/off}}')
+              f'{R}{cmd} {{on|off}}')
 
 
 def save_commands(entry, value):
@@ -567,7 +562,7 @@ def save_commands(entry, value):
             config[command_entry] = value
     else:
         config[entry] = value
-    with open('data/config.yml', 'w') as conf_file:
+    with open(os.path.join(dir_, 'config.yml'), 'w') as conf_file:
         yaml.dump(config, conf_file)
 
 
@@ -673,6 +668,7 @@ def get_audio_from_diki(raw_phrase, flag, url='https://www.diki.pl/slownik-angie
             end_of_url = end_of_url.split(' tabindex')[0].strip('"')
             return end_of_url
         except IndexError:
+            # url not found
             return None
 
     def last_resort():
@@ -700,7 +696,7 @@ def get_audio_from_diki(raw_phrase, flag, url='https://www.diki.pl/slownik-angie
                 attempt = raw_phrase
         return attempt
 
-    def beg_diki_for_correct_audio_url(_search_phrase, search_by_filename=True):
+    def get_audio_url(_search_phrase, search_by_filename=True):
         _diki_phrase = _search_phrase
         audio_urls = diki_request(full_url=url + _diki_phrase)
         if not search_by_filename:
@@ -712,19 +708,18 @@ def get_audio_from_diki(raw_phrase, flag, url='https://www.diki.pl/slownik-angie
 
     search_phrase = raw_phrase.replace('(', '').replace(')', '') \
         .replace(' or something', '').replace('someone', 'somebody')
-    diki_phrase, audio_url = beg_diki_for_correct_audio_url(search_phrase)
+    diki_phrase, audio_url = get_audio_url(search_phrase)
     if not audio_url:
         print(f'{err_c}Diki nie posiada pożądanego audio\n{YEX}Spróbuję dodać co łaska...\n')
     if not audio_url and search_phrase.startswith('an '):
-        diki_phrase, audio_url = beg_diki_for_correct_audio_url(search_phrase.replace('an ', '', 1))
+        diki_phrase, audio_url = get_audio_url(search_phrase.replace('an ', '', 1))
     if not audio_url and 'lots' in search_phrase:
-        diki_phrase, audio_url = beg_diki_for_correct_audio_url(search_phrase.replace('lots', 'a lot'))
+        diki_phrase, audio_url = get_audio_url(search_phrase.replace('lots', 'a lot'))
     if not audio_url and ' of' in search_phrase:
-        diki_phrase, audio_url = beg_diki_for_correct_audio_url(search_phrase.replace(' of', ''),
-                                                                search_by_filename=False)
+        diki_phrase, audio_url = get_audio_url(search_phrase.replace(' of', ''), search_by_filename=False)
     if not audio_url:
         search_phrase = last_resort()
-        diki_phrase, audio_url = beg_diki_for_correct_audio_url(search_phrase, search_by_filename=False)
+        diki_phrase, audio_url = get_audio_url(search_phrase, search_by_filename=False)
 
     url_end = get_url_end(audio_url)  # eg. /images-common/en/mp3/confirm.mp3
     if url_end is None:
@@ -946,11 +941,12 @@ def get_ah_dictionary(url):
     try:
         reqs = requests_session_ah.get(url, timeout=10)
         soup = BeautifulSoup(reqs.content, 'lxml', from_encoding='utf-8')
-        word_check = soup.find_all(class_=('ds-list', 'sds-single', 'ds-single', 'ds-list'))
-        if len(word_check) == 0:
-            print(f'{err_c}Nie znaleziono podanego hasła w AH Dictionary\n{YEX}Szukam w idiomach...')
-            skip_check = 1
-        return word_check, soup
+        word_check = soup.find('div', {'id': 'results'})
+        if word_check.text != 'No word definition found':
+            return soup
+        print(f'{err_c}Nie znaleziono podanego hasła w AH Dictionary\n{YEX}Szukam w idiomach...')
+        skip_check = 1
+        return None
     except ConnectionError:
         print(f'{err_c}Nie udało się połączyć ze słownikiem, sprawdź swoje połączenie i spróbuj ponownie')
         skip_check = 1
@@ -969,35 +965,49 @@ def ah_dictionary(url):
     global skip_check
     global phrase
 
+    soup = get_ah_dictionary(url)
+    if soup is None:
+        return [], [], []
+
     defs = []
     poses = []
     etyms = []
-    word_check, soup = get_ah_dictionary(url)
-    if not word_check:
-        return defs, poses, etyms
-
-    indexing = 0
-    correct_word_index = 0
     term_width = terminal_width()
     manage_display_parameters(term_width)
+
+    indexing = 0
+    # whether 'results for (phrase)' was printed
+    results_for_printed = False
     for td in soup.find_all('td'):
-        meanings_in_td = td.find_all(class_=('ds-list', 'sds-single', 'ds-single', 'ds-list'))
         print(f'{delimit_c}{conf_to_int(config["delimsize"]) * "-"}')
-        for meaning_num in td.find_all('font', {'color': '#006595'}, 'sup'):
-            # Prints bat·ter 1, bat·ter 2 etc.
-            # When search is redirected due to bad word keyword eg. "impeachment" instead of "impeach"
-            # It makes sure that "impeach" is added
-            correct_word_index += 1
-            if correct_word_index == 1 or correct_word_index == 2:  # Lowercase phrase is preferred
-                correct_word0 = meaning_num.text
-                correct_word1 = correct_word0.replace('·', '')
-                correct_word_to_print = re.sub(r'\d', '', correct_word1).strip()
-                phrase = correct_word_to_print.strip('-–')
-                if correct_word_index == 1:
-                    wdg = f'{BOLD}Wyniki dla {phrase_c}{correct_word_to_print}{END}'
-                    # RESET and BOLD are taken into consideration by center
-                    print(wdg.center(conf_to_int(config['center']) + 12))
-            print(f'  {phrase_c}{meaning_num.text}')
+
+        hpaps = td.find('div', class_='rtseg')
+        # example hpaps: bat·ter 1  (băt′ər)
+        # example person hpaps: Monk  (mŭngk), (James) Arthur  Known as  "Art."  Born 1957.
+        hpaps = hpaps.text.split('Share:')[0] \
+            .replace('', '′').replace('', 'oo').replace('', 'oo').strip()
+
+        phon_spell = '(' + hpaps.split(')')[0].split(' (')[-1].strip() + ')'
+        if phon_spell.strip('()') == hpaps:
+            phon_spell = ''
+        # get rid of phonetic spelling and then clean up
+        # (when hpaps is a person cleanup is necessary)
+        head_word = hpaps.replace(phon_spell, '').replace('  ,', ',') \
+            .replace('  ', ' ').replace('  ', ' ').replace(', ', ' ', 1).strip()
+
+        if not results_for_printed:
+            if head_word[-1].isnumeric():
+                phrase = head_word[:-2].replace('·', '')
+            else:
+                phrase = head_word.replace('·', '')
+
+            wdg = f'{BOLD}Wyniki dla {phrase_c}{phrase.split()[0]}{END}\n'
+            # END and BOLD are taken into consideration by center, that's why +12
+            print(wdg.center(conf_to_int(config['center']) + 12))
+            results_for_printed = True
+        print(f'  {phrase_c}{head_word.strip()}  {phon_c}{phon_spell}')
+
+        meanings_in_td = td.find_all(class_=('ds-list', 'sds-single', 'ds-single', 'ds-list'))
         for meaning in meanings_in_td:  # Prints definitions
             indexing += 1
             rex0 = re.sub("[.][a-z][.]", ".", meaning.text)
@@ -1363,7 +1373,7 @@ def organize_notes(base_fields, adqt_mf_config, print_errors):
     # So that blank notes are not saved in ankiconnect.yml
     if adqt_mf_config != {}:
         ankiconf[config['note']] = adqt_mf_config
-        with open('data/ankiconnect.yml', 'w') as ank:
+        with open(os.path.join(dir_, 'ankiconnect.yml'), 'w') as ank:
             yaml.dump(ankiconf, ank)
 
 
@@ -1401,7 +1411,7 @@ def utworz_karte(definicja, synonimy, przyklady, zdanie, czesci_mowy, etymologia
             if r == 'duplicate':
                 print(f'{err_c}Karta nie została dodana, bo jest duplikatem\n'
                       f'Zezwól na dodawanie duplikatów wpisując {R}-duplicates on\n'
-                      f'{err_c}lub zmień zasięg sprawdzania duplikatów {R}-dupescope {{deck/collection}}')
+                      f'{err_c}lub zmień zasięg sprawdzania duplikatów {R}-dupescope {{deck|collection}}')
             if r == 'out of reach' and organize_err != 'out of reach':
                 print(f'{err_c}Karta nie została dodana, bo kolekcja jest nieosiągalna\n'
                       f'Sprawdź czy Anki jest w pełni otwarte')
@@ -1430,7 +1440,7 @@ def utworz_karte(definicja, synonimy, przyklady, zdanie, czesci_mowy, etymologia
         except AttributeError:
             print(f'{err_c}Karta nie została dodana, bo plik "ankiconnect.yml" był pusty\n'
                   f'Zrestartuj program i spróbuj dodać ponownie')
-            with open('data/ankiconnect.yml', 'w') as ank:
+            with open(os.path.join(dir_, 'ankiconnect.yml'), 'w') as ank:
                 ank.write('{}')
     try:
         with open('karty.txt', 'a', encoding='utf-8') as twor:
@@ -1501,7 +1511,7 @@ def create_note(note_config):
 
         if note_ok.lower() in ('1', 't', 'y', 'tak', 'yes', ''):
             config['note'] = note_config['modelName']
-            with open('data/config.yml', 'w') as conf_f:
+            with open(os.path.join(dir_, 'config.yml'), 'w') as conf_f:
                 yaml.dump(config, conf_f)
         return None
     except URLError:
@@ -1533,7 +1543,10 @@ def main():
     global skip_check
     global skip_check_disamb
 
-    __version__ = 'v0.7.0-1'
+    if not os.path.exists('Karty_audio') and config['audio_path'] == 'Karty_audio':
+        os.mkdir('Karty_audio')
+
+    __version__ = 'v0.7.0-2'
     print(f'{BOLD}- Dodawacz kart do Anki {__version__} -{END}\n\n'
           f'Wpisz "--help", aby wyświetlić pomoc\n\n')
 

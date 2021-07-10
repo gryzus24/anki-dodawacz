@@ -15,20 +15,20 @@ if sys.platform.startswith('linux'):
     BOLD = '\033[1m'
     END = '\033[0m'
 
-# path is data/config.yml because this gets executed on import
-config_path = os.path.abspath('data/config.yml')
+
+dir_ = os.path.abspath(os.path.dirname(__file__))
 try:
-    with open(config_path, 'r') as r:
+    with open(os.path.join(dir_, 'config.yml'), 'r') as r:
         config = yaml.load(r, Loader=yaml.Loader)
 except FileNotFoundError:
-    with open(config_path, 'w') as w:
+    with open(os.path.join(dir_, 'config.yml'), 'w') as w:
         # if config.yml file not found, just write necessary data to open the program
         # then the user can set up their config from scratch
         w.write("""attention_c: lightyellow\ndef1_c: reset\ndef2_c: reset\ndelimit_c: reset
 error_c: lightred\netym_c: reset\nindex_c: lightgreen\ninput_c: reset\ninputtext_c: reset
 pidiom_c: reset\npos_c: yellow\npsyn_c: reset\nsyn_c: yellow\nsyndef_c: reset\nsynpos_c: reset
 phrase_c: cyan\naudio_path: ''""")
-    with open(config_path, 'r') as r:
+    with open(os.path.join(dir_, 'config.yml'), 'r') as r:
         config = yaml.load(r, Loader=yaml.Loader)
 
 # COLORS
@@ -66,6 +66,7 @@ color_data = {
         'synpos': 'Kolor części mowy przy synonimach',
         'index': 'Kolor indeksów',
         'phrase': 'Kolor hasła',
+        'phon': 'Kolor pisowni fonetycznej',
         'error': 'Kolor błędów',
         'attention': 'Kolor zwracający uwagę',
         'delimit': 'Kolor odkreśleń',
@@ -84,6 +85,7 @@ def1_c = color_data['colors'][config['def1_c']]
 def2_c = color_data['colors'][config['def2_c']]
 index_c = color_data['colors'][config['index_c']]
 phrase_c = color_data['colors'][config['phrase_c']]
+phon_c = color_data['colors'][config['phon_c']]
 pos_c = color_data['colors'][config['pos_c']]
 etym_c = color_data['colors'][config['etym_c']]
 synpos_c = color_data['colors'][config['synpos_c']]
@@ -128,6 +130,7 @@ syndef        {syndef_c}definicji przy synonimach{R}
 synpos        {synpos_c}części mowy przy synonimach{R}
 index         {index_c}indeksów w słowniku{R}
 phrase        {phrase_c}wyszukanego w słowniku hasła{R}
+phon          {phon_c}kolor pisowni fonetycznej{R}
 error         {err_c}błędów{R}
 attention     {YEX}zwracającego uwagę{R}
 delimit       {delimit_c}odkreśleń{R}
@@ -220,23 +223,23 @@ command_data = {
     '-delimsize': {
         'config_entry': 'delimsize',
         'print_msg': 'Szerokość odkreśleń',
-        'comment': '-delimsize {0 <= n < 383}'},
+        'comment': '-delimsize {auto|0 <= n < 383}'},
     '-center': {
         'config_entry': 'center',
         'print_msg': 'Wyśrodkowywanie tekstu',
-        'comment': '-center {0 <= n < 383}'},
+        'comment': '-center {auto|0 <= n < 383}'},
     '-textwidth': {
         'config_entry': 'textwidth',
         'print_msg': 'Szerokość tekstu do momentu zawinięcia',
-        'comment': '-textwidth {0 <= n < 383}'},
+        'comment': '-textwidth {auto|0 <= n < 383}'},
     '-indent': {
         'config_entry': 'indent',
         'print_msg': 'Szerokość wcięć',
-        'comment': '-indent {0 <= n < szerokość okna // 2}'},
+        'comment': '-indent {0 <= n < szerokość okna//2}'},
     '-dupescope': {
         'config_entry': 'dupescope',
         'print_msg': 'Zasięg sprawdzania duplikatów',
-        'comment': '-dupescope {deck/collection}'},
+        'comment': '-dupescope {deck|collection}'},
     '-note': {
         'config_entry': 'note',
         'print_msg': 'Notatka używana do dodawania kart',
@@ -252,15 +255,15 @@ command_data = {
     '--audio-path': {
         'config_entry': 'audio_path',
         'print_msg': 'Ścieżka zapisu audio',
-        'comment': '-ap, --audio-path {ścieżka/auto}'},
+        'comment': '-ap, --audio-path {ścieżka|auto}'},
     '-ap': {
         'config_entry': 'audio_path',
         'print_msg': 'Ścieżka zapisu audio',
-        'comment': '-ap, --audio-path {ścieżka/auto}'},
+        'comment': '-ap, --audio-path {ścieżka|auto}'},
     '-server': {
         'config_entry': 'server',
         'print_msg': 'Preferowany serwer audio',
-        'comment': '-server {ahd/diki/lexico}'},
+        'comment': '-server {ahd|diki|lexico}'},
 }
 
 bulk_elems = ['def', 'pos', 'etym', 'syn', 'psyn', 'pidiom', 'all']
@@ -382,16 +385,17 @@ Dostępne pola:
 
 def help_commands_command():
     print(f"""\n{R}{BOLD}------[Komendy dodawania]------{END}
-Aby zmienić wartość dla komendy wpisz {BOLD}on/off{END}
+Aby zmienić wartość dla komendy wpisz {BOLD}on|off{END}
 np. "-pz off", "-disamb on", "-all off" itd.
 
 {{}} - wartość jest wymagana
 [] - wartość jest opcjonalna
+| - lub
 
 Wpisanie "-h" albo "--help" po komendzie
   wyświetli informacje o użyciu
 
-{BOLD}[Komenda]      [włącza/wyłącza]{END}
+{BOLD}[Komenda]      [włącza|wyłącza]{END}
 -pz            pole na wpisywanie przykładowego zdania
 -def           pole na wybór definicji
 -pos           pole na wybór części mowy
@@ -408,7 +412,7 @@ Wpisanie "-h" albo "--help" po komendzie
 -mergedisamb   dołączanie zawartości pola "przykłady" do pola "synonimy"
 -mergeidiom    dołączanie przykładów synonimów do pola "definicja"
 
--ap, --audio-path {{auto/ścieżka}}   ścieżka zapisu plików audio
+-ap, --audio-path {{auto|ścieżka}}   ścieżka zapisu plików audio
                                    (domyślnie "Karty_audio")
                    auto              automatycznie próbuje znaleźć
                                      folder "collection.media"
@@ -424,7 +428,7 @@ Wpisanie "-h" albo "--help" po komendzie
 {BOLD}------[Komendy miscellaneous]------{END}
 Ukrywanie hasła to zamiana wyszukiwanego słowa na "..."
 
-{BOLD}[Komenda]      [on/off]{END}
+{BOLD}[Komenda]      [on|off]{END}
 -fs            filtrowanie numeracji w słownikach
 -upz           ukrywanie hasła w zdaniu
 -udef          ukrywanie hasła w definicjach
@@ -438,10 +442,10 @@ Ukrywanie hasła to zamiana wyszukiwanego słowa na "..."
 -wraptext      zawijanie tekstu
 -break         wstawianie nowej linii po każdej definicji
 
--textwidth {{wartość/auto}}   szerokość tekstu do momentu zawinięcia
+-textwidth {{wartość|auto}}   szerokość tekstu do momentu zawinięcia
 -indent {{wartość}}           szerokość wcięcia zawiniętego tekstu
--delimsize {{wartość/auto}}   szerokość odkreśleń
--center {{wartość/auto}}      wyśrodkowywanie nagłówków i podglądu karty
+-delimsize {{wartość|auto}}   szerokość odkreśleń
+-center {{wartość|auto}}      wyśrodkowywanie nagłówków i podglądu karty
 
 --delete-last [n >= 1]      usuwa ostatnio dodaną kartę z pliku karty.txt
 --delete-recent [n >= 1]    lub sprecyzowaną ilość kart
@@ -473,10 +477,10 @@ np. -fo 1 audio             zmieni pole "definicja" (1) na pole "audio"
 np. -fo d 5                 przesunie odkreślenie pod pole "zdanie" (5)
 
 {BOLD}------[Komendy AnkiConnect]------{END}
--ankiconnect {{on/off}}       bezpośrednie dodawanie kart do Anki
+-ankiconnect {{on|off}}       bezpośrednie dodawanie kart do Anki
                             poprzez AnkiConnect
 
--duplicates {{on/off}}        dodawanie duplikatów
+-duplicates {{on|off}}        dodawanie duplikatów
 -dupescope                  określa zasięg sprawdzania duplikatów:
           deck               w obrębie talii
           collection         w obrębie całej kolekcji (wszystkich talii)
@@ -521,12 +525,11 @@ Bulk pozwala na dodawanie wielu kart na raz poprzez ustawianie
 
 Domyślne wartości wyświetlane są w nawiasach kwadratowych przy prompcie.
 " Dodaj definicje [0]: "
-                 --^
+                 {BOLD}--^{END}
 Domyślnie, domyślne ustawienia dodawania to "0" dla każdego elementu.
 
 -cb, --config-bulk        rozpoczyna pełną konfigurację domyślnych wartości
--cd, --config-defaults    domyślna wartość dla wszystkich elementów to 0
-                          wpisanie litery wychodzi z konfiguracji
+-cd, --config-defaults    wpisanie litery wychodzi z konfiguracji
                           i nie zapisuje wprowadzonych zmian
 
 Możemy zmieniać domyślne wartości pojedynczych elementów:
