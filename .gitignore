@@ -1,6 +1,4 @@
 /shelf/
-/workspace.xml
 /.idea
 karty.txt
-Karty_audio/*.mp3
-Karty_audio/*.wav
+Karty_audio
