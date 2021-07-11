@@ -1,4 +1,17 @@
-import json  # For ankiconnect invoke function
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program. If not, see <http://www.gnu.org/licenses/>.
+
+import json
 import os
 import os.path
 import re
@@ -171,7 +184,7 @@ def print_config():
     column1.insert(10, '')  # Blank after -disamb
     # from [13] to avoid '-all'
     column2 = list(c.command_data)[13:33]
-    # so that -ankiconnect and -duplicates are placed under [config ankiconnect]
+    # so that -ankiconnect and -duplicates are placed below [config ankiconnect]
     column2[10], column2[14] = column2[14], column2[10]
     column2[11], column2[15] = column2[15], column2[11]
     column2.insert(14, '')  # Blank after -center
@@ -215,7 +228,7 @@ def print_config():
 
     print(f'\n--audio-path: {config.get("audio_path", "")}')
     print('\nkonfiguracja kolorów: "-c -h"\n'
-          'konfiguracja pól: "-fo"\n')
+          'konfiguracja pól: "-fo -h"\n')
 
 
 def set_width_settings(*args):
@@ -340,6 +353,7 @@ def change_field_order(*args):
         '1': 'definicja', '2': 'synonimy', '3': 'przyklady', '4': 'phrase',
         '5': 'zdanie', '6': 'czesci_mowy', '7': 'etymologia', '8': 'audio'}
 
+    cmd = args[0]
     help_ = False
     try:
         number = args[1].lower()
@@ -349,9 +363,9 @@ def change_field_order(*args):
     except IndexError:
         # no arguments
         if help_:
-            print(f"{R}-fo default : przywraca domyślną kolejność pól\n"
-                  "-fo {1-8} {pole} : zmienia pole pod podanym numerem na {pole}\n"
-                  "-fo d {1-8} : przesuwa odkreślenie pod {1-8}\n")
+            print(f"{R}{cmd} default : przywraca domyślną kolejność pól\n"
+                  f"{cmd} {{1-8}} {{pole}} : zmienia pole pod podanym numerem na {{pole}}\n"
+                  f"{cmd} d {{1-8}} : przesuwa odkreślenie pod {{1-8}}\n")
         display_fields()
         return None
 
@@ -1558,7 +1572,7 @@ def main():
     if not os.path.exists('Karty_audio') and config['audio_path'] == 'Karty_audio':
         os.mkdir('Karty_audio')
 
-    __version__ = 'v0.7.0-2'
+    __version__ = 'v0.7.0-4'
     print(f'{BOLD}- Dodawacz kart do Anki {__version__} -{END}\n\n'
           f'Wpisz "--help", aby wyświetlić pomoc\n\n')
 
