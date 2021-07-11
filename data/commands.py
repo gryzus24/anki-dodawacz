@@ -39,7 +39,7 @@ except FileNotFoundError:
         # then the user can set up their config from scratch
         w.write("""attention_c: lightyellow\ndef1_c: reset\ndef2_c: reset\ndelimit_c: reset
 error_c: lightred\netym_c: reset\nindex_c: lightgreen\ninput_c: reset\ninputtext_c: reset
-pidiom_c: reset\npos_c: yellow\npsyn_c: reset\nsyn_c: yellow\nsyndef_c: reset\nsynpos_c: reset
+pidiom_c: reset\npos_c: yellow\npsyn_c: reset\nsyn_c: yellow\nsyngloss_c: reset\nsynpos_c: reset
 phrase_c: cyan\naudio_path: ''""")
     with open(os.path.join(dir_, 'config.yml'), 'r') as r:
         config = yaml.load(r, Loader=yaml.Loader)
@@ -75,7 +75,7 @@ color_data = {
         'syn': 'Kolor synonimów',
         'psyn': 'Kolor przykładów synonimów',
         'pidiom': 'Kolor przykładów idiomów',
-        'syndef': 'Kolor definicji przy synonimach',
+        'syngloss': 'Kolor definicji przy synonimach',
         'synpos': 'Kolor części mowy przy synonimach',
         'index': 'Kolor indeksów',
         'phrase': 'Kolor hasła',
@@ -102,7 +102,7 @@ phon_c = color_data['colors'][config['phon_c']]
 pos_c = color_data['colors'][config['pos_c']]
 etym_c = color_data['colors'][config['etym_c']]
 synpos_c = color_data['colors'][config['synpos_c']]
-syndef_c = color_data['colors'][config['syndef_c']]
+syngloss_c = color_data['colors'][config['syngloss_c']]
 err_c = color_data['colors'][config['error_c']]
 delimit_c = color_data['colors'][config['delimit_c']]
 
@@ -139,11 +139,11 @@ etym          {etym_c}etymologii w słowniku{R}
 syn           {syn_c}synonimów na WordNecie{R}
 psyn          {psyn_c}przykładów pod synonimami{R}
 pidiom        {pidiom_c}przykładów pod idiomami{R}
-syndef        {syndef_c}definicji przy synonimach{R}
+syngloss      {syngloss_c}definicji przy synonimach{R}
 synpos        {synpos_c}części mowy przy synonimach{R}
 index         {index_c}indeksów w słowniku{R}
 phrase        {phrase_c}wyszukanego w słowniku hasła{R}
-phon          {phon_c}kolor pisowni fonetycznej{R}
+phon          {phon_c}pisowni fonetycznej{R}
 error         {err_c}błędów{R}
 attention     {YEX}zwracającego uwagę{R}
 delimit       {delimit_c}odkreśleń{R}
@@ -177,6 +177,15 @@ command_data = {
     '-pidiom': {
         'config_entry': 'add_idiom_examples',
         'print_msg': 'Pole na przykłady idiomów'},
+    '-psynfltr': {
+        'config_entry': 'psyn_filter',
+        'print_msg': 'Filtrowanie przykładów synonimów niezawierających szukanego hasła'},
+    '-mergedisamb': {
+        'config_entry': 'merge_disambiguation',
+        'print_msg': 'Włączenie przykładów synonimów do pola "synonimy"'},
+    '-mergeidiom': {
+        'config_entry': 'merge_idioms',
+        'print_msg': 'Włączenie przykładów idiomów do pola "definicja"'},
     '-audio': {
         'config_entry': 'add_audio',
         'print_msg': 'Dodawanie audio'},
@@ -186,12 +195,6 @@ command_data = {
     '-karty': {
         'config_entry': 'create_card',
         'print_msg': 'Tworzenie kart'},
-    '-mergedisamb': {
-        'config_entry': 'merge_disambiguation',
-        'print_msg': 'Włączenie przykładów synonimów do pola "synonimy"'},
-    '-mergeidiom': {
-        'config_entry': 'merge_idioms',
-        'print_msg': 'Włączenie przykładów idiomów do pola "definicja"'},
     # second config column
     '-all': {
         'config_entry': 'all',  # dummy
@@ -418,13 +421,16 @@ Wpisanie "-h" albo "--help" po komendzie
 -pidiom        pole na wybór przykładów idiomów
 -all           zmienia wartości powyższych komend
 
--audio         dodawanie audio
--disamb        pozyskiwanie synonimów
--karty         dodawanie kart
+-psynfltr      filtrowanie przykładów synonimów
+               niezawierających szukanego hasła
 
 -mergedisamb   dołączanie zawartości pola "przykłady" do pola "synonimy"
 -mergeidiom    dołączanie przykładów synonimów do pola "definicja"
 
+-audio         dodawanie audio
+-disamb        pozyskiwanie synonimów
+-karty         dodawanie kart
+               
 -ap, --audio-path {{auto|ścieżka}}   ścieżka zapisu plików audio
                                    (domyślnie "Karty_audio")
                    auto              automatycznie próbuje znaleźć

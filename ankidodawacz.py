@@ -30,7 +30,7 @@ from requests.exceptions import Timeout
 from data import commands as c, notes
 from data.commands import BOLD, END
 from data.commands import (R, YEX, def1_c, def2_c, pos_c, etym_c, syn_c, psyn_c, pidiom_c,
-                           syndef_c, synpos_c, index_c, phrase_c, phon_c,
+                           syngloss_c, synpos_c, index_c, phrase_c, phon_c,
                            err_c, delimit_c, input_c, inputtext_c)
 from data.commands import config, dir_
 
@@ -180,10 +180,11 @@ def config_bulk(*args):
 
 
 def print_config():
-    column1 = list(c.command_data)[:12]
-    column1.insert(10, '')  # Blank after -disamb
-    # from [13] to avoid '-all'
-    column2 = list(c.command_data)[13:33]
+    column1 = list(c.command_data)[:13]
+    column1.insert(8, '')  # blank after -psynfltr
+    column1.insert(11, '')
+    # from [14] to avoid '-all'
+    column2 = list(c.command_data)[14:34]
     # so that -ankiconnect and -duplicates are placed below [config ankiconnect]
     column2[10], column2[14] = column2[14], column2[10]
     column2[11], column2[15] = column2[15], column2[11]
@@ -243,8 +244,8 @@ def set_width_settings(*args):
               f'{R}{c.command_data[command]["comment"]}')
         return None
 
-    # gets current terminal width to save 'auto' value and
-    # sets indent max to a reasonable value
+    # gets current terminal width to save 'auto' values and
+    # provides a reasonable max value for indent
     try:
         term_width_auto = os.get_terminal_size()[0]
         term_width = term_width_auto
@@ -409,7 +410,7 @@ def get_paths(tree):
             collections.append(path)
             print(f'{index_c}{len(collections)} {R}{path}')
 
-    if len(collections) == 0:
+    if not collections:
         print(f'{err_c}Lokalizowanie {R}"collection.media"{err_c} nie powiodło się:\n'
               'Brak wyników')
         return None
@@ -594,7 +595,7 @@ commands = {
     '-dupescope': set_text_value_commands,
     '-server': set_text_value_commands,
     '--add-note': add_notes,
-    '--fields-order': change_field_order, '--field-order': change_field_order, '-fo': change_field_order,
+    '--field-order': change_field_order, '-fo': change_field_order,
     '-color': set_colors, '-c': set_colors,
     '--config-bulk': config_bulk, '--config-defaults': config_bulk, '-cd': config_bulk, '-cb': config_bulk,
     # commands that don't take arguments
@@ -614,7 +615,7 @@ def search_interface():
         args = word.split()
         cmd = args[0]
         try:
-            if cmd in tuple(c.command_data)[:25]:
+            if cmd in tuple(c.command_data)[:26]:
                 # to avoid writing all of them in commands dict above
                 boolean_commands(*args)
             elif cmd in tuple(commands)[:23]:
@@ -874,7 +875,7 @@ def print_elems(string, term_width, index_width, indent, gap, break_allowed=Fals
         br = '\n'
     if not config['wraptext']:
         return string + br
-    # Gap is the gap between indexes and definitions
+    # Gap is the gap between indexes and strings
     real_width = int(term_width) - index_width - gap
     if len(string) < real_width:
         return string + br
@@ -883,14 +884,14 @@ def print_elems(string, term_width, index_width, indent, gap, break_allowed=Fals
     indent_ = indent + index_width
     # split(' ') to accommodate for more than one whitespace
     string_divided = string.split(' ')
-    # Individual line length
-    indiv_llen = 0
+    # Current line length
+    current_llen = 0
     for word, nextword in zip(string_divided, string_divided[1:]):
         # 1 is a missing space from string.split(' ')
-        indiv_llen += len(word) + 1
-        if len(nextword) + 1 + indiv_llen > real_width:
+        current_llen += len(word) + 1
+        if len(nextword) + 1 + current_llen > real_width:
             wrapped_text += word + '\n' + indent_ * ' '
-            indiv_llen = indent - gap
+            current_llen = indent - gap
         else:
             wrapped_text += word + ' '
             # Definition + the last word
@@ -1032,7 +1033,7 @@ def ah_dictionary(query):
                 rex = re.sub(" [a-z][.] ", " ", rex)
                 # when definition has an example with a '?', there's no space in between
                 rex = re.sub("[?][a-z][.] ", "? |", rex)
-                rex = rex.strip('1234567890.')
+                rex = rex.lstrip('1234567890.')
                 rex = rex.strip().replace('', '′')  # to print
                 rex = rex.split(' See Usage Note at')[0]
                 rex = rex.split(' See Synonyms at')[0]
@@ -1192,43 +1193,37 @@ def single_choice(choice, content_list, connector, pos):
 
 
 def wordnet(syn_soup):
-    syn_stream = []
     gsyn = []
     gpsyn = []
-    for synline in syn_soup.find_all('li'):
-        syn_stream.append(synline.text)
-    for index, ele in enumerate(syn_stream, start=1):
-        przyklady0 = re.findall(r'\"(.+?)\"', ele)
-        przyklady1 = re.sub("[][]", "", str(przyklady0))  # Added to the card
-        przyklady2 = re.sub("',", "'\n   ", przyklady1)
-        przyklady4 = re.sub(r"\A[']", "\n    '", przyklady2)  # Printed
-        synonimy0, sep, tail = ele.partition('"')  # Separates synonyms from examples
-        synonimy1 = synonimy0.replace("S:", "")
 
-        syndef0 = synonimy1.split('(', 2)[2]
-        syndef = '(' + syndef0
-        pos = synonimy1.split(')')[0]
-        pos = pos + ')'
-
-        synonimy2 = re.sub(r"\([^()]*\)", "", synonimy1)  # Removes the first batch of parentheses
-        synonimy3 = re.sub(r"\(.*\)", "", synonimy2)  # Removes remaining parentheses
-        synonimy4 = re.sub(r"\s{2}", "", synonimy3)
-
-        gpsyn.append(przyklady1)
-        gsyn.append(synonimy4)
+    syn_elems = syn_soup.find_all('li')
+    for index, ele in enumerate(syn_elems, start=1):
+        pos = '(' + ele.text.split(') ', 1)[0].split('(')[-1] + ')'
+        syn = (ele.text.split(') ', 1)[-1].split(' (')[0]).strip()
+        gloss = '(' + ((ele.text.rsplit(') ', 1)[0] + ')').strip('S: (').split(' (', 1)[-1])
+        # Anki treats double quotes as escape characters when importing
+        psyn = ele.text.rsplit(') ')[-1].replace('"', "'")
+        if config['psyn_filter']:
+            # phrase[:-1] is the most accurate filter as it caters to almost
+            # all exceptions while having rather low false-positive ratio
+            psyn = '; '.join([x for x in psyn.split('; ') if phrase[:-1].lower() in x.lower()])
 
         if config['showdisamb']:
-            # gap 6, aby zmitygować +'\n   '
-            syn_tp = print_elems(synonimy4 + '\n   ', term_width=conf_to_int(config['textwidth']),
-                                 index_width=len(str(index)),
-                                 indent=3, gap=6 + len(str(pos)))
-            syndef_tp = print_elems(syndef, term_width=conf_to_int(config['textwidth']),
-                                    index_width=len(str(index)),
-                                    indent=3, gap=3)
-            print(f'{index_c}{index} : {synpos_c}{pos.lstrip()} {syn_c}{syn_tp} {syndef_c}'
-                  f'{syndef_tp}{psyn_c}{przyklady4}\n')  # przykładów się nie opłaca zawijać
-        else:
-            ''
+            syn_tp = print_elems(syn, conf_to_int(config['textwidth']), len(str(index)),
+                                 indent=3, gap=4 + len(str(pos)))
+            gloss_tp = print_elems(gloss, conf_to_int(config['textwidth']), len(str(index)),
+                                   indent=3, gap=3)
+            print(f'{index_c}{index} : {synpos_c}{pos} {syn_c}{syn_tp}\n'
+                  f'{(len(str(index))+3) * " "}{syngloss_c}{gloss_tp}')
+            if psyn:
+                for ps in psyn.split('; '):
+                    psyn_tp = print_elems(ps, conf_to_int(config['textwidth']), len(str(index)),
+                                          indent=4, gap=3)
+                    print(f'{(len(str(index))+3) * " "}{psyn_c}{psyn_tp}')
+            print()
+
+        gpsyn.append(psyn)
+        gsyn.append(syn)
     return gsyn, gpsyn
 
 
@@ -1243,16 +1238,15 @@ def wordnet_request(url):
         # though it might be headers like keep-alive or cookies, I don't know
         reqs_syn = requests.get(url, headers=USER_AGENT, timeout=10)
         syn_soup = BeautifulSoup(reqs_syn.content, 'lxml', from_encoding='iso-8859-1')
-        no_word = syn_soup.find('h3')
-        if len(str(no_word)) == 48 or len(str(no_word)) == 117:
+        no_word = syn_soup.find('h3').text
+        if no_word.startswith('Your') or no_word.startswith('Sorry'):
             print(f'{err_c}\nNie znaleziono {phrase_c}{phrase}{err_c} na {R}WordNecie')
             skip_check_disamb = 1
             return [], []
-        else:
-            if config['showdisamb']:
-                print(f'{delimit_c}{conf_to_int(config["delimsize"]) * "-"}')
-                print(f'{Fore.LIGHTWHITE_EX}{"WordNet".center(conf_to_int(config["center"]))}\n')
-            return wordnet(syn_soup)
+        if config['showdisamb']:
+            print(f'{delimit_c}{conf_to_int(config["delimsize"]) * "-"}')
+            print(f'{BOLD}{"WordNet".center(conf_to_int(config["center"]))}{END}\n')
+        return wordnet(syn_soup)
     except ConnectionError:
         print(f'{err_c}Nie udało się połączyć z WordNetem, sprawdź swoje połączenie i spróbuj ponownie')
         skip_check_disamb = 1
@@ -1572,7 +1566,7 @@ def main():
     if not os.path.exists('Karty_audio') and config['audio_path'] == 'Karty_audio':
         os.mkdir('Karty_audio')
 
-    __version__ = 'v0.7.0-4'
+    __version__ = 'v0.7.0-5'
     print(f'{BOLD}- Dodawacz kart do Anki {__version__} -{END}\n\n'
           f'Wpisz "--help", aby wyświetlić pomoc\n\n')
 

@@ -55,12 +55,13 @@ pos_bulk: 0
 pos_c: yellow
 psyn_bulk: 0
 psyn_c: reset
+psyn_filter: true
 server: ahd
 showcard: true
 showdisamb: true
 syn_bulk: 0
 syn_c: yellow
-syndef_c: reset
+syngloss_c: reset
 synpos_c: reset
 tags: dodawacz
 textwidth: 79
