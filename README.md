@@ -4,7 +4,7 @@ Prosty i otwarty na konfigurację program do tworzenia monojęzycznych kart do A
 Pozyskuje informacje z American Heritage Dictionary, Farlex Dictionary of Idioms i WordNet 3.1.<br>
 Pozwala na szybki wybór definicji, części mowy, etymologii, synonimów oraz audio.
 
-Celem programu jest ułatwić i uprzyjemnić żmudny i zniechęcający proces dodawania kart, który konwencjonalnie odbywa się
+Celem programu jest ułatwienie i uprzyjemnienie żmudnego i zniechęcającego proces dodawania kart, który konwencjonalnie odbywa się
 za pomocą powtarzalnych ruchów myszką i przekopiowywania informacji do edytora kart.<br>Z Ankidodawaczem ten proces odbywa
 się w stu procentach za pomocą klawiatury.
 
