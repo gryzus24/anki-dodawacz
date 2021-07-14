@@ -1,7 +1,7 @@
 # Ankidodawacz
 
 Prosty i otwarty na konfigurację program do tworzenia monojęzycznych kart do Anki.<br>
-Pozyskuje informacje z American Heritage Dictionary, Farlex Dictionary of Idioms i Wordnet 3.1.<br>
+Pozyskuje informacje z American Heritage Dictionary, Farlex Dictionary of Idioms i WordNet 3.1.<br>
 Pozwala na szybki wybór definicji, części mowy, etymologii, synonimów oraz audio.
 
 Celem programu jest ułatwić i uprzyjemnić żmudny i zniechęcający proces dodawania kart, który konwencjonalnie odbywa się
@@ -10,7 +10,7 @@ się w stu procentach za pomocą klawiatury.
 
 ## Instalacja:
 
-[link do pobrania v0.5.2.zip](https://github.com/funky-trellis/anki-dodawacz/archive/refs/tags/v0.5.2-3.zip)
+[link do pobrania v0.7.0-5.zip](https://github.com/gryzus24/anki-dodawacz/archive/refs/tags/v0.7.0-5.zip)
 :-
 
 ##### Po rozpakowaniu folderu:<br>
@@ -51,7 +51,7 @@ ręcznego przenoszenia zawartości "Karty_audio".<br>
   Aby to zrobić możemy ręcznie wpisać ścieżkę używając komendy <code>-ap [ścieżka]</code><br>
   albo wpisać <code>-ap auto</code>, aby program wyszukał ścieżkę do "collection.media" automatycznie
 
-Customizacja wyglądu w części zależna od naszego emulatora terminala. Na Windowsie 10,
+Customizacja wyglądu w części zależna jest od naszego emulatora terminala. Na Windowsie 10,
 aby zmienić czcionkę, przeźroczystość czy wielkość okna należy kliknąć górny pasek -> właściwości. Tutaj możemy
 dostosować wygląd okna do naszych preferencji.
   
@@ -87,7 +87,7 @@ Teraz została nam do ustawienia tylko notatka.<br>
   
 Program spróbuje automatycznie wykryć jakie informacje trafiają w poszczególne pola.<br>
 Jeżeli jednak coś pójdzie nie tak to musimy zmienić nazwy pól naszej notatki w Anki tak, aby były zrozumiałe dla dodawacza. 
-Przykładowe nazwy pól to:
+Obsługiwane pola to:
 - Definicja
 - Synonimy
 - Przykłady
