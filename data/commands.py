@@ -192,7 +192,7 @@ command_data = {
     '-disamb': {
         'config_entry': 'add_disambiguation',
         'print_msg': 'Słownik synonimów'},
-    '-karty': {
+    '-cards': {
         'config_entry': 'create_card',
         'print_msg': 'Tworzenie kart'},
     # second config column
@@ -429,7 +429,7 @@ Wpisanie "-h" albo "--help" po komendzie
 
 -audio         dodawanie audio
 -disamb        pozyskiwanie synonimów
--karty         dodawanie kart
+-cards         dodawanie kart
                
 -ap, --audio-path {{auto|ścieżka}}   ścieżka zapisu plików audio
                                    (domyślnie "Karty_audio")

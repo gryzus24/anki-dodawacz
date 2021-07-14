@@ -5,29 +5,31 @@ from ankidodawacz import ah_dictionary
 
 # Make sure phonetic spelling is separated from 'phrase' field in these cases:
 # One headword and one phonetic spelling (trivial case)
-ah_dictionary('https://www.ahdictionary.com/word/search.html?q=' + 'garbage')
+ah_dictionary('garbage')
 # Headwords with numbers
-ah_dictionary('https://www.ahdictionary.com/word/search.html?q=' + 'key')
+ah_dictionary('key')
 # One headword and one phonetic spelling separated by commas
-ah_dictionary('https://www.ahdictionary.com/word/search.html?q=' + 'foyer')
+ah_dictionary('foyer')
 # Person headword with pronunciation
-ah_dictionary('https://www.ahdictionary.com/word/search.html?q=' + 'wolf')
+ah_dictionary('wolf')
 # Person headword with no pronunciation
-ah_dictionary('https://www.ahdictionary.com/word/search.html?q=' + 'monk')
+ah_dictionary('monk')
 # Long person headword with no pronunciation
-ah_dictionary('https://www.ahdictionary.com/word/search.html?q=' + 'beach')
+ah_dictionary('beach')
 # Two headwords with 'also' and phonetic spelling separated by commas
-ah_dictionary('https://www.ahdictionary.com/word/search.html?q=' + 'coconut')
+ah_dictionary('coconut')
 # Two headwords with 'or' and phonetic spelling separated by commas
-ah_dictionary('https://www.ahdictionary.com/word/search.html?q=' + 'fjord')
+ah_dictionary('fjord')
 # Only one space between phonetic spelling and headword
-ah_dictionary('https://www.ahdictionary.com/word/search.html?q=' + 'incandescent')
+ah_dictionary('incandescent')
 # No pronunciation phrase
-ah_dictionary('https://www.ahdictionary.com/word/search.html?q=' + 'vicious circle')
+ah_dictionary('vicious circle')
+# first headword numbered, second not and one phonetic spelling + Informal thingy
+ah_dictionary('ok')
 
 # These are problematic with the current implementation
 # Two headwords with 'also' and two phonetic spellings
-ah_dictionary('https://www.ahdictionary.com/word/search.html?q=' + 'mastodon')
+ah_dictionary('mastodon')
 # first headword numbered, second not and two phonetic spellings
-ah_dictionary('https://www.ahdictionary.com/word/search.html?q=' + 'like')
-ah_dictionary('https://www.ahdictionary.com/word/search.html?q=' + 'ok')
+ah_dictionary('like')
+

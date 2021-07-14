@@ -62,13 +62,14 @@ class TestDikiAudio(unittest.TestCase):
         self.assertEqual(get_audio_from_diki('cast lots', ''), (f'{link}cast_lots.mp3', 'cast_lots.mp3'))
         self.assertEqual(get_audio_from_diki('a lot of bunk', ''), ('', ''))
         self.assertEqual(get_audio_from_diki('(as) thick as mince', ''), (f'{link}thick.mp3', 'thick.mp3'))
+        self.assertEqual(get_audio_from_diki('new wine in old wineskins', ''), (f'{link}wineskin.mp3', 'wineskin.mp3'))
 
     def test_unknown_flags(self):
         self.assertEqual(get_audio_from_diki('tap out', 'abbreviation'), (f'{link}tap_out.mp3', 'tap_out.mp3'))
         self.assertEqual(get_audio_from_diki('tap out', '--abbreviation'), (f'{link}tap_out.mp3', 'tap_out.mp3'))
         self.assertEqual(get_audio_from_diki('tap out', None), (f'{link}tap_out.mp3', 'tap_out.mp3'))
         self.assertEqual(get_audio_from_diki('tap out', 0), (f'{link}tap_out.mp3', 'tap_out.mp3'))
-        self.assertEqual(get_audio_from_diki('tap out', -2.453), (f'{link}tap_out.mp3', 'tap_out.mp3'))
+        self.assertEqual(get_audio_from_diki('tap out', -273.15), (f'{link}tap_out.mp3', 'tap_out.mp3'))
 
 
 if __name__ == '__main__':
