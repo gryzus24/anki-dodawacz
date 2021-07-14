@@ -10,7 +10,7 @@ się w stu procentach za pomocą klawiatury.
 
 ## Instalacja:
 
-[link do pobrania v0.7.0-5.zip](https://github.com/gryzus24/anki-dodawacz/archive/refs/tags/v0.7.0-5.zip)
+[link do pobrania v0.7.0-5.zip](https://github.com/gryzus24/anki-dodawacz/archive/refs/tags/v0.7.1-2.zip)
 :-
 
 ##### Po rozpakowaniu folderu:<br>
@@ -134,4 +134,4 @@ Jestem początkujący, jeżeli chodzi o programowanie. Jest to mój pierwszy pro
 
 Jestem otwarty na sugestie i krytykę. Mam nadzieję, że narzędzie okaże się pomocne.
 
-Użyte biblioteki: BeautifulSoup4, requests, colorama, regex, pyyaml, lxml
+Użyte biblioteki: BeautifulSoup4, requests, colorama, pyyaml, lxml
