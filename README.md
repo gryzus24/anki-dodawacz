@@ -10,7 +10,7 @@ się w stu procentach za pomocą klawiatury.
 
 ## Instalacja:
 
-[link do pobrania v0.7.0-5.zip](https://github.com/gryzus24/anki-dodawacz/archive/refs/tags/v0.7.1-2.zip)
+[link do pobrania v0.7.1-2.zip](https://github.com/gryzus24/anki-dodawacz/archive/refs/tags/v0.7.1-2.zip)
 :-
 
 ##### Po rozpakowaniu folderu:<br>
