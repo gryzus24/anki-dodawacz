@@ -87,10 +87,10 @@ def delete_cards(*args):
             deleted_lines.append(deleted_line)
         new_file = ''.join(lines)
     except IndexError:
-        print(f'{YEX}Plik {R}karty.txt{YEX} został opróżniony, nie ma co więcej usuwać')
+        print(f"{YEX}Plik {R}'karty.txt'{YEX} został opróżniony, nie ma co więcej usuwać")
         return None
     except FileNotFoundError:
-        print(f'{err_c}Plik {R}karty.txt{err_c} nie istnieje, nie ma co usuwać')
+        print(f"{err_c}Plik {R}'karty.txt'{err_c} nie istnieje, nie ma co usuwać")
         return None
     except UnicodeDecodeError:
         # wolfram caused this
@@ -618,7 +618,8 @@ def search_interface():
             if cmd in tuple(c.command_data)[:26]:
                 # to avoid writing all of them in commands dict above
                 boolean_commands(*args)
-            elif cmd in tuple(commands)[:23]:
+            # don't forget to change the splice when adding/removing commands
+            elif cmd in tuple(commands)[:22]:
                 commands[cmd](*args)
             else:
                 commands[cmd]()
@@ -912,7 +913,7 @@ def ah_def_print(indexing, term_width, definition):
         print(f'{index_c}{indexing}. {def2_c}{definition_aw}')
 
 
-def terminal_width():
+def terminal_width() -> int:
     try:
         term_width = str(config['textwidth'])
     except KeyError:
@@ -922,27 +923,28 @@ def terminal_width():
         return 79
 
     try:
+        # this is an integer
         term_width_auto = os.get_terminal_size()[0]
     except OSError:
         if '* auto' in term_width:
             print(f"{err_c}Wystąpił problem podczas pozyskiwania szerokości okna\n"
-                  f"aby wybrać szerokość inną niż {R}{term_width.rstrip('* auto')}{err_c} użyj {R}-textwidth [wartość]")
+                  f"aby wybrać szerokość inną niż {R}{term_width.rstrip('* auto')}{err_c} użyj {R}-textwidth {{wartość}}")
             save_commands(entry='textwidth', value=term_width.rstrip('* auto'))
         return int(term_width.rstrip('* auto'))
     else:
         if '* auto' in term_width:
             save_commands(entry='textwidth', value=f'{term_width_auto}* auto')
-            term_width = int(term_width_auto)
-            return term_width
+            return term_width_auto
         elif int(term_width.rstrip('* auto')) > term_width_auto:
             term_width = term_width_auto
-            save_commands(entry='textwidth', value=term_width)
-        return conf_to_int(term_width)
+            save_commands(entry='textwidth', value=str(term_width))
+        return int(term_width)
 
 
-# This function makes sure width options are an integer
-def conf_to_int(conf_val):
-    string = str(conf_val).rstrip('* auto')
+def get_conf_of(entry: str) -> int:
+    value = config[entry]
+    # Makes sure width options are an integer
+    string = str(value).rstrip('* auto')
     return int(string)
 
 
@@ -1017,7 +1019,7 @@ def ah_dictionary(query):
 
     tds = soup.find_all('td')
     for td in tds:
-        print(f'{delimit_c}{conf_to_int(config["delimsize"]) * "-"}')
+        print(f'{delimit_c}{get_conf_of("delimsize") * "-"}')
 
         hpaps = td.find('div', class_='rtseg')
         # example hpaps: 'bat·ter 1  (băt′ər)'
@@ -1041,7 +1043,8 @@ def ah_dictionary(query):
             phrase_ = head_word
 
         if not results_for_printed:
-            print(f'{BOLD}AH Dictionary{END}'.center(conf_to_int(config['center']) + 8))
+            ahd = 'AH Dictionary'
+            print(f'{BOLD}{ahd.center(get_conf_of("center"))}{END}')
             if phrase_.lower() != query.lower():
                 print(f'  {BOLD}Wyniki dla {phrase_c}{phrase_.split()[0]}{END}')
             results_for_printed = True
@@ -1078,11 +1081,11 @@ def ah_dictionary(query):
     return defs, poses, etyms, phrase_list
 
 
-def replace_by_list(content_to_hide, elements_to_hide, replacee):
+def replace_by_list(content_to_hide, replacees, replacement):
     hc = content_to_hide
-    for i in elements_to_hide:
-        hc = content_to_hide.replace(i, replacee).replace(i.capitalize(), replacee)\
-            .replace(i.upper(), '...')
+    for i in replacees:
+        hc = content_to_hide.replace(i, replacement).replace(i.capitalize(), replacement)\
+            .replace(i.upper(), replacement.upper())
     return hc
 
 
@@ -1117,10 +1120,10 @@ def hide_phrase_in(content, hide):
             hidden_content = hidden_content.replace(word_th, '...')\
                 .replace(word_th.capitalize(), '...').replace(word_th.upper(), '...')
 
-    hidden_content = replace_by_list(hidden_content, s_exceptions, replacee='...s')
-    hidden_content = replace_by_list(hidden_content, ing_exceptions, replacee='...ing')
-    hidden_content = replace_by_list(hidden_content, ing_exceptions2, replacee='...ying')
-    hidden_content = replace_by_list(hidden_content, ed_exceptions, replacee='...ed')
+    hidden_content = replace_by_list(hidden_content, s_exceptions, '...s')
+    hidden_content = replace_by_list(hidden_content, ing_exceptions, '...ing')
+    hidden_content = replace_by_list(hidden_content, ing_exceptions2, '...ying')
+    hidden_content = replace_by_list(hidden_content, ed_exceptions, '...ed')
     return hidden_content
 
 
@@ -1233,15 +1236,15 @@ def wordnet(syn_soup):
             psyn = '; '.join([x for x in psyn.split('; ') if phrase[:-1].lower() in x.lower()])
 
         if config['showdisamb']:
-            syn_tp = wrap_lines(syn, conf_to_int(config['textwidth']), len(str(index)),
+            syn_tp = wrap_lines(syn, get_conf_of('textwidth'), len(str(index)),
                                 indent=3, gap=4 + len(str(pos)))
-            gloss_tp = wrap_lines(gloss, conf_to_int(config['textwidth']), len(str(index)),
+            gloss_tp = wrap_lines(gloss, get_conf_of('textwidth'), len(str(index)),
                                   indent=3, gap=3)
             print(f'{index_c}{index} : {synpos_c}{pos} {syn_c}{syn_tp}\n'
                   f'{(len(str(index))+3) * " "}{syngloss_c}{gloss_tp}')
             if psyn:
                 for ps in psyn.split('; '):
-                    psyn_tp = wrap_lines(ps, conf_to_int(config['textwidth']), len(str(index)),
+                    psyn_tp = wrap_lines(ps, get_conf_of('textwidth'), len(str(index)),
                                          indent=4, gap=3)
                     print(f'{(len(str(index))+3) * " "}{psyn_c}{psyn_tp}')
             print()
@@ -1270,8 +1273,8 @@ def wordnet_request(query):
             skip_check_disamb = 1
             return [], []
         if config['showdisamb']:
-            print(f'{delimit_c}{conf_to_int(config["delimsize"]) * "-"}')
-            print(f'{BOLD}{"WordNet".center(conf_to_int(config["center"]))}{END}\n')
+            print(f'{delimit_c}{get_conf_of("delimsize") * "-"}')
+            print(f'{BOLD}{"WordNet".center(get_conf_of("center"))}{END}\n')
         return wordnet(syn_soup)
     except ConnectionError:
         print(f'{err_c}Nie udało się połączyć z WordNetem, sprawdź swoje połączenie i spróbuj ponownie')
@@ -1349,10 +1352,10 @@ def farlex_idioms(query):
             print()
         else:
             last_phrase = idiom
-            print(f'{delimit_c}{conf_to_int(config["delimsize"]) * "-"}')
+            print(f'{delimit_c}{get_conf_of("delimsize") * "-"}')
             if inx == 1:
                 frl = 'Farlex Idioms'
-                print(f'{BOLD}{frl.center(conf_to_int(config["center"]))}{END}')
+                print(f'{BOLD}{frl.center(get_conf_of("center"))}{END}')
             print(f'  {phrase_c}{idiom}')
 
         idiom_def = definition.find(text=True, recursive=False)\
@@ -1437,9 +1440,40 @@ def organize_notes(base_fields, adqt_mf_config, print_errors):
             yaml.dump(ankiconf, ank)
 
 
+def mass_replace(string, replacees, replacements):
+    s = string
+    for replacee, replacement in zip(replacees, replacements):
+        s = s.replace(replacee, replacement)
+    return s
+
+
+def save_card_to_file(field_values):
+    # replace sensitive characters with hard coded html escapes
+    for key, field in field_values.items():
+        field_values[key] = mass_replace(field, ("'", '"'), ("&#39;", "&quot;"))
+
+    try:
+        with open('karty.txt', 'a', encoding='utf-8') as twor:
+            twor.write(f'{field_values[config["fieldorder"]["1"]]}\t'
+                       f'{field_values[config["fieldorder"]["2"]]}\t'
+                       f'{field_values[config["fieldorder"]["3"]]}\t'
+                       f'{field_values[config["fieldorder"]["4"]]}\t'
+                       f'{field_values[config["fieldorder"]["5"]]}\t'
+                       f'{field_values[config["fieldorder"]["6"]]}\t'
+                       f'{field_values[config["fieldorder"]["7"]]}\t'
+                       f'{field_values[config["fieldorder"]["8"]]}\n')
+            print(f'{GEX}Karta pomyślnie zapisana do pliku\n')
+    except (NameError, KeyError):
+        print(f'{err_c}Dodawanie karty do pliku nie powiodło się\n'
+              f'Spróbuj przywrócić domyślne ustawienia pól wpisując {R}-fo default\n')
+
+
 def create_card(definicja, synonimy, przyklady, zdanie, czesci_mowy, etymologia, audio):
-    field_values = {'definicja': definicja, 'synonimy': synonimy, 'przyklady': przyklady, 'phrase': phrase,
-                    'zdanie': zdanie, 'czesci_mowy': czesci_mowy, 'etymologia': etymologia, 'audio': audio}
+    field_values = {'definicja': definicja, 'synonimy': synonimy,
+                    'przyklady': przyklady, 'phrase': phrase,
+                    'zdanie': zdanie, 'czesci_mowy': czesci_mowy,
+                    'etymologia': etymologia, 'audio': audio}
+
     if config['ankiconnect']:
         adqt_model_fields = {}
 
@@ -1485,6 +1519,7 @@ def create_card(definicja, synonimy, przyklady, zdanie, czesci_mowy, etymologia,
                 print(f'{err_c}Karta nie została dodana\n'
                       f'Nie znaleziono notatki {R}{config["note"]}{err_c}\n'
                       f'Aby zmienić notatkę użyj {R}-note [nazwa notatki]')
+
             if r not in ('no note', 'duplicate', 'out of reach', 'empty', 'no deck'):
                 print(f'{GEX}Karta pomyślnie dodana do Anki\n'
                       f'{YEX}Talia: {R}{config["deck"]}\n'
@@ -1493,7 +1528,10 @@ def create_card(definicja, synonimy, przyklady, zdanie, czesci_mowy, etymologia,
                 added_fields = (x for x in adqt_model_fields if adqt_model_fields[x].strip() != '')
                 for afield in added_fields:
                     print(f'- {afield}')
-                print()
+                if ',' in config['tags']:
+                    print(f'{YEX}Etykiety: {R}{config["tags"]}\n')
+                else:
+                    print(f'{YEX}Etykieta: {R}{config["tags"]}\n')
         except URLError:
             print(f'{err_c}Nie udało się połączyć z AnkiConnect\n'
                   f'Otwórz Anki i spróbuj ponownie\n')
@@ -1502,37 +1540,28 @@ def create_card(definicja, synonimy, przyklady, zdanie, czesci_mowy, etymologia,
                   f'Zrestartuj program i spróbuj dodać ponownie')
             with open(os.path.join(dir_, 'ankiconnect.yml'), 'w') as ank:
                 ank.write('{}')
-    try:
-        with open('karty.txt', 'a', encoding='utf-8') as twor:
-            twor.write(f'{field_values[config["fieldorder"]["1"]]}\t'
-                       f'{field_values[config["fieldorder"]["2"]]}\t'
-                       f'{field_values[config["fieldorder"]["3"]]}\t'
-                       f'{field_values[config["fieldorder"]["4"]]}\t'
-                       f'{field_values[config["fieldorder"]["5"]]}\t'
-                       f'{field_values[config["fieldorder"]["6"]]}\t'
-                       f'{field_values[config["fieldorder"]["7"]]}\t'
-                       f'{field_values[config["fieldorder"]["8"]]}\n')
-            print(f'{GEX}Karta pomyślnie zapisana do pliku\n')
-    except (NameError, KeyError):
-        print(f'{err_c}Dodawanie karty do pliku nie powiodło się\n'
-              f'Spróbuj przywrócić domyślne ustawienia pól wpisując {R}-fo default\n')
+
+    save_card_to_file(field_values)
 
 
 def display_card(definicja, synonimy, przyklady, zdanie, czesci_mowy, etymologia, audio):
-    field_values = {'definicja': definicja, 'synonimy': synonimy, 'przyklady': przyklady, 'phrase': phrase,
-                    'zdanie': zdanie, 'czesci_mowy': czesci_mowy, 'etymologia': etymologia, 'audio': audio}
+    field_values = {'definicja': definicja, 'synonimy': synonimy,
+                    'przyklady': przyklady, 'phrase': phrase,
+                    'zdanie': zdanie, 'czesci_mowy': czesci_mowy,
+                    'etymologia': etymologia, 'audio': audio}
     # field coloring
     ctf = {'definicja': def1_c, 'synonimy': syn_c, 'przyklady': psyn_c, 'phrase': phrase_c,
            'zdanie': '', 'czesci_mowy': pos_c, 'etymologia': etym_c, 'audio': ''}
-    delimit = conf_to_int(config['delimsize'])
-    centr = conf_to_int(config['center'])
-    options = (conf_to_int(config['textwidth']), 0, 0, 0, False)
+    delimit = get_conf_of('delimsize')
+    centr = get_conf_of('center')
+    options = (get_conf_of('textwidth'), 0, 0, 0)
+    conf_fo = config['fieldorder'].items()
 
     try:
         print(f'\n{delimit_c}{delimit * "-"}')
-        for field in config['fieldorder']:
-            for fi in wrap_lines(field_values[config['fieldorder'][field]], *options).split('\n'):
-                print(f'{ctf[config["fieldorder"][field]]}{fi.center(centr)}')
+        for field, value in conf_fo:
+            for fi in wrap_lines(field_values[value], *options).split('\n'):
+                print(f'{ctf[value]}{fi.center(centr)}')
             # d = delimitation
             if field == config['fieldorder_d']:
                 print(f'{delimit_c}{delimit * "-"}')
@@ -1606,7 +1635,7 @@ def main():
     if not os.path.exists('Karty_audio') and config['audio_path'] == 'Karty_audio':
         os.mkdir('Karty_audio')
 
-    __version__ = 'v0.7.1-1'
+    __version__ = 'v0.7.1-2'
     print(f'{BOLD}- Dodawacz kart do Anki {__version__} -{END}\n\n'
           f'Wpisz "--help", aby wyświetlić pomoc\n\n')
 

@@ -371,7 +371,7 @@ Aby wybrać więcej definicji oddziel wybór przecinkiem.
  Wpisanie czegokolwiek poza liczbą pomija dodawanie karty
 
 Aby dodać konkretne części mowy możemy użyć przecinka:
- np. 3,       doda trzeci element (po przecinku albo od góry)
+ np. 3,       doda trzeci element (wyświetlany po przecinku albo od góry)
  np. 1, 2     doda pierwszy i drugi element
 
 {BOLD}Przy etymologiach:{END}
