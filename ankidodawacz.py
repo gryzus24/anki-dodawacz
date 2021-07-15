@@ -1,3 +1,5 @@
+# Copyright 2021 Gryzus
+#
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
 # the Free Software Foundation, either version 3 of the License, or
@@ -181,16 +183,16 @@ def config_bulk(*args):
 
 def print_config():
     column1 = list(c.command_data)[:13]
-    column1.insert(8, '')  # blank after -psynfltr
+    column1.insert(8, '')
     column1.insert(11, '')
     # from [14] to avoid '-all'
     column2 = list(c.command_data)[14:34]
     # so that -ankiconnect and -duplicates are placed below [config ankiconnect]
     column2[10], column2[14] = column2[14], column2[10]
     column2[11], column2[15] = column2[15], column2[11]
-    column2.insert(14, '')  # Blank after -center
+    column2.insert(14, '')
     column2.insert(15, f'{BOLD}[config ankiconnect]{END}')
-    # Third column
+
     column3 = c.bulk_elems[:-1]
     column3.append(list(c.command_data)[-1])
     column3.insert(6, '')
@@ -306,27 +308,29 @@ def add_notes(*args):
         print(f'{err_c}Notatka {R}"{note_name}"{err_c} nie została znaleziona')
         return None
 
-    resp = create_note(note_config)
-    if resp is not None:
-        print(f'{resp}\n')
-    else:
-        print()
+    response_err = create_note(note_config)
+    if response_err is not None:
+        print(f'{response_err}')
+    print()
 
 
 def refresh_notes():
     try:
-        try:
-            with open(os.path.join(dir_, 'ankiconnect.yml'), 'w') as ank:
-                ank.write('{}')
-        except FileNotFoundError:
-            print(f'{err_c}Plik {R}ankiconnect.yml{err_c} nie istnieje')
-        else:
-            # when there is 'out of reach' error just overwrite existing ankiconnect.yml
-            organize_notes(c.base_fields, adqt_mf_config={}, print_errors=False)
-            print(f'{YEX}Notatki przebudowane')
+        # when there is any error just overwrite existing ankiconnect.yml without dumping
+        # because I presume no one will:
+        # change ankiconnect.yml content manually -> get '-refresh' communicate ->
+        # change current note to a note with unsupported fields -> THEN refresh ->
+        # change note back to the previous one and try adding cards.
+        # all of that in the same session
+        with open(os.path.join(dir_, 'ankiconnect.yml'), 'w') as ank:
+            ank.write('{}')
+        organize_notes(c.base_fields, corresp_mf_config={}, print_errors=False)
+        print(f'{YEX}Notatki przebudowane')
     except URLError:
         print(f'{err_c}Nie udało się połączyć z AnkiConnect\n'
               f'Otwórz Anki i spróbuj ponownie\n')
+    except FileNotFoundError:
+        print(f'{err_c}Plik {R}ankiconnect.yml{err_c} nie istnieje')
 
 
 def change_field_order(*args):
@@ -427,7 +431,7 @@ def get_paths(tree):
     return collections[path_choice - 1]
 
 
-def get_audio_path(*args):
+def set_audio_path(*args):
     cmd = args[0]
     msg = c.command_data[cmd]['print_msg']
 
@@ -591,7 +595,7 @@ commands = {
     '-note': set_free_value_commands,
     '-deck': set_free_value_commands,
     '-tags': set_free_value_commands,
-    '--audio-path': get_audio_path, '-ap': get_audio_path,
+    '--audio-path': set_audio_path, '-ap': set_audio_path,
     '-dupescope': set_text_value_commands,
     '-server': set_text_value_commands,
     '--add-note': add_notes,
@@ -634,8 +638,6 @@ def get_audio_response(audio_link, audiofile_name):
             response = requests_session_ah.get(audio_link)
             file.write(response.content)
         return f'[sound:{audiofile_name}]'
-    except IsADirectoryError:  # Trying to save file with the name '' results in this exception
-        return ''
     except FileNotFoundError:
         print(f"{err_c}Zapisywanie pliku audio {R}{audiofile_name} {err_c}nie powiodło się\n"
               f"Aktualna ścieżka zapisu audio to {R}{config['audio_path']}\n"
@@ -854,7 +856,7 @@ def get_flag_from(flags, server):
     if server == 'diki':
         available_flags = available_flags[:6]
     try:
-        flag = [x.strip('-')[0:] for x in flags if x in available_flags][0]
+        flag = [x.strip('-') for x in flags if x in available_flags][0]
         return flag
     except IndexError:
         return ''
@@ -864,13 +866,17 @@ def search_for_audio(server, phrase_, flags):
     if not config['add_audio']:
         return ''
 
-    flag = get_flag_from(flags, server)
     if server == 'ahd':
         audio_link, audiofile_name = audio_ahd(phrase_)
     elif server == 'lexico':
+        flag = get_flag_from(flags, server)
         audio_link, audiofile_name = audio_lexico(phrase_.replace(' ', '_'), flag)
-    else:
+    else:  # diki
+        flag = get_flag_from(flags, server)
         audio_link, audiofile_name = get_audio_from_diki(phrase_, flag)
+
+    if not audiofile_name:
+        return ''
     return get_audio_response(audio_link, audiofile_name)
 
 
@@ -1394,6 +1400,8 @@ def invoke(action, **params):
         raise Exception('response has an unexpected number of fields')
     if 'error' not in response:
         raise Exception('response is missing required error field')
+    if 'result' not in response:
+        raise Exception('response is missing required result field')
     if response['error'] is None:
         return response['result']
     if response['error'].startswith('model was not found:'):
@@ -1406,38 +1414,45 @@ def invoke(action, **params):
         return 'out of reach'
     if response['error'].startswith('deck was not found'):
         return 'no deck'
-    if 'result' not in response:
-        raise Exception('response is missing required result field')
     if response['error'] is not None:
         raise Exception(response['error'])
     return response['result']
 
 
-def organize_notes(base_fields, adqt_mf_config, print_errors):
+def organize_notes(base_fields, corresp_mf_config, print_errors):
     usable_fields = invoke('modelFieldNames', modelName=config['note'])
 
     if usable_fields == 'no note':
         if print_errors:
-            print(f'{err_c}Nie znaleziono notatki {R}{config["note"]}{err_c}\n'
+            print(f'{err_c}Karta nie została dodana\n'
+                  f'Nie znaleziono notatki {R}{config["note"]}{err_c}\n'
                   f'Aby zmienić notatkę użyj {R}-note [nazwa notatki]')
         return 'no note'
 
     if usable_fields == 'out of reach':
         if print_errors:
-            print(f'{err_c}Karta nie została dodana, bo kolekcja jest nieosiągalna\n'
+            print(f'{err_c}Karta nie została dodana\n'
+                  f'Kolekcja jest nieosiągalna\n'
                   f'Sprawdź czy Anki jest w pełni otwarte')
         return 'out of reach'
-    # tries to recognize familiar fields and arranges model's fields
+    # tries to recognize familiar fields and arranges them
     for ufield in usable_fields:
         for base_field in base_fields:
             if base_field in ufield.lower().split(' ')[0]:
-                adqt_mf_config[ufield] = base_fields[base_field]
+                corresp_mf_config[ufield] = base_fields[base_field]
                 break
     # So that blank notes are not saved in ankiconnect.yml
-    if adqt_mf_config != {}:
-        ankiconf[config['note']] = adqt_mf_config
-        with open(os.path.join(dir_, 'ankiconnect.yml'), 'w') as ank:
-            yaml.dump(ankiconf, ank)
+    if not corresp_mf_config:
+        if print_errors:
+            print(f'{err_c}Karta nie została dodana\n'
+                  f'Sprawdź czy notatka {R}{config["note"]}{err_c} zawiera wymagane pola\n'
+                  f'lub jeżeli nazwy pól aktualnej notatki zostały zmienione, wpisz {R}-refresh')
+        return 'all fields empty'
+
+    ankiconf[config['note']] = corresp_mf_config
+    with open(os.path.join(dir_, 'ankiconnect.yml'), 'w') as ank:
+        yaml.dump(ankiconf, ank)
+    return None
 
 
 def mass_replace(string, replacees, replacements):
@@ -1468,80 +1483,90 @@ def save_card_to_file(field_values):
               f'Spróbuj przywrócić domyślne ustawienia pól wpisując {R}-fo default\n')
 
 
-def create_card(definicja, synonimy, przyklady, zdanie, czesci_mowy, etymologia, audio):
-    field_values = {'definicja': definicja, 'synonimy': synonimy,
-                    'przyklady': przyklady, 'phrase': phrase,
-                    'zdanie': zdanie, 'czesci_mowy': czesci_mowy,
-                    'etymologia': etymologia, 'audio': audio}
+def create_ankiconnect_card(field_values):
+    try:
+        corresp_model_fields = {}
+        fields_ankiconf = ankiconf.get(config['note'])
+        # When organizing_notes return error, card shouldn't be created
+        organize_err = None
+        # So that familiar notes aren't reorganized
+        if fields_ankiconf is None or config['note'] not in ankiconf:
+            organize_err = organize_notes(c.base_fields, corresp_mf_config={}, print_errors=True)
 
-    if config['ankiconnect']:
-        adqt_model_fields = {}
-
+        if organize_err is not None:
+            return None
+        # When note not found return empty dict so that
+        # there's no attribute error in the try block below
+        config_note = ankiconf.get(config['note'], {})
+        # Get note fields from ankiconnect.yml
         try:
-            fields_ankiconf = ankiconf.get(config['note'], '')
-            organize_err = ''  # So that error messages are not doubled
-            if fields_ankiconf == {} or config['note'] not in ankiconf:  # So that familiar note is not reorganized
-                organize_err = organize_notes(c.base_fields, adqt_mf_config={}, print_errors=True)
+            for ankifield, value in config_note.items():
+                corresp_model_fields[ankifield] = field_values[value]
+        except KeyError:
+            print(f'{err_c}Karta nie została dodana\n'
+                  f'Sprawdź czy notatka {R}{config["note"]}{err_c} zawiera wymagane pola\n'
+                  f'lub jeżeli nazwy pól aktualnej notatki zostały zmienione, wpisz {R}-refresh')
+            return None
+        # r represents card id or an error
+        r = invoke('addNote',
+                   note={'deckName': config['deck'],
+                         'modelName': config['note'],
+                         'fields': corresp_model_fields,
+                         'options': {
+                             'allowDuplicate': config['duplicates'],
+                             'duplicateScope': config['dupescope']
+                         },
+                         'tags': config['tags'].split(', ')
+                         }
+                   )
+        if r == 'empty':
+            print(f'{err_c}Karta nie została dodana\n'
+                  f'Pierwsze pole notatki nie zostało wypełnione\n'
+                  f'Sprawdź czy notatka {R}{config["note"]}{err_c} zawiera wymagane pola\n'
+                  f'lub jeżeli nazwy pól aktualnej notatki zostały zmienione, wpisz {R}-refresh')
+            return None
+        elif r == 'duplicate':
+            print(f'{err_c}Karta nie została dodana, bo jest duplikatem\n'
+                  f'Zezwól na dodawanie duplikatów wpisując {R}-duplicates on\n'
+                  f'{err_c}lub zmień zasięg sprawdzania duplikatów {R}-dupescope {{deck|collection}}')
+            return None
+        elif r == 'out of reach':
+            print(f'{err_c}Karta nie została dodana, bo kolekcja jest nieosiągalna\n'
+                  f'Sprawdź czy Anki jest w pełni otwarte')
+            return None
+        elif r == 'no deck':
+            print(f'{err_c}Karta nie została dodana, bo talia {R}{config["deck"]}{err_c} nie istnieje\n'
+                  f'Aby zmienić talię wpisz {R}-deck [nazwa talii]\n'
+                  f'{err_c}Jeżeli nazwa talii wydaje się być prawidłowa,\n'
+                  f'to spróbuj zmienić nazwę talii w Anki tak,\n'
+                  f'aby używała pojedynczych spacji')
+            return None
+        elif r == 'no note':
+            print(f'{err_c}Karta nie została dodana\n'
+                  f'Nie znaleziono notatki {R}{config["note"]}{err_c}\n'
+                  f'Aby zmienić notatkę użyj {R}-note [nazwa notatki]')
+            return None
 
-            config_note = ankiconf.get(config['note'], '')
-            # Get note fields from ankiconnect.yml
-            try:
-                for field in config_note:
-                    adqt_model_fields[field] = field_values[config_note[field]]
-            except KeyError:
-                print(f'{err_c}Karta nie została dodana\n'
-                      f'Sprawdź czy notatka {R}{config["note"]}{err_c} zawiera wymagane pola\n'
-                      f'lub jeżeli nazwy pól aktualnej notatki zostały zmienione, wpisz {R}-refresh')
-            # r represents card id or an error
-            r = invoke('addNote',
-                       note={'deckName': config['deck'], 'modelName': config['note'], 'fields': adqt_model_fields,
-                             'options': {'allowDuplicate': config['duplicates'], 'duplicateScope': config['dupescope']},
-                             'tags': config['tags'].split(', ')})
-            if r == 'empty':
-                print(f'{err_c}Karta nie została dodana\n'
-                      f'Pierwsze pole notatki nie zostało wypełnione\n'
-                      f'Sprawdź czy notatka {R}{config["note"]}{err_c} zawiera wymagane pola\n'
-                      f'lub jeżeli nazwy pól aktualnej notatki zostały zmienione, wpisz {R}-refresh')
-            if r == 'duplicate':
-                print(f'{err_c}Karta nie została dodana, bo jest duplikatem\n'
-                      f'Zezwól na dodawanie duplikatów wpisując {R}-duplicates on\n'
-                      f'{err_c}lub zmień zasięg sprawdzania duplikatów {R}-dupescope {{deck|collection}}')
-            if r == 'out of reach' and organize_err != 'out of reach':
-                print(f'{err_c}Karta nie została dodana, bo kolekcja jest nieosiągalna\n'
-                      f'Sprawdź czy Anki jest w pełni otwarte')
-            if r == 'no deck':
-                print(f'{err_c}Karta nie została dodana, bo talia {R}{config["deck"]}{err_c} nie istnieje\n'
-                      f'Aby zmienić talię wpisz {R}-deck [nazwa talii]\n'
-                      f'{err_c}Jeżeli nazwa talii wydaje się być prawidłowa,\n'
-                      f'to spróbuj zmienić nazwę talii w Anki tak, \n'
-                      f'aby używała pojedynczych spacji')
-            if r == 'no note' and organize_err != 'no note':
-                print(f'{err_c}Karta nie została dodana\n'
-                      f'Nie znaleziono notatki {R}{config["note"]}{err_c}\n'
-                      f'Aby zmienić notatkę użyj {R}-note [nazwa notatki]')
+        print(f'{GEX}Karta pomyślnie dodana do Anki\n'
+              f'{YEX}Talia: {R}{config["deck"]}\n'
+              f'{YEX}Notatka: {R}{config["note"]}\n'
+              f'{YEX}Wykorzystane pola:')
+        added_fields = (x for x in corresp_model_fields if corresp_model_fields[x].strip() != '')
+        for afield in added_fields:
+            print(f'- {afield}')
+        if ',' in config['tags']:
+            print(f'{YEX}Etykiety: {R}{config["tags"]}\n')
+        else:
+            print(f'{YEX}Etykieta: {R}{config["tags"]}\n')
 
-            if r not in ('no note', 'duplicate', 'out of reach', 'empty', 'no deck'):
-                print(f'{GEX}Karta pomyślnie dodana do Anki\n'
-                      f'{YEX}Talia: {R}{config["deck"]}\n'
-                      f'{YEX}Notatka: {R}{config["note"]}\n'
-                      f'{YEX}Wykorzystane pola:')
-                added_fields = (x for x in adqt_model_fields if adqt_model_fields[x].strip() != '')
-                for afield in added_fields:
-                    print(f'- {afield}')
-                if ',' in config['tags']:
-                    print(f'{YEX}Etykiety: {R}{config["tags"]}\n')
-                else:
-                    print(f'{YEX}Etykieta: {R}{config["tags"]}\n')
-        except URLError:
-            print(f'{err_c}Nie udało się połączyć z AnkiConnect\n'
-                  f'Otwórz Anki i spróbuj ponownie\n')
-        except AttributeError:
-            print(f'{err_c}Karta nie została dodana, bo plik "ankiconnect.yml" był pusty\n'
-                  f'Zrestartuj program i spróbuj dodać ponownie')
-            with open(os.path.join(dir_, 'ankiconnect.yml'), 'w') as ank:
-                ank.write('{}')
-
-    save_card_to_file(field_values)
+    except URLError:
+        print(f'{err_c}Nie udało się połączyć z AnkiConnect\n'
+              f'Otwórz Anki i spróbuj ponownie\n')
+    except AttributeError:
+        print(f'{err_c}Karta nie została dodana, bo plik {R}"ankiconnect.yml"{err_c} był pusty\n'
+              f'Zrestartuj program i spróbuj dodać ponownie')
+        with open(os.path.join(dir_, 'ankiconnect.yml'), 'w') as ank:
+            ank.write('{}')
 
 
 def display_card(definicja, synonimy, przyklady, zdanie, czesci_mowy, etymologia, audio):
@@ -1559,12 +1584,14 @@ def display_card(definicja, synonimy, przyklady, zdanie, czesci_mowy, etymologia
 
     try:
         print(f'\n{delimit_c}{delimit * "-"}')
+
         for field, value in conf_fo:
             for fi in wrap_lines(field_values[value], *options).split('\n'):
                 print(f'{ctf[value]}{fi.center(centr)}')
             # d = delimitation
             if field == config['fieldorder_d']:
                 print(f'{delimit_c}{delimit * "-"}')
+
         print(f'{delimit_c}{delimit * "-"}')
     except (NameError, KeyError):
         print(f'{err_c}\nDodawanie karty do pliku nie powiodło się\n'
@@ -1574,13 +1601,14 @@ def display_card(definicja, synonimy, przyklady, zdanie, czesci_mowy, etymologia
 
 def create_note(note_config):
     try:
-        connected = invoke('modelNames')
-        if connected == 'out of reach':
+        response = invoke('modelNames')
+        if response == 'out of reach':
             return f'{err_c}Wybierz profil, aby dodać notatkę'
     except URLError:
         return f'{err_c}Włącz Anki, aby dodać notatkę'
+
     try:
-        if note_config['modelName'] in connected:
+        if note_config['modelName'] in response:
             return f'{YEX}Notatka {R}"{note_config["modelName"]}"{YEX} już znajduje się w bazie notatek'
 
         result = invoke('createModel',
@@ -1594,10 +1622,9 @@ def create_note(note_config):
             return f'{err_c}Nie można nawiązać połączenia z Anki\n' \
                    f'Notatka nie została utworzona'
         else:
-            print(f'{GEX}\nNotatka utworzona pomyślnie\n')
+            print(f'{GEX}Notatka utworzona pomyślnie')
 
         note_ok = input(f'{YEX}Chcesz ustawić {R}"{note_config["modelName"]}" {YEX}jako -note?{R} [T/n]: ')
-
         if note_ok.lower() in ('1', 't', 'y', 'tak', 'yes', ''):
             config['note'] = note_config['modelName']
             with open(os.path.join(dir_, 'config.yml'), 'w') as conf_f:
@@ -1635,7 +1662,7 @@ def main():
     if not os.path.exists('Karty_audio') and config['audio_path'] == 'Karty_audio':
         os.mkdir('Karty_audio')
 
-    __version__ = 'v0.7.1-2'
+    __version__ = 'v0.7.1-3'
     print(f'{BOLD}- Dodawacz kart do Anki {__version__} -{END}\n\n'
           f'Wpisz "--help", aby wyświetlić pomoc\n\n')
 
@@ -1716,7 +1743,13 @@ def main():
                 if skip_check == 1:
                     continue
             print()
-            create_card(definicja, synonimy, przyklady, zdanie, czesci_mowy, etymologia, audio)
+
+            field_values = {
+                'definicja': definicja, 'synonimy': synonimy, 'przyklady': przyklady, 'phrase': phrase,
+                'zdanie': zdanie, 'czesci_mowy': czesci_mowy, 'etymologia': etymologia, 'audio': audio}
+            if config['ankiconnect']:
+                create_ankiconnect_card(field_values)
+            save_card_to_file(field_values)
     except KeyboardInterrupt:
         # R has to be there, so that the color from "inputtext" isn't displayed
         print(f'{R}\nZakończono')
