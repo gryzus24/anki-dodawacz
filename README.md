@@ -4,15 +4,16 @@ Prosty i otwarty na konfigurację program do tworzenia monojęzycznych kart do A
 Pozyskuje informacje z American Heritage Dictionary, Farlex Dictionary of Idioms i WordNet 3.1.<br>
 Pozwala na szybki wybór definicji, części mowy, etymologii, synonimów oraz audio.
 
-Celem programu jest ułatwić i uprzyjemnić żmudny i zniechęcający proces dodawania kart, który konwencjonalnie odbywa się
+Celem programu jest ułatwienie i uprzyjemnienie żmudnego i zniechęcającego proces dodawania kart, który konwencjonalnie odbywa się
 za pomocą powtarzalnych ruchów myszką i przekopiowywania informacji do edytora kart.<br>Z Ankidodawaczem ten proces odbywa
 się w stu procentach za pomocą klawiatury.
 
 ## Instalacja:
 
-[link do pobrania v0.7.0-5.zip](https://github.com/gryzus24/anki-dodawacz/archive/refs/tags/v0.7.0-5.zip)
+[link do pobrania v0.7.1-2.zip](https://github.com/gryzus24/anki-dodawacz/archive/refs/tags/v0.7.1-2.zip)
 :-
-
+### Windows:
+Pobieramy .zip i rozpakowujemy.
 ##### Po rozpakowaniu folderu:<br>
 
 Aby uruchomić program potrzebujemy Pythona 3.7 lub nowszego.<br>
@@ -21,19 +22,40 @@ Przy instalacji zaznaczamy "Add python to PATH"
 
 ##### Po zainstalowaniu Pythona:<br>
 
-Otwieramy terminal (cmd na windowsie) i pobieramy wymagane biblioteki wpisując:
-
+Otwieramy terminal (cmd na windowsie) i pobieramy wymagane biblioteki wpisując:<br>
 <code> pip install BeautifulSoup4 colorama pyyaml requests lxml cchardet </code><br>
 (cchardet jest opcjonalny, ale przyspiesza wyświetlanie słowników)
 
 Następnie wpisujemy:<br>
 <code> cd <ścieżka do folderu z programem> </code>
   
-Gdy jesteśmy w folderze z programem, aby uruchomić Ankidodawacz wpisujemy:
-  
+Gdy jesteśmy w folderze z programem, aby uruchomić Ankidodawacza wpisujemy:<br>
 <code> python ankidodawacz.py</code> lub <code> python3 ankidodawacz.py </code><br>
 
-Na windowsie kliknięcie w ikonkę też powinno otworzyć program.
+Na Windowsie kliknięcie w ikonkę też powinno otworzyć program.
+### Linux:
+Na Linuxie odpowiednia wersja Pythona powinna być już zainstalowana.<br>
+Gdy mamy Pythona to najprościej będzie zainstalować gita i sklonować repozytorium.
+  
+Otwieramy terminal i wpisujemy<br>
+na Debianie/Ubuntu:<br>
+  <code>sudo apt install git</code>
+  
+na Fedorze:<br>
+  <code>sudo yum install git</code>
+  
+na Archu:<br>
+  <code> sudo pacman -S git</code>
+
+Następnie wchodzimy w folder do którego chcemy pobrać program:<br>
+  <code>cd <ścieżka></code>  Na przykład: <code>cd ~/Pobrane</code>
+    
+I klonujemy repozytorium wpisując:<br>
+  <code>git clone https://github.com/gryzus24/anki-dodawacz</code>
+
+Otwieramy za pomocą Pythona:<br>
+    <code>python ankidodawacz.py</code> lub <code>python3 ankidodawacz.py</code>
+    
 ## Konfiguracja i działanie programu
 
 Cykl dodawanie jest bardzo prosty. Wyszukujemy słowo i przechodzimy przez różne pola: przykładowego zdania, definicji,
@@ -134,4 +156,4 @@ Jestem początkujący, jeżeli chodzi o programowanie. Jest to mój pierwszy pro
 
 Jestem otwarty na sugestie i krytykę. Mam nadzieję, że narzędzie okaże się pomocne.
 
-Użyte biblioteki: BeautifulSoup4, requests, colorama, regex, pyyaml, lxml
+Użyte biblioteki: BeautifulSoup4, requests, colorama, pyyaml, lxml
