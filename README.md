@@ -4,13 +4,13 @@ Prosty i otwarty na konfigurację program do tworzenia monojęzycznych kart do A
 Pozyskuje informacje z American Heritage Dictionary, Farlex Dictionary of Idioms i WordNet 3.1.<br>
 Pozwala na szybki wybór definicji, części mowy, etymologii, synonimów oraz audio.
 
-Celem programu jest ułatwienie i uprzyjemnienie żmudnego i zniechęcającego proces dodawania kart, który konwencjonalnie odbywa się
+Celem programu jest ułatwienie i uprzyjemnienie żmudnego i zniechęcającego procesu dodawania kart, który konwencjonalnie odbywa się
 za pomocą powtarzalnych ruchów myszką i przekopiowywania informacji do edytora kart.<br>Z Ankidodawaczem ten proces odbywa
 się w stu procentach za pomocą klawiatury.
 
 ## Instalacja:
 
-[link do pobrania v0.7.1-2.zip](https://github.com/gryzus24/anki-dodawacz/archive/refs/tags/v0.7.1-2.zip)
+[link do pobrania v0.7.2-1.zip](https://github.com/gryzus24/anki-dodawacz/archive/refs/tags/v0.7.2-1.zip)
 :-
 ### Windows:
 Pobieramy .zip i rozpakowujemy.
@@ -27,30 +27,25 @@ Otwieramy terminal (cmd na windowsie) i pobieramy wymagane biblioteki wpisując:
 (cchardet jest opcjonalny, ale przyspiesza wyświetlanie słowników)
 
 Następnie wpisujemy:<br>
-<code> cd <ścieżka do folderu z programem> </code>
+<code> cd <ścieżka do folderu z programem> </code><br>
+  np. <code>cd Pobrane</code>
   
 Gdy jesteśmy w folderze z programem, aby uruchomić Ankidodawacza wpisujemy:<br>
 <code> python ankidodawacz.py</code> lub <code> python3 ankidodawacz.py </code><br>
 
-Na Windowsie kliknięcie w ikonkę też powinno otworzyć program.
+Na Windowsie kliknięcie w ikonkę też powinno otworzyć program, jednak przy wystąpieniu nieoczekiwanego błędu, okno zamknie się natychmiastowo.
 ### Linux:
 Na Linuxie odpowiednia wersja Pythona powinna być już zainstalowana.<br>
 Gdy mamy Pythona to najprościej będzie zainstalować gita i sklonować repozytorium.
   
-Otwieramy terminal i wpisujemy<br>
-na Debianie/Ubuntu:<br>
+Otwieramy terminal i instalujemy gita używając menadżera pakietów<br>
+na przykład na Debianie/Ubuntu to będzie:<br>
   <code>sudo apt install git</code>
-  
-na Fedorze:<br>
-  <code>sudo yum install git</code>
-  
-na Archu:<br>
-  <code> sudo pacman -S git</code>
 
 Następnie wchodzimy w folder do którego chcemy pobrać program:<br>
   <code>cd <ścieżka></code>  Na przykład: <code>cd ~/Pobrane</code>
     
-I klonujemy repozytorium wpisując:<br>
+Klonujemy repozytorium wpisując:<br>
   <code>git clone https://github.com/gryzus24/anki-dodawacz</code>
 
 Otwieramy za pomocą Pythona:<br>
