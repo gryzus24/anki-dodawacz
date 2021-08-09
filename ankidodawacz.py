@@ -1744,8 +1744,8 @@ def create_note(note_config):
         else:
             print(f'{GEX}Notatka utworzona pomyślnie')
 
-        note_ok = input(f'{YEX}Chcesz ustawić {R}"{note_config["modelName"]}" {YEX}jako -note?{R} [T/n]: ')
-        if note_ok.lower() in ('1', 't', 'y', 'tak', 'yes', ''):
+        note_ok = input(f'Czy chcesz ustawić "{note_config["modelName"]}" jako -note? [T/n]: ')
+        if note_ok.lower() in ('', 't', 'y', 'tak', 'yes', '1'):
             config['note'] = note_config['modelName']
             with open(os.path.join(dir_, 'config.yml'), 'w') as conf_f:
                 yaml.dump(config, conf_f)
