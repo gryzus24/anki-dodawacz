@@ -341,11 +341,10 @@ base_fields = {
 def help_command():
     print(f"""{R}\nPo wpisaniu hasła w pole "Szukaj" rozpocznie się cykl dodawania karty
 
-Najpierw pytany jest AH Dictionary, jeżeli nie posiada szukanego hasła
-to zapytanie przechodzi do Farlex Idioms.
+Najpierw pytany jest AH Dictionary, jeżeli nie posiada szukanego hasła to
+zapytanie przechodzi do Farlex Idioms.
 
-Aby bezpośrednio zapytać Farlexa,
-to do zapytania dołączamy flagę -i lub --idiom
+Aby bezpośrednio zapytać Farlexa do zapytania dołączamy flagę -i lub --idiom
 np. "tap out --idiom", "a blot on the landscape -i" itd.
 
 {BOLD}Przy dodawaniu zdania:{END}
@@ -368,19 +367,12 @@ Aby wybrać więcej definicji oddziel wybór przecinkiem.
  np. "/dwa grzyby" spowoduje dodaniem "dwa grzyby"
 
 {BOLD}Przy częściach mowy:{END}
- 1            dodaje wszystkie części mowy
+Części mowy nie są indeksowane, możemy sprecyzować wybór wpisując numer części
+mowy licząc od góry lub wpisać -1, aby dodać wszystkie części mowy.
  0 lub -s     pomija dodawanie elementu
-
- Wpisanie czegokolwiek poza liczbą pomija dodawanie karty
-
-Aby dodać konkretne części mowy możemy użyć przecinka:
- np. 3,       doda trzeci element (wyświetlany po przecinku albo od góry)
- np. 1, 2     doda pierwszy i drugi element
 
 {BOLD}Przy etymologiach:{END}
-Przy większej ilości etymologii możemy sprecyzować wybór wpisując numer
-etymologii licząc od góry lub wpisać -1, aby dodać wszystkie etymologie.
- 0 lub -s     pomija dodawanie elementu
+Etymologie nie są indeksowane, wybór działa tak jak przy częściach mowy.
 
 {BOLD}Przy synonimach:{END}
 Synonimy wyświetlane są w grupach zawierających synonimy i przykłady.
@@ -390,9 +382,8 @@ Dostępne pola:
  - przykłady
 
 {BOLD}Przy idiomach:{END}
-Idiomy wyświetlane są podobnie jak synonimy.
-Wybieranie też działa podobnie, ale mamy kontrolę
-nad wyborem pojedynczych przykładów.
+Idiomy wyświetlane są podobnie jak synonimy, wybieranie też działa podobnie,
+ale mamy kontrolę nad wyborem pojedynczych przykładów.
 Dostępne pola:
  - definicja
  - przykłady
@@ -436,8 +427,8 @@ Wpisanie "-h" albo "--help" po komendzie
                
 -ap, --audio-path {{auto|ścieżka}}   ścieżka zapisu plików audio
                                    (domyślnie "Karty_audio")
-                   auto              automatycznie próbuje znaleźć
-                                     folder "collection.media"
+                   auto              automatycznie próbuje znaleźć folder
+                                     "collection.media"
 Ścieżki dla "collection.media":
  Na Linuxie:
   "~/.local/share/Anki2/{{Użytkownik Anki}}/collection.media"
@@ -482,30 +473,32 @@ Ukrywanie hasła to zamiana wyszukiwanego słowa na "..."
 -cd, -cb
 --config-bulk
 --config-defaults           rozpoczyna konfigurację defaults/bulk
--cd {{element}} {{wartość}}     zmienia domyślną wartość elementu
--cd all {{wartość}}           zmienia domyślną wartość wszystkich elementów
+-cd {{element}} {{wartość}}     zmienia wartość elementu
+                            wartością może być dwuwartościowy przedział
+                            np. 1:4
+-cd all {{wartość}}           zmienia wartość wszystkich elementów
 -conf
 -config                     wyświetla informacje o aktualnej konfiguracji
 
 -fo
 --field-order               zmiana kolejności dodawanych pól dla karty.txt
 -fo default                 przywraca domyślną kolejność pól
--fo {{1-8}} {{pole}}            zmienia pole znajdujące się pod podanym
-                            numerem, na wskazane pole
+-fo {{1-8}} {{pole}}            zmienia pole znajdujące się pod podanym numerem na 
+                            wskazane pole
 -fo d {{1-8}}                 przesuwa odkreślenie (delimitation)
                             pod pole z podanym numerem
 
 np. -fo 1 audio             zmieni pole "definicja" (1) na pole "audio"
 np. -fo d 5                 przesunie odkreślenie pod pole "zdanie" (5)
 
-{BOLD}------[Komendy AnkiConnect]------{END}
--ankiconnect {{on|off}}       bezpośrednie dodawanie kart do Anki
-                            poprzez AnkiConnect
+{BOLD}---[Komendy AnkiConnect]---{END}
+-ankiconnect {{on|off}}       bezpośrednie dodawanie kart do Anki poprzez
+                            AnkiConnect
 
 -duplicates {{on|off}}        dodawanie duplikatów
 -dupescope                  określa zasięg sprawdzania duplikatów:
-          deck               w obrębie talii
-          collection         w obrębie całej kolekcji (wszystkich talii)
+           deck              w obrębie talii
+           collection        w obrębie całej kolekcji (wszystkich talii)
 -note [nazwa notatki]       notatka używana do dodawania kart
 -refresh                    odświeża informacje o aktualnej notatce
                             (użyć jeżeli nazwy pól notatki były zmieniane)
@@ -536,8 +529,8 @@ flagi dla diki:
     -v, --verb
     -adj, --adjective
 
-{BOLD}NOTE:{END} Jeżeli połączymy flagi audio z wyrażeniem złożonym z kilku słów
-      to flaga zostanie zignorowana\n""")
+{BOLD}NOTE:{END} Jeżeli połączymy flagi audio z wyrażeniem złożonym z kilku słów to flaga
+      zostanie zignorowana\n""")
 
 
 def help_bulk_command():
@@ -558,7 +551,7 @@ Możemy zmieniać domyślne wartości pojedynczych elementów:
 Elementy: def, pos, etym, syn, psyn, pidiom, all
 
 -cd {{element}} {{-1 <= wartość < 1000}}
-np. "-cd pos 1", "-cd def -1", "--config-bulk syn 20" itd.
+np. "-cd pos -1", "-cd def -1", "--config-bulk syn 20" itd.
 
 lub wszystkich elementów na raz:
 -cd all {{-1 <= wartość < 1000}}
@@ -575,13 +568,13 @@ Na przykład gdy wpiszemy "-all off", to przy następnym dodawaniu
 {BOLD}Możemy wykorzystać bulk do dodawania list słówek.{END}
   Słowa na liście musimy oddzielić nową linią.
   Potem wklejamy taką listę do programu.
-{BOLD}NOTE:{END} Nie zapomnij o nowej linii na końcu listy
+{BOLD}NOTE:{END} Nie zapomnij o nowej linii ze spacją na końcu listy
 
 Na przykład:
 'decay'      <-- słowo1
 'monolith'   <-- słowo2
 'dreg'       <-- słowo3
-''           <-- nowa linia na końcu
+' '          <-- nowa linia na końcu
 
 Lub z włączonym polem na 'przykładowe zdanie':
 'decay'                       <-- słowo1
@@ -590,8 +583,7 @@ Lub z włączonym polem na 'przykładowe zdanie':
 'the monolith crumbled'       <-- zdanie dla słówa2
 'dreg'                        <-- słowo3
 'fermented dregs scattered'   <-- zdanie dla słowa3
-''                            <-- nowa linia na końcu
+' '                           <-- nowa linia na końcu
 
-{BOLD}NOTE:{END} Możesz używać "/" np. przy polu na synonimy albo przykłady,
-      aby dodać swoje własne, bez ustawiania domyślnych wartości
-      i wyłączania pól\n""")
+{BOLD}NOTE:{END} Możesz używać "/" (np. przy polu na synonimy albo przykłady) aby dodać
+      własny tekst, bez ustawiania domyślnych wartości i wyłączania pól\n""")

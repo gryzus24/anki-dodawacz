@@ -113,9 +113,28 @@ def delete_cards(*args):
 
 
 def config_bulk(*args):
-    def save_all_values(val_list):
+    def manage_range(rval):
+        two_values = rval.split(':', 1)
+        # check for ValueError
+        val1 = int(two_values[0])
+        val2 = int(two_values[1])
+        if val1 == 0 and val2 == 0:
+            return 0
+        # check ranges for each value
+        for val in (val1, val2):
+            if not 1 <= val < 1000:
+                print(f'{err_c}Nieobsługiwane wartości dla przedziału')
+                raise ValueError
+
+        if val1 == val2:
+            print(f'{YEX}Ustawiono: {R}{val1}')
+            return val1
+        return f'{val1}:{val2}'
+
+    def save_all_values(val_list, belem):
         for elem, value_ts, input_mesg in zip(c.bulk_elems, val_list, input_list):
-            print(f'{R}{input_mesg}: {value_ts}')
+            if belem == 'all':
+                print(f'{R}{input_mesg}: {value_ts}')
             save_commands(entry=f'{elem}_bulk', value=value_ts)
         print(f'{GEX}Wartości domyślne zapisane pomyślnie\n')
 
@@ -125,15 +144,23 @@ def config_bulk(*args):
                   'Wartość dla przykładów synonimów', 'Wartość dla przykładów idiomów')
     try:
         bulk_elem = args[1].lower()
-    except IndexError:
-        # no arguments
+    except IndexError:  # no arguments
         values_to_save = []
-        print(f'{R}{BOLD}Konfiguracja bulk{END}\n-1 <= wartość < 1000\n')
+        print(f'{R}{BOLD}Konfiguracja bulk{END}\n'
+              f'Pojedyncze wartości:\n'
+              f'-1 <= wartość < 1000\n\n'
+              f'Przedziały:\n'
+              f'1 <= wartość < 1000\n')
         try:
             for input_msg in input_list:
-                value = int(input(f'{input_c}{input_msg}:{inputtext_c} '))
-                if -1 <= value < 1000:
-                    values_to_save.append(value)
+                # replace ';' with ':' to prevent annoying typos
+                # especially here, because one typo and configuration terminates
+                value = input(f'{input_c}{input_msg}:{inputtext_c} ').replace(';', ':')
+                if ':' in value and '-' not in value:
+                    range_val = manage_range(value)
+                    values_to_save.append(range_val)
+                elif -1 <= int(value) < 1000:
+                    values_to_save.append(int(value))
                 else:
                     values_to_save.append(0)
                     print(f'{err_c}Nieobsługiwana wartość\n'
@@ -142,14 +169,21 @@ def config_bulk(*args):
             print(f'{YEX}Opuszczam konfigurację\nWprowadzone zmiany nie zostaną zapisane')
             return None
 
-        save_all_values(values_to_save)
+        save_all_values(values_to_save, belem='')
         return None
 
     if bulk_elem in ('-h', '--help'):
         print(f'{YEX}Konfiguracja domyślnych wartości dodawania\n'
-              f'{R}{cmd} {{element}} {{1 <= wartość < 1000}}\n'
+              f'{R}{cmd} {{element}} {{wartość}}\n'
+              f'Przedział:\n'
+              f'{cmd} {{element}} {{wartość:wartość}}\n\n'
               f'{BOLD}Elementy:{END}\n'
-              f'def, pos, etym, syn, psyn, pidiom, all\n')
+              f'def, pos, etym, syn, psyn, pidiom, all\n\n'
+              f'{BOLD}Dostępne wartości:{END}\n'
+              f'Pojedyncze:\n'
+              f'-1 <= wartość < 1000\n\n'
+              f'Przedziały:\n'
+              f'1 <= wartość < 1000\n')
         return None
 
     if bulk_elem not in c.bulk_elems:
@@ -159,23 +193,38 @@ def config_bulk(*args):
         return None
 
     try:
-        value = int(args[2])
-        if not -1 <= int(value) < 1000:
-            raise ValueError
+        # replace ';' with ':' to prevent annoying typos
+        value = args[2].replace(';', ':')
     except IndexError:
         print(f'{YEX}Brakuje wartości\n'
-              f'{R}{cmd} {bulk_elem} {{-1 <= wartość < 1000}}')
+              f'{R}{cmd} {bulk_elem} {{wartość}}\n'
+              f'        {{wartość:wartość}}\n')
         return None
-    except ValueError:
-        print(f'{err_c}Nieobsługiwana wartość\n'
-              f'Dozwolony przedział: {R}-1 <= wartość < 1000')
-        if bulk_elem != 'all':
-            print(f'{YEX}Wartość dla {R}{bulk_elem} {YEX}pozostaje: {R}{config[f"{bulk_elem}_bulk"]}')
-        return None
+
+    if ':' in value:
+        try:
+            value = manage_range(value)
+        # manage_range raises its own ValueError that complements this error message
+        except ValueError:
+            print(f'{err_c}Dozwolone wartości dla przedziałów: {R}1 <= wartość < 1000')
+            if bulk_elem != 'all':
+                print(f'{YEX}Wartość dla {R}{bulk_elem}{YEX} pozostaje: {R}{config[f"{bulk_elem}_bulk"]}')
+            return None
+    else:
+        try:
+            value = int(value)
+            if not -1 <= value < 1000:
+                raise ValueError
+        except ValueError:
+            print(f'{err_c}Nieobsługiwana wartość\n'
+                  f'Dozwolone pojedyncze wartości: {R}-1 <= wartość < 1000')
+            if bulk_elem != 'all':
+                print(f'{YEX}Wartość dla {R}{bulk_elem}{YEX} pozostaje: {R}{config[f"{bulk_elem}_bulk"]}')
+            return None
 
     if bulk_elem == 'all':
         values_to_save = [value] * 6
-        save_all_values(val_list=values_to_save)
+        save_all_values(val_list=values_to_save, belem=bulk_elem)
     else:
         print(f"{YEX}Domyślna wartość dla {R}{bulk_elem}{YEX}: {R}{value}")
         save_commands(entry=f'{bulk_elem}_bulk', value=value)
@@ -741,15 +790,15 @@ def get_audio_from_diki(raw_phrase, flag, url='https://www.diki.pl/slownik-angie
         # diki_phrase is just the first argument of get_audio_url()
         diki_phrase, audio_url = get_audio_url(last_resort(), search_by_filename=False)
 
-    url_end = get_url_end(audio_url)  # eg. /images-common/en/mp3/confirm.mp3
+    url_end = get_url_end(audio_url)  # e.g. /images-common/en/mp3/confirm.mp3
     if url_end is None:
         print(f"{err_c}Nie udało się pozyskać audio\nKarta zostanie dodana bez audio")
         return '', ''
-    audiofile_name = url_end.split('/')[-1]  # eg. confirm.mp3
+    audiofile_name = url_end.split('/')[-1]  # e.g. confirm.mp3
     audiofile_name_no_mp3 = audiofile_name.split('.mp3')[0].replace('-n', '').replace('-v', '').replace('-a', '')
     last_word_in_dphrase = diki_phrase.split()[-1]
     # We need to check if audio was added in full to prevent garbage's stubs from slipping through
-    # eg. "as" from "as thick as mince", I would rather go with "thick" or "mince" as it's more substantial
+    # e.g. "as" from "as thick as mince", I would rather go with "thick" or "mince" as it's more substantial
     audiofile_added_in_full = audiofile_name_no_mp3.endswith(last_word_in_dphrase)
     # Phrases like "account for", "abide by" in diki show up as "account for somebody", "abide by something" etc.
     # audiofile_added_in_full check prevents these from being handled properly
@@ -791,7 +840,7 @@ def lexico_flags(flag, pronunciations, word_pos, p_and_p):
     x = False
     for pronun in pronunciations:
         # x shows up in words that are pronounced based on their part of speech
-        # eg. verb = conCERT, noun = CONcert
+        # e.g. verb = conCERT, noun = CONcert
         # three letters is enough to distinguish every word combination,
         # whole phrases should work too, but lexico's naming convention is very unpredictable
         if 'x' + phrase[:3] in str(pronun):
@@ -1028,10 +1077,11 @@ def ah_dictionary(query):
         print(f'{delimit_c}{get_conf_of("delimsize") * "-"}')
 
         hpaps = td.find('div', class_='rtseg')
-        # example hpaps: 'bat·ter 1  (băt′ər)'
-        # example person hpaps: 'Monk  (mŭngk), (James) Arthur  Known as  "Art."  Born 1957.'
+        # hpaps = head phrase and phonetic spelling
+        # example hpaps: bat·ter 1  (băt′ər)
+        # example person hpaps: Monk  (mŭngk), (James) Arthur  Known as  "Art."  Born 1957.
         hpaps = hpaps.text.split('Share:')[0] \
-            .replace('', '′').replace('', 'oo').replace('', 'oo').strip()
+            .replace('', '′').replace('', 'ōō').replace('', 'ōō').strip()
 
         phon_spell = '(' + hpaps.split(')')[0].split(' (')[-1].strip() + ')'
         if phon_spell.strip('()') == hpaps:
@@ -1060,8 +1110,9 @@ def ah_dictionary(query):
         # Adds definitions and phrases
         for meaning in meanings_in_td:
             indexing += 1
-
-            rex = meaning.text.replace('', '′').strip()  # 'all right' needs the replacement
+            # 'all right' needs the first replace
+            # 'long' needs the second one
+            rex = meaning.text.replace('', '′').replace('', 'ōō').strip()
             if config['filtered_dictionary']:
                 rex = filter_ahd(rex)
             # We have to find the private symbol
@@ -1071,7 +1122,7 @@ def ah_dictionary(query):
         print()
         # Adds parts of speech
         for pos in td.find_all('div', class_='runseg'):
-            postring = pos.text.replace('', 'oo').replace('', 'oo').replace('', '′').replace('·', '').strip()
+            postring = pos.text.replace('', 'ōō').replace('', 'ōō').replace('', '′').replace('·', '').strip()
             print(f' {pos_c}{postring}')
             poses.append(postring)
         if poses:
@@ -1095,62 +1146,64 @@ def replace_by_list(content_to_hide, replacees, replacement):
     return hc
 
 
-def hide_phrase_in(content, hide):
-    if not content:
-        return ''
+def hide_phrase_in(func):
+    def wrapper(*args, **kwargs):
+        content, choice, hide = func(*args, **kwargs)
+        if hide is None or not content or not config[hide]:
+            return content, choice
 
-    hidden_content = content
-    nonoes = (
-        'a', 'A', 'an', 'An', 'the', 'The', 'or', 'Or', 'be', 'Be', 'do', 'Do',
-        'does', 'Does', 'not', 'Not', 'if', 'If', 'is', 'Is', 'on', 'On')
-    prepositions = ()
-    if hide == 'hide_idiom_word' and not config['hide_prepositions']:
-        prepositions = (
-            'about', 'above', 'across', 'after', 'against', 'along', 'among', 'around',
-            'as', 'at', 'before', 'behind', 'below', 'beneath', 'beside', 'between',
-            'beyond', 'by', 'despite', 'down', 'during', 'except', 'for', 'from', 'in',
-            'inside', 'into', 'like', 'near', 'of', 'off', 'on', 'onto', 'opposite',
-            'out', 'outside', 'over', 'past', 'round', 'since', 'than', 'through', 'to',
-            'towards', 'under', 'underneath', 'unlike', 'until', 'up', 'upon', 'via',
-            'with', 'within', 'without'
-        )
-    words_th = phrase.lower().split()
-    s_exceptions = (x.rstrip('y') + 'ies' for x in words_th if x.endswith('y'))
-    ing_exceptions = (x.rstrip('e') + 'ing' for x in words_th if
-                      x.endswith('e') and x not in prepositions and x not in nonoes)
-    ing_exceptions2 = (x.rstrip('ie') + 'ying' for x in words_th if x.endswith('ie'))
-    ed_exceptions = (x.rstrip('y') + 'ied' for x in words_th if x.endswith('y'))
+        hidden_content = content
+        nonoes = (
+            'a', 'A', 'an', 'An', 'the', 'The', 'or', 'Or', 'be', 'Be', 'do', 'Do',
+            'does', 'Does', 'not', 'Not', 'if', 'If', 'is', 'Is', 'on', 'On')
+        prepositions = ()
+        if hide == 'hide_idiom_word' and not config['hide_prepositions']:
+            prepositions = (
+                'about', 'above', 'across', 'after', 'against', 'along', 'among', 'around',
+                'as', 'at', 'before', 'behind', 'below', 'beneath', 'beside', 'between',
+                'beyond', 'by', 'despite', 'down', 'during', 'except', 'for', 'from', 'in',
+                'inside', 'into', 'like', 'near', 'of', 'off', 'on', 'onto', 'opposite',
+                'out', 'outside', 'over', 'past', 'round', 'since', 'than', 'through', 'to',
+                'towards', 'under', 'underneath', 'unlike', 'until', 'up', 'upon', 'via',
+                'with', 'within', 'without'
+            )
+        words_th = phrase.lower().split()
+        s_exceptions = (x.rstrip('y') + 'ies' for x in words_th if x.endswith('y'))
+        ing_exceptions = (x.rstrip('e') + 'ing' for x in words_th if
+                          x.endswith('e') and x not in prepositions and x not in nonoes)
+        ing_exceptions2 = (x.rstrip('ie') + 'ying' for x in words_th if x.endswith('ie'))
+        ed_exceptions = (x.rstrip('y') + 'ied' for x in words_th if x.endswith('y'))
 
-    for word_th in words_th:
-        if word_th not in nonoes and word_th not in prepositions:
-            hidden_content = hidden_content.replace(word_th, '...')\
-                .replace(word_th.capitalize(), '...').replace(word_th.upper(), '...')
+        for word_th in words_th:
+            if word_th not in nonoes and word_th not in prepositions:
+                hidden_content = hidden_content.replace(word_th, '...')\
+                    .replace(word_th.capitalize(), '...').replace(word_th.upper(), '...')
 
-    hidden_content = replace_by_list(hidden_content, s_exceptions, '...s')
-    hidden_content = replace_by_list(hidden_content, ing_exceptions, '...ing')
-    hidden_content = replace_by_list(hidden_content, ing_exceptions2, '...ying')
-    hidden_content = replace_by_list(hidden_content, ed_exceptions, '...ed')
-    return hidden_content
+        hidden_content = replace_by_list(hidden_content, s_exceptions, '...s')
+        hidden_content = replace_by_list(hidden_content, ing_exceptions, '...ing')
+        hidden_content = replace_by_list(hidden_content, ing_exceptions2, '...ying')
+        hidden_content = replace_by_list(hidden_content, ed_exceptions, '...ed')
+        return hidden_content, choice
+
+    return wrapper
 
 
+@hide_phrase_in
 def sentence_input(hide):
     global skip_check
 
     if not config['add_sentences']:
-        return ''
+        return '', 0, hide
 
     sentence = input(f'{input_c}Dodaj przykładowe zdanie:{inputtext_c} ')
     if sentence.lower() == '-s':
         print(f'{GEX}Pominięto dodawanie zdania')
-        return ''
+        sentence = ''
     if sentence.lower() == '-sc':
         skip_check = 1
         print(f'{GEX}Pominięto dodawanie karty')
-        return ''
-
-    if config[hide]:
-        return hide_phrase_in(sentence, hide)
-    return sentence
+        sentence = ''
+    return sentence, 0, hide
 
 
 def pick_phrase(choice, phrase_list):
@@ -1163,62 +1216,128 @@ def pick_phrase(choice, phrase_list):
         return phrase_list[0]
 
 
-def input_func(prompt_msg, add_element, bulk, content_list, hide=None, connector='<br>', pos=False):
+def filter_range_tuples(tup):
+    # when input is 2:3, 5, 6, qwerty, 7:9, tuples are:
+    # ('2', '3'), (' 5'), (' 6'), ('qwerty'), ('7', '9')
+    for val in tup:
+        # zero is excluded in multi_choice function, otherwise tuples like:
+        # ('0', '4') would be ignored, but I want them to give: 1, 2, 3, 4
+        if not val.strip().isnumeric():
+            return False
+    return True
+
+
+def get_full_range(choice, content_list_len):
+    # example input: 1:4:2, 4:0, d:3:7, 5:aaa, 1:6:2:8
+    colon_sep_values = choice.split(',')
+    colon_range_tuples = [tuple(t.split(':')) for t in colon_sep_values]
+    # gets rid of invalid tuples eg: d:3:7, 5:aaa
+    col_tuples = list(filter(filter_range_tuples, colon_range_tuples))
+    # converts every tuple of len > 2 into tuples
+    # with overlapping values: 2:8:5:6 -> (2,8) (8,5) (5,6)
+    list_of_tuples = []
+    for ctuple in col_tuples:
+        if len(ctuple) == 1:
+            list_of_tuples.append(ctuple)
+            continue
+        for t in range(0, len(ctuple) - 1):
+            list_of_tuples.append(ctuple[0 + t:2 + t])
+
+    full_range = []
+    for ctuple in list_of_tuples:
+        val1 = int(ctuple[0])
+        # -1 allows for single inputs after the comma, eg: 5:6, 2, 3, 9
+        val2 = int(ctuple[-1])
+        if val1 > content_list_len and val2 > content_list_len:
+            continue
+        # check with content_list_len to ease the computation for the range function
+        val1 = val1 if val1 <= content_list_len else content_list_len
+        val2 = val2 if val2 <= content_list_len else content_list_len
+        # check for reversed sequences
+        if val1 > val2:
+            rev = -1
+        else:
+            rev = 1
+        # e.g. from val1 = 7 and val2 = 4 produce: 7, 6, 5, 4
+        range_val = [x for x in range(val1, val2 + rev, rev)]
+        full_range.extend(range_val)
+
+    return full_range
+
+
+def use_bulk_values(bulk_value, content_list_len):
+    if ':' not in str(bulk_value):
+        # bulk_value is an int
+        return single_choice, bulk_value, bulk_value
+    # bulk_value is a str
+    full_range = get_full_range(bulk_value, content_list_len)
+    choice = full_range[0] if full_range else 0
+    return multi_choice, full_range, choice
+
+
+@hide_phrase_in
+def input_func(prompt_msg, add_element, bulk, content_list, hide=None, connector='<br>'):
     global skip_check
-    params = (content_list, connector, pos)
+    params = (content_list, connector)
     bulk_value = config[bulk]
 
     if not config[add_element]:
-        return single_choice(bulk_value, *params), bulk_value
+        # range_choice = choice when range is not given
+        func, range_choice, choice = use_bulk_values(bulk_value, len(content_list))
+        return func(range_choice, *params), choice, hide
 
     choice = input(f'{input_c}{prompt_msg} [{bulk_value}]:{inputtext_c} ')
 
-    if choice.strip() == '':
-        chosen_cont = single_choice(bulk_value, *params)
-    elif choice.isnumeric() or choice == '-1':
+    if not choice.strip():
+        func, range_choice, choice = use_bulk_values(bulk_value, len(content_list))
+        chosen_cont = func(range_choice, *params)
+    elif choice.isnumeric():
         chosen_cont = single_choice(int(choice), *params)
     elif choice.startswith('/'):
         chosen_cont = choice.replace('/', '', 1)
     elif choice.lower() == '-s':
         chosen_cont = ''
-    elif choice.lower() == 'all':
-        chosen_cont = connector.join(content_list)
+    elif choice.lower() in ('-1', 'all'):
+        chosen_cont = single_choice(-1, *params)
+    # choice with colons may include commas
+    elif ':' in choice:
+        full_range = get_full_range(choice, len(content_list))
+        chosen_cont = multi_choice(full_range, content_list, connector)
     elif ',' in choice:
-        mchoice = choice.strip().split(',')
+        mchoice = [int(x) for x in choice.split(',') if x.strip().isnumeric()]
         chosen_cont = multi_choice(mchoice, content_list, connector)
-        choice = mchoice[0]
+        choice = mchoice[0] if mchoice else 0
     else:
         skip_check = 1
         print(f'{GEX}Pominięto dodawanie karty')
-        return '', 1
+        return '', 0, None
 
-    if hide is not None and config[hide]:
-        chosen_cont = hide_phrase_in(chosen_cont, hide)
-
-    return chosen_cont, choice
+    return chosen_cont, choice, hide
 
 
-def multi_choice(choice, content_list, connector):
+def multi_choice(*args):
+    choice = args[0]
+    content_list = args[1]
+    connector = args[2]
+
     content = []
-    choice_nr = ''
-    for choice in choice:
-        try:
-            if int(choice) > 0:
-                if content_list[int(choice) - 1] != '':
-                    content.append(content_list[int(choice) - 1])
-                choice_nr += choice.strip() + ', '
-        except (ValueError, IndexError, TypeError):
+    choice_no = []
+    for ch in choice:
+        if ch > len(content_list) or ch == 0:
             continue
-    print(f'{YEX}Dodane elementy: {choice_nr.rstrip(", ")}')
+        elem = content_list[ch - 1]
+        if elem:
+            content.append(elem)
+            choice_no.append(str(ch))
+
+    print(f'{YEX}Dodane elementy: {", ".join(choice_no)}')
     return connector.join(content)
 
 
-def single_choice(choice, content_list, connector, pos):
-    global skip_check
-
-    if len(content_list) >= choice > 0 and not pos:
+def single_choice(choice, content_list, connector):
+    if len(content_list) >= choice > 0:
         return content_list[choice - 1]
-    elif choice > len(content_list) or choice == -1 or (pos and choice >= 1):
+    elif choice > len(content_list) or choice == -1:
         no_blanks = [x for x in content_list if x != '']
         return connector.join(no_blanks)
     else:  # 0
@@ -1264,6 +1383,7 @@ def wordnet_request(query):
     global skip_check_disamb
 
     if not config['add_disambiguation']:
+        skip_check_disamb = 1
         return [], []
 
     full_url = 'http://wordnetweb.princeton.edu/perl/webwn?s=' + query
@@ -1367,7 +1487,7 @@ def farlex_idioms(query):
         idiom_def = definition.find(text=True, recursive=False)\
             .strip('1234567890. ').replace('"', "'")
         # if there is an <i> tag in between definition's index and definition
-        # eg. '2. <i>verb</i> ...'
+        # e.g. '2. <i>verb</i> ...'
         if len(str(idiom_def)) < 5:
             idiom_def = str(definition).split('">', 1)[1].rsplit('<span')[0]
             idiom_def = idiom_def.lstrip('1234567890. ').rstrip()
@@ -1662,98 +1782,100 @@ def main():
     if not os.path.exists('Karty_audio') and config['audio_path'] == 'Karty_audio':
         os.mkdir('Karty_audio')
 
-    __version__ = 'v0.7.1-3'
+    __version__ = 'v0.7.2-1'
     print(f'{BOLD}- Dodawacz kart do Anki {__version__} -{END}\n\n'
           f'Wpisz "--help", aby wyświetlić pomoc\n\n')
 
-    try:
-        while True:
-            skip_check = 0
-            skip_check_disamb = 0
-            phrase = ''
-            synonimy = ''
-            przyklady = ''
+    while True:
+        skip_check = 0
+        skip_check_disamb = 0
+        phrase = ''
+        synonimy = ''
+        przyklady = ''
 
-            link_word = search_interface()
-            phrase = link_word[0]
-            flags = link_word[1:]
+        link_word = search_interface()
+        phrase = link_word[0]
+        flags = link_word[1:]
 
-            dictionary, definicja, czesci_mowy, etymologia, phrase_list, ilustracje = \
-                manage_dictionaries(phrase, flags)
+        dictionary, definicja, czesci_mowy, etymologia, phrase_list, ilustracje = \
+            manage_dictionaries(phrase, flags)
+        if skip_check == 1:
+            continue
+
+        if not config['create_card']:
+            wordnet_request(phrase)
+            continue
+
+        # main loop
+        zdanie, _ = sentence_input('hide_sentence_word')
+        if skip_check == 1:
+            continue
+        definicja, choice = input_func('Wybierz definicje', 'add_definitions', 'def_bulk', definicja,
+                                       'hide_definition_word')
+        if skip_check == 1:
+            continue
+        phrase = pick_phrase(choice, phrase_list)
+
+        if dictionary == 'ahd':
+            czesci_mowy, _ = input_func('Wybierz części mowy', 'add_parts_of_speech', 'pos_bulk', czesci_mowy,
+                                        connector=' | ')
             if skip_check == 1:
                 continue
-
-            if not config['create_card']:
-                wordnet_request(phrase)
-                continue
-
-            # main loop
-            zdanie = sentence_input('hide_sentence_word')
+            etymologia, _ = input_func('Wybierz etymologie', 'add_etymologies', 'etym_bulk', etymologia)
             if skip_check == 1:
                 continue
-            definicja, choice = input_func('Wybierz definicje', 'add_definitions', 'def_bulk', definicja,
-                                           'hide_definition_word')
-            if skip_check == 1:
-                continue
-            phrase = pick_phrase(choice, phrase_list)
-
-            if dictionary == 'ahd':
-                czesci_mowy, _ = input_func('Dołączyć części mowy?', 'add_parts_of_speech', 'pos_bulk', czesci_mowy,
-                                            connector=' | ', pos=True)
+            audio = search_for_audio(config['server'], phrase, flags)
+            grupa_synonimow, grupa_przykladow = wordnet_request(phrase)
+            if skip_check_disamb == 0:
+                synonimy, _ = input_func('Wybierz synonimy', 'add_synonyms', 'syn_bulk', grupa_synonimow,
+                                         'hide_disamb_word', connector=' | ')
                 if skip_check == 1:
                     continue
-                etymologia, _ = input_func('Wybierz etymologie', 'add_etymologies', 'etym_bulk', etymologia)
+                przyklady, _ = input_func('Wybierz przykłady', 'add_synonym_examples', 'psyn_bulk',
+                                          grupa_przykladow,
+                                          'hide_disamb_word')
                 if skip_check == 1:
                     continue
-                audio = search_for_audio(config['server'], phrase, flags)
-                grupa_synonimow, grupa_przykladow = wordnet_request(phrase)
-                if skip_check_disamb == 0:
-                    synonimy, _ = input_func('Wybierz synonimy', 'add_synonyms', 'syn_bulk', grupa_synonimow,
-                                             'hide_disamb_word', connector=' | ')
-                    if skip_check == 1:
-                        continue
-                    przyklady, _ = input_func('Wybierz przykłady', 'add_synonym_examples', 'psyn_bulk',
-                                              grupa_przykladow,
-                                              'hide_disamb_word')
-                    if skip_check == 1:
-                        continue
-                if config['merge_disambiguation']:
+            if config['merge_disambiguation']:
+                if synonimy == '' or przyklady == '':
+                    brk = ''
+                else:
                     brk = '<br>'
-                    if synonimy == '' or przyklady == '':
-                        brk = ''
-                    synonimy = synonimy + brk + przyklady
-                    przyklady = ''
-            else:
-                czesci_mowy = ''
-                etymologia = ''
-                przyklady, _ = input_func('Wybierz przykłady', 'add_idiom_examples', 'pidiom_bulk', ilustracje,
-                                          'hide_idiom_word')
-                if skip_check == 1:
-                    continue
-                audio = search_for_audio('diki', phrase, flags)
-                if config['merge_idioms']:
+                synonimy = synonimy + brk + przyklady
+                przyklady = ''
+        else:
+            czesci_mowy = ''
+            etymologia = ''
+            przyklady, _ = input_func('Wybierz przykłady', 'add_idiom_examples', 'pidiom_bulk', ilustracje,
+                                      'hide_idiom_word')
+            if skip_check == 1:
+                continue
+            audio = search_for_audio('diki', phrase, flags)
+            if config['merge_idioms']:
+                if definicja == '' or przyklady == '':
+                    brk = ''
+                else:
                     brk = '<br><br>'
-                    if definicja == '' or przyklady == '':
-                        brk = ''
-                    definicja = definicja + brk + przyklady
-                    przyklady = ''
+                definicja = definicja + brk + przyklady
+                przyklady = ''
 
-            if config['showcard']:
-                skip_check = display_card(definicja, synonimy, przyklady, zdanie, czesci_mowy, etymologia, audio)
-                if skip_check == 1:
-                    continue
-            print()
+        if config['showcard']:
+            skip_check = display_card(definicja, synonimy, przyklady, zdanie, czesci_mowy, etymologia, audio)
+            if skip_check == 1:
+                continue
+        print()
 
-            field_values = {
-                'definicja': definicja, 'synonimy': synonimy, 'przyklady': przyklady, 'phrase': phrase,
-                'zdanie': zdanie, 'czesci_mowy': czesci_mowy, 'etymologia': etymologia, 'audio': audio}
-            if config['ankiconnect']:
-                create_ankiconnect_card(field_values)
-            save_card_to_file(field_values)
-    except KeyboardInterrupt:
-        # R has to be there, so that the color from "inputtext" isn't displayed
-        print(f'{R}\nZakończono')
+        field_values = {
+            'definicja': definicja, 'synonimy': synonimy, 'przyklady': przyklady, 'phrase': phrase,
+            'zdanie': zdanie, 'czesci_mowy': czesci_mowy, 'etymologia': etymologia, 'audio': audio}
+        if config['ankiconnect']:
+            create_ankiconnect_card(field_values)
+        save_card_to_file(field_values)
 
 
 if __name__ == '__main__':
-    main()
+    try:
+        main()
+    except KeyboardInterrupt:
+        # R so that the color from "inputtext" isn't displayed
+        print(f'{R}\nZakończono')

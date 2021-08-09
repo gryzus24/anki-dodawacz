@@ -32,4 +32,3 @@ ah_dictionary('ok')
 ah_dictionary('mastodon')
 # first headword numbered, second not and two phonetic spellings
 ah_dictionary('like')
-
