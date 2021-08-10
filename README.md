@@ -48,6 +48,9 @@ Następnie wchodzimy w folder do którego chcemy pobrać program:<br>
 Klonujemy repozytorium wpisując:<br>
   <code>git clone https://github.com/gryzus24/anki-dodawacz</code>
 
+Instalujemy wymagane biblioteki:<br>
+    <code> pip install BeautifulSoup4 colorama pyyaml requests lxml cchardet </code>
+
 Otwieramy za pomocą Pythona:<br>
     <code>python ankidodawacz.py</code> lub <code>python3 ankidodawacz.py</code>
     
