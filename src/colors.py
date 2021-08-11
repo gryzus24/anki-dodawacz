@@ -18,10 +18,16 @@ class Color:
             self.color = color_data['colors'][config[color_name]]
 
     def update(self):
-        self.color = color_data['colors'][config.get(self.color_name, '')]
+        try:
+            self.color = color_data['colors'][config[self.color_name]]
+        except KeyError:
+            self.color = ''
 
     def bolden(self):
-        self.color = f"{BOLD}{color_data['colors'][config.get(self.color_name, '')]}"
+        try:
+            self.color = f"{BOLD}{color_data['colors'][config[self.color_name]]}"
+        except KeyError:
+            self.color = ''
 
 
 if sys.platform.startswith('linux'):
