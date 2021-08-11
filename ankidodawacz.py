@@ -13,664 +13,76 @@
 # You should have received a copy of the GNU General Public License
 # along with this program. If not, see <http://www.gnu.org/licenses/>.
 
-import json
 import os
 import os.path
 import sys
-import urllib.request
-from itertools import zip_longest
-from urllib.error import URLError
 
 import requests
-import yaml
 from bs4 import BeautifulSoup
-from colorama import Fore
 from requests.exceptions import ConnectionError as requestsConnectError
 from requests.exceptions import Timeout
 
-from data import commands as c, notes
-from data.commands import BOLD, END
-from data.commands import (R, YEX, def1_c, def2_c, pos_c, etym_c, syn_c, psyn_c, pidiom_c,
-                           syngloss_c, synpos_c, index_c, phrase_c, phon_c,
-                           err_c, delimit_c, input_c, inputtext_c)
-from data.commands import config, dir_
+import src.anki_interface as anki
+import src.commands as c
+import src.data as data
+import src.help as h
+from src.colors import \
+    R, BOLD, END, YEX, GEX, \
+    def1_c, def2_c, pos_c, etym_c, syn_c, psyn_c, \
+    pidiom_c, syngloss_c, synpos_c, index_c, phrase_c, \
+    phon_c, poslabel_c, err_c, delimit_c, input_c, inputtext_c
+from src.data import config
 
 if sys.platform.startswith('linux'):
     # For saving command history, this module doesn't work on windows
     import readline
     readline.read_init_file()
 
-try:
-    with open(os.path.join(dir_, 'ankiconnect.yml'), 'r') as a:
-        ankiconf = yaml.load(a, Loader=yaml.Loader)
-except FileNotFoundError:
-    with open(os.path.join(dir_, 'ankiconnect.yml'), 'w') as a:
-        a.write('{}')
-
 USER_AGENT = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; rv:78.0) Gecko/20100101 Firefox/78.0'}
 requests_session_ah = requests.Session()
 requests_session_ah.headers.update(USER_AGENT)
-GEX = Fore.LIGHTGREEN_EX
 # Globals for main function to modify
 skip_check = 0
 skip_check_disamb = 0
 phrase = ''
 
-
-def delete_cards(*args):
-    cmd = args[0]
-
-    try:
-        if args[1].lower() in ('-h', '--help'):
-            print(f'{YEX}Usuwa ostatnio dodawane karty z pliku {R}"karty.txt"\n'
-                  f'{R}{cmd} [liczba >= 1]')
-            return None
-
-        no_of_deletions = int(args[1])
-        if not int(no_of_deletions) > 0:
-            raise ValueError
-    except IndexError:
-        no_of_deletions = 1
-    except ValueError:
-        print(f'{err_c}Liczba kart do usunięcia musi być liczbą {R}>= 1')
-        return None
-
-    deleted_lines = []
-    try:
-        with open('karty.txt', 'r') as r:
-            lines = r.readlines()
-
-        if no_of_deletions >= len(lines):
-            with open('karty.txt', 'w') as w:
-                w.write('')
-            raise IndexError
-        for i in range(no_of_deletions):
-            deleted_line = lines.pop().replace('\n', '')
-            deleted_lines.append(deleted_line)
-        new_file = ''.join(lines)
-    except IndexError:
-        print(f"{YEX}Plik {R}'karty.txt'{YEX} został opróżniony, nie ma co więcej usuwać")
-        return None
-    except FileNotFoundError:
-        print(f"{err_c}Plik {R}'karty.txt'{err_c} nie istnieje, nie ma co usuwać")
-        return None
-    except UnicodeDecodeError:
-        # wolfram caused this
-        print(f'{err_c}Usuwanie karty nie powiodło się z powodu nieznanego znaku (prawdopodobnie w etymologii)')
-        return None
-    except Exception:
-        print(f'{err_c}Coś poszło nie tak podczas usuwania karty'
-              f'\n{R}Karty są {GEX}bezpieczne{R} though')
-        raise
-
-    with open('karty.txt', 'w') as w:
-        w.write(new_file)
-    print(f"{YEX}Usunięto z pliku {R}'karty.txt'{YEX}: ")
-    for card_no, dl in enumerate(deleted_lines):
-        card_numb = len(lines) + no_of_deletions - card_no
-        dl = dl.strip('\t ').replace('\t', '  ')
-        print(f'{R}Karta {card_numb}: "{dl[:66-len(str(card_numb))]}..."')
-
-
-def config_bulk(*args):
-    def manage_range(rval):
-        two_values = rval.split(':', 1)
-        # check for ValueError
-        val1 = int(two_values[0])
-        val2 = int(two_values[1])
-        if val1 == 0 and val2 == 0:
-            return 0
-        # check ranges for each value
-        for val in (val1, val2):
-            if not 1 <= val < 1000:
-                print(f'{err_c}Nieobsługiwane wartości dla przedziału')
-                raise ValueError
-
-        if val1 == val2:
-            print(f'{YEX}Ustawiono: {R}{val1}')
-            return val1
-        return f'{val1}:{val2}'
-
-    def save_all_values(val_list, belem):
-        for elem, value_ts, input_mesg in zip(c.bulk_elems, val_list, input_list):
-            if belem == 'all':
-                print(f'{R}{input_mesg}: {value_ts}')
-            save_commands(entry=f'{elem}_bulk', value=value_ts)
-        print(f'{GEX}Wartości domyślne zapisane pomyślnie\n')
-
-    cmd = args[0]
-    input_list = ('Wartość dla definicji', 'Wartość dla części mowy',
-                  'Wartość dla etymologii', 'Wartość dla synonimów',
-                  'Wartość dla przykładów synonimów', 'Wartość dla przykładów idiomów')
-    try:
-        bulk_elem = args[1].lower()
-    except IndexError:  # no arguments
-        values_to_save = []
-        print(f'{R}{BOLD}Konfiguracja bulk{END}\n'
-              f'Pojedyncze wartości:\n'
-              f'-1 <= wartość < 1000\n\n'
-              f'Przedziały:\n'
-              f'1 <= wartość < 1000\n')
-        try:
-            for input_msg in input_list:
-                # replace ';' with ':' to prevent annoying typos
-                # especially here, because one typo and configuration terminates
-                value = input(f'{input_c}{input_msg}:{inputtext_c} ').replace(';', ':')
-                if ':' in value and '-' not in value:
-                    range_val = manage_range(value)
-                    values_to_save.append(range_val)
-                elif -1 <= int(value) < 1000:
-                    values_to_save.append(int(value))
-                else:
-                    values_to_save.append(0)
-                    print(f'{err_c}Nieobsługiwana wartość\n'
-                          f'{YEX}Wartość zmieniona na: {R}0')
-        except ValueError:
-            print(f'{YEX}Opuszczam konfigurację\nWprowadzone zmiany nie zostaną zapisane')
-            return None
-
-        save_all_values(values_to_save, belem='')
-        return None
-
-    if bulk_elem in ('-h', '--help'):
-        print(f'{YEX}Konfiguracja domyślnych wartości dodawania\n'
-              f'{R}{cmd} {{element}} {{wartość}}\n'
-              f'Przedział:\n'
-              f'{cmd} {{element}} {{wartość:wartość}}\n\n'
-              f'{BOLD}Elementy:{END}\n'
-              f'def, pos, etym, syn, psyn, pidiom, all\n\n'
-              f'{BOLD}Dostępne wartości:{END}\n'
-              f'Pojedyncze:\n'
-              f'-1 <= wartość < 1000\n\n'
-              f'Przedziały:\n'
-              f'1 <= wartość < 1000\n')
-        return None
-
-    if bulk_elem not in c.bulk_elems:
-        print(f'{err_c}Nie znaleziono elementu\n'
-              f'{R}{BOLD}Elementy:{END}\n'
-              f'def, pos, etym, syn, psyn, pidiom, all\n')
-        return None
-
-    try:
-        # replace ';' with ':' to prevent annoying typos
-        value = args[2].replace(';', ':')
-    except IndexError:
-        print(f'{YEX}Brakuje wartości\n'
-              f'{R}{cmd} {bulk_elem} {{wartość}}\n'
-              f'        {{wartość:wartość}}\n')
-        return None
-
-    if ':' in value:
-        try:
-            value = manage_range(value)
-        # manage_range raises its own ValueError that complements this error message
-        except ValueError:
-            print(f'{err_c}Dozwolone wartości dla przedziałów: {R}1 <= wartość < 1000')
-            if bulk_elem != 'all':
-                print(f'{YEX}Wartość dla {R}{bulk_elem}{YEX} pozostaje: {R}{config[f"{bulk_elem}_bulk"]}')
-            return None
-    else:
-        try:
-            value = int(value)
-            if not -1 <= value < 1000:
-                raise ValueError
-        except ValueError:
-            print(f'{err_c}Nieobsługiwana wartość\n'
-                  f'Dozwolone pojedyncze wartości: {R}-1 <= wartość < 1000')
-            if bulk_elem != 'all':
-                print(f'{YEX}Wartość dla {R}{bulk_elem}{YEX} pozostaje: {R}{config[f"{bulk_elem}_bulk"]}')
-            return None
-
-    if bulk_elem == 'all':
-        values_to_save = [value] * 6
-        save_all_values(val_list=values_to_save, belem=bulk_elem)
-    else:
-        print(f"{YEX}Domyślna wartość dla {R}{bulk_elem}{YEX}: {R}{value}")
-        save_commands(entry=f'{bulk_elem}_bulk', value=value)
-
-
-def print_config():
-    column1 = list(c.command_data)[:13]
-    column1.insert(8, '')
-    column1.insert(11, '')
-    # from [14] to avoid '-all'
-    column2 = list(c.command_data)[14:34]
-    # so that -ankiconnect and -duplicates are placed below [config ankiconnect]
-    column2[10], column2[14] = column2[14], column2[10]
-    column2[11], column2[15] = column2[15], column2[11]
-    column2.insert(14, '')
-    column2.insert(15, f'{BOLD}[config ankiconnect]{END}')
-
-    column3 = c.bulk_elems[:-1]
-    column3.append(list(c.command_data)[-1])
-    column3.insert(6, '')
-    column3.insert(7, f'{BOLD}[config audio]{END}')
-
-    print(f'\n{R}{BOLD}[config dodawania]     [config miscellaneous]     [defaults/bulk]{END}')
-    for first_cmd, second_cmd, third_cmd in zip_longest(column1, column2, column3, fillvalue=''):
-        # First column
-        try:
-            config_val1 = config[c.command_data[first_cmd]['config_entry']]
-        except KeyError:
-            config_val1 = ''
-        try:
-            cmd_color = c.bool_colors[config_val1]
-        except KeyError:
-            cmd_color = ''
-        # Second column
-        try:
-            config_val2 = '  ' + str(config[c.command_data[second_cmd]['config_entry']])
-        except KeyError:
-            config_val2 = ''
-        try:
-            cmd_color_misc = c.bool_colors[config[c.command_data[second_cmd]['config_entry']]]
-        except KeyError:
-            cmd_color_misc = ''
-        if '*' in config_val2:
-            config_val2 = config_val2.lstrip()
-        # Third column
-        blk_conf = config.get(third_cmd.lstrip('-'), config.get(f'{third_cmd}_bulk', ''))
-        if str(blk_conf).isnumeric():  # So that negative values are left-aligned
-            blk_conf = ' ' + str(blk_conf)
-
-        print(f'{first_cmd:13s}{cmd_color}{str(config_val1):10s}{R}'
-              f'{second_cmd:14s}{cmd_color_misc}{config_val2:13s}{R}'
-              f'{third_cmd:10s}{blk_conf}')
-
-    print(f'\n--audio-path: {config.get("audio_path", "")}')
-    print('\nkonfiguracja kolorów: "-c -h"\n'
-          'konfiguracja pól: "-fo -h"\n')
-
-
-def set_width_settings(*args):
-    command = args[0]
-
-    try:
-        value = args[1].lower()
-        if value in ('-h', '--help'):
-            raise IndexError  # to display the message
-    except IndexError:
-        print(f'{YEX}{c.command_data[command]["print_msg"]}\n'
-              f'{R}{c.command_data[command]["comment"]}')
-        return None
-
-    # gets current terminal width to save 'auto' values and
-    # provides a reasonable max value for indent
-    try:
-        term_width_auto = os.get_terminal_size()[0]
-        term_width = term_width_auto
-        term_er = False
-    except OSError:
-        term_width = 79
-        term_er = True
-
-    else:
-        if value == 'auto' and not command == '-indent':
-            msg = c.command_data[command]["print_msg"]
-            print(f'{R}{msg}: {GEX}{value}')
-            return save_commands(entry=command.strip('-'), value=f'{term_width}* auto')
-
-    # the width of a monospaced 12 font on 4k resolution
-    max_val = 382
-    if command == '-indent':
-        max_val = term_width // 2
-    try:
-        val = int(value)
-        if 0 <= val <= max_val:
-            msg = c.command_data[command]["print_msg"]
-            print(f'{R}{msg} (w znakach): {value}')
-            val = val
-        elif val > max_val:
-            print(f'{err_c}Wartość nie może być większa niż {R}{max_val}\n'
-                  f'{YEX}Ustawiono: {R}{max_val}')
-            val = max_val
-        else:
-            print(f'{err_c}Wartość nie może być ujemna\n'
-                  f'{YEX}Ustawiono: {R}0')
-            val = 0
-        save_commands(entry=command.strip('-'), value=val)
-    except ValueError:
-        if not term_er and not command == '-indent':
-            print(f'{err_c}Nieobsługiwana wartość\n'
-                  f'podaj liczbę w przedziale od {R}0{err_c} do {R}{max_val}{err_c} lub {R}auto')
-        else:
-            print(f'{err_c}Nieobsługiwana wartość\n'
-                  f'podaj liczbę w przedziale od {R}0{err_c} do {R}{max_val}')
-
-
-def add_notes(*args):
-    available_notes = ', '.join(notes.available_notes.keys())
-
-    try:
-        note_name = args[1].lower()
-        if note_name in ('-h', '--help'):
-            raise IndexError
-    except IndexError:
-        print(f'{R}--add-note {{nazwa notatki}}\n'
-              f'{BOLD}Dostępne notatki to:{END}\n'
-              f'{available_notes}\n')
-        return None
-
-    note_config = notes.available_notes.get(note_name)
-    if note_config is None:
-        print(f'{err_c}Notatka {R}"{note_name}"{err_c} nie została znaleziona')
-        return None
-
-    response_err = create_note(note_config)
-    if response_err is not None:
-        print(f'{response_err}')
-    print()
-
-
-def refresh_notes():
-    try:
-        # when there is any error just overwrite existing ankiconnect.yml without dumping
-        # because I presume no one will:
-        # change ankiconnect.yml content manually -> get '-refresh' communicate ->
-        # change current note to a note with unsupported fields -> THEN refresh ->
-        # change note back to the previous one and try adding cards.
-        # all of that in the same session
-        with open(os.path.join(dir_, 'ankiconnect.yml'), 'w') as ank:
-            ank.write('{}')
-        organize_notes(c.base_fields, corresp_mf_config={}, print_errors=False)
-        print(f'{YEX}Notatki przebudowane')
-    except URLError:
-        print(f'{err_c}Nie udało się połączyć z AnkiConnect\n'
-              f'Otwórz Anki i spróbuj ponownie\n')
-    except FileNotFoundError:
-        print(f'{err_c}Plik {R}ankiconnect.yml{err_c} nie istnieje')
-
-
-def change_field_order(*args):
-    def display_fields():
-        for field_number, field_value in default_field_order.items():
-            yex = R
-            default = ''
-            if field_order[field_number] != field_value:
-                # yellow indicates changes
-                yex = YEX
-                # Displays default field configuration on the right
-                default = f'# {field_value}'
-            # END cause if field_number == '1' we want bold to reset before
-            # printing defaults and R doesn't do that
-            printe = f' {yex}{field_number}: {field_order[field_number]:19s}{END}{R}{default}'
-            if field_number == '1':
-                print(f'{BOLD}{printe}')
-            else:
-                print(printe)
-            if field_number == config['fieldorder_d']:
-                print(f' {delimit_c}D: -----------{R}')
-
-    field_order = config['fieldorder']
-    default_field_order = {
-        '1': 'definicja', '2': 'synonimy', '3': 'przyklady', '4': 'phrase',
-        '5': 'zdanie', '6': 'czesci_mowy', '7': 'etymologia', '8': 'audio'}
-
-    cmd = args[0]
-    help_ = False
-    try:
-        number = args[1].lower()
-        if number in ('-h', '--help'):
-            help_ = True
-            raise IndexError
-    except IndexError:
-        # no arguments
-        if help_:
-            print(f"{R}{cmd} default : przywraca domyślną kolejność pól\n"
-                  f"{cmd} {{1-8}} {{pole}} : zmienia pole pod podanym numerem na {{pole}}\n"
-                  f"{cmd} d {{1-8}} : przesuwa odkreślenie pod {{1-8}}\n")
-        display_fields()
-        return None
-
-    try:
-        field_name = args[2].lower()
-    except IndexError:
-        # one argument command
-        if number == 'default':
-            field_order = default_field_order
-            print(f'{GEX}Przywrócono domyślną kolejność pól:')
-            save_commands(entry='fieldorder_d', value='3')
-            save_commands(entry='fieldorder', value=field_order)
-            display_fields()
-        else:
-            print(f"{err_c}Podano nieprawidłowy argument\n"
-                  f"Czy chodziło ci o {R}'default'{err_c} ?")
-        return None
-
-    # two arguments commands
-    if number in default_field_order and field_name in default_field_order.values():
-        field_order[number] = field_name
-        save_commands(entry='fieldorder', value=field_order)
-    elif number == 'd' and field_name in default_field_order:
-        save_commands(entry='fieldorder_d', value=field_name)
-    else:
-        print(f'{err_c}Podano nieprawidłowe parametry')
-        return None
-    display_fields()
-
-
-def get_paths(tree):
-    if tree == 'os not supported':
-        print(f'{err_c}Lokalizowanie {R}"collection.media"{err_c} nie powiodło się:\n'
-              'Nieznana ścieżka dla "collection.media" na aktualnym systemie operacyjnym')
-        return None
-
-    # searches the tree
-    collections = []
-    for path, _, _ in os.walk(tree):
-        if path.endswith('collection.media'):
-            collections.append(path)
-            print(f'{index_c}{len(collections)} {R}{path}')
-
-    if not collections:
-        print(f'{err_c}Lokalizowanie {R}"collection.media"{err_c} nie powiodło się:\n'
-              'Brak wyników')
-        return None
-
-    print(f'\n{YEX}Wybierz ścieżkę')
-    try:
-        path_choice = int(input(f'{input_c}[0-Anuluj]: '))
-        if path_choice < 1 or path_choice > len(collections):
-            raise ValueError
-    except ValueError:
-        print(f'{err_c}Wybieranie ścieżki audio przerwane')
-        return None
-    # index error shouldn't be possible
-    return collections[path_choice - 1]
-
-
-def set_audio_path(*args):
-    cmd = args[0]
-    msg = c.command_data[cmd]['print_msg']
-
-    try:
-        arg = args[1].lower()
-    except IndexError:
-        arg = '-h'
-
-    if arg in ('-h', '--help'):
-        print(f'{YEX}{msg}\n'
-              f'{R}{c.command_data[cmd]["comment"]}\n'
-              f'{BOLD}Aktualna ścieżka:\n'
-              f'{END}{config["audio_path"]}\n')
-        return None
-
-    if arg == 'auto':
-        if sys.platform.startswith('win'):
-            tree = os.path.join(os.getenv('APPDATA'), 'Anki2')
-        elif sys.platform.startswith('linux'):
-            tree = os.path.join(os.getenv('HOME'), '.local/share/Anki2')
-        elif sys.platform.startswith('darwin'):
-            tree = os.path.join(os.getenv('HOME'), 'Library/Application Support/Anki2')
-        else:
-            tree = 'os not supported'
-        path = get_paths(tree)
-    else:
-        path = ' '.join(args[1:])
-        if path.startswith('~'):
-            path = path.replace('~', os.getenv('HOME'), 1)
-
-    # get_paths returns None when something is wrong
-    if path is None:
-        return None
-
-    print(f'{YEX}{msg} ustawiona:\n'
-          f'{R}"{path}"')
-    save_commands(c.command_data[cmd]['config_entry'], path)
-
-
-def set_free_value_commands(*args):
-    def prepare_value():
-        if cmd == '-tags':
-            return ''.join(value_list).strip(', ').lower().replace(',', ', ')
-        # if '-note', '-deck'
-        return ' '.join(value_list)
-
-    cmd = args[0]
-    msg = c.command_data[cmd]["print_msg"]
-    value_list = args[1:]  # so that spaces are included
-
-    val = prepare_value()
-    if val.lower() in ('-h', '--help'):
-        print(f'{YEX}{msg}\n'
-              f'{R}{c.command_data[cmd]["comment"]}')
-    else:
-        print(f'{R}{msg}: "{val}"')
-        save_commands(entry=c.command_data[cmd]['config_entry'], value=val)
-
-
-def set_text_value_commands(*args):
-    cmd = args[0]
-    msg = c.command_data[cmd]["print_msg"]
-    value_set = {'-dupescope': ('deck', 'collection'),
-                 '-server': ('ahd', 'diki', 'lexico')}
-    try:
-        val = args[1].lower()
-        if val in ('-h', '--help'):
-            raise IndexError
-    except IndexError:
-        print(f'{YEX}{msg}\n'
-              f'{R}{c.command_data[cmd]["comment"]}')
-        return None
-
-    if val in value_set[cmd]:
-        print(f'{R}{msg}: {val}')
-        save_commands(entry=cmd.lstrip('-'), value=val)
-    else:
-        print(f'{err_c}Nieprawidłowa wartość\n'
-              f'{R}{c.command_data[cmd]["comment"]}')
-
-
-def set_colors(*args):
-    cmd = args[0]
-
-    help_ = False
-    try:
-        element = args[1].lower()
-        if element in ('-h', '--help'):
-            help_ = True
-            raise IndexError
-    except IndexError:
-        if help_:
-            c.color_command()
-        else:
-            c.pokaz_dostepne_kolory()
-        return None
-
-    if element not in c.color_data['k:elements_val:msg']:
-        print(f'{err_c}Nie znaleziono elementu\n'
-              f'{R}Aby wyświetlić dostępne elementy wpisz "-c -h"')
-        return None
-
-    try:
-        color = args[2].lower()
-    except IndexError:
-        print(f'{YEX}Brakuje koloru\n'
-              f'{R}{cmd} {element} {{kolor}}')
-        return None
-
-    if color not in c.color_data['colors']:
-        print(f'{err_c}Nie znaleziono koloru\n'
-              f'{R}Aby wyświetlić dostępne kolory wpisz "-c"')
-        return None
-
-    msg = c.color_data['k:elements_val:msg'][element]
-    msg_color = c.color_data['colors'][color]
-
-    print(f'{R}{msg} ustawiony na: {msg_color}{color}')
-    save_commands(entry=f'{element}_c', value=color)
-
-
-def boolean_commands(*args):
-    cmd = args[0]
-    msg = c.command_data[cmd]['print_msg']
-
-    try:
-        arg = args[1].lower()
-        if arg in ('-h', '--help'):
-            raise IndexError
-        value = c.boolean_values[arg]
-        print(f'{R}{msg}: {c.bool_colors[value]}{value}')
-        save_commands(entry=c.command_data[cmd]['config_entry'], value=value)
-    except IndexError:
-        # args[1] index out of range, no argument
-        print(f'{YEX}{msg}\n'
-              f'{R}{cmd} {{on|off}}')
-    except KeyError:
-        # c.commands_values[args[1]] KeyError, value not found
-        print(f'{err_c}Nieprawidłowa wartość, użyj:\n'
-              f'{R}{cmd} {{on|off}}')
-
-
-def save_commands(entry, value):
-    if entry == 'all':
-        for command in list(c.command_data)[:7]:
-            command_entry = c.command_data[command]['config_entry']
-            config[command_entry] = value
-    else:
-        config[entry] = value
-    with open(os.path.join(dir_, 'config.yml'), 'w') as conf_file:
-        yaml.dump(config, conf_file)
-
-
 commands = {
     # commands that take arguments
-    '--delete-last': delete_cards, '--delete-recent': delete_cards,
-    '-textwidth': set_width_settings,
-    '-indent': set_width_settings,
-    '-delimsize': set_width_settings,
-    '-center': set_width_settings,
-    '-note': set_free_value_commands,
-    '-deck': set_free_value_commands,
-    '-tags': set_free_value_commands,
-    '--audio-path': set_audio_path, '-ap': set_audio_path,
-    '-dupescope': set_text_value_commands,
-    '-server': set_text_value_commands,
-    '--add-note': add_notes,
-    '--field-order': change_field_order, '-fo': change_field_order,
-    '-color': set_colors, '-c': set_colors,
-    '--config-bulk': config_bulk, '--config-defaults': config_bulk, '-cd': config_bulk, '-cb': config_bulk,
+    '--delete-last': c.delete_cards, '--delete-recent': c.delete_cards,
+    '-textwidth': c.set_width_settings,
+    '-indent': c.set_width_settings,
+    '-delimsize': c.set_width_settings,
+    '-center': c.set_width_settings,
+    '-note': c.set_free_value_commands,
+    '-deck': c.set_free_value_commands,
+    '-tags': c.set_free_value_commands,
+    '--audio-path': c.set_audio_path, '-ap': c.set_audio_path,
+    '-dupescope': c.set_text_value_commands,
+    '-server': c.set_text_value_commands,
+    '--add-note': anki.add_notes,
+    '--field-order': c.change_field_order, '-fo': c.change_field_order,
+    '-color': c.set_colors, '-c': c.set_colors,
+    '--config-bulk': c.config_bulk, '--config-defaults': c.config_bulk, '-cd': c.config_bulk, '-cb': c.config_bulk,
     # commands that don't take arguments
-    '-refresh': refresh_notes,
-    '--help': c.help_command, '-h': c.help_command,
-    '--help-bulk': c.help_bulk_command, '--help-defaults': c.help_bulk_command,
-    '--help-commands': c.help_commands_command, '--help-command': c.help_commands_command,
-    '-config': print_config, '-conf': print_config
+    '-refresh': anki.refresh_notes,
+    '--help': h.quick_help, '-h': h.quick_help,
+    '--help-bulk': h.bulk_help, '--help-defaults': h.bulk_help,
+    '--help-commands': h.commands_help, '--help-command': h.commands_help,
+    '-config': c.print_config, '-conf': c.print_config
 }
 
 
 def search_interface():
     while True:
-        word = input(f'{input_c}Szukaj ${inputtext_c} ').strip()
+        word = input(f'{input_c.color}Szukaj ${inputtext_c.color} ').strip()
         if not word:
             continue
         args = word.split()
         cmd = args[0]
         try:
-            if cmd in tuple(c.command_data)[:26]:
-                # to avoid writing all of them in commands dict above
-                boolean_commands(*args)
+            if cmd in tuple(data.command_data)[:26]:
+                # to avoid writing all of them in the commands dict above
+                c.boolean_commands(*args)
             # don't forget to change the splice when adding/removing commands
             elif cmd in tuple(commands)[:22]:
                 commands[cmd](*args)
@@ -688,12 +100,12 @@ def get_audio_response(audio_link, audiofile_name):
             file.write(response.content)
         return f'[sound:{audiofile_name}]'
     except FileNotFoundError:
-        print(f"{err_c}Zapisywanie pliku audio {R}{audiofile_name} {err_c}nie powiodło się\n"
+        print(f"{err_c.color}Zapisywanie pliku audio {R}{audiofile_name} {err_c.color}nie powiodło się\n"
               f"Aktualna ścieżka zapisu audio to {R}{config['audio_path']}\n"
-              f"{err_c}Upewnij się, że taki folder istnieje i spróbuj ponownie\n")
+              f"{err_c.color}Upewnij się, że taki folder istnieje i spróbuj ponownie\n")
         return ''
     except Exception:
-        print(f'{err_c}Wystąpił nieoczekiwany błąd podczas zapisywania audio')
+        print(f'{err_c.color}Wystąpił nieoczekiwany błąd podczas zapisywania audio')
         raise
 
 
@@ -704,10 +116,10 @@ def get_audio_from_diki(raw_phrase, flag, url='https://www.diki.pl/slownik-angie
             soup = BeautifulSoup(reqs.content, 'lxml', from_encoding='utf-8')
             return soup.find_all('span', class_='audioIcon icon-sound dontprint soundOnClick')
         except requestsConnectError:
-            print(f'{err_c}Diki zerwało połączenie\n'
+            print(f'{err_c.color}Diki zerwało połączenie\n'
                   f'zmień serwer audio lub zrestartuj program i spróbuj ponownie')
         except Timeout:
-            print(f'{err_c}Diki nie odpowiada\n'
+            print(f'{err_c.color}Diki nie odpowiada\n'
                   f'zmień serwer audio lub zrestartuj program i spróbuj ponownie')
 
     def find_audio_url(filename, aurls):
@@ -724,8 +136,8 @@ def get_audio_from_diki(raw_phrase, flag, url='https://www.diki.pl/slownik-angie
                 break
         if flag and len(dk.split('_')) == 1 and not aurl:
             pos = {'n': 'noun', 'v': 'verb', 'a': 'adjective'}
-            print(f"{YEX}Diki nie posiada wymowy dla: {R}{raw_phrase} "
-                  f"'{pos.get(search_flag, 'Kaczakonina')}'\n{YEX}Szukam {R}{raw_phrase}")
+            print(f"{YEX.color}Diki nie posiada wymowy dla: {R}{raw_phrase} "
+                  f"'{pos.get(search_flag, 'Kaczakonina')}'\n{YEX.color}Szukam {R}{raw_phrase}")
             return aurls[0] if aurls else aurls
         return aurl
 
@@ -777,7 +189,7 @@ def get_audio_from_diki(raw_phrase, flag, url='https://www.diki.pl/slownik-angie
         .replace(' or something', '').replace('someone', 'somebody')
     diki_phrase, audio_url = get_audio_url(search_phrase)
     if not audio_url:
-        print(f'{err_c}Diki nie posiada pożądanego audio\n{YEX}Spróbuję dodać co łaska...\n')
+        print(f'{err_c.color}Diki nie posiada pożądanego audio\n{YEX.color}Spróbuję dodać co łaska...\n')
     if not audio_url and search_phrase.startswith('an '):
         diki_phrase, audio_url = get_audio_url(search_phrase.replace('an ', '', 1))
     if not audio_url and 'lots' in search_phrase:
@@ -792,7 +204,7 @@ def get_audio_from_diki(raw_phrase, flag, url='https://www.diki.pl/slownik-angie
 
     url_end = get_url_end(audio_url)  # e.g. /images-common/en/mp3/confirm.mp3
     if url_end is None:
-        print(f"{err_c}Nie udało się pozyskać audio\nKarta zostanie dodana bez audio")
+        print(f"{err_c.color}Nie udało się pozyskać audio\nKarta zostanie dodana bez audio")
         return '', ''
     audiofile_name = url_end.split('/')[-1]  # e.g. confirm.mp3
     audiofile_name_no_mp3 = audiofile_name.split('.mp3')[0].replace('-n', '').replace('-v', '').replace('-a', '')
@@ -808,7 +220,7 @@ def get_audio_from_diki(raw_phrase, flag, url='https://www.diki.pl/slownik-angie
     elif not audiofile_added_in_full and len(audiofile_name_no_mp3) > 4 or audiofile_added_in_full:
         pass
     else:
-        print(f"{err_c}Nie udało się pozyskać audio\nKarta zostanie dodana bez audio")
+        print(f"{err_c.color}Nie udało się pozyskać audio\nKarta zostanie dodana bez audio")
         return '', ''
 
     audio_link = 'https://www.diki.pl' + url_end
@@ -821,7 +233,7 @@ def audio_ahd(query):
     soup = BeautifulSoup(reqs.content, 'lxml', from_encoding='utf-8')
     audio_raw = soup.find('a', {'target': '_blank'}).get('href')
     if audio_raw == 'http://www.hmhco.com':
-        print(f"{err_c}AH Dictionary nie posiada pożądanego audio\n{YEX}Sprawdzam diki...")
+        print(f"{err_c.color}AH Dictionary nie posiada pożądanego audio\n{YEX.color}Sprawdzam diki...")
         return get_audio_from_diki(raw_phrase=phrase, flag='')
     audiofile_name = audio_raw.split('/')[-1]
     audiofile_name = audiofile_name.split('.')[0] + '.wav'
@@ -871,7 +283,7 @@ def lexico_flags(flag, pronunciations, word_pos, p_and_p):
                     lx_audio = p_and_p[i + 1]
                     break
     if lx_audio == pronunciations:
-        print(f"{YEX}Lexico nie posiada wymowy dla: {R}{phrase} '{pos}'\n{YEX}Szukam {R}{phrase}")
+        print(f"{YEX.color}Lexico nie posiada wymowy dla: {R}{phrase} '{pos}'\n{YEX.color}Szukam {R}{phrase}")
     return list(lx_audio)[0] if lx_audio else lx_audio
 
 
@@ -892,7 +304,7 @@ def audio_lexico(query, flag):
         lx_audio = lexico_flags(flag, pronunciations, word_pos, phonetics_and_pronunciations)
 
     if lx_audio is None:
-        print(f"{err_c}Lexico nie posiada pożądanego audio\n{YEX}Sprawdzam diki...")
+        print(f"{err_c.color}Lexico nie posiada pożądanego audio\n{YEX.color}Sprawdzam diki...")
         return get_audio_from_diki(raw_phrase=phrase, flag=flag)
     full_audio_link = str(lx_audio).split('src="')[-1].split('">')[0]
     audiofile_name = full_audio_link.split('/')[-1]
@@ -963,9 +375,9 @@ def ah_def_print(indexing, term_width, definition):
     definition_aw = wrap_lines(definition, term_width, len(str(indexing)),
                                indent=config['indent'], gap=2, break_allowed=True)
     if indexing % 2 == 1:
-        print(f'{index_c}{indexing}. {def1_c}{definition_aw}')
+        print(f'{index_c.color}{indexing}  {def1_c.color}{definition_aw}')
     else:
-        print(f'{index_c}{indexing}. {def2_c}{definition_aw}')
+        print(f'{index_c.color}{indexing}  {def2_c.color}{definition_aw}')
 
 
 def terminal_width() -> int:
@@ -973,7 +385,7 @@ def terminal_width() -> int:
         term_width = str(config['textwidth'])
     except KeyError:
         # First exception that crops up when there is no config.yml
-        print(f'{err_c}Plik {R}config.yml{err_c} jest niekompletny\n'
+        print(f'{err_c.color}Plik {R}config.yml{err_c.color} jest niekompletny\n'
               f'Wypełnij plik konfiguracyjny')
         return 79
 
@@ -982,17 +394,17 @@ def terminal_width() -> int:
         term_width_auto = os.get_terminal_size()[0]
     except OSError:
         if '* auto' in term_width:
-            print(f"{err_c}Wystąpił problem podczas pozyskiwania szerokości okna\n"
-                  f"aby wybrać szerokość inną niż {R}{term_width.rstrip('* auto')}{err_c} użyj {R}-textwidth {{wartość}}")
-            save_commands(entry='textwidth', value=term_width.rstrip('* auto'))
+            print(f"{err_c.color}Wystąpił problem podczas pozyskiwania szerokości okna\n"
+                  f"aby wybrać szerokość inną niż {R}{term_width.rstrip('* auto')}{err_c.color} użyj {R}-textwidth {{wartość}}")
+            c.save_commands(entry='textwidth', value=term_width.rstrip('* auto'))
         return int(term_width.rstrip('* auto'))
     else:
         if '* auto' in term_width:
-            save_commands(entry='textwidth', value=f'{term_width_auto}* auto')
+            c.save_commands(entry='textwidth', value=f'{term_width_auto}* auto')
             return term_width_auto
         elif int(term_width.rstrip('* auto')) > term_width_auto:
             term_width = term_width_auto
-            save_commands(entry='textwidth', value=str(term_width))
+            c.save_commands(entry='textwidth', value=str(term_width))
         return int(term_width)
 
 
@@ -1013,17 +425,16 @@ def filter_ahd(definition):
         rex = rex.replace(f" {letter}. ", " ")
         # when definition has an example with a '?', there's no space in between
         rex = rex.replace(f"?{letter}. ", "? |")
-    rex = rex.strip().replace('', '′')
-    return rex
+    return rex.strip()
 
 
 def manage_display_parameters(term_width):
     if config['indent'] > term_width // 2:
-        save_commands(entry='indent', value=term_width // 2)
+        c.save_commands(entry='indent', value=term_width // 2)
     if '* auto' in str(config['delimsize']):
-        save_commands(entry='delimsize', value=f'{term_width}* auto')
+        c.save_commands(entry='delimsize', value=f'{term_width}* auto')
     if '* auto' in str(config['center']):
-        save_commands(entry='center', value=f'{term_width}* auto')
+        c.save_commands(entry='center', value=f'{term_width}* auto')
 
 
 def ah_dictionary_request(url):
@@ -1035,21 +446,21 @@ def ah_dictionary_request(url):
         word_check = soup.find('div', {'id': 'results'})
         if word_check.text != 'No word definition found':
             return soup
-        print(f'{err_c}Nie znaleziono podanego hasła w AH Dictionary\n{YEX}Szukam w idiomach...')
+        print(f'{err_c.color}Nie znaleziono podanego hasła w AH Dictionary\n{YEX.color}Szukam w idiomach...')
         skip_check = 1
         return None
     except ConnectionError:
-        print(f'{err_c}Nie udało się połączyć ze słownikiem, sprawdź swoje połączenie i spróbuj ponownie')
+        print(f'{err_c.color}Nie udało się połączyć ze słownikiem, sprawdź swoje połączenie i spróbuj ponownie')
         skip_check = 1
     except requestsConnectError:
-        print(f'{err_c}AH Dictionary zerwał połączenie\n'
+        print(f'{err_c.color}AH Dictionary zerwał połączenie\n'
               f'Zmień słownik lub zrestartuj program i spróbuj ponownie')
         skip_check = 1
     except Timeout:
-        print(f'{err_c}AH Dictionary nie odpowiada')
+        print(f'{err_c.color}AH Dictionary nie odpowiada')
         skip_check = 1
     except Exception:
-        print(f'{err_c}Wystąpił nieoczekiwany błąd')
+        print(f'{err_c.color}Wystąpił nieoczekiwany błąd')
         raise
 
 
@@ -1074,7 +485,7 @@ def ah_dictionary(query):
 
     tds = soup.find_all('td')
     for td in tds:
-        print(f'{delimit_c}{get_conf_of("delimsize") * "-"}')
+        print(f'{delimit_c.color}{get_conf_of("delimsize") * "-"}')
 
         hpaps = td.find('div', class_='rtseg')
         # hpaps = head phrase and phonetic spelling
@@ -1088,48 +499,62 @@ def ah_dictionary(query):
             phon_spell = ''
         # get rid of phonetic spelling and then clean up
         # (when hpaps is a person cleanup is necessary)
-        head_word = hpaps.replace(phon_spell, '').replace('  ,', ',').replace('·', '') \
+        head_word = hpaps.replace(phon_spell, '').replace('  ,', ',') \
             .replace('  ', ' ').replace('  ', ' ').replace(', ', ' ', 1).strip()
         # removes numbers from headwords. AHD uses NBSP before a number
         if ' ' in head_word:
             phrase_ = head_word.split(' ')
             part2 = phrase_[1].lstrip('1234567890')
-            phrase_ = phrase_[0] + part2
+            phrase_ = phrase_[0].replace('·', '') + part2
         else:
-            phrase_ = head_word
+            phrase_ = head_word.replace('·', '')
 
         if not results_for_printed:
             ahd = 'AH Dictionary'
             print(f'{BOLD}{ahd.center(get_conf_of("center"))}{END}')
             if phrase_.lower() != query.lower():
-                print(f'  {BOLD}Wyniki dla {phrase_c}{phrase_.split()[0]}{END}')
+                print(f'  {BOLD}Wyniki dla {phrase_c.color}{phrase_.split()[0]}{END}')
             results_for_printed = True
+        print(f' {phrase_c.color}{head_word.strip()}  {phon_c.color}{phon_spell}')
 
-        print(f'  {phrase_c}{head_word.strip()}  {phon_c}{phon_spell}')
-        meanings_in_td = td.find_all('div', class_=('ds-list', 'sds-single', 'ds-single', 'ds-list'))
-        # Adds definitions and phrases
-        for meaning in meanings_in_td:
-            indexing += 1
-            # 'all right' needs the first replace
-            # 'long' needs the second one
-            rex = meaning.text.replace('', '′').replace('', 'ōō').strip()
-            if config['filtered_dictionary']:
-                rex = filter_ahd(rex)
-            # We have to find the private symbol
-            ah_def_print(indexing, term_width, definition=rex)  # .replace('', ''))
-            defs.append(rex)
-            phrase_list.append(phrase_)
+        gloss_blocks = td.find_all('div', class_='pseg')
+        for block in gloss_blocks:
+            definitions = block.find_all('div', class_=('ds-list', 'ds-single'))
+            pos_label = block.find_all('i', recursive=False)
+            # verbs always come with a 'tr.' or 'intr.' label,
+            # additionally, verbs are supplied with an explicit 'v.'
+            # that I want to ignore to avoid duplication
+            pos_label = [x.text.strip() for x in pos_label
+                         if x.text.strip() and x.text.strip() != 'v.']
+            if pos_label:
+                pos_label = ' '.join(pos_label)
+                if pos_label in ('tr.', 'intr.'):
+                    pos_label += 'v.'
+                print(f'{len(str(indexing)) * " "}{poslabel_c.color}{pos_label}')
+            # Adds definitions and phrases
+            for gloss in definitions:
+                indexing += 1
+                # 'all right' needs the first replace
+                # 'long' needs the second one
+                rex = gloss.text.replace('', '′').replace('', 'ōō').replace('', '′').strip()
+                if config['filtered_dictionary']:
+                    rex = filter_ahd(rex)
+                # We have to find the private symbol
+                ah_def_print(indexing, term_width, definition=rex)  # .replace('', ''))
+                defs.append(rex)
+                phrase_list.append(phrase_)
+
         print()
         # Adds parts of speech
         for pos in td.find_all('div', class_='runseg'):
             postring = pos.text.replace('', 'ōō').replace('', 'ōō').replace('', '′').replace('·', '').strip()
-            print(f' {pos_c}{postring}')
+            print(f' {pos_c.color}{postring}')
             poses.append(postring)
         if poses:
             print()
         # Adds etymologies
         for etym in td.find_all('div', class_='etyseg'):
-            print(f' {etym_c}'
+            print(f' {etym_c.color}'
                   f'{wrap_lines(etym.text, term_width, 0, 1, 1)}')
             etyms.append(etym.text)
     # So that newline is not printed in glosses without etymologies
@@ -1195,13 +620,13 @@ def sentence_input(hide):
     if not config['add_sentences']:
         return '', 0, hide
 
-    sentence = input(f'{input_c}Dodaj przykładowe zdanie:{inputtext_c} ')
+    sentence = input(f'{input_c.color}Dodaj przykładowe zdanie:{inputtext_c.color} ')
     if sentence.lower() == '-s':
-        print(f'{GEX}Pominięto dodawanie zdania')
+        print(f'{GEX.color}Pominięto dodawanie zdania')
         sentence = ''
     if sentence.lower() == '-sc':
         skip_check = 1
-        print(f'{GEX}Pominięto dodawanie karty')
+        print(f'{GEX.color}Pominięto dodawanie karty')
         sentence = ''
     return sentence, 0, hide
 
@@ -1221,7 +646,7 @@ def filter_range_tuples(tup):
     # ('2', '3'), (' 5'), (' 6'), ('qwerty'), ('7', '9')
     for val in tup:
         # zero is excluded in multi_choice function, otherwise tuples like:
-        # ('0', '4') would be ignored, but I want them to give: 1, 2, 3, 4
+        # ('0', '4') would be ignored, but I want them to produce: 1, 2, 3, 4
         if not val.strip().isnumeric():
             return False
     return True
@@ -1286,7 +711,7 @@ def input_func(prompt_msg, add_element, bulk, content_list, hide=None, connector
         func, range_choice, choice = use_bulk_values(bulk_value, len(content_list))
         return func(range_choice, *params), choice, hide
 
-    choice = input(f'{input_c}{prompt_msg} [{bulk_value}]:{inputtext_c} ')
+    choice = input(f'{input_c.color}{prompt_msg} [{bulk_value}]:{inputtext_c.color} ')
 
     if not choice.strip():
         func, range_choice, choice = use_bulk_values(bulk_value, len(content_list))
@@ -1309,7 +734,7 @@ def input_func(prompt_msg, add_element, bulk, content_list, hide=None, connector
         choice = mchoice[0] if mchoice else 0
     else:
         skip_check = 1
-        print(f'{GEX}Pominięto dodawanie karty')
+        print(f'{GEX.color}Pominięto dodawanie karty')
         return '', 0, None
 
     return chosen_cont, choice, hide
@@ -1330,7 +755,7 @@ def multi_choice(*args):
             content.append(elem)
             choice_no.append(str(ch))
 
-    print(f'{YEX}Dodane elementy: {", ".join(choice_no)}')
+    print(f'{YEX.color}Dodane elementy: {", ".join(choice_no)}')
     return connector.join(content)
 
 
@@ -1365,13 +790,13 @@ def wordnet(syn_soup):
                                 indent=3, gap=4 + len(str(pos)))
             gloss_tp = wrap_lines(gloss, get_conf_of('textwidth'), len(str(index)),
                                   indent=3, gap=3)
-            print(f'{index_c}{index} : {synpos_c}{pos} {syn_c}{syn_tp}\n'
-                  f'{(len(str(index))+3) * " "}{syngloss_c}{gloss_tp}')
+            print(f'{index_c.color}{index} : {synpos_c.color}{pos} {syn_c.color}{syn_tp}\n'
+                  f'{(len(str(index))+3) * " "}{syngloss_c.color}{gloss_tp}')
             if psyn:
                 for ps in psyn.split('; '):
                     psyn_tp = wrap_lines(ps, get_conf_of('textwidth'), len(str(index)),
                                          indent=4, gap=3)
-                    print(f'{(len(str(index))+3) * " "}{psyn_c}{psyn_tp}')
+                    print(f'{(len(str(index))+3) * " "}{psyn_c.color}{psyn_tp}')
             print()
 
         gpsyn.append(psyn)
@@ -1395,25 +820,25 @@ def wordnet_request(query):
         syn_soup = BeautifulSoup(reqs_syn.content, 'lxml', from_encoding='iso-8859-1')
         no_word = syn_soup.find('h3').text
         if no_word.startswith('Your') or no_word.startswith('Sorry'):
-            print(f'{err_c}\nNie znaleziono {phrase_c}{phrase}{err_c} na {R}WordNecie')
+            print(f'{err_c.color}\nNie znaleziono {phrase_c.color}{phrase}{err_c.color} na {R}WordNecie')
             skip_check_disamb = 1
             return [], []
         if config['showdisamb']:
-            print(f'{delimit_c}{get_conf_of("delimsize") * "-"}')
+            print(f'{delimit_c.color}{get_conf_of("delimsize") * "-"}')
             print(f'{BOLD}{"WordNet".center(get_conf_of("center"))}{END}\n')
         return wordnet(syn_soup)
     except ConnectionError:
-        print(f'{err_c}Nie udało się połączyć z WordNetem, sprawdź swoje połączenie i spróbuj ponownie')
+        print(f'{err_c.color}Nie udało się połączyć z WordNetem, sprawdź swoje połączenie i spróbuj ponownie')
         skip_check_disamb = 1
     except Timeout:
-        print(f'{err_c}WordNet nie odpowiada, spróbuj nawiązać połączenie później')
+        print(f'{err_c.color}WordNet nie odpowiada, spróbuj nawiązać połączenie później')
         skip_check_disamb = 1
     except requestsConnectError:
-        print(f'{err_c}WordNet zerwał połączenie\n'
+        print(f'{err_c.color}WordNet zerwał połączenie\n'
               f'zmień słownik lub zrestartuj program i spróbuj ponownie')
         skip_check_disamb = 1
     except Exception:
-        print(f'{err_c}Wystąpił nieoczekiwany błąd podczas wyświetlania WordNetu\n')
+        print(f'{err_c.color}Wystąpił nieoczekiwany błąd podczas wyświetlania WordNeta\n')
         raise
 
 
@@ -1427,24 +852,24 @@ def farlex_idioms_request(url):
         if 'not found in the Dictionary and Encyclopedia' in word_check or\
                 'not available in the Idioms' in word_check \
                 or word_check.startswith('*') or word_check.startswith('See:'):
-            print(f'{err_c}Nie znaleziono podanego hasła w Farlex Idioms')
+            print(f'{err_c.color}Nie znaleziono podanego hasła w Farlex Idioms')
             skip_check = 1
             return None
         return soup
     except ConnectionError:
-        print(f'{err_c}Nie udało się połączyć ze słownikiem idiomów\n'
+        print(f'{err_c.color}Nie udało się połączyć ze słownikiem idiomów\n'
               f'sprawdź swoje połączenie i spróbuj ponownie')
         skip_check = 1
     except Timeout:
-        print(f'{err_c}Słownik idiomów nie odpowiada\n'
+        print(f'{err_c.color}Słownik idiomów nie odpowiada\n'
               f'spróbuj nawiązać połączenie później')
         skip_check = 1
     except requestsConnectError:
-        print(f'{err_c}Farlex zerwał połączenie\n'
+        print(f'{err_c.color}Farlex zerwał połączenie\n'
               f'zmień słownik lub zrestartuj program i spróbuj ponownie')
         skip_check = 1
     except Exception:
-        print(f'{err_c}Wystąpił nieoczekiwany błąd podczas wyświetlania słownika idiomów\n')
+        print(f'{err_c.color}Wystąpił nieoczekiwany błąd podczas wyświetlania słownika idiomów\n')
         raise
 
 
@@ -1478,11 +903,11 @@ def farlex_idioms(query):
             print()
         else:
             last_phrase = idiom
-            print(f'{delimit_c}{get_conf_of("delimsize") * "-"}')
+            print(f'{delimit_c.color}{get_conf_of("delimsize") * "-"}')
             if inx == 1:
                 frl = 'Farlex Idioms'
                 print(f'{BOLD}{frl.center(get_conf_of("center"))}{END}')
-            print(f'  {phrase_c}{idiom}')
+            print(f'  {phrase_c.color}{idiom}')
 
         idiom_def = definition.find(text=True, recursive=False)\
             .strip('1234567890. ').replace('"', "'")
@@ -1494,7 +919,7 @@ def farlex_idioms(query):
             idiom_def = idiom_def.replace('i>', '').replace('</', '>')
 
         idiom_def_tp = wrap_lines(idiom_def, term_width, len(str(inx)), indent=config['indent']+1, gap=3)
-        print(f'{index_c}{inx} : {def1_c}{idiom_def_tp}')
+        print(f'{index_c.color}{inx} : {def1_c.color}{idiom_def_tp}')
         defs.append(idiom_def)
 
         illustrations = definition.find_all('span', class_='illustration')
@@ -1503,89 +928,46 @@ def farlex_idioms(query):
             illust = "'" + illust.text.strip() + "'"
             illust_tp = wrap_lines(illust, term_width, len(str(inx)),
                                    indent=len(str(illust_index))+5, gap=len(str(illust_index))+4)
-            print(f'{len(str(inx)) * " "}   {index_c}{illust_index} {pidiom_c}{illust_tp}')
+            print(f'{len(str(inx)) * " "}   {index_c.color}{illust_index} {pidiom_c.color}{illust_tp}')
             illusts.append(illust)
     print()
     return defs, illusts, phrase_list
 
 
-def request_ankiconnect(action, **params):
-    return {'action': action, 'params': params, 'version': 6}
+def display_card(definicja, synonimy, przyklady, zdanie, czesci_mowy, etymologia, audio):
+    field_values = {'definicja': definicja, 'synonimy': synonimy,
+                    'przyklady': przyklady, 'phrase': phrase,
+                    'zdanie': zdanie, 'czesci_mowy': czesci_mowy,
+                    'etymologia': etymologia, 'audio': audio}
+    # field coloring
+    ctf = {'definicja': def1_c.color, 'synonimy': syn_c.color, 'przyklady': psyn_c.color, 'phrase': phrase_c.color,
+           'zdanie': '', 'czesci_mowy': pos_c.color, 'etymologia': etym_c.color, 'audio': ''}
+    delimit = get_conf_of('delimsize')
+    centr = get_conf_of('center')
+    options = (get_conf_of('textwidth'), 0, 0, 0)
+    conf_fo = config['fieldorder'].items()
+
+    try:
+        print(f'\n{delimit_c.color}{delimit * "-"}')
+
+        for field, value in conf_fo:
+            for fi in wrap_lines(field_values[value], *options).split('\n'):
+                print(f'{ctf[value]}{fi.center(centr)}')
+            # d = delimitation
+            if field == config['fieldorder_d']:
+                print(f'{delimit_c.color}{delimit * "-"}')
+
+        print(f'{delimit_c.color}{delimit * "-"}')
+    except (NameError, KeyError):
+        print(f'{err_c.color}\nDodawanie karty do pliku nie powiodło się\n'
+              f'Spróbuj przywrócić domyślne ustawienia pól wpisując {R}-fo default\n')
+        return 1  # skip_check
 
 
-def invoke(action, **params):
-    requestjson = json.dumps(request_ankiconnect(action, **params)).encode('utf-8')
-    response = json.load(urllib.request.urlopen(urllib.request.Request('http://localhost:8765', requestjson)))
-    if len(response) != 2:
-        raise Exception('response has an unexpected number of fields')
-    if 'error' not in response:
-        raise Exception('response is missing required error field')
-    if 'result' not in response:
-        raise Exception('response is missing required result field')
-    if response['error'] is None:
-        return response['result']
-    if response['error'].startswith('model was not found:'):
-        return 'no note'
-    if response['error'].startswith('cannot create note because it is empty'):
-        return 'empty'
-    if response['error'].startswith('cannot create note because it is a duplicate'):
-        return 'duplicate'
-    if response['error'].startswith('collection is not available'):
-        return 'out of reach'
-    if response['error'].startswith('deck was not found'):
-        return 'no deck'
-    if response['error'] is not None:
-        raise Exception(response['error'])
-    return response['result']
-
-
-def organize_notes(base_fields, corresp_mf_config, print_errors):
-    usable_fields = invoke('modelFieldNames', modelName=config['note'])
-
-    if usable_fields == 'no note':
-        if print_errors:
-            print(f'{err_c}Karta nie została dodana\n'
-                  f'Nie znaleziono notatki {R}{config["note"]}{err_c}\n'
-                  f'Aby zmienić notatkę użyj {R}-note [nazwa notatki]')
-        return 'no note'
-
-    if usable_fields == 'out of reach':
-        if print_errors:
-            print(f'{err_c}Karta nie została dodana\n'
-                  f'Kolekcja jest nieosiągalna\n'
-                  f'Sprawdź czy Anki jest w pełni otwarte')
-        return 'out of reach'
-    # tries to recognize familiar fields and arranges them
-    for ufield in usable_fields:
-        for base_field in base_fields:
-            if base_field in ufield.lower().split(' ')[0]:
-                corresp_mf_config[ufield] = base_fields[base_field]
-                break
-    # So that blank notes are not saved in ankiconnect.yml
-    if not corresp_mf_config:
-        if print_errors:
-            print(f'{err_c}Karta nie została dodana\n'
-                  f'Sprawdź czy notatka {R}{config["note"]}{err_c} zawiera wymagane pola\n'
-                  f'lub jeżeli nazwy pól aktualnej notatki zostały zmienione, wpisz {R}-refresh')
-        return 'all fields empty'
-
-    ankiconf[config['note']] = corresp_mf_config
-    with open(os.path.join(dir_, 'ankiconnect.yml'), 'w') as ank:
-        yaml.dump(ankiconf, ank)
-    return None
-
-
-def mass_replace(string, replacees, replacements):
-    s = string
-    for replacee, replacement in zip(replacees, replacements):
-        s = s.replace(replacee, replacement)
-    return s
-
-
-def save_card_to_file(field_values):
+def save_card_to_file(field_vals):
     # replace sensitive characters with hard coded html escapes
-    for key, field in field_values.items():
-        field_values[key] = mass_replace(field, ("'", '"'), ("&#39;", "&quot;"))
+    field_values = {key: val.replace("'", "&#39;").replace('"', '&quot;')
+                    for key, val in field_vals.items()}
 
     try:
         with open('karty.txt', 'a', encoding='utf-8') as twor:
@@ -1597,162 +979,10 @@ def save_card_to_file(field_values):
                        f'{field_values[config["fieldorder"]["6"]]}\t'
                        f'{field_values[config["fieldorder"]["7"]]}\t'
                        f'{field_values[config["fieldorder"]["8"]]}\n')
-            print(f'{GEX}Karta pomyślnie zapisana do pliku\n')
+            print(f'{GEX.color}Karta pomyślnie zapisana do pliku\n')
     except (NameError, KeyError):
-        print(f'{err_c}Dodawanie karty do pliku nie powiodło się\n'
+        print(f'{err_c.color}Dodawanie karty do pliku nie powiodło się\n'
               f'Spróbuj przywrócić domyślne ustawienia pól wpisując {R}-fo default\n')
-
-
-def create_ankiconnect_card(field_values):
-    try:
-        corresp_model_fields = {}
-        fields_ankiconf = ankiconf.get(config['note'])
-        # When organizing_notes return error, card shouldn't be created
-        organize_err = None
-        # So that familiar notes aren't reorganized
-        if fields_ankiconf is None or config['note'] not in ankiconf:
-            organize_err = organize_notes(c.base_fields, corresp_mf_config={}, print_errors=True)
-
-        if organize_err is not None:
-            return None
-        # When note not found return empty dict so that
-        # there's no attribute error in the try block below
-        config_note = ankiconf.get(config['note'], {})
-        # Get note fields from ankiconnect.yml
-        try:
-            for ankifield, value in config_note.items():
-                corresp_model_fields[ankifield] = field_values[value]
-        except KeyError:
-            print(f'{err_c}Karta nie została dodana\n'
-                  f'Sprawdź czy notatka {R}{config["note"]}{err_c} zawiera wymagane pola\n'
-                  f'lub jeżeli nazwy pól aktualnej notatki zostały zmienione, wpisz {R}-refresh')
-            return None
-        # r represents card id or an error
-        r = invoke('addNote',
-                   note={'deckName': config['deck'],
-                         'modelName': config['note'],
-                         'fields': corresp_model_fields,
-                         'options': {
-                             'allowDuplicate': config['duplicates'],
-                             'duplicateScope': config['dupescope']
-                         },
-                         'tags': config['tags'].split(', ')
-                         }
-                   )
-        if r == 'empty':
-            print(f'{err_c}Karta nie została dodana\n'
-                  f'Pierwsze pole notatki nie zostało wypełnione\n'
-                  f'Sprawdź czy notatka {R}{config["note"]}{err_c} zawiera wymagane pola\n'
-                  f'lub jeżeli nazwy pól aktualnej notatki zostały zmienione, wpisz {R}-refresh')
-            return None
-        elif r == 'duplicate':
-            print(f'{err_c}Karta nie została dodana, bo jest duplikatem\n'
-                  f'Zezwól na dodawanie duplikatów wpisując {R}-duplicates on\n'
-                  f'{err_c}lub zmień zasięg sprawdzania duplikatów {R}-dupescope {{deck|collection}}')
-            return None
-        elif r == 'out of reach':
-            print(f'{err_c}Karta nie została dodana, bo kolekcja jest nieosiągalna\n'
-                  f'Sprawdź czy Anki jest w pełni otwarte')
-            return None
-        elif r == 'no deck':
-            print(f'{err_c}Karta nie została dodana, bo talia {R}{config["deck"]}{err_c} nie istnieje\n'
-                  f'Aby zmienić talię wpisz {R}-deck [nazwa talii]\n'
-                  f'{err_c}Jeżeli nazwa talii wydaje się być prawidłowa,\n'
-                  f'to spróbuj zmienić nazwę talii w Anki tak,\n'
-                  f'aby używała pojedynczych spacji')
-            return None
-        elif r == 'no note':
-            print(f'{err_c}Karta nie została dodana\n'
-                  f'Nie znaleziono notatki {R}{config["note"]}{err_c}\n'
-                  f'Aby zmienić notatkę użyj {R}-note [nazwa notatki]')
-            return None
-
-        print(f'{GEX}Karta pomyślnie dodana do Anki\n'
-              f'{YEX}Talia: {R}{config["deck"]}\n'
-              f'{YEX}Notatka: {R}{config["note"]}\n'
-              f'{YEX}Wykorzystane pola:')
-        added_fields = (x for x in corresp_model_fields if corresp_model_fields[x].strip() != '')
-        for afield in added_fields:
-            print(f'- {afield}')
-        if ',' in config['tags']:
-            print(f'{YEX}Etykiety: {R}{config["tags"]}\n')
-        else:
-            print(f'{YEX}Etykieta: {R}{config["tags"]}\n')
-
-    except URLError:
-        print(f'{err_c}Nie udało się połączyć z AnkiConnect\n'
-              f'Otwórz Anki i spróbuj ponownie\n')
-    except AttributeError:
-        print(f'{err_c}Karta nie została dodana, bo plik {R}"ankiconnect.yml"{err_c} był pusty\n'
-              f'Zrestartuj program i spróbuj dodać ponownie')
-        with open(os.path.join(dir_, 'ankiconnect.yml'), 'w') as ank:
-            ank.write('{}')
-
-
-def display_card(definicja, synonimy, przyklady, zdanie, czesci_mowy, etymologia, audio):
-    field_values = {'definicja': definicja, 'synonimy': synonimy,
-                    'przyklady': przyklady, 'phrase': phrase,
-                    'zdanie': zdanie, 'czesci_mowy': czesci_mowy,
-                    'etymologia': etymologia, 'audio': audio}
-    # field coloring
-    ctf = {'definicja': def1_c, 'synonimy': syn_c, 'przyklady': psyn_c, 'phrase': phrase_c,
-           'zdanie': '', 'czesci_mowy': pos_c, 'etymologia': etym_c, 'audio': ''}
-    delimit = get_conf_of('delimsize')
-    centr = get_conf_of('center')
-    options = (get_conf_of('textwidth'), 0, 0, 0)
-    conf_fo = config['fieldorder'].items()
-
-    try:
-        print(f'\n{delimit_c}{delimit * "-"}')
-
-        for field, value in conf_fo:
-            for fi in wrap_lines(field_values[value], *options).split('\n'):
-                print(f'{ctf[value]}{fi.center(centr)}')
-            # d = delimitation
-            if field == config['fieldorder_d']:
-                print(f'{delimit_c}{delimit * "-"}')
-
-        print(f'{delimit_c}{delimit * "-"}')
-    except (NameError, KeyError):
-        print(f'{err_c}\nDodawanie karty do pliku nie powiodło się\n'
-              f'Spróbuj przywrócić domyślne ustawienia pól wpisując {R}-fo default\n')
-        return 1  # skip_check
-
-
-def create_note(note_config):
-    try:
-        response = invoke('modelNames')
-        if response == 'out of reach':
-            return f'{err_c}Wybierz profil, aby dodać notatkę'
-    except URLError:
-        return f'{err_c}Włącz Anki, aby dodać notatkę'
-
-    try:
-        if note_config['modelName'] in response:
-            return f'{YEX}Notatka {R}"{note_config["modelName"]}"{YEX} już znajduje się w bazie notatek'
-
-        result = invoke('createModel',
-                        modelName=note_config['modelName'],
-                        inOrderFields=note_config['fields'],
-                        css=note_config['css'],
-                        cardTemplates=[{'Name': note_config['cardName'],
-                                        'Front': note_config['front'],
-                                        'Back': note_config['back']}])
-        if result == 'out of reach':
-            return f'{err_c}Nie można nawiązać połączenia z Anki\n' \
-                   f'Notatka nie została utworzona'
-        else:
-            print(f'{GEX}Notatka utworzona pomyślnie')
-
-        note_ok = input(f'Czy chcesz ustawić "{note_config["modelName"]}" jako -note? [T/n]: ')
-        if note_ok.lower() in ('', 't', 'y', 'tak', 'yes', '1'):
-            config['note'] = note_config['modelName']
-            with open(os.path.join(dir_, 'config.yml'), 'w') as conf_f:
-                yaml.dump(config, conf_f)
-        return None
-    except URLError:
-        return f'{err_c}Nie można nawiązać połączenia z Anki' \
-               f'Notatka nie została utworzona'
 
 
 def manage_dictionaries(_phrase, flags):
@@ -1782,8 +1012,8 @@ def main():
     if not os.path.exists('Karty_audio') and config['audio_path'] == 'Karty_audio':
         os.mkdir('Karty_audio')
 
-    __version__ = 'v0.7.2-2'
-    print(f'{BOLD}- Dodawacz kart do Anki {__version__} -{END}\n\n'
+    __version__ = 'v0.7.3-1'
+    print(f'{BOLD}- Dodawacz kart do Anki {__version__} -{END}\n'
           f'Wpisz "--help", aby wyświetlić pomoc\n\n')
 
     while True:
@@ -1869,7 +1099,7 @@ def main():
             'definicja': definicja, 'synonimy': synonimy, 'przyklady': przyklady, 'phrase': phrase,
             'zdanie': zdanie, 'czesci_mowy': czesci_mowy, 'etymologia': etymologia, 'audio': audio}
         if config['ankiconnect']:
-            create_ankiconnect_card(field_values)
+            anki.create_card(field_values)
         save_card_to_file(field_values)
 
 
