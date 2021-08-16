@@ -15,8 +15,8 @@ except FileNotFoundError:
         w.write("""attention_c: lightyellow\ndef1_c: reset\ndef2_c: reset\ndelimit_c: reset
 error_c: lightred\netym_c: reset\nindex_c: lightgreen\ninput_c: reset\ninputtext_c: reset
 pidiom_c: reset\npos_c: yellow\npsyn_c: reset\nsyn_c: yellow\nsyngloss_c: reset\nsynpos_c: reset
-phrase_c: cyan\nphon_c: lightblack\nposlabel_c: green\naudio_path: ''""")
-    with open(os.path.join(root_dir, 'config.yml'), 'r') as r:
+phrase_c: cyan\nphon_c: lightblack\nposlabel_c: green\naudio_device: default\naudio_path: ''""")
+    with open(os.path.join(root_dir, 'config/config.yml'), 'r') as r:
         config = yaml.load(r, Loader=yaml.Loader)
 
 try:
@@ -88,7 +88,7 @@ command_data = {
         'print_msg': 'Ukrywanie słowa w idiomach'},
     '-upreps': {
         'config_entry': 'hide_prepositions',
-        'print_msg': 'Ukrywanie przyimków w idiomach'},
+        'print_msg': 'Ukrywanie przyimków'},
     '-showcard': {
         'config_entry': 'showcard',
         'print_msg': 'Podgląd karty'},
@@ -98,9 +98,9 @@ command_data = {
     '-wraptext': {
         'config_entry': 'wraptext',
         'print_msg': 'Zawijanie tekstu'},
-    '-break': {
-        'config_entry': 'break',
-        'print_msg': 'Wstawianie nowej linii po definicjach'},
+    '-compact': {
+        'config_entry': 'compact',
+        'print_msg': 'Kompaktowe wyświetlanie słowników'},
     '-ankiconnect': {
         'config_entry': 'ankiconnect',
         'print_msg': 'Dodawanie kart poprzez AnkiConnect'},
@@ -165,6 +165,8 @@ boolean_values = {
 ankiconnect_base_fields = {
     'defin': 'definicja',
     'gloss': 'definicja',
+    'wyjaś': 'definicja',
+    'wyjas': 'definicja',
 
     'synon': 'synonimy',
     'disamb': 'synonimy',
@@ -205,7 +207,16 @@ ankiconnect_base_fields = {
     'dzwiek': 'audio',
     'pronunciation': 'audio',
     'sound': 'audio',
-    'media': 'audio'}
+    'media': 'audio',
+
+    'nagran': 'sentence_audio',
+    'nagryw': 'sentence_audio',
+    'recor': 'sentence_audio',
+    'sentence_a': 'sentence_audio',
+    'sentenceaudio': 'sentence_audio',
+    'sentence_r': 'sentence_audio',
+    'sentencerec': 'sentence_audio'
+}
 
 labels = {
     # part of speech labels
@@ -238,6 +249,16 @@ labels = {
     'suff.': 'suffix',
     'abbr.': 'abbreviation'
 }
+
+prepositions = (
+    'about', 'above', 'across', 'after', 'against', 'along', 'among', 'around',
+    'as', 'at', 'before', 'behind', 'below', 'beneath', 'beside', 'between',
+    'beyond', 'by', 'despite', 'down', 'during', 'except', 'for', 'from', 'in',
+    'inside', 'into', 'like', 'near', 'of', 'off', 'on', 'onto', 'opposite',
+    'out', 'outside', 'over', 'past', 'round', 'since', 'than', 'through', 'to',
+    'towards', 'under', 'underneath', 'unlike', 'until', 'up', 'upon', 'via',
+    'with', 'within', 'without'
+)
 
 color_data = {
     'colors': {

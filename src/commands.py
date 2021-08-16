@@ -259,8 +259,9 @@ def print_config():
               f'{second_cmd:14s}{cmd_color_misc}{config_val2:13s}{R}'
               f'{third_cmd:10s}{blk_conf}')
 
-    print(f'\n--audio-path: {config.get("audio_path", "")}')
-    print('\nkonfiguracja kolorów: "-c -h"\n'
+    print(f'\n--audio-path: {config.get("audio_path", "")}\n'
+          f'--audio-device: {config.get("audio_device", "")}\n\n'
+          'konfiguracja kolorów: "-c -h"\n'
           'konfiguracja pól: "-fo -h"\n')
 
 
@@ -323,27 +324,28 @@ def set_width_settings(*args):
 def change_field_order(*args):
     def display_fields():
         for field_number, field_value in default_field_order.items():
-            YEX.color = R
+            yex = R
             default = ''
             if field_order[field_number] != field_value:
                 # yellow indicates changes
-                YEX.color = YEX.color
+                yex = YEX.color
                 # Displays default field configuration on the right
                 default = f'# {field_value}'
             # END cause if field_number == '1' we want bold to reset before
             # printing defaults and R doesn't do that
-            printe = f' {YEX.color}{field_number}: {field_order[field_number]:19s}{END}{R}{default}'
+            printe = f' {yex}{field_number}: {field_order[field_number]:19s}{END}{R}{default}'
             if field_number == '1':
                 print(f'{BOLD}{printe}')
             else:
                 print(printe)
             if field_number == config['fieldorder_d']:
-                print(f' {delimit_c.color}D: -----------{R}')
+                print(f' {delimit_c.color}D: --------------{R}')
 
     field_order = config['fieldorder']
     default_field_order = {
         '1': 'definicja', '2': 'synonimy', '3': 'przyklady', '4': 'phrase',
-        '5': 'zdanie', '6': 'czesci_mowy', '7': 'etymologia', '8': 'audio'}
+        '5': 'zdanie', '6': 'czesci_mowy', '7': 'etymologia', '8': 'audio',
+        '9': 'sentence_audio'}
 
     cmd = args[0]
     help_ = False
@@ -356,8 +358,8 @@ def change_field_order(*args):
         # no arguments
         if help_:
             print(f"{R}{cmd} default : przywraca domyślną kolejność pól\n"
-                  f"{cmd} {{1-8}} {{pole}} : zmienia pole pod podanym numerem na {{pole}}\n"
-                  f"{cmd} d {{1-8}} : przesuwa odkreślenie pod {{1-8}}\n")
+                  f"{cmd} {{1-9}} {{pole}} : zmienia pole pod podanym numerem na {{pole}}\n"
+                  f"{cmd} d {{1-9}} : przesuwa odkreślenie pod {{1-9}}\n")
         display_fields()
         return None
 
@@ -513,7 +515,7 @@ def set_colors(*args):
         if help_:
             color_command()
         else:
-            pokaz_dostepne_kolory()
+            show_available_colors()
         return None
 
     if element not in data.color_data['k:elements_val:msg']:
@@ -539,31 +541,21 @@ def set_colors(*args):
     print(f'{R}{msg} ustawiony na: {color_of_msg}{color}')
     save_commands(entry=f'{element}_c', value=color)
 
-    color_instances = {
-        'def1': def1_c, 'def2': def2_c, 'pos': pos_c, 'etym': etym_c,
-        'syn': syn_c, 'psyn': psyn_c, 'pidiom': pidiom_c, 'syngloss': syngloss_c,
-        'synpos': synpos_c, 'index': index_c, 'phrase': phrase_c, 'phon': phon_c,
-        'poslabel': poslabel_c, 'error': err_c, 'attention': YEX, 'success': GEX,
-        'delimit': delimit_c, 'input': input_c, 'inputtext': inputtext_c
-    }
-
-    color_instances[element].update()
-
 
 def boolean_commands(*args):
     cmd = args[0]
-    msg = data.command_data[cmd]['print_msg']
+    help_msg = data.command_data[cmd]['print_msg']
 
     try:
         arg = args[1].lower()
         if arg in ('-h', '--help'):
             raise IndexError
         value = data.boolean_values[arg]
-        print(f'{R}{msg}: {data.bool_colors[value]}{value}')
+        print(f'{R}{help_msg}: {data.bool_colors[value]}{value}')
         save_commands(entry=data.command_data[cmd]['config_entry'], value=value)
     except IndexError:
         # args[1] index out of range, no argument
-        print(f'{YEX.color}{msg}\n'
+        print(f'{YEX.color}{help_msg}\n'
               f'{R}{cmd} {{on|off}}')
     except KeyError:
         # c.commands_values[args[1]] KeyError, value not found
@@ -571,7 +563,7 @@ def boolean_commands(*args):
               f'{R}{cmd} {{on|off}}')
 
 
-def pokaz_dostepne_kolory():
+def show_available_colors():
     print(f'{R}{BOLD}Dostępne kolory to:{END}')
     for index, color in enumerate(data.color_data['colors'], start=1):
         print(f'{data.color_data["colors"][color]}{color}', end=', ')
@@ -608,4 +600,4 @@ input         {input_c.color}pól na input{err_c.color}*{R}
 inputtext     {inputtext_c.color}wpisywanego tekstu{err_c.color}*{R}
 
 {err_c.color}*{R} = nie działa na win i mac\n""")
-    pokaz_dostepne_kolory()
+    show_available_colors()

@@ -15,7 +15,8 @@ gryzus_std_front = '''<div id="questionSide">
 
 gryzus_std_back = '''<div id="answerSide">
   {{FrontSide}}
-  {{Audio}}
+  <div>{{Audio}}</div>
+  <div>{{Nagranie}}</div>
 </div>'''
 
 gryzus_std_css = '''.card {
@@ -203,7 +204,8 @@ available_notes = {
             'Przykładowe zdanie',
             'Części mowy',
             'Etymologia',
-            'Audio'
+            'Audio',
+            'Nagranie'
         ]
     }
 }

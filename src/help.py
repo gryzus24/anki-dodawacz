@@ -41,7 +41,7 @@ Etymologie nie są indeksowane, wybór działa tak jak przy częściach mowy.
 
 {BOLD}Przy synonimach:{END}
 Synonimy wyświetlane są w grupach zawierających synonimy i przykłady.
-Wybieranie działa tak jak w definicjach
+Wybieranie działa tak jak w definicjach.
 Dostępne pola:
  - synonimy
  - przykłady
@@ -55,7 +55,8 @@ Dostępne pola:
 
 
 --help-commands   wyświetla informacje o komendach
---help-bulk       wyświetla informacje o masowym dodawaniu\n""")
+--help-bulk       wyświetla informacje o masowym dodawaniu
+--help-recording  wyświetla informacje o nagrywaniu\n""")
 
 
 def commands_help():
@@ -112,13 +113,13 @@ Ukrywanie hasła to zamiana wyszukiwanego słowa na "..."
 -udef          ukrywanie hasła w definicjach
 -udisamb       ukrywanie hasła w synonimach
 -uidiom        ukrywanie hasła w idiomach
--upreps        ukrywanie przyimków zawartych w idiomie
+-upreps        ukrywanie przyimków
 -showcard      pokazywanie przykładowego wyglądu karty
 -showdisamb    pokazywanie słownika synonimów
                (przydatne do ograniczenia przewijania podczas bulk)
 
 -wraptext      zawijanie tekstu
--break         wstawianie nowej linii po każdej definicji
+-compact       kompaktowe wyświetlanie słowników
 
 -textwidth {{wartość|auto}}   szerokość tekstu do momentu zawinięcia
 -indent {{wartość}}           szerokość wcięcia zawiniętego tekstu
@@ -149,9 +150,9 @@ Ukrywanie hasła to zamiana wyszukiwanego słowa na "..."
 -fo
 --field-order               zmiana kolejności dodawanych pól dla karty.txt
 -fo default                 przywraca domyślną kolejność pól
--fo {{1-8}} {{pole}}            zmienia pole znajdujące się pod podanym numerem na 
+-fo {{1-9}} {{pole}}            zmienia pole znajdujące się pod podanym numerem na 
                             wskazane pole
--fo d {{1-8}}                 przesuwa odkreślenie (delimitation)
+-fo d {{1-9}}                 przesuwa odkreślenie (delimitation)
                             pod pole z podanym numerem
 
 np. -fo 1 audio             zmieni pole "definicja" (1) na pole "audio"
@@ -179,6 +180,18 @@ np. -fo d 5                 przesunie odkreślenie pod pole "zdanie" (5)
 -server {{nazwa serwera}}     określa serwer z którego pozyskiwane jest audio dla
                             haseł wyszukiwanych w AHDictionary
 
+-device, --audio-device     ustawia urządzenie wykorzystywane do nagrywania
+                            audio
+
+-rec, --record              rozpoczyna nagrywanie z wykorzystaniem wybranego
+                            urządzenia audio
+                            (zapisuje nagranie, ale nie dodaje audio na kartę)
+
+[hasło] -rec, --record      rozpoczyna nagrywanie, dodaje do nazwy pliku
+                            wyjściowego [hasło], po zakończeniu nagrywania
+                            wyszukuje [hasło] w słowniku i dodaje audio
+                            na kartę
+
 Aby doprecyzować dodawanie audio możemy postawić flagę
 flaga jest stawiana po wyszukiwanej frazie
 np. "conduct --noun", "survey -v", "frequent -adj"
@@ -196,7 +209,7 @@ flagi dla diki:
     -adj, --adjective
 
 {BOLD}NOTE:{END} Jeżeli połączymy flagi audio z wyrażeniem złożonym z kilku słów to flaga
-      zostanie zignorowana\n""")
+      zostanie zignorowana.\n""")
 
 
 def bulk_help():
@@ -247,10 +260,50 @@ Lub z włączonym polem na 'przykładowe zdanie':
 'decay'                       <-- słowo1
 'the land began to decay'     <-- zdanie dla słowa1
 'monolith'                    <-- słowo2
-'the monolith crumbled'       <-- zdanie dla słówa2
+'the monolith crumbled'       <-- zdanie dla słowa2
 'dreg'                        <-- słowo3
 'fermented dregs scattered'   <-- zdanie dla słowa3
 ' '                           <-- nowa linia na końcu
 
-{BOLD}NOTE:{END} Możesz używać "/" (np. przy polu na synonimy albo przykłady) aby dodać
-      własny tekst, bez ustawiania domyślnych wartości i wyłączania pól\n""")
+{BOLD}NOTE:{END} Możesz używać "/" (np. przy polu na synonimy albo przykłady), aby dodać
+      własny tekst bez ustawiania domyślnych wartości i wyłączania pól.\n""")
+
+
+def recording_help():
+    print(f"""{R}\n{BOLD}------[Nagrywanie audio]------{END}
+Ankidodawacz pozwala na nagrywanie audio prosto z komputera za wykorzystaniem
+  ffmpeg.
+
+Aktualnie obsługiwane systemy operacyjne i konfiguracja audio:
+  Linux:    pulseaudio (z alsą)
+  Windows:  dshow
+
+Oficjalna strona ffmpeg: https://www.ffmpeg.org/download.html
+
+Aby nagrywać audio musimy przenieść program ffmpeg do folderu z programem
+  lub dodać jego ścieżkę do systemowego PATH.
+Następnie wybieramy urządzenie audio za pomocą którego chcemy nagrywać audio
+  wpisując "-device" lub "--audio-device".
+
+Jeżeli nie widzimy interesującego nas urządzenia na Windowsie:
+  Włączamy "Miks stereo" w ustawieniach dźwięku.
+  Zaznaczamy "nasłuchuj tego urządzenia".
+  Zezwalamy aplikacjom na wykorzystywanie mikrofonu.
+
+Na Linuxie:
+  Wpisujemy "-rec", podczas nagrywania wchodzimy w mikser dźwięku pulseaudio
+   -> Nagrywanie, zmieniamy urządzenie monitorujące dla Lavf na urządzenie
+   wybrane przy konfiguracji za pomocą "-device".
+
+{BOLD}Komendy:{END}
+-rec, --record           rozpoczyna nagrywanie z wykorzystaniem wybranego
+                         urządzenia audio, następnie zapisuje nagranie bez
+                         dodawania audio na kartę
+
+[hasło] -rec, --record   rozpoczyna nagrywanie, dodaje do nazwy pliku
+                         wyjściowego [hasło], po zakończeniu nagrywania
+                         wyszukuje [hasło] w słowniku i dodaje audio na kartę
+
+{BOLD}NOTE:{END} Aby zakończyć nagrywanie i zapisać plik wyjściowy użyj
+      klawisza [q], użycie [ctrl + c] też zakończy nagrywanie, ale nagranie
+      może zostać uszkodzone.\n""")

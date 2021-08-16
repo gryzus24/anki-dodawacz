@@ -7,29 +7,6 @@ from src.data import color_data, config
 
 colorama.init(autoreset=True)
 
-
-class Color:
-    def __init__(self, color_name):
-        if not sys.platform.startswith('linux') and color_name in ('input_c', 'inputtext_c'):
-            self.color_name = ''
-            self.color = ''
-        else:
-            self.color_name = color_name
-            self.color = color_data['colors'][config[color_name]]
-
-    def update(self):
-        try:
-            self.color = color_data['colors'][config[self.color_name]]
-        except KeyError:
-            self.color = ''
-
-    def bolden(self):
-        try:
-            self.color = f"{BOLD}{color_data['colors'][config[self.color_name]]}"
-        except KeyError:
-            self.color = ''
-
-
 if sys.platform.startswith('linux'):
     # cmd on Windows or even whole Windows can't display proper bold font
     # mac can be problematic too. Input_c and inputtext_c same story
@@ -38,6 +15,26 @@ if sys.platform.startswith('linux'):
 else:
     BOLD = ''
     END = ''
+
+
+class Color:
+    def __init__(self, color_name):
+        if not sys.platform.startswith('linux') and color_name in ('input_c', 'inputtext_c'):
+            self.color_name = ''
+        else:
+            self.color_name = color_name
+
+    @property
+    def color(self):
+        try:
+            return color_data['colors'][config[self.color_name]]
+        except KeyError:
+            return ''
+
+    # not sure whether I should use __repr__ or @property to update colors
+    # The best would be a single class that holds colors, but I'm not sure
+    # how to dynamically update individual color's state
+
 
 R = Fore.RESET
 GEX = Color('success_c')

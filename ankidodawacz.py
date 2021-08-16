@@ -25,6 +25,7 @@ from requests.exceptions import Timeout
 import src.anki_interface as anki
 import src.commands as c
 import src.data as data
+import src.ffmpeg_interface as ffmpeg
 import src.help as h
 from src.colors import \
     R, BOLD, END, YEX, GEX, \
@@ -63,16 +64,18 @@ commands = {
     '--field-order': c.change_field_order, '-fo': c.change_field_order,
     '-color': c.set_colors, '-c': c.set_colors,
     '--config-bulk': c.config_bulk, '--config-defaults': c.config_bulk, '-cd': c.config_bulk, '-cb': c.config_bulk,
-    # commands that don't take arguments
+    '--audio-device': ffmpeg.set_audio_device, '-device': ffmpeg.set_audio_device,
+    # commands that take no arguments
     '-refresh': anki.refresh_notes,
-    '--help': h.quick_help, '-h': h.quick_help,
+    '--help': h.quick_help, '-help': h.quick_help, '-h': h.quick_help,
     '--help-bulk': h.bulk_help, '--help-defaults': h.bulk_help,
     '--help-commands': h.commands_help, '--help-command': h.commands_help,
-    '-config': c.print_config, '-conf': c.print_config
+    '--help-recording': h.recording_help,
+    '-config': c.print_config, '-conf': c.print_config,
 }
 
 
-def search_interface():
+def search_interface() -> list:
     while True:
         word = input(f'{input_c.color}Szukaj ${inputtext_c.color} ').strip()
         if not word:
@@ -84,7 +87,7 @@ def search_interface():
                 # to avoid writing all of them in the commands dict above
                 c.boolean_commands(*args)
             # don't forget to change the splice when adding/removing commands
-            elif cmd in tuple(commands)[:22]:
+            elif cmd in tuple(commands)[:24]:
                 commands[cmd](*args)
             else:
                 commands[cmd]()
@@ -341,16 +344,13 @@ def search_for_audio(server, phrase_, flags):
     return get_audio_response(audio_link, audiofile_name)
 
 
-def wrap_lines(string, term_width, index_width, indent, gap, break_allowed=False):
-    br = ''
-    if break_allowed and config['break']:
-        br = '\n'
+def wrap_lines(string: str, term_width, index_width, indent, gap):
     if not config['wraptext']:
-        return string + br
+        return string
     # Gap is the gap between indexes and strings
     real_width = int(term_width) - index_width - gap
     if len(string) < real_width:
-        return string + br
+        return string
 
     wrapped_text = ''
     indent_ = indent + index_width
@@ -368,12 +368,12 @@ def wrap_lines(string, term_width, index_width, indent, gap, break_allowed=False
         else:
             wrapped_text += word + ' '
             # Definition + the last word
-    return wrapped_text + string_divided[-1] + br
+    return wrapped_text + string_divided[-1]
 
 
 def ah_def_print(indexing, term_width, definition):
     definition_aw = wrap_lines(definition, term_width, len(str(indexing)),
-                               indent=config['indent'], gap=2, break_allowed=True)
+                               indent=config['indent'], gap=2)
     if indexing % 2 == 1:
         print(f'{index_c.color}{indexing}  {def1_c.color}{definition_aw}')
     else:
@@ -513,7 +513,7 @@ def ah_dictionary(query):
             ahd = 'AH Dictionary'
             print(f'{BOLD}{ahd.center(get_conf_of("center"))}{END}')
             if phrase_.lower() != query.lower():
-                print(f'  {BOLD}Wyniki dla {phrase_c.color}{phrase_.split()[0]}{END}')
+                print(f' {BOLD}Wyniki dla {phrase_c.color}{phrase_.split()[0]}{END}')
             results_for_printed = True
         print(f' {phrase_c.color}{head_word.strip()}  {phon_c.color}{phon_spell}')
 
@@ -530,6 +530,8 @@ def ah_dictionary(query):
                 pos_label = ' '.join(pos_label)
                 if pos_label in ('tr.', 'intr.'):
                     pos_label += 'v.'
+                if not config['compact']:
+                    print()
                 print(f'{len(str(indexing)) * " "}{poslabel_c.color}{pos_label}')
             # Adds definitions and phrases
             for gloss in definitions:
@@ -563,52 +565,39 @@ def ah_dictionary(query):
     return defs, poses, etyms, phrase_list
 
 
-def replace_by_list(content_to_hide, replacees, replacement):
-    hc = content_to_hide
-    for i in replacees:
-        hc = content_to_hide.replace(i, replacement).replace(i.capitalize(), replacement)\
-            .replace(i.upper(), replacement.upper())
-    return hc
-
-
 def hide_phrase_in(func):
     def wrapper(*args, **kwargs):
+        def content_replace(a: str, b: str) -> str:
+            return content.replace(a, b).replace(a.capitalize(), b).replace(a.upper(), b.upper())
+
         content, choice, hide = func(*args, **kwargs)
         if hide is None or not content or not config[hide]:
             return content, choice
 
-        hidden_content = content
         nonoes = (
-            'a', 'A', 'an', 'An', 'the', 'The', 'or', 'Or', 'be', 'Be', 'do', 'Do',
-            'does', 'Does', 'not', 'Not', 'if', 'If', 'is', 'Is', 'on', 'On')
-        prepositions = ()
-        if hide == 'hide_idiom_word' and not config['hide_prepositions']:
-            prepositions = (
-                'about', 'above', 'across', 'after', 'against', 'along', 'among', 'around',
-                'as', 'at', 'before', 'behind', 'below', 'beneath', 'beside', 'between',
-                'beyond', 'by', 'despite', 'down', 'during', 'except', 'for', 'from', 'in',
-                'inside', 'into', 'like', 'near', 'of', 'off', 'on', 'onto', 'opposite',
-                'out', 'outside', 'over', 'past', 'round', 'since', 'than', 'through', 'to',
-                'towards', 'under', 'underneath', 'unlike', 'until', 'up', 'upon', 'via',
-                'with', 'within', 'without'
-            )
-        words_th = phrase.lower().split()
-        s_exceptions = (x.rstrip('y') + 'ies' for x in words_th if x.endswith('y'))
-        ing_exceptions = (x.rstrip('e') + 'ing' for x in words_th if
-                          x.endswith('e') and x not in prepositions and x not in nonoes)
-        ing_exceptions2 = (x.rstrip('ie') + 'ying' for x in words_th if x.endswith('ie'))
-        ed_exceptions = (x.rstrip('y') + 'ied' for x in words_th if x.endswith('y'))
+            'the', 'and', 'a', 'is', 'an', 'it',
+            'or', 'be', 'do', 'does', 'not', 'if'
+        )
 
-        for word_th in words_th:
-            if word_th not in nonoes and word_th not in prepositions:
-                hidden_content = hidden_content.replace(word_th, '...')\
-                    .replace(word_th.capitalize(), '...').replace(word_th.upper(), '...')
+        words_in_phrase = phrase.lower().split()
+        for word in words_in_phrase:
+            if word.lower() in nonoes:
+                continue
 
-        hidden_content = replace_by_list(hidden_content, s_exceptions, '...s')
-        hidden_content = replace_by_list(hidden_content, ing_exceptions, '...ing')
-        hidden_content = replace_by_list(hidden_content, ing_exceptions2, '...ying')
-        hidden_content = replace_by_list(hidden_content, ed_exceptions, '...ed')
-        return hidden_content, choice
+            if not config['hide_prepositions']:
+                if word.lower() in data.prepositions:
+                    continue
+
+            content = content_replace(word, '...')
+            if word.endswith('e'):
+                content = content_replace(word[:-1] + 'ing', '...ing')
+                if word.endswith('ie'):
+                    content = content_replace(word[:-2] + 'ying', '...ying')
+            elif word.endswith('y'):
+                content = content_replace(word[:-1] + 'ies', '...ies')
+                content = content_replace(word[:-1] + 'ied', '...ied')
+
+        return content, choice
 
     return wrapper
 
@@ -728,6 +717,7 @@ def input_func(prompt_msg, add_element, bulk, content_list, hide=None, connector
     elif ':' in choice:
         full_range = get_full_range(choice, len(content_list))
         chosen_cont = multi_choice(full_range, content_list, connector)
+        choice = full_range[0] if full_range else 0
     elif ',' in choice:
         mchoice = [int(x) for x in choice.split(',') if x.strip().isnumeric()]
         chosen_cont = multi_choice(mchoice, content_list, connector)
@@ -790,14 +780,15 @@ def wordnet(syn_soup):
                                 indent=3, gap=4 + len(str(pos)))
             gloss_tp = wrap_lines(gloss, get_conf_of('textwidth'), len(str(index)),
                                   indent=3, gap=3)
-            print(f'{index_c.color}{index} : {synpos_c.color}{pos} {syn_c.color}{syn_tp}\n'
-                  f'{(len(str(index))+3) * " "}{syngloss_c.color}{gloss_tp}')
+            print(f'{index_c.color}{index} : {synpos_c.color}{pos} {syn_c.color}{syn_tp}')
+            print(f'{(len(str(index))+3) * " "}{syngloss_c.color}{gloss_tp}')
             if psyn:
                 for ps in psyn.split('; '):
                     psyn_tp = wrap_lines(ps, get_conf_of('textwidth'), len(str(index)),
                                          indent=4, gap=3)
                     print(f'{(len(str(index))+3) * " "}{psyn_c.color}{psyn_tp}')
-            print()
+            if not config['compact']:
+                print()
 
         gpsyn.append(psyn)
         gsyn.append(syn)
@@ -823,9 +814,13 @@ def wordnet_request(query):
             print(f'{err_c.color}\nNie znaleziono {phrase_c.color}{phrase}{err_c.color} na {R}WordNecie')
             skip_check_disamb = 1
             return [], []
+
         if config['showdisamb']:
             print(f'{delimit_c.color}{get_conf_of("delimsize") * "-"}')
-            print(f'{BOLD}{"WordNet".center(get_conf_of("center"))}{END}\n')
+            print(f'{BOLD}{"WordNet".center(get_conf_of("center"))}{END}')
+            if not config['compact']:
+                print()
+
         return wordnet(syn_soup)
     except ConnectionError:
         print(f'{err_c.color}Nie udało się połączyć z WordNetem, sprawdź swoje połączenie i spróbuj ponownie')
@@ -848,14 +843,12 @@ def farlex_idioms_request(url):
     try:
         reqs_idioms = requests.get(url, headers=USER_AGENT, timeout=10)
         soup = BeautifulSoup(reqs_idioms.content, 'lxml', from_encoding='utf-8')
-        word_check = soup.find('div', {'id': 'Definition'}).text.strip()
-        if 'not found in the Dictionary and Encyclopedia' in word_check or\
-                'not available in the Idioms' in word_check \
-                or word_check.startswith('*') or word_check.startswith('See:'):
+        relevant_content = soup.find('section', {'data-src': 'FarlexIdi'})
+        if relevant_content is None:
             print(f'{err_c.color}Nie znaleziono podanego hasła w Farlex Idioms')
             skip_check = 1
             return None
-        return soup
+        return relevant_content
     except ConnectionError:
         print(f'{err_c.color}Nie udało się połączyć ze słownikiem idiomów\n'
               f'sprawdź swoje połączenie i spróbuj ponownie')
@@ -874,12 +867,11 @@ def farlex_idioms_request(url):
 
 
 def farlex_idioms(query):
-    global skip_check
     global phrase
 
     full_url = 'https://idioms.thefreedictionary.com/' + query
-    soup = farlex_idioms_request(full_url)
-    if soup is None:
+    relevant_content = farlex_idioms_request(full_url)
+    if relevant_content is None:
         return [], [], []
 
     defs = []
@@ -890,7 +882,6 @@ def farlex_idioms(query):
 
     illust_index = 0
     last_phrase = ''
-    relevant_content = soup.find('section', {'data-src': 'FarlexIdi'})
     definition_divs = relevant_content.find_all('div', class_=('ds-single', 'ds-list'))
     # I have no idea how to extract immediate text from a div.
     # find_all(... text=True, recursive=False) doesn't work.
@@ -900,7 +891,8 @@ def farlex_idioms(query):
         phrase_list.append(idiom)
 
         if last_phrase == idiom:
-            print()
+            if not config['compact']:
+                print()
         else:
             last_phrase = idiom
             print(f'{delimit_c.color}{get_conf_of("delimsize") * "-"}')
@@ -934,14 +926,10 @@ def farlex_idioms(query):
     return defs, illusts, phrase_list
 
 
-def display_card(definicja, synonimy, przyklady, zdanie, czesci_mowy, etymologia, audio):
-    field_values = {'definicja': definicja, 'synonimy': synonimy,
-                    'przyklady': przyklady, 'phrase': phrase,
-                    'zdanie': zdanie, 'czesci_mowy': czesci_mowy,
-                    'etymologia': etymologia, 'audio': audio}
+def display_card(field_values):
     # field coloring
-    ctf = {'definicja': def1_c.color, 'synonimy': syn_c.color, 'przyklady': psyn_c.color, 'phrase': phrase_c.color,
-           'zdanie': '', 'czesci_mowy': pos_c.color, 'etymologia': etym_c.color, 'audio': ''}
+    color_of = {'definicja': def1_c.color, 'synonimy': syn_c.color, 'przyklady': psyn_c.color, 'phrase': phrase_c.color,
+                'zdanie': '', 'czesci_mowy': pos_c.color, 'etymologia': etym_c.color, 'audio': '', 'sentence_audio': ''}
     delimit = get_conf_of('delimsize')
     centr = get_conf_of('center')
     options = (get_conf_of('textwidth'), 0, 0, 0)
@@ -950,11 +938,13 @@ def display_card(definicja, synonimy, przyklady, zdanie, czesci_mowy, etymologia
     try:
         print(f'\n{delimit_c.color}{delimit * "-"}')
 
-        for field, value in conf_fo:
-            for fi in wrap_lines(field_values[value], *options).split('\n'):
-                print(f'{ctf[value]}{fi.center(centr)}')
+        for field_number, field_name in conf_fo:
+            for fi in wrap_lines(field_values[field_name], *options).split('\n'):
+                if field_name == 'sentence_audio' and not fi:  # don't display empty sentence_audio field
+                    continue
+                print(f'{color_of[field_name]}{fi.center(centr)}')
             # d = delimitation
-            if field == config['fieldorder_d']:
+            if field_number == config['fieldorder_d']:
                 print(f'{delimit_c.color}{delimit * "-"}')
 
         print(f'{delimit_c.color}{delimit * "-"}')
@@ -978,7 +968,8 @@ def save_card_to_file(field_vals):
                        f'{field_values[config["fieldorder"]["5"]]}\t'
                        f'{field_values[config["fieldorder"]["6"]]}\t'
                        f'{field_values[config["fieldorder"]["7"]]}\t'
-                       f'{field_values[config["fieldorder"]["8"]]}\n')
+                       f'{field_values[config["fieldorder"]["8"]]}\t'
+                       f'{field_values[config["fieldorder"]["9"]]}\n')
             print(f'{GEX.color}Karta pomyślnie zapisana do pliku\n')
     except (NameError, KeyError):
         print(f'{err_c.color}Dodawanie karty do pliku nie powiodło się\n'
@@ -1012,7 +1003,7 @@ def main():
     if not os.path.exists('Karty_audio') and config['audio_path'] == 'Karty_audio':
         os.mkdir('Karty_audio')
 
-    __version__ = 'v0.7.3-1'
+    __version__ = 'v0.8.0-1'
     print(f'{BOLD}- Dodawacz kart do Anki {__version__} -{END}\n'
           f'Wpisz "--help", aby wyświetlić pomoc\n\n')
 
@@ -1027,6 +1018,15 @@ def main():
         phrase = link_word[0]
         flags = link_word[1:]
 
+        if phrase in ('-rec', '--record'):
+            ffmpeg.capture_audio()
+            continue
+
+        if 'rec' in flags or '-record' in flags:
+            sentence_audio = ffmpeg.capture_audio(phrase)
+        else:
+            sentence_audio = ''
+
         dictionary, definicja, czesci_mowy, etymologia, phrase_list, ilustracje = \
             manage_dictionaries(phrase, flags)
         if skip_check == 1:
@@ -1036,7 +1036,7 @@ def main():
             wordnet_request(phrase)
             continue
 
-        # main loop
+        # input loop
         zdanie, _ = sentence_input('hide_sentence_word')
         if skip_check == 1:
             continue
@@ -1089,15 +1089,17 @@ def main():
                 definicja = definicja + brk + przyklady
                 przyklady = ''
 
+        field_values = {
+            'definicja': definicja, 'synonimy': synonimy, 'przyklady': przyklady, 'phrase': phrase,
+            'zdanie': zdanie, 'czesci_mowy': czesci_mowy, 'etymologia': etymologia, 'audio': audio,
+            'sentence_audio': sentence_audio}
+
         if config['showcard']:
-            skip_check = display_card(definicja, synonimy, przyklady, zdanie, czesci_mowy, etymologia, audio)
+            skip_check = display_card(field_values)
             if skip_check == 1:
                 continue
         print()
 
-        field_values = {
-            'definicja': definicja, 'synonimy': synonimy, 'przyklady': przyklady, 'phrase': phrase,
-            'zdanie': zdanie, 'czesci_mowy': czesci_mowy, 'etymologia': etymologia, 'audio': audio}
         if config['ankiconnect']:
             anki.create_card(field_values)
         save_card_to_file(field_values)

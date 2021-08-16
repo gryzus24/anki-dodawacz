@@ -45,7 +45,7 @@ def add_notes(*args):
         return None
 
     response_err = create_note(note_config)
-    if response_err is not None:
+    if response_err:
         print(f'{response_err}')
     print()
 
@@ -69,7 +69,7 @@ def refresh_notes():
         print(f'{err_c.color}Plik {R}ankiconnect.yml{err_c.color} nie istnieje')
 
 
-def create_note(note_config):
+def create_note(note_config) -> str:
     try:
         response = invoke('modelNames')
         if response == 'out of reach':
@@ -99,7 +99,7 @@ def create_note(note_config):
             config['note'] = note_config['modelName']
             with open(os.path.join(root_dir, 'config/config.yml'), 'w') as conf_f:
                 yaml.dump(config, conf_f)
-        return None
+        return ''
     except URLError:
         return f'{err_c.color}Nie można nawiązać połączenia z Anki' \
                f'Notatka nie została utworzona'

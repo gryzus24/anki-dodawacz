@@ -9,9 +9,10 @@ add_synonym_examples: true
 add_synonyms: true
 ankiconnect: false
 attention_c: lightyellow
+audio_device: default
 audio_path: Karty_audio
-break: false
 center: 79* auto
+compact: false
 create_card: true
 deck: '-'
 def1_c: reset
@@ -33,6 +34,7 @@ fieldorder:
   '6': czesci_mowy
   '7': etymologia
   '8': audio
+  '9': sentence_audio
 fieldorder_d: '3'
 filtered_dictionary: true
 hide_definition_word: true
@@ -53,7 +55,7 @@ pidiom_bulk: 0
 pidiom_c: reset
 pos_bulk: 0
 pos_c: yellow
-poslabel_c: green
+poslabel_c: lightwhite
 psyn_bulk: 0
 psyn_c: reset
 psyn_filter: true
