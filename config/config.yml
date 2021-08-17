@@ -59,6 +59,8 @@ poslabel_c: lightwhite
 psyn_bulk: 0
 psyn_c: reset
 psyn_filter: true
+recording_quality: '4'
+save_card: true
 server: ahd
 showcard: true
 showdisamb: true

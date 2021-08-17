@@ -27,7 +27,7 @@ except FileNotFoundError:
         a.write('{}')
 
 command_data = {
-    # first config column
+    # boolean commands
     '-pz': {
         'config_entry': 'add_sentences',
         'print_msg': 'Pole na przykładowe zdanie'},
@@ -49,58 +49,67 @@ command_data = {
     '-pidiom': {
         'config_entry': 'add_idiom_examples',
         'print_msg': 'Pole na przykłady idiomów'},
-    '-psynfltr': {
-        'config_entry': 'psyn_filter',
-        'print_msg': 'Filtrowanie przykładów synonimów niezawierających szukanego hasła'},
+
     '-mergedisamb': {
         'config_entry': 'merge_disambiguation',
         'print_msg': 'Włączenie przykładów synonimów do pola "synonimy"'},
     '-mergeidiom': {
         'config_entry': 'merge_idioms',
         'print_msg': 'Włączenie przykładów idiomów do pola "definicja"'},
+
     '-audio': {
         'config_entry': 'add_audio',
         'print_msg': 'Dodawanie audio'},
     '-disamb': {
         'config_entry': 'add_disambiguation',
-        'print_msg': 'Słownik synonimów'},
-    '-cards': {
+        'print_msg': 'Pozyskiwanie synonimów i przykładów z WordNeta'},
+    '-savecards': {
+        'config_entry': 'save_card',
+        'print_msg': 'Zapisywanie kart do pliku "karty.txt"'},
+    '-createcards': {
         'config_entry': 'create_card',
         'print_msg': 'Tworzenie kart'},
-    # second config column
+
     '-all': {
         'config_entry': 'all',  # dummy
         'print_msg': 'Wszystkie pola'},
+
     '-fs': {
         'config_entry': 'filtered_dictionary',
         'print_msg': 'Filtrowanie słowników'},
+    '-fpsyn': {
+        'config_entry': 'psyn_filter',
+        'print_msg': 'Filtrowanie przykładów synonimów niezawierających szukanego hasła'},
+
     '-upz': {
         'config_entry': 'hide_sentence_word',
-        'print_msg': 'Ukrywanie słowa w zdaniu'},
+        'print_msg': 'Ukrywanie hasła w zdaniu'},
     '-udef': {
         'config_entry': 'hide_definition_word',
-        'print_msg': 'Ukrywanie słowa w definicji'},
+        'print_msg': 'Ukrywanie hasła w definicjach'},
     '-udisamb': {
         'config_entry': 'hide_disamb_word',
-        'print_msg': 'Ukrywanie słowa w synonimach i przykładach'},
+        'print_msg': 'Ukrywanie hasła w synonimach i przykładach'},
     '-uidiom': {
         'config_entry': 'hide_idiom_word',
-        'print_msg': 'Ukrywanie słowa w idiomach'},
+        'print_msg': 'Ukrywanie hasła w idiomach'},
     '-upreps': {
         'config_entry': 'hide_prepositions',
         'print_msg': 'Ukrywanie przyimków'},
+
     '-showcard': {
         'config_entry': 'showcard',
         'print_msg': 'Podgląd karty'},
     '-showdisamb': {
         'config_entry': 'showdisamb',
-        'print_msg': 'Wyświetlanie WrodNetu'},
+        'print_msg': 'Wyświetlanie słownika synonimów (WordNet)'},
     '-wraptext': {
         'config_entry': 'wraptext',
         'print_msg': 'Zawijanie tekstu'},
     '-compact': {
         'config_entry': 'compact',
         'print_msg': 'Kompaktowe wyświetlanie słowników'},
+
     '-ankiconnect': {
         'config_entry': 'ankiconnect',
         'print_msg': 'Dodawanie kart poprzez AnkiConnect'},
@@ -108,22 +117,6 @@ command_data = {
         'config_entry': 'duplicates',
         'print_msg': 'Dodawanie duplikatów poprzez AnkiConnect'},
     # end of boolean commands
-    '-delimsize': {
-        'config_entry': 'delimsize',
-        'print_msg': 'Szerokość odkreśleń',
-        'comment': '-delimsize {auto|0 <= n < 383}'},
-    '-center': {
-        'config_entry': 'center',
-        'print_msg': 'Wyśrodkowywanie tekstu',
-        'comment': '-center {auto|0 <= n < 383}'},
-    '-textwidth': {
-        'config_entry': 'textwidth',
-        'print_msg': 'Szerokość tekstu do momentu zawinięcia',
-        'comment': '-textwidth {auto|0 <= n < 383}'},
-    '-indent': {
-        'config_entry': 'indent',
-        'print_msg': 'Szerokość wcięć',
-        'comment': '-indent {0 <= n < szerokość okna//2}'},
     '-dupescope': {
         'config_entry': 'dupescope',
         'print_msg': 'Zasięg sprawdzania duplikatów',
@@ -140,6 +133,24 @@ command_data = {
         'config_entry': 'tags',
         'print_msg': 'Tagi dla kart dodawanych poprzez AnkiConnect',
         'comment': '-tags [tagi oddzielone przecinkiem]'},
+
+    '-textwidth': {
+        'config_entry': 'textwidth',
+        'print_msg': 'Szerokość tekstu do momentu zawinięcia',
+        'comment': '-textwidth {auto|0 <= n < 383}'},
+    '-indent': {
+        'config_entry': 'indent',
+        'print_msg': 'Szerokość wcięć',
+        'comment': '-indent {0 <= n < szerokość okna//2}'},
+    '-delimsize': {
+        'config_entry': 'delimsize',
+        'print_msg': 'Szerokość odkreśleń',
+        'comment': '-delimsize {auto|0 <= n < 383}'},
+    '-center': {
+        'config_entry': 'center',
+        'print_msg': 'Wyśrodkowywanie tekstu',
+        'comment': '-center {auto|0 <= n < 383}'},
+
     '--audio-path': {
         'config_entry': 'audio_path',
         'print_msg': 'Ścieżka zapisu audio',
@@ -152,6 +163,12 @@ command_data = {
         'config_entry': 'server',
         'print_msg': 'Preferowany serwer audio',
         'comment': '-server {ahd|diki|lexico}'},
+    '-quality': {
+        'config_entry': 'recording_quality',
+        'print_msg': 'Jakość nagrywania',
+        'comment': '-quality {0 <= n <= 9}\n'
+                   '(0: najlepsza, 9: najgorsza, 4: rekomendowana)'
+    }
 }
 
 bulk_elems = ['def', 'pos', 'etym', 'syn', 'psyn', 'pidiom', 'all']
@@ -260,6 +277,32 @@ prepositions = (
     'with', 'within', 'without'
 )
 
+config_columns = (
+    ('-pz',                  '-showcard',                  'def_bulk'),
+    ('-def',                 '-showdisamb',                'pos_bulk'),
+    ('-pos',                 '-wraptext',                 'etym_bulk'),
+    ('-etym',                '-compact',                   'syn_bulk'),
+    ('-syn',                 '-textwidth',                'psyn_bulk'),
+    ('-psyn',                '-indent',                 'pidiom_bulk'),
+    ('-pidiom',              '-delimsize',                         ''),
+    ('',                     '-center',            '[config filtrów]'),
+    ('-mergedisamb',         '',                                '-fs'),
+    ('-mergeidiom',          '[config ukrywania]',           '-fpsyn'),
+    ('',                     '-upz',                               ''),
+    ('-audio',               '-udef',                '[config audio]'),
+    ('-disamb',              '-udisamb',                    '-server'),
+    ('-savecards',           '-uidiom',                    '-quality'),
+    ('-createcards',         '-upreps',                            ''),
+    ('',                     '',                                   ''),
+    ('[config ankiconnect]', '',                                   ''),
+    ('-ankiconnect',         '',                                   ''),
+    ('-duplicates',          '',                                   ''),
+    ('-dupescope',           '',                                   ''),
+    ('-note',                '',                                   ''),
+    ('-deck',                '',                                   ''),
+    ('-tags',                '',                                   '')
+)
+
 color_data = {
     'colors': {
         'black': Fore.BLACK,
@@ -308,4 +351,9 @@ color_data = {
 bool_colors = {
     True: Fore.LIGHTGREEN_EX,
     False: Fore.LIGHTRED_EX
+}
+
+bool_colors_from_string = {
+    'True': Fore.LIGHTGREEN_EX,
+    'False': Fore.LIGHTRED_EX
 }

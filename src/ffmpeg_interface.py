@@ -56,7 +56,7 @@ def record(filepath: str):
         '-channel_layout', 'stereo',
         '-i', ffmpeg_settings['device'],
         '-acodec', 'libmp3lame',
-        '-q:a', '4',
+        '-q:a', config['recording_quality'],
         filepath
     ], capture_output=True, text=True)
     return result

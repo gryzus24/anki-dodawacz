@@ -171,7 +171,7 @@ def organize_notes(base_fields, corresp_mf_config, print_errors):
     return None
 
 
-def create_card(field_values):
+def create_card(field_values) -> None:
     try:
         corresp_model_fields = {}
         fields_ankiconf = config_ac.get(config['note'])
@@ -238,9 +238,11 @@ def create_card(field_values):
               f'{YEX.color}Talia: {R}{config["deck"]}\n'
               f'{YEX.color}Notatka: {R}{config["note"]}\n'
               f'{YEX.color}Wykorzystane pola:')
-        added_fields = (x for x in corresp_model_fields if corresp_model_fields[x].strip() != '')
-        for afield in added_fields:
-            print(f'- {afield}')
+
+        added_fields = (x for x in corresp_model_fields if corresp_model_fields[x].strip())
+        for added_field in added_fields:
+            print(f'- {added_field}')
+
         if ',' in config['tags']:
             print(f'{YEX.color}Etykiety: {R}{config["tags"]}\n')
         else:
@@ -250,7 +252,7 @@ def create_card(field_values):
         print(f'{err_c.color}Nie udało się połączyć z AnkiConnect\n'
               f'Otwórz Anki i spróbuj ponownie\n')
     except AttributeError:
-        print(f'{err_c.color}Karta nie została dodana, bo plik {R}"ankiconnect.yml"{err_c.color} był pusty\n'
-              f'Zrestartuj program i spróbuj dodać ponownie')
         with open(os.path.join(root_dir, 'config/ankiconnect.yml'), 'w') as ank:
             ank.write('{}')
+        print(f'{err_c.color}Karta nie została dodana, bo plik {R}"ankiconnect.yml"{err_c.color} był pusty\n'
+              f'Zrestartuj program i spróbuj dodać ponownie')

@@ -43,8 +43,8 @@ USER_AGENT = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; rv:78.0) Gecko/201001
 requests_session_ah = requests.Session()
 requests_session_ah.headers.update(USER_AGENT)
 # Globals for main function to modify
-skip_check = 0
-skip_check_disamb = 0
+skip = 0
+skip_wordnet = 0
 phrase = ''
 
 commands = {
@@ -60,6 +60,7 @@ commands = {
     '--audio-path': c.set_audio_path, '-ap': c.set_audio_path,
     '-dupescope': c.set_text_value_commands,
     '-server': c.set_text_value_commands,
+    '-quality': c.set_text_value_commands,
     '--add-note': anki.add_notes,
     '--field-order': c.change_field_order, '-fo': c.change_field_order,
     '-color': c.set_colors, '-c': c.set_colors,
@@ -71,7 +72,7 @@ commands = {
     '--help-bulk': h.bulk_help, '--help-defaults': h.bulk_help,
     '--help-commands': h.commands_help, '--help-command': h.commands_help,
     '--help-recording': h.recording_help,
-    '-config': c.print_config, '-conf': c.print_config,
+    '-config': c.print_config_representation, '-conf': c.print_config_representation,
 }
 
 
@@ -87,7 +88,7 @@ def search_interface() -> list:
                 # to avoid writing all of them in the commands dict above
                 c.boolean_commands(*args)
             # don't forget to change the splice when adding/removing commands
-            elif cmd in tuple(commands)[:24]:
+            elif cmd in tuple(commands)[:25]:
                 commands[cmd](*args)
             else:
                 commands[cmd]()
@@ -438,38 +439,35 @@ def manage_display_parameters(term_width):
 
 
 def ah_dictionary_request(url):
-    global skip_check
-
     try:
         reqs = requests_session_ah.get(url, timeout=10)
         soup = BeautifulSoup(reqs.content, 'lxml', from_encoding='utf-8')
         word_check = soup.find('div', {'id': 'results'})
-        if word_check.text != 'No word definition found':
-            return soup
-        print(f'{err_c.color}Nie znaleziono podanego hasła w AH Dictionary\n{YEX.color}Szukam w idiomach...')
-        skip_check = 1
-        return None
+
+        if word_check.text == 'No word definition found':
+            print(f'{err_c.color}Nie znaleziono podanego hasła w AH Dictionary\n{YEX.color}Szukam w idiomach...')
+            return None
+
+        return soup
     except ConnectionError:
         print(f'{err_c.color}Nie udało się połączyć ze słownikiem, sprawdź swoje połączenie i spróbuj ponownie')
-        skip_check = 1
     except requestsConnectError:
         print(f'{err_c.color}AH Dictionary zerwał połączenie\n'
               f'Zmień słownik lub zrestartuj program i spróbuj ponownie')
-        skip_check = 1
     except Timeout:
         print(f'{err_c.color}AH Dictionary nie odpowiada')
-        skip_check = 1
     except Exception:
         print(f'{err_c.color}Wystąpił nieoczekiwany błąd')
         raise
 
 
 def ah_dictionary(query):
-    global skip_check
+    global skip
 
     full_url = 'https://www.ahdictionary.com/word/search.html?q=' + query
     soup = ah_dictionary_request(full_url)
     if soup is None:
+        skip = 1
         return [], [], [], []
 
     defs = []
@@ -604,7 +602,7 @@ def hide_phrase_in(func):
 
 @hide_phrase_in
 def sentence_input(hide):
-    global skip_check
+    global skip
 
     if not config['add_sentences']:
         return '', 0, hide
@@ -614,7 +612,7 @@ def sentence_input(hide):
         print(f'{GEX.color}Pominięto dodawanie zdania')
         sentence = ''
     if sentence.lower() == '-sc':
-        skip_check = 1
+        skip = 1
         print(f'{GEX.color}Pominięto dodawanie karty')
         sentence = ''
     return sentence, 0, hide
@@ -691,7 +689,8 @@ def use_bulk_values(bulk_value, content_list_len):
 
 @hide_phrase_in
 def input_func(prompt_msg, add_element, bulk, content_list, hide=None, connector='<br>'):
-    global skip_check
+    global skip
+
     params = (content_list, connector)
     bulk_value = config[bulk]
 
@@ -723,7 +722,7 @@ def input_func(prompt_msg, add_element, bulk, content_list, hide=None, connector
         chosen_cont = multi_choice(mchoice, content_list, connector)
         choice = mchoice[0] if mchoice else 0
     else:
-        skip_check = 1
+        skip = 1
         print(f'{GEX.color}Pominięto dodawanie karty')
         return '', 0, None
 
@@ -759,9 +758,53 @@ def single_choice(choice, content_list, connector):
         return ''
 
 
-def wordnet(syn_soup):
+def wordnet_request(url):
+    try:
+        # WordNet doesn't load faster when using requests.Session(),
+        # probably my implementation is wrong
+        # though it might be headers like keep-alive or cookies, I don't know
+        reqs_syn = requests.get(url, headers=USER_AGENT, timeout=10)
+        syn_soup = BeautifulSoup(reqs_syn.content, 'lxml', from_encoding='iso-8859-1')
+        header = syn_soup.find('h3').text
+
+        if header.startswith('Your') or header.startswith('Sorry'):
+            print(f'{err_c.color}Nie znaleziono {phrase_c.color}{phrase}{err_c.color} na {R}WordNecie')
+            return None
+
+        return syn_soup
+    except ConnectionError:
+        print(f'{err_c.color}Nie udało się połączyć z WordNetem, sprawdź swoje połączenie i spróbuj ponownie')
+    except Timeout:
+        print(f'{err_c.color}WordNet nie odpowiada, spróbuj nawiązać połączenie później')
+    except requestsConnectError:
+        print(f'{err_c.color}WordNet zerwał połączenie\n'
+              f'zmień słownik lub zrestartuj program i spróbuj ponownie')
+    except Exception:
+        print(f'{err_c.color}Wystąpił nieoczekiwany błąd podczas wyświetlania WordNeta\n')
+        raise
+
+
+def wordnet(query):
+    global skip_wordnet
+
+    if not config['add_disambiguation']:
+        # without skipping
+        return [], []
+
+    full_url = 'http://wordnetweb.princeton.edu/perl/webwn?s=' + query
+    syn_soup = wordnet_request(full_url)
+    if syn_soup is None:
+        skip_wordnet = 1
+        return [], []
+
     gsyn = []
     gpsyn = []
+
+    if config['showdisamb']:
+        print(f'{delimit_c.color}{get_conf_of("delimsize") * "-"}')
+        print(f'{BOLD}{"WordNet".center(get_conf_of("center"))}{END}')
+        if not config['compact']:
+            print()
 
     syn_elems = syn_soup.find_all('li')
     for index, ele in enumerate(syn_elems, start=1):
@@ -774,6 +817,9 @@ def wordnet(syn_soup):
             # phrase[:-1] is the most accurate filter as it caters to almost
             # all exceptions while having rather low false-positive ratio
             psyn = '; '.join([x for x in psyn.split('; ') if phrase[:-1].lower() in x.lower()])
+
+        gpsyn.append(psyn)
+        gsyn.append(syn)
 
         if config['showdisamb']:
             syn_tp = wrap_lines(syn, get_conf_of('textwidth'), len(str(index)),
@@ -790,77 +836,29 @@ def wordnet(syn_soup):
             if not config['compact']:
                 print()
 
-        gpsyn.append(psyn)
-        gsyn.append(syn)
     return gsyn, gpsyn
 
 
-def wordnet_request(query):
-    global skip_check_disamb
-
-    if not config['add_disambiguation']:
-        skip_check_disamb = 1
-        return [], []
-
-    full_url = 'http://wordnetweb.princeton.edu/perl/webwn?s=' + query
-    try:
-        # WordNet doesn't load faster when using requests.Session(),
-        # probably my implementation is wrong
-        # though it might be headers like keep-alive or cookies, I don't know
-        reqs_syn = requests.get(full_url, headers=USER_AGENT, timeout=10)
-        syn_soup = BeautifulSoup(reqs_syn.content, 'lxml', from_encoding='iso-8859-1')
-        no_word = syn_soup.find('h3').text
-        if no_word.startswith('Your') or no_word.startswith('Sorry'):
-            print(f'{err_c.color}\nNie znaleziono {phrase_c.color}{phrase}{err_c.color} na {R}WordNecie')
-            skip_check_disamb = 1
-            return [], []
-
-        if config['showdisamb']:
-            print(f'{delimit_c.color}{get_conf_of("delimsize") * "-"}')
-            print(f'{BOLD}{"WordNet".center(get_conf_of("center"))}{END}')
-            if not config['compact']:
-                print()
-
-        return wordnet(syn_soup)
-    except ConnectionError:
-        print(f'{err_c.color}Nie udało się połączyć z WordNetem, sprawdź swoje połączenie i spróbuj ponownie')
-        skip_check_disamb = 1
-    except Timeout:
-        print(f'{err_c.color}WordNet nie odpowiada, spróbuj nawiązać połączenie później')
-        skip_check_disamb = 1
-    except requestsConnectError:
-        print(f'{err_c.color}WordNet zerwał połączenie\n'
-              f'zmień słownik lub zrestartuj program i spróbuj ponownie')
-        skip_check_disamb = 1
-    except Exception:
-        print(f'{err_c.color}Wystąpił nieoczekiwany błąd podczas wyświetlania WordNeta\n')
-        raise
-
-
 def farlex_idioms_request(url):
-    global skip_check
-
     try:
         reqs_idioms = requests.get(url, headers=USER_AGENT, timeout=10)
         soup = BeautifulSoup(reqs_idioms.content, 'lxml', from_encoding='utf-8')
         relevant_content = soup.find('section', {'data-src': 'FarlexIdi'})
+
         if relevant_content is None:
             print(f'{err_c.color}Nie znaleziono podanego hasła w Farlex Idioms')
-            skip_check = 1
             return None
+
         return relevant_content
     except ConnectionError:
         print(f'{err_c.color}Nie udało się połączyć ze słownikiem idiomów\n'
               f'sprawdź swoje połączenie i spróbuj ponownie')
-        skip_check = 1
     except Timeout:
         print(f'{err_c.color}Słownik idiomów nie odpowiada\n'
               f'spróbuj nawiązać połączenie później')
-        skip_check = 1
     except requestsConnectError:
         print(f'{err_c.color}Farlex zerwał połączenie\n'
               f'zmień słownik lub zrestartuj program i spróbuj ponownie')
-        skip_check = 1
     except Exception:
         print(f'{err_c.color}Wystąpił nieoczekiwany błąd podczas wyświetlania słownika idiomów\n')
         raise
@@ -868,10 +866,12 @@ def farlex_idioms_request(url):
 
 def farlex_idioms(query):
     global phrase
+    global skip
 
     full_url = 'https://idioms.thefreedictionary.com/' + query
     relevant_content = farlex_idioms_request(full_url)
     if relevant_content is None:
+        skip = 1
         return [], [], []
 
     defs = []
@@ -940,8 +940,6 @@ def display_card(field_values):
 
         for field_number, field_name in conf_fo:
             for fi in wrap_lines(field_values[field_name], *options).split('\n'):
-                if field_name == 'sentence_audio' and not fi:  # don't display empty sentence_audio field
-                    continue
                 print(f'{color_of[field_name]}{fi.center(centr)}')
             # d = delimitation
             if field_number == config['fieldorder_d']:
@@ -951,7 +949,7 @@ def display_card(field_values):
     except (NameError, KeyError):
         print(f'{err_c.color}\nDodawanie karty do pliku nie powiodło się\n'
               f'Spróbuj przywrócić domyślne ustawienia pól wpisując {R}-fo default\n')
-        return 1  # skip_check
+        return 1  # skip
 
 
 def save_card_to_file(field_vals):
@@ -977,7 +975,7 @@ def save_card_to_file(field_vals):
 
 
 def manage_dictionaries(_phrase, flags):
-    global skip_check
+    global skip
 
     poses = []
     etyms = []
@@ -987,32 +985,32 @@ def manage_dictionaries(_phrase, flags):
         _dict = 'farlex'
     else:
         defs, poses, etyms, phrase_list = ah_dictionary(_phrase)
-        _dict = 'ahd'
-        if skip_check == 1:
-            skip_check = 0
+        if not skip:
+            _dict = 'ahd'
+        else:
+            skip = 0
             defs, illusts, phrase_list = farlex_idioms(_phrase)
             _dict = 'farlex'
+
     return _dict, defs, poses, etyms, phrase_list, illusts
 
 
 def main():
     global phrase
-    global skip_check
-    global skip_check_disamb
+    global skip
+    global skip_wordnet
 
     if not os.path.exists('Karty_audio') and config['audio_path'] == 'Karty_audio':
         os.mkdir('Karty_audio')
 
-    __version__ = 'v0.8.0-1'
+    __version__ = 'v0.8.0-2'
     print(f'{BOLD}- Dodawacz kart do Anki {__version__} -{END}\n'
           f'Wpisz "--help", aby wyświetlić pomoc\n\n')
 
     while True:
-        skip_check = 0
-        skip_check_disamb = 0
+        skip = 0
+        skip_wordnet = 0
         phrase = ''
-        synonimy = ''
-        przyklady = ''
 
         link_word = search_interface()
         phrase = link_word[0]
@@ -1027,87 +1025,102 @@ def main():
         else:
             sentence_audio = ''
 
-        dictionary, definicja, czesci_mowy, etymologia, phrase_list, ilustracje = \
+        dictionary, definitions, parts_of_speech, etymologies, phrase_list, illustrations = \
             manage_dictionaries(phrase, flags)
-        if skip_check == 1:
+        if skip:
             continue
 
         if not config['create_card']:
-            wordnet_request(phrase)
+            wordnet(phrase)
             continue
 
         # input loop
         zdanie, _ = sentence_input('hide_sentence_word')
-        if skip_check == 1:
+        if skip:
             continue
-        definicja, choice = input_func('Wybierz definicje', 'add_definitions', 'def_bulk', definicja,
-                                       'hide_definition_word')
-        if skip_check == 1:
-            continue
-        phrase = pick_phrase(choice, phrase_list)
 
+        # temporarily set phrase to the first element from the phrase_list
+        # to always hide the correct query before input, e.g. preferred -> prefer
+        phrase = phrase_list[0]
+        definitions, choice = input_func(
+            'Wybierz definicje', 'add_definitions', 'def_bulk', definitions, 'hide_definition_word')
+        if skip:
+            continue
+
+        phrase = pick_phrase(choice, phrase_list)
         if dictionary == 'ahd':
-            czesci_mowy, _ = input_func('Wybierz części mowy', 'add_parts_of_speech', 'pos_bulk', czesci_mowy,
-                                        connector=' | ')
-            if skip_check == 1:
+            parts_of_speech, _ = input_func(
+                'Wybierz części mowy', 'add_parts_of_speech', 'pos_bulk', parts_of_speech, connector=' | ')
+            if skip:
                 continue
-            etymologia, _ = input_func('Wybierz etymologie', 'add_etymologies', 'etym_bulk', etymologia)
-            if skip_check == 1:
+
+            etymologies, _ = input_func(
+                'Wybierz etymologie', 'add_etymologies', 'etym_bulk', etymologies)
+            if skip:
                 continue
+
             audio = search_for_audio(config['server'], phrase, flags)
-            grupa_synonimow, grupa_przykladow = wordnet_request(phrase)
-            if skip_check_disamb == 0:
-                synonimy, _ = input_func('Wybierz synonimy', 'add_synonyms', 'syn_bulk', grupa_synonimow,
-                                         'hide_disamb_word', connector=' | ')
-                if skip_check == 1:
+
+            synonyms_list, examples_list = wordnet(phrase)
+            if skip_wordnet:
+                synonyms = ''
+                examples = ''
+            else:
+                synonyms, _ = input_func(
+                    'Wybierz synonimy', 'add_synonyms', 'syn_bulk', synonyms_list, 'hide_disamb_word', connector=' | ')
+                if skip:
                     continue
-                przyklady, _ = input_func('Wybierz przykłady', 'add_synonym_examples', 'psyn_bulk',
-                                          grupa_przykladow,
-                                          'hide_disamb_word')
-                if skip_check == 1:
+
+                examples, _ = input_func(
+                    'Wybierz przykłady', 'add_synonym_examples', 'psyn_bulk', examples_list, 'hide_disamb_word')
+                if skip:
                     continue
-            if config['merge_disambiguation']:
-                if synonimy == '' or przyklady == '':
-                    brk = ''
-                else:
-                    brk = '<br>'
-                synonimy = synonimy + brk + przyklady
-                przyklady = ''
+
+                if config['merge_disambiguation']:
+                    if not synonyms or not examples:
+                        brk = ''
+                    else:
+                        brk = '<br>'
+                    synonyms = synonyms + brk + examples
+                    examples = ''
         else:
-            czesci_mowy = ''
-            etymologia = ''
-            przyklady, _ = input_func('Wybierz przykłady', 'add_idiom_examples', 'pidiom_bulk', ilustracje,
-                                      'hide_idiom_word')
-            if skip_check == 1:
+            parts_of_speech = ''
+            etymologies = ''
+            synonyms = ''
+            examples, _ = input_func(
+                'Wybierz przykłady', 'add_idiom_examples', 'pidiom_bulk', illustrations, 'hide_idiom_word')
+            if skip:
                 continue
+
             audio = search_for_audio('diki', phrase, flags)
             if config['merge_idioms']:
-                if definicja == '' or przyklady == '':
+                if not definitions or not examples:
                     brk = ''
                 else:
                     brk = '<br><br>'
-                definicja = definicja + brk + przyklady
-                przyklady = ''
+                definitions = definitions + brk + examples
+                examples = ''
 
         field_values = {
-            'definicja': definicja, 'synonimy': synonimy, 'przyklady': przyklady, 'phrase': phrase,
-            'zdanie': zdanie, 'czesci_mowy': czesci_mowy, 'etymologia': etymologia, 'audio': audio,
+            'definicja': definitions, 'synonimy': synonyms, 'przyklady': examples, 'phrase': phrase,
+            'zdanie': zdanie, 'czesci_mowy': parts_of_speech, 'etymologia': etymologies, 'audio': audio,
             'sentence_audio': sentence_audio}
 
         if config['showcard']:
-            skip_check = display_card(field_values)
-            if skip_check == 1:
+            skip = display_card(field_values)
+            if skip:
                 continue
         print()
 
         if config['ankiconnect']:
             anki.create_card(field_values)
-        save_card_to_file(field_values)
+        if config['save_card']:
+            save_card_to_file(field_values)
 
 
 if __name__ == '__main__':
     try:
-        main()
+        raise SystemExit(main())
     except KeyboardInterrupt:
         # R so that the color from "inputtext" isn't displayed
-        print(f'{R}\nZakończono')
+        print(f'{R}\nUnicestwiony')

@@ -88,7 +88,7 @@ Wpisanie "-h" albo "--help" po komendzie
 -mergeidiom    dołączanie przykładów synonimów do pola "definicja"
 
 -audio         dodawanie audio
--disamb        pozyskiwanie synonimów
+-disamb        pozyskiwanie synonimów i przykładów z WordNeta
 -cards         dodawanie kart
 
 -ap, --audio-path {{auto|ścieżka}}   ścieżka zapisu plików audio
@@ -115,8 +115,8 @@ Ukrywanie hasła to zamiana wyszukiwanego słowa na "..."
 -uidiom        ukrywanie hasła w idiomach
 -upreps        ukrywanie przyimków
 -showcard      pokazywanie przykładowego wyglądu karty
--showdisamb    pokazywanie słownika synonimów
-               (przydatne do ograniczenia przewijania podczas bulk)
+-showdisamb    wyświetlanie słownika synonimów (WordNet)
+               (przydatne do ograniczenia przewijania podczas dodawania bulk)
 
 -wraptext      zawijanie tekstu
 -compact       kompaktowe wyświetlanie słowników
@@ -126,8 +126,9 @@ Ukrywanie hasła to zamiana wyszukiwanego słowa na "..."
 -delimsize {{wartość|auto}}   szerokość odkreśleń
 -center {{wartość|auto}}      wyśrodkowywanie nagłówków i podglądu karty
 
---delete-last [n >= 1]      usuwa ostatnio dodaną kartę z pliku karty.txt
---delete-recent [n >= 1]    lub sprecyzowaną ilość kart
+--delete-recent [n >= 1]
+--delete-last [n >= 1]      usuwa ostatnią dodaną kartę z pliku karty.txt
+                            lub sprecyzowaną ilość kart
 
 -c, -color                  wyświetla dostępne kolory
 -c -h                       wyświetla konfigurację kolorów
@@ -137,9 +138,8 @@ Ukrywanie hasła to zamiana wyszukiwanego słowa na "..."
 --help-defaults             wyświetla informacje o masowym dodawaniu
 --help-commands             wyświetla informacje o komendach
 
--cd, -cb
---config-bulk
---config-defaults           rozpoczyna konfigurację defaults/bulk
+-cb, --config-bulk
+-cd, --config-defaults      rozpoczyna konfigurację defaults/bulk
 -cd {{element}} {{wartość}}     zmienia wartość elementu
                             wartością może być dwuwartościowy przedział
                             np. 1:4
@@ -147,10 +147,9 @@ Ukrywanie hasła to zamiana wyszukiwanego słowa na "..."
 -conf
 -config                     wyświetla informacje o aktualnej konfiguracji
 
--fo
---field-order               zmiana kolejności dodawanych pól dla karty.txt
+-fo, --field-order          zmiana kolejności dodawanych pól dla karty.txt
 -fo default                 przywraca domyślną kolejność pól
--fo {{1-9}} {{pole}}            zmienia pole znajdujące się pod podanym numerem na 
+-fo {{1-9}} {{pole}}            zmienia pole znajdujące się pod podanym numerem na
                             wskazane pole
 -fo d {{1-9}}                 przesuwa odkreślenie (delimitation)
                             pod pole z podanym numerem
@@ -180,9 +179,7 @@ np. -fo d 5                 przesunie odkreślenie pod pole "zdanie" (5)
 -server {{nazwa serwera}}     określa serwer z którego pozyskiwane jest audio dla
                             haseł wyszukiwanych w AHDictionary
 
--device, --audio-device     ustawia urządzenie wykorzystywane do nagrywania
-                            audio
-
+-device, --audio-device     konfiguracja urządzeń do nagrywania audio
 -rec, --record              rozpoczyna nagrywanie z wykorzystaniem wybranego
                             urządzenia audio
                             (zapisuje nagranie, ale nie dodaje audio na kartę)
@@ -191,6 +188,11 @@ np. -fo d 5                 przesunie odkreślenie pod pole "zdanie" (5)
                             wyjściowego [hasło], po zakończeniu nagrywania
                             wyszukuje [hasło] w słowniku i dodaje audio
                             na kartę
+
+-quality {{0 <= n <= 9}}      jakość nagrywania:
+                             0 - najlepsza
+                             9 - najgorsza
+                             4 - rekomendowana
 
 Aby doprecyzować dodawanie audio możemy postawić flagę
 flaga jest stawiana po wyszukiwanej frazie

@@ -15,7 +15,6 @@
 
 import os
 import sys
-from itertools import zip_longest
 
 import yaml
 
@@ -24,7 +23,7 @@ from src.colors import R, BOLD, END, YEX, GEX, \
     def1_c, def2_c, pos_c, etym_c, syn_c, psyn_c, \
     pidiom_c, syngloss_c, synpos_c, index_c, phrase_c, \
     phon_c, poslabel_c, err_c, delimit_c, input_c, inputtext_c
-from src.data import root_dir, config
+from src.data import root_dir, config, command_data, bool_colors_from_string
 
 
 def save_commands(entry, value):
@@ -211,56 +210,52 @@ def config_bulk(*args):
         save_commands(entry=f'{bulk_elem}_bulk', value=value)
 
 
-def print_config():
-    column1 = list(data.command_data)[:13]
-    column1.insert(8, '')
-    column1.insert(11, '')
-    # from [14] to avoid '-all'
-    column2 = list(data.command_data)[14:34]
-    # so that -ankiconnect and -duplicates are placed below [config ankiconnect]
-    column2[10], column2[14] = column2[14], column2[10]
-    column2[11], column2[15] = column2[15], column2[11]
-    column2.insert(14, '')
-    column2.insert(15, f'{BOLD}[config ankiconnect]{END}')
+def print_config_representation():
+    print(f'\n{R}{BOLD}[config dodawania]     [config wyświetlania]     [defaults/bulk]{END}')
+    for a, b, c in data.config_columns:
+        a = a.replace('[', f'{BOLD}[').replace(']', f']{END}')
+        b = b.replace('[', f'{BOLD}[').replace(']', f']{END}')
+        c = c.replace('[', f'{BOLD}[').replace(']', f']{END}')
 
-    column3 = data.bulk_elems[:-1]
-    column3.append(list(data.command_data)[-1])
-    column3.insert(6, '')
-    column3.insert(7, f'{BOLD}[config audio]{END}')
+        try:
+            state_a = str(config[command_data[a]['config_entry']])
+        except KeyError:
+            state_a = ''
 
-    print(f'\n{R}{BOLD}[config dodawania]     [config miscellaneous]     [defaults/bulk]{END}')
-    for first_cmd, second_cmd, third_cmd in zip_longest(column1, column2, column3, fillvalue=''):
-        # First column
         try:
-            config_val1 = config[data.command_data[first_cmd]['config_entry']]
+            state_b = '  ' + str(config[command_data[b]['config_entry']])
+            if '*' in state_b or '[ config ukrywania ]' in state_b:
+                state_b = state_b.strip()
         except KeyError:
-            config_val1 = ''
-        try:
-            cmd_color = data.bool_colors[config_val1]
-        except KeyError:
-            cmd_color = ''
-        # Second column
-        try:
-            config_val2 = '  ' + str(config[data.command_data[second_cmd]['config_entry']])
-        except KeyError:
-            config_val2 = ''
-        try:
-            cmd_color_misc = data.bool_colors[config[data.command_data[second_cmd]['config_entry']]]
-        except KeyError:
-            cmd_color_misc = ''
-        if '*' in config_val2:
-            config_val2 = config_val2.lstrip()
-        # Third column
-        blk_conf = config.get(third_cmd.lstrip('-'), config.get(f'{third_cmd}_bulk', ''))
-        if str(blk_conf).isnumeric():  # So that negative values are left-aligned
-            blk_conf = ' ' + str(blk_conf)
+            state_b = ''
 
-        print(f'{first_cmd:13s}{cmd_color}{str(config_val1):10s}{R}'
-              f'{second_cmd:14s}{cmd_color_misc}{config_val2:13s}{R}'
-              f'{third_cmd:10s}{blk_conf}')
+        if '_bulk' in c:
+            state_c = ' ' + str(config[c])
+            if '-' in state_c:
+                state_c = state_c.strip()
+            c = c[:-5]
+        else:
+            try:
+                state_c = str(config[command_data[c]['config_entry']])
+            except KeyError:
+                state_c = ''
 
-    print(f'\n--audio-path: {config.get("audio_path", "")}\n'
-          f'--audio-device: {config.get("audio_device", "")}\n\n'
+        color_a = bool_colors_from_string.get(state_a, '')
+        color_b = bool_colors_from_string.get(state_b.strip(), '')
+        color_c = bool_colors_from_string.get(state_c, '')
+
+        # to mitigate the gap between the header and the command
+        if '[' in b:
+            level_b = 6 * '\b'
+        else:
+            level_b = ''
+
+        print(f'{a:13s}{color_a}{state_a:10s}{R}'
+              f'{b:12s}{color_b}{state_b:14s}{level_b}{R}'
+              f'{c:11s}{color_c}{state_c}{R}')
+
+    print(f'\n--audio-path: {config["audio_path"]}\n'
+          f'--audio-device: {config["audio_device"]}\n\n'
           'konfiguracja kolorów: "-c -h"\n'
           'konfiguracja pól: "-fo -h"\n')
 
@@ -484,7 +479,8 @@ def set_text_value_commands(*args):
     cmd = args[0]
     msg = data.command_data[cmd]["print_msg"]
     value_set = {'-dupescope': ('deck', 'collection'),
-                 '-server': ('ahd', 'diki', 'lexico')}
+                 '-server': ('ahd', 'diki', 'lexico'),
+                 '-quality': ('0', '1', '2', '3', '4', '5', '6', '7', '8', '9')}
     try:
         val = args[1].lower()
         if val in ('-h', '--help'):
@@ -496,7 +492,7 @@ def set_text_value_commands(*args):
 
     if val in value_set[cmd]:
         print(f'{R}{msg}: {val}')
-        save_commands(entry=cmd.lstrip('-'), value=val)
+        save_commands(entry=data.command_data[cmd]['config_entry'], value=val)
     else:
         print(f'{err_c.color}Nieprawidłowa wartość\n'
               f'{R}{data.command_data[cmd]["comment"]}')
@@ -565,11 +561,13 @@ def boolean_commands(*args):
 
 def show_available_colors():
     print(f'{R}{BOLD}Dostępne kolory to:{END}')
-    for index, color in enumerate(data.color_data['colors'], start=1):
+    for color in data.color_data['colors']:
+        if color == 'reset':
+            print(f'{data.color_data["colors"][color]}{color}\n')
+            break
         print(f'{data.color_data["colors"][color]}{color}', end=', ')
-        if index == 4 or index == 8 or index == 12 or index == 16:
+        if color in ('yellow', 'white', 'lightyellow', 'lightwhite'):
             print()
-    print('\n')
 
 
 def color_command():
