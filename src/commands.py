@@ -20,7 +20,7 @@ import yaml
 
 import src.data as data
 from src.colors import R, BOLD, END, YEX, GEX, \
-    def1_c, def2_c, pos_c, etym_c, syn_c, psyn_c, \
+    def1_c, def2_c, defsign_c, pos_c, etym_c, syn_c, psyn_c, \
     pidiom_c, syngloss_c, synpos_c, index_c, phrase_c, \
     phon_c, poslabel_c, err_c, delimit_c, input_c, inputtext_c
 from src.data import root_dir, config, command_data, bool_colors_from_string
@@ -92,14 +92,29 @@ def delete_cards(*args):
         print(f'{R}Karta {card_numb}: "{dl[:66-len(str(card_numb))]}..."')
 
 
-def config_bulk(*args):
-    def manage_range(rval):
-        two_values = rval.split(':', 1)
+def config_bulk(*args) -> None:
+    bulk_elements = ('def', 'pos', 'etym', 'syn', 'psyn', 'pidiom', 'all')
+    input_messages = (
+        'Wartość dla definicji', 'Wartość dla części mowy',
+        'Wartość dla etymologii', 'Wartość dla synonimów',
+        'Wartość dla przykładów synonimów', 'Wartość dla przykładów idiomów'
+    )
+    values_to_save = []
+
+    def save_all_values(text_output=False) -> None:
+        for elem, val, msg in zip(bulk_elements, values_to_save, input_messages):
+            save_commands(entry=f'{elem}_bulk', value=val)
+            if text_output:
+                print(f'{R}{msg}: {val}')
+        print(f'{GEX.color}Wartości domyślne zapisane pomyślnie\n')
+
+    def verify_range() -> str:
+        two_values = value.split(':', 1)
         # check for ValueError
         val1 = int(two_values[0])
         val2 = int(two_values[1])
         if val1 == 0 and val2 == 0:
-            return 0
+            return '0'
         # check ranges for each value
         for val in (val1, val2):
             if not 1 <= val < 1000:
@@ -108,36 +123,25 @@ def config_bulk(*args):
 
         if val1 == val2:
             print(f'{YEX.color}Ustawiono: {R}{val1}')
-            return val1
+            return str(val1)
         return f'{val1}:{val2}'
 
-    def save_all_values(val_list, belem):
-        for elem, value_ts, input_mesg in zip(data.bulk_elems, val_list, input_list):
-            if belem == 'all':
-                print(f'{R}{input_mesg}: {value_ts}')
-            save_commands(entry=f'{elem}_bulk', value=value_ts)
-        print(f'{GEX.color}Wartości domyślne zapisane pomyślnie\n')
-
     cmd = args[0]
-    input_list = ('Wartość dla definicji', 'Wartość dla części mowy',
-                  'Wartość dla etymologii', 'Wartość dla synonimów',
-                  'Wartość dla przykładów synonimów', 'Wartość dla przykładów idiomów')
     try:
         bulk_elem = args[1].lower()
     except IndexError:  # no arguments
-        values_to_save = []
         print(f'{R}{BOLD}Konfiguracja bulk{END}\n'
               f'Pojedyncze wartości:\n'
               f'-1 <= wartość < 1000\n\n'
               f'Przedziały:\n'
               f'1 <= wartość < 1000\n')
         try:
-            for input_msg in input_list:
+            for input_msg in input_messages:
                 # replace ';' with ':' to prevent annoying typos
                 # especially here, because one typo and configuration terminates
                 value = input(f'{input_c.color}{input_msg}:{inputtext_c.color} ').replace(';', ':')
                 if ':' in value and '-' not in value:
-                    range_val = manage_range(value)
+                    range_val = verify_range()
                     values_to_save.append(range_val)
                 elif -1 <= int(value) < 1000:
                     values_to_save.append(int(value))
@@ -149,7 +153,7 @@ def config_bulk(*args):
             print(f'{YEX.color}Opuszczam konfigurację\nWprowadzone zmiany nie zostaną zapisane')
             return None
 
-        save_all_values(values_to_save, belem='')
+        save_all_values()
         return None
 
     if bulk_elem in ('-h', '--help'):
@@ -166,7 +170,7 @@ def config_bulk(*args):
               f'1 <= wartość < 1000\n')
         return None
 
-    if bulk_elem not in data.bulk_elems:
+    if bulk_elem not in bulk_elements:
         print(f'{err_c.color}Nie znaleziono elementu\n'
               f'{R}{BOLD}Elementy:{END}\n'
               f'def, pos, etym, syn, psyn, pidiom, all\n')
@@ -183,8 +187,8 @@ def config_bulk(*args):
 
     if ':' in value:
         try:
-            value = manage_range(value)
-        # manage_range raises its own ValueError that complements this error message
+            value = verify_range()
+        # verify_range raises its own ValueError that complements this error message
         except ValueError:
             print(f'{err_c.color}Dozwolone wartości dla przedziałów: {R}1 <= wartość < 1000')
             if bulk_elem != 'all':
@@ -192,8 +196,7 @@ def config_bulk(*args):
             return None
     else:
         try:
-            value = int(value)
-            if not -1 <= value < 1000:
+            if not -1 <= int(value) < 1000:
                 raise ValueError
         except ValueError:
             print(f'{err_c.color}Nieobsługiwana wartość\n'
@@ -204,13 +207,13 @@ def config_bulk(*args):
 
     if bulk_elem == 'all':
         values_to_save = [value] * 6
-        save_all_values(val_list=values_to_save, belem=bulk_elem)
+        save_all_values(text_output=True)
     else:
         print(f"{YEX.color}Domyślna wartość dla {R}{bulk_elem}{YEX.color}: {R}{value}")
         save_commands(entry=f'{bulk_elem}_bulk', value=value)
 
 
-def print_config_representation():
+def print_config_representation() -> None:
     print(f'\n{R}{BOLD}[config dodawania]     [config wyświetlania]     [defaults/bulk]{END}')
     for a, b, c in data.config_columns:
         a = a.replace('[', f'{BOLD}[').replace(']', f']{END}')
@@ -244,14 +247,8 @@ def print_config_representation():
         color_b = bool_colors_from_string.get(state_b.strip(), '')
         color_c = bool_colors_from_string.get(state_c, '')
 
-        # to mitigate the gap between the header and the command
-        if '[' in b:
-            level_b = 6 * '\b'
-        else:
-            level_b = ''
-
         print(f'{a:13s}{color_a}{state_a:10s}{R}'
-              f'{b:12s}{color_b}{state_b:14s}{level_b}{R}'
+              f'{b:12s}{color_b}{state_b:14s}{R}'
               f'{c:11s}{color_c}{state_c}{R}')
 
     print(f'\n--audio-path: {config["audio_path"]}\n'
@@ -286,7 +283,8 @@ def set_width_settings(*args):
         if value == 'auto' and not command == '-indent':
             msg = data.command_data[command]["print_msg"]
             print(f'{R}{msg}: {GEX.color}{value}')
-            return save_commands(entry=command.strip('-'), value=f'{term_width}* auto')
+            save_commands(entry=command.strip('-'), value=f'{term_width}* auto')
+            return None
 
     # the width of a monospaced 12 font on 4k resolution
     max_val = 382
@@ -579,6 +577,7 @@ np. "-color syn lightblue", "-c pos magenta" itd.
 {BOLD}[Elementy]    [Zmiana koloru]{END}
 def1          {def1_c.color}nieparzystych definicji i definicji idiomów{R}
 def2          {def2_c.color}parzystych definicji{R}
+defsign       {defsign_c.color}znaku głównej definicji (>){R}
 pos           {pos_c.color}części mowy w słowniku{R}
 etym          {etym_c.color}etymologii w słowniku{R}
 syn           {syn_c.color}synonimów na WordNecie{R}

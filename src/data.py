@@ -74,9 +74,9 @@ command_data = {
         'config_entry': 'all',  # dummy
         'print_msg': 'Wszystkie pola'},
 
-    '-fs': {
-        'config_entry': 'filtered_dictionary',
-        'print_msg': 'Filtrowanie słowników'},
+    '-fahd': {
+        'config_entry': 'ahd_filter',
+        'print_msg': 'Filtrowanie poddefinicji w AHD'},
     '-fpsyn': {
         'config_entry': 'psyn_filter',
         'print_msg': 'Filtrowanie przykładów synonimów niezawierających szukanego hasła'},
@@ -97,25 +97,28 @@ command_data = {
         'config_entry': 'hide_prepositions',
         'print_msg': 'Ukrywanie przyimków'},
 
-    '-showcard': {
-        'config_entry': 'showcard',
+    '-displaycard': {
+        'config_entry': 'displaycard',
         'print_msg': 'Podgląd karty'},
     '-showdisamb': {
         'config_entry': 'showdisamb',
-        'print_msg': 'Wyświetlanie słownika synonimów (WordNet)'},
+        'print_msg': 'Pokazywanie słownika synonimów (WordNet)'},
+    '-showadded': {
+        'config_entry': 'showadded',
+        'print_msg': 'Pokazywanie dodawanych elementów'},
     '-wraptext': {
         'config_entry': 'wraptext',
         'print_msg': 'Zawijanie tekstu'},
-    '-compact': {
-        'config_entry': 'compact',
-        'print_msg': 'Kompaktowe wyświetlanie słowników'},
+    '-justify': {
+        'config_entry': 'text_justification',
+        'print_msg': 'Justowanie tekstu'},
 
     '-ankiconnect': {
         'config_entry': 'ankiconnect',
         'print_msg': 'Dodawanie kart poprzez AnkiConnect'},
     '-duplicates': {
         'config_entry': 'duplicates',
-        'print_msg': 'Dodawanie duplikatów poprzez AnkiConnect'},
+        'print_msg': 'Dodawanie duplikatów poprzez AnkiConnect'},  # 28
     # end of boolean commands
     '-dupescope': {
         'config_entry': 'dupescope',
@@ -171,12 +174,72 @@ command_data = {
     }
 }
 
-bulk_elems = ['def', 'pos', 'etym', 'syn', 'psyn', 'pidiom', 'all']
-
+input_configuration = {
+    'ahd_definitions': {
+        'prompt': 'Wybierz definicje',
+        'add_field': command_data['-def']['config_entry'],
+        'bulk_element': 'def_bulk',
+        'hide': command_data['-udef']['config_entry'],
+        'connector': '<br>',
+        'spec_split': ':'
+    },
+    'parts_of_speech': {
+        'prompt': 'Wybierz części mowy',
+        'add_field': command_data['-pos']['config_entry'],
+        'bulk_element': 'pos_bulk',
+        'hide': False,
+        'connector': ' | ',
+        'spec_split': ' '
+        },
+    'etymologies': {
+        'prompt': 'Wybierz etymologie',
+        'add_field': command_data['-etym']['config_entry'],
+        'bulk_element': 'etym_bulk',
+        'hide': False,
+        'connector': '<br>',
+        'spec_split': ','
+    },
+    'wordnet_synonyms': {
+        'prompt': 'Wybierz synonimy',
+        'add_field': command_data['-syn']['config_entry'],
+        'bulk_element': 'syn_bulk',
+        'hide': command_data['-udisamb']['config_entry'],
+        'connector': ' | ',
+        'spec_split': ','
+    },
+    'wordnet_synonym_examples': {
+        'prompt': 'Wybierz przykłady',
+        'add_field': command_data['-psyn']['config_entry'],
+        'bulk_element': 'psyn_bulk',
+        'hide': command_data['-udisamb']['config_entry'],
+        'connector': '<br>',
+        'spec_split': ';'
+    },
+    'farlex_idioms': {
+        'prompt': 'Wybierz definicje',
+        'add_field': command_data['-pidiom']['config_entry'],
+        'bulk_element': 'pidiom_bulk',
+        'hide': command_data['-uidiom']['config_entry'],
+        'connector': '<br>',
+        'spec_split': '.'
+    },
+    'idiom_examples': {
+        'prompt': 'Wybierz przykłady',
+        'add_field': command_data['-pidiom']['config_entry'],
+        'bulk_element': 'pidiom_bulk',
+        'hide': command_data['-uidiom']['config_entry'],
+        'connector': '<br>',
+        'spec_split': '.'
+    }
+}
 boolean_values = {
-    'on': True, 'off': False, 'true': True, 'false': False,
-    'yin': True, 'yang': False, 'tak': True, 'nie': False, 'yes': True, 'no': False,
-    'yay': True, 'nay': False, 'y': True, 't': True, 'n': False,
+    'on': True, 'off': False,
+    'true': True, 'false': False,
+    'yin': True, 'yang': False,
+    'tak': True, 'nie': False,
+    'yes': True, 'no': False,
+    'yay': True, 'nay': False,
+    'y': True, 't': True, 'n': False,
 }
 # fields used for Anki note recognition
 ankiconnect_base_fields = {
@@ -278,22 +341,22 @@ prepositions = (
 )
 
 config_columns = (
-    ('-pz',                  '-showcard',                  'def_bulk'),
+    ('-pz',                  '-displaycard',               'def_bulk'),
     ('-def',                 '-showdisamb',                'pos_bulk'),
-    ('-pos',                 '-wraptext',                 'etym_bulk'),
-    ('-etym',                '-compact',                   'syn_bulk'),
-    ('-syn',                 '-textwidth',                'psyn_bulk'),
-    ('-psyn',                '-indent',                 'pidiom_bulk'),
-    ('-pidiom',              '-delimsize',                         ''),
-    ('',                     '-center',            '[config filtrów]'),
-    ('-mergedisamb',         '',                                '-fs'),
-    ('-mergeidiom',          '[config ukrywania]',           '-fpsyn'),
-    ('',                     '-upz',                               ''),
-    ('-audio',               '-udef',                '[config audio]'),
-    ('-disamb',              '-udisamb',                    '-server'),
-    ('-savecards',           '-uidiom',                    '-quality'),
-    ('-createcards',         '-upreps',                            ''),
-    ('',                     '',                                   ''),
+    ('-pos',                 '-showadded',                'etym_bulk'),
+    ('-etym',                '-wraptext',                  'syn_bulk'),
+    ('-syn',                 '-justify',                  'psyn_bulk'),
+    ('-psyn',                '-textwidth',              'pidiom_bulk'),
+    ('-pidiom',              '-indent',                            ''),
+    ('',                     '-delimsize',         '[config filtrów]'),
+    ('-mergedisamb',         '-center',                       '-fahd'),
+    ('-mergeidiom',          '',                             '-fpsyn'),
+    ('',                     '[config ukrywania]',                 ''),
+    ('-audio',               '-upz',                 '[config audio]'),
+    ('-disamb',              '-udef',                       '-server'),
+    ('-savecards',           '-udisamb',                   '-quality'),
+    ('-createcards',         '-uidiom',                            ''),
+    ('',                     '-upreps',                            ''),
     ('[config ankiconnect]', '',                                   ''),
     ('-ankiconnect',         '',                                   ''),
     ('-duplicates',          '',                                   ''),
@@ -328,6 +391,7 @@ color_data = {
     'k:elements_val:msg': {
         'def1': 'Kolor nieparzystych definicji',
         'def2': 'Kolor parzystych definicji',
+        'defsign': 'Kolor znaku głównej definicji (>)',
         'pos': 'Kolor części mowy',
         'etym': 'Kolor etymologii',
         'syn': 'Kolor synonimów',

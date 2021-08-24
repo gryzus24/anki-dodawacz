@@ -7,23 +7,25 @@ add_parts_of_speech: true
 add_sentences: true
 add_synonym_examples: true
 add_synonyms: true
+ahd_filter: false
 ankiconnect: false
 attention_c: lightyellow
 audio_device: default
 audio_path: Karty_audio
 center: 79* auto
-compact: false
 create_card: true
 deck: '-'
 def1_c: reset
 def2_c: reset
-def_bulk: 0
+def_bulk: '0'
+defsign_c: cyan
 delimit_c: reset
 delimsize: 79* auto
+displaycard: true
 dupescope: deck
 duplicates: false
 error_c: lightred
-etym_bulk: 0
+etym_bulk: '0'
 etym_c: reset
 fieldorder:
   '1': definicja
@@ -36,7 +38,6 @@ fieldorder:
   '8': audio
   '9': sentence_audio
 fieldorder_d: '3'
-filtered_dictionary: true
 hide_definition_word: true
 hide_disamb_word: true
 hide_idiom_word: true
@@ -51,24 +52,25 @@ merge_idioms: true
 note: '-'
 phon_c: lightblack
 phrase_c: cyan
-pidiom_bulk: 0
+pidiom_bulk: '0'
 pidiom_c: reset
-pos_bulk: 0
+pos_bulk: '0'
 pos_c: yellow
 poslabel_c: lightwhite
-psyn_bulk: 0
+psyn_bulk: '0'
 psyn_c: reset
 psyn_filter: true
 recording_quality: '4'
 save_card: true
 server: ahd
-showcard: true
+showadded: true
 showdisamb: true
 success_c: lightgreen
-syn_bulk: 0
+syn_bulk: '0'
 syn_c: yellow
 syngloss_c: reset
 synpos_c: lightblack
 tags: dodawacz
+text_justification: false
 textwidth: 79
 wraptext: true

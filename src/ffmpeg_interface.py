@@ -46,7 +46,7 @@ else:
 def record(filepath: str):
     print(f'{YEX.color}Rozpoczęto nagrywanie...\n'
           f'{R}wciśnij [q], aby zakończyć i zapisać')
-    result = subprocess.run([
+    result = subprocess.run((
         'ffmpeg',
         '-hide_banner',
         '-loglevel', 'warning',
@@ -58,7 +58,7 @@ def record(filepath: str):
         '-acodec', 'libmp3lame',
         '-q:a', config['recording_quality'],
         filepath
-    ], capture_output=True, text=True)
+    ), capture_output=True, text=True)
     return result
 
 
@@ -73,10 +73,15 @@ def set_audio_device(*args) -> None:
                   f"{YEX.color}Aktualne urządzenie:\n"
                   f"{R}{config['audio_device']}\n")
             return None
+    try:
+        audio_devices = find_devices()
+        if audio_devices is None:
+            print(f'{err_c.color}Nagrywanie audio niedostępne na obecnym systemie operacyjnym')
+            return None
 
-    audio_devices = find_devices()
-    if audio_devices is None:
-        print(f'{err_c.color}Nagrywanie audio niedostępne na obecnym systemie operacyjnym')
+    except FileNotFoundError:
+        print(f'{err_c.color}Ffmpeg nie został odnaleziony\n'
+              f'Umieść ffmpeg w folderze z programem lub $PATH')
         return None
 
     print('Wybierz urządzenie do przechwytywania audio poprzez ffmpeg:\n')
@@ -126,11 +131,15 @@ def capture_audio(*args) -> str:
     except NameError:  # if os is not linux or win
         print(f'{err_c.color}Nagrywanie audio niedostępne na obecnym systemie operacyjnym')
         return ''
+    except FileNotFoundError:
+        print(f'{err_c.color}Ffmpeg nie został odnaleziony\n'
+              f'Umieść ffmpeg w folderze z programem lub $PATH')
+        return ''
 
     if 'Output file is empty' in result.stderr:
         print(f'{err_c.color}Nagrywanie nie powiodło się: pusty plik wyjściowy\n'
               f'Spróbuj nagrać dłuższy odcinek')
-        subprocess.run(['rm', filepath])
+        subprocess.run(('rm', filepath))
         return ''
     elif 'Queue input is backward in time' in result.stderr:
         pass

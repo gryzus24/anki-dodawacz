@@ -29,17 +29,20 @@ import src.ffmpeg_interface as ffmpeg
 import src.help as h
 from src.colors import \
     R, BOLD, END, YEX, GEX, \
-    def1_c, def2_c, pos_c, etym_c, syn_c, psyn_c, \
+    def1_c, def2_c, defsign_c, pos_c, etym_c, syn_c, psyn_c, \
     pidiom_c, syngloss_c, synpos_c, index_c, phrase_c, \
     phon_c, poslabel_c, err_c, delimit_c, input_c, inputtext_c
-from src.data import config
+from src.data import config, input_configuration
 
 if sys.platform.startswith('linux'):
     # For saving command history, this module doesn't work on windows
     import readline
     readline.read_init_file()
 
-USER_AGENT = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; rv:78.0) Gecko/20100101 Firefox/78.0'}
+USER_AGENT = {
+    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; rv:78.0) Gecko/20100101 Firefox/78.0'
+}
+
 requests_session_ah = requests.Session()
 requests_session_ah.headers.update(USER_AGENT)
 # Globals for main function to modify
@@ -64,7 +67,8 @@ commands = {
     '--add-note': anki.add_notes,
     '--field-order': c.change_field_order, '-fo': c.change_field_order,
     '-color': c.set_colors, '-c': c.set_colors,
-    '--config-bulk': c.config_bulk, '--config-defaults': c.config_bulk, '-cd': c.config_bulk, '-cb': c.config_bulk,
+    '--config-bulk': c.config_bulk, '--config-defaults': c.config_bulk,
+    '-cd': c.config_bulk, '-cb': c.config_bulk,
     '--audio-device': ffmpeg.set_audio_device, '-device': ffmpeg.set_audio_device,
     # commands that take no arguments
     '-refresh': anki.refresh_notes,
@@ -84,10 +88,10 @@ def search_interface() -> list:
         args = word.split()
         cmd = args[0]
         try:
-            if cmd in tuple(data.command_data)[:26]:
+            # don't forget to change the splice when adding/removing commands!
+            if cmd in tuple(data.command_data)[:28]:
                 # to avoid writing all of them in the commands dict above
                 c.boolean_commands(*args)
-            # don't forget to change the splice when adding/removing commands
             elif cmd in tuple(commands)[:25]:
                 commands[cmd](*args)
             else:
@@ -270,7 +274,10 @@ def lexico_flags(flag, pronunciations, word_pos, p_and_p):
                 audio_numb += 1
                 continue
             if wp.text.startswith(pos):
-                lx_audio = pronunciations[audio_numb]
+                try:  # temporary fix, this whole thing needs to be rewritten
+                    lx_audio = pronunciations[audio_numb]
+                except IndexError:
+                    lx_audio = pronunciations
                 break
     else:
         if pos == 'noun' or pos == 'adjective' and phrase not in ('invalid', 'minute', 'complex'):
@@ -316,15 +323,19 @@ def audio_lexico(query, flag):
 
 
 def get_flag_from(flags, server):
-    available_flags = ('n', 'v', 'adj', '-noun', '-verb', '-adjective',
-                       'adv', 'abbr', '-adverb', '-abbreviation')
+    available_flags = (
+        'n', 'v', 'adj', 'noun', 'verb', 'adjective',
+        'adv', 'abbr', 'adverb', 'abbreviation'
+    )
     if server == 'diki':
         available_flags = available_flags[:6]
+
     try:
-        flag = [x.strip('-') for x in flags if x in available_flags][0]
-        return flag
+        flag = [x for x in flags if x in available_flags][0]
     except IndexError:
         return ''
+    else:
+        return flag
 
 
 def search_for_audio(server, phrase_, flags):
@@ -348,37 +359,70 @@ def search_for_audio(server, phrase_, flags):
 def wrap_lines(string: str, term_width, index_width, indent, gap):
     if not config['wraptext']:
         return string
+
+    def trivial_wrap():
+        wrapped_text = ''
+        current_llen = 0
+        for word in string_divided:
+            # >= guarantees one character right-side padding
+            if current_llen + len(word) >= real_width:
+                wrapped_text = wrapped_text.rstrip()
+                wrapped_text += '\n' + indent_ * ' '
+                current_llen = indent - gap
+
+            wrapped_text += word + ' '
+            current_llen += len(word) + 1
+
+        return wrapped_text.rstrip()
+
+    def justification_wrap():
+        wrapped_text = ''
+        line = ''
+
+        # -1 because last space before wrapping is ignored in justification
+        spaces_between_words = -1
+        current_llen = 0
+        for word in string_divided:
+            if current_llen + len(word) >= real_width:
+                line = line.rstrip()
+                filling = real_width - current_llen
+                if spaces_between_words > 0:
+                    set_spaces = ' '
+                    while filling > 0:
+                        if filling <= spaces_between_words:
+                            line = line.replace(set_spaces, set_spaces + ' ', filling)
+                            break
+
+                        line = line.replace(set_spaces, set_spaces + ' ', spaces_between_words)
+                        filling -= spaces_between_words
+                        set_spaces += ' '
+
+                wrapped_text += line + '\n' + indent_ * ' '
+                line = ''
+                spaces_between_words = -1
+                current_llen = indent - gap
+
+            spaces_between_words += 1
+            line += word + ' '
+            current_llen += len(word) + 1
+
+        return wrapped_text + line.rstrip()
+
     # Gap is the gap between indexes and strings
     real_width = int(term_width) - index_width - gap
-    if len(string) < real_width:
+    if len(string) <= real_width:
         return string
 
-    wrapped_text = ''
+    if term_width < 67:
+        # mitigate the one character right-side padding
+        real_width += 1
+
+    string_divided = string.split()
     indent_ = indent + index_width
-    # split(' ') to accommodate for more than one whitespace,
-    # split() can be used for consistent spacing
-    string_divided = string.split(' ')
-    # Current line length
-    current_llen = 0
-    for word, nextword in zip(string_divided, string_divided[1:]):
-        # 1 is a missing space from string.split(' ')
-        current_llen += len(word) + 1
-        if len(nextword) + current_llen > real_width:
-            wrapped_text += word + '\n' + indent_ * ' '
-            current_llen = indent - gap
-        else:
-            wrapped_text += word + ' '
-            # Definition + the last word
-    return wrapped_text + string_divided[-1]
-
-
-def ah_def_print(indexing, term_width, definition):
-    definition_aw = wrap_lines(definition, term_width, len(str(indexing)),
-                               indent=config['indent'], gap=2)
-    if indexing % 2 == 1:
-        print(f'{index_c.color}{indexing}  {def1_c.color}{definition_aw}')
+    if config['text_justification']:
+        return justification_wrap()
     else:
-        print(f'{index_c.color}{indexing}  {def2_c.color}{definition_aw}')
+        return trivial_wrap()
 
 
 def terminal_width() -> int:
@@ -416,17 +460,20 @@ def get_conf_of(entry: str) -> int:
     return int(string)
 
 
-def filter_ahd(definition):
+def definition_cleanup(definition):
     rex = definition.lstrip('1234567890.')
     rex = rex.split(' See Usage Note at')[0]
     rex = rex.split(' See Synonyms at')[0]
-    for letter in ('a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j', 'k', 'l'):
-        rex = rex.replace(f":{letter}. ", ": |")
-        rex = rex.replace(f".{letter}. ", ". |")
+    for letter in 'abcdefghi':  # a maximum of 9 specifiers supported at the moment
+        rex = rex.replace(f":{letter}. ", ": *")
+        rex = rex.replace(f".{letter}. ", ". *")
         rex = rex.replace(f" {letter}. ", " ")
-        # when definition has an example with a '?', there's no space in between
-        rex = rex.replace(f"?{letter}. ", "? |")
-    return rex.strip()
+        # when definition has an example with a '?' there's no space in between
+        rex = rex.replace(f"?{letter}. ", "? *")
+    # private unicode characters cleanup, example words containing them:
+    # long, all right
+    rex = rex.strip().replace('', '′').replace('', 'ōō')
+    return rex.replace('  ', ': ')
 
 
 def manage_display_parameters(term_width):
@@ -438,14 +485,13 @@ def manage_display_parameters(term_width):
         c.save_commands(entry='center', value=f'{term_width}* auto')
 
 
-def ah_dictionary_request(url):
+def ahdictionary_request(url):
     try:
         reqs = requests_session_ah.get(url, timeout=10)
         soup = BeautifulSoup(reqs.content, 'lxml', from_encoding='utf-8')
         word_check = soup.find('div', {'id': 'results'})
 
         if word_check.text == 'No word definition found':
-            print(f'{err_c.color}Nie znaleziono podanego hasła w AH Dictionary\n{YEX.color}Szukam w idiomach...')
             return None
 
         return soup
@@ -461,12 +507,13 @@ def ah_dictionary_request(url):
         raise
 
 
-def ah_dictionary(query):
+def ahdictionary(query, *flags):
     global skip
 
     full_url = 'https://www.ahdictionary.com/word/search.html?q=' + query
-    soup = ah_dictionary_request(full_url)
+    soup = ahdictionary_request(full_url)
     if soup is None:
+        print(f'{err_c.color}Nie znaleziono {R}"{query}"{err_c.color} w AHDictionary')
         skip = 1
         return [], [], [], []
 
@@ -474,10 +521,19 @@ def ah_dictionary(query):
     poses = []
     etyms = []
     phrase_list = []
+
     term_width = terminal_width()
     manage_display_parameters(term_width)
 
-    indexing = 0
+    if config['ahd_filter']:
+        filter_subdefs = True
+    else:
+        if 'f' in flags or 'fahd' in flags:
+            filter_subdefs = True
+        else:
+            filter_subdefs = False
+
+    subindex = 0
     # whether 'results for (phrase)' was printed
     results_for_printed = False
 
@@ -509,6 +565,8 @@ def ah_dictionary(query):
 
         if not results_for_printed:
             ahd = 'AH Dictionary'
+            if filter_subdefs:
+                ahd += ' (filtered)'
             print(f'{BOLD}{ahd.center(get_conf_of("center"))}{END}')
             if phrase_.lower() != query.lower():
                 print(f' {BOLD}Wyniki dla {phrase_c.color}{phrase_.split()[0]}{END}')
@@ -528,22 +586,33 @@ def ah_dictionary(query):
                 pos_label = ' '.join(pos_label)
                 if pos_label in ('tr.', 'intr.'):
                     pos_label += 'v.'
-                if not config['compact']:
-                    print()
-                print(f'{len(str(indexing)) * " "}{poslabel_c.color}{pos_label}')
-            # Adds definitions and phrases
-            for gloss in definitions:
-                indexing += 1
-                # 'all right' needs the first replace
-                # 'long' needs the second one
-                rex = gloss.text.replace('', '′').replace('', 'ōō').replace('', '′').strip()
-                if config['filtered_dictionary']:
-                    rex = filter_ahd(rex)
-                # We have to find the private symbol
-                ah_def_print(indexing, term_width, definition=rex)  # .replace('', ''))
-                defs.append(rex)
-                phrase_list.append(phrase_)
+                print()
+                print(f' {poslabel_c.color}{pos_label}')
 
+            # Adds definitions and phrases
+            for root_definition in definitions:
+                root_definition = definition_cleanup(root_definition.text)
+
+                subdefinitions = root_definition.split('*')
+                for i, subdefinition in enumerate(subdefinitions):
+                    subindex += 1
+                    subdefinition = subdefinition.strip(': ')
+                    definition = wrap_lines(subdefinition, term_width, len(str(subindex)),
+                                            indent=config['indent'], gap=2)
+                    if i == 0:
+                        sign = '>'
+                    else:
+                        sign = ' '
+
+                    if subindex % 2 == 1:
+                        print(f'{defsign_c.color}{sign}{index_c.color}{subindex} {def1_c.color}{definition}')
+                    else:
+                        print(f'{defsign_c.color}{sign}{index_c.color}{subindex} {def2_c.color}{definition}')
+
+                    defs.append(subdefinition)
+                    phrase_list.append(phrase_)
+                    if filter_subdefs:
+                        break
         print()
         # Adds parts of speech
         for pos in td.find_all('div', class_='runseg'):
@@ -556,7 +625,7 @@ def ah_dictionary(query):
         for etym in td.find_all('div', class_='etyseg'):
             print(f' {etym_c.color}'
                   f'{wrap_lines(etym.text, term_width, 0, 1, 1)}')
-            etyms.append(etym.text)
+            etyms.append(etym.text.strip())
     # So that newline is not printed in glosses without etymologies
     if etyms:
         print()
@@ -569,7 +638,7 @@ def hide_phrase_in(func):
             return content.replace(a, b).replace(a.capitalize(), b).replace(a.upper(), b.upper())
 
         content, choice, hide = func(*args, **kwargs)
-        if hide is None or not content or not config[hide]:
+        if not hide or not config[hide] or not content:
             return content, choice
 
         nonoes = (
@@ -618,144 +687,172 @@ def sentence_input(hide):
     return sentence, 0, hide
 
 
-def pick_phrase(choice, phrase_list):
-    try:
-        ch = int(choice)
-        if len(phrase_list) >= ch > 0:
-            return phrase_list[ch - 1]
-        return phrase_list[0]
-    except ValueError:
-        return phrase_list[0]
+def map_specifiers_to_inputs(range_tuples: tuple) -> tuple:
+    # yields (input_values, specifiers)
+    for tup in range_tuples:
+        if len(tup) <= 3:  # if len(tuple with specifiers) <= 3
+            yield tup[:-1], tup[-1]
+        else:
+            # e.g. from ('1', '3', '5', '234') -> ('1', '3', '234'), ('3', '5', '234')
+            for i, _ in enumerate(tup[:-2]):
+                yield tup[0 + i:2 + i], tup[-1]
 
 
-def filter_range_tuples(tup):
-    # when input is 2:3, 5, 6, qwerty, 7:9, tuples are:
-    # ('2', '3'), (' 5'), (' 6'), ('qwerty'), ('7', '9')
-    for val in tup:
+def filter_tuples(tup: tuple) -> bool:
+    # tuples for input: 2:3, 5.41., 6.2, asdf...3, 7:9.123:
+    # ('2', '3', ''), ('5', '41.'), ('6', '2'), ('asdf', '..3'), ('7', '9', '123')
+
+    if not tup[-1].isnumeric():
+        if tup[-1]:
+            return False
+        # else: pass when specifier == ''
+
+    for value in tup[:-1]:
         # zero is excluded in multi_choice function, otherwise tuples like:
         # ('0', '4') would be ignored, but I want them to produce: 1, 2, 3, 4
-        if not val.strip().isnumeric():
+        if not value.isnumeric():
             return False
     return True
 
 
-def get_full_range(choice, content_list_len):
-    # example input: 1:4:2, 4:0, d:3:7, 5:aaa, 1:6:2:8
-    colon_sep_values = choice.split(',')
-    colon_range_tuples = [tuple(t.split(':')) for t in colon_sep_values]
-    # gets rid of invalid tuples eg: d:3:7, 5:aaa
-    col_tuples = list(filter(filter_range_tuples, colon_range_tuples))
-    # converts every tuple of len > 2 into tuples
-    # with overlapping values: 2:8:5:6 -> (2,8) (8,5) (5,6)
-    list_of_tuples = []
-    for ctuple in col_tuples:
-        if len(ctuple) == 1:
-            list_of_tuples.append(ctuple)
-            continue
-        for t in range(0, len(ctuple) - 1):
-            list_of_tuples.append(ctuple[0 + t:2 + t])
+def parse_inputs(inputs: list, content_length: int) -> tuple:
+    # example valid inputs: 1:4:2.1, 4:0.234, 1:6:2:8, 4, 6, 5.2
+    # example invalid inputs: 1:5:2.3.1, 4:-1, 1:6:2:s, 4., 6.., 5.asd
+    input_block = []
+    # '' = no specifiers
+    for _input in inputs:
+        head, _, specifiers = _input.partition('.')
+        tup = head.split(':')
+        # specifiers are always referenced by [-1]
+        tup.append(specifiers)
+        input_block.append(tuple(tup))
 
-    full_range = []
-    for ctuple in list_of_tuples:
-        val1 = int(ctuple[0])
-        # -1 allows for single inputs after the comma, eg: 5:6, 2, 3, 9
-        val2 = int(ctuple[-1])
-        if val1 > content_list_len and val2 > content_list_len:
+    # get rid of invalid inputs
+    valid_range_tuples = tuple(filter(filter_tuples, input_block))
+    if not valid_range_tuples:
+        return None, 1
+
+    input_blocks = []
+    for _input, specifiers in map_specifiers_to_inputs(valid_range_tuples):
+        val1 = int(_input[0])
+        # [-1] allows for single inputs after the comma, e.g.: 5:6, 2, 3, 9
+        val2 = int(_input[-1])
+        if val1 > content_length and val2 > content_length:
             continue
-        # check with content_list_len to ease the computation for the range function
-        val1 = val1 if val1 <= content_list_len else content_list_len
-        val2 = val2 if val2 <= content_list_len else content_list_len
+        # check with length to ease the computation for the range function
+        val1 = val1 if val1 <= content_length else content_length
+        val2 = val2 if val2 <= content_length else content_length
         # check for reversed sequences
         if val1 > val2:
             rev = -1
         else:
             rev = 1
         # e.g. from val1 = 7 and val2 = 4 produce: 7, 6, 5, 4
-        range_val = [x for x in range(val1, val2 + rev, rev)]
-        full_range.extend(range_val)
+        input_block = [x for x in range(val1, val2 + rev, rev)]
+        input_block.append(specifiers)
 
-    return full_range
+        input_blocks.append(input_block)
+
+    if not input_blocks or input_blocks[0][0] == 0:
+        phrase_choice = 1
+    else:
+        phrase_choice = input_blocks[0][0]
+
+    return input_blocks, phrase_choice
 
 
-def use_bulk_values(bulk_value, content_list_len):
-    if ':' not in str(bulk_value):
-        # bulk_value is an int
-        return single_choice, bulk_value, bulk_value
-    # bulk_value is a str
-    full_range = get_full_range(bulk_value, content_list_len)
-    choice = full_range[0] if full_range else 0
-    return multi_choice, full_range, choice
+def print_added_elements(message: str, elements='') -> None:
+    if config['showadded']:
+        print(f'{YEX.color}{message}: {R}{elements}')
 
 
 @hide_phrase_in
-def input_func(prompt_msg, add_element, bulk, content_list, hide=None, connector='<br>'):
+def input_field(content_list, prompt, add_field, bulk_element, hide, connector, **options):
     global skip
 
-    params = (content_list, connector)
-    bulk_value = config[bulk]
+    default_value = config[bulk_element]
+    content_length = len(content_list)
 
-    if not config[add_element]:
-        # range_choice = choice when range is not given
-        func, range_choice, choice = use_bulk_values(bulk_value, len(content_list))
-        return func(range_choice, *params), choice, hide
-
-    choice = input(f'{input_c.color}{prompt_msg} [{bulk_value}]:{inputtext_c.color} ')
-
-    if not choice.strip():
-        func, range_choice, choice = use_bulk_values(bulk_value, len(content_list))
-        chosen_cont = func(range_choice, *params)
-    elif choice.isnumeric():
-        chosen_cont = single_choice(int(choice), *params)
-    elif choice.startswith('/'):
-        chosen_cont = choice.replace('/', '', 1)
-    elif choice.lower() == '-s':
-        chosen_cont = ''
-    elif choice.lower() in ('-1', 'all'):
-        chosen_cont = single_choice(-1, *params)
-    # choice with colons may include commas
-    elif ':' in choice:
-        full_range = get_full_range(choice, len(content_list))
-        chosen_cont = multi_choice(full_range, content_list, connector)
-        choice = full_range[0] if full_range else 0
-    elif ',' in choice:
-        mchoice = [int(x) for x in choice.split(',') if x.strip().isnumeric()]
-        chosen_cont = multi_choice(mchoice, content_list, connector)
-        choice = mchoice[0] if mchoice else 0
+    if not config[add_field]:
+        input_choice = default_value
     else:
+        input_choice = input(f'{input_c.color}{prompt} [{default_value}]:{inputtext_c.color} ')
+        if not input_choice.strip():
+            input_choice = default_value
+        elif input_choice.startswith('/'):
+            users_element = input_choice.replace('/', '', 1)
+            print_added_elements('Dodano', users_element)
+            return users_element, 1, hide
+
+    input_choice = input_choice.replace(' ', '').lower()
+    if input_choice in ('0', '-s'):
+        return '', 1, False
+    elif input_choice.startswith('-1'):
+        input_choice = input_choice.replace('-1', f'1:{content_length}')
+    elif input_choice.isnumeric() and int(input_choice) > content_length != 0:
+        # remove occasional blanks from WordNet
+        content_list = [x for x in content_list if x]
+        print_added_elements('Dodane elementy', 'wszystkie')
+        return connector.join(content_list), 1, hide
+
+    input_choice = input_choice.replace('-all', f'{content_length}:1')
+    input_choice = input_choice.replace('all', f'1:{content_length}')
+
+    input_elements = input_choice.split(',')
+    input_blocks, phrase_choice = parse_inputs(input_elements, content_length)
+    if input_blocks is None:
         skip = 1
         print(f'{GEX.color}Pominięto dodawanie karty')
-        return '', 0, None
+        return '', 1, False
 
-    return chosen_cont, choice, hide
+    chosen_content_list = add_elements(input_blocks, content_list, **options)
+    return connector.join(chosen_content_list), phrase_choice, hide
 
 
-def multi_choice(*args):
-    choice = args[0]
-    content_list = args[1]
-    connector = args[2]
-
+def add_elements(parsed_inputs: list, content_list: list, spec_split: str) -> list:
     content = []
-    choice_no = []
-    for ch in choice:
-        if ch > len(content_list) or ch == 0:
-            continue
-        elem = content_list[ch - 1]
-        if elem:
-            content.append(elem)
-            choice_no.append(str(ch))
+    valid_choices = []
 
-    print(f'{YEX.color}Dodane elementy: {", ".join(choice_no)}')
-    return connector.join(content)
+    for input_block in parsed_inputs:
+        choices = input_block[:-1]
+        specifiers = input_block[-1].lstrip('0')
 
+        for choice in choices:
+            if choice == 0 or choice > len(content_list):
+                continue
 
-def single_choice(choice, content_list, connector):
-    if len(content_list) >= choice > 0:
-        return content_list[choice - 1]
-    elif choice > len(content_list) or choice == -1:
-        no_blanks = [x for x in content_list if x != '']
-        return connector.join(no_blanks)
-    else:  # 0
-        return ''
+            content_element = content_list[choice - 1]
+            if not content_element:
+                continue
+
+            if not specifiers:
+                content.append(content_element)
+                valid_choices.append(choice)
+                continue
+
+            sliced_content_element = content_element.split(spec_split)
+            if len(sliced_content_element) == 1:
+                content.append(content_element)
+                valid_choices.append(choice)
+                continue
+
+            element = []
+            for specifier in specifiers:
+                if int(specifier) == 0 or int(specifier) > len(sliced_content_element):
+                    continue
+
+                slice_of_content = sliced_content_element[int(specifier) - 1].strip('. ')
+                valid_choices.append(f'{choice}.{specifier}')
+                element.append(slice_of_content)
+
+            # to properly join elements specified in reversed order
+            element = (spec_split.strip() + ' ').join(element)
+            if element.startswith('['):  # closing bracket in etymologies
+                element += ']'
+            content.append(element)
+
+    print_added_elements('Dodane elementy', ', '.join(map(str, valid_choices)))
+    return content
 
 
 def wordnet_request(url):
@@ -780,7 +877,7 @@ def wordnet_request(url):
         print(f'{err_c.color}WordNet zerwał połączenie\n'
               f'zmień słownik lub zrestartuj program i spróbuj ponownie')
     except Exception:
-        print(f'{err_c.color}Wystąpił nieoczekiwany błąd podczas wyświetlania WordNeta\n')
+        print(f'{err_c.color}Wystąpił nieoczekiwany błąd podczas nawiązywania połączenia z WordNetem\n')
         raise
 
 
@@ -802,9 +899,7 @@ def wordnet(query):
 
     if config['showdisamb']:
         print(f'{delimit_c.color}{get_conf_of("delimsize") * "-"}')
-        print(f'{BOLD}{"WordNet".center(get_conf_of("center"))}{END}')
-        if not config['compact']:
-            print()
+        print(f'{BOLD}{"WordNet".center(get_conf_of("center"))}{END}\n')
 
     syn_elems = syn_soup.find_all('li')
     for index, ele in enumerate(syn_elems, start=1):
@@ -833,8 +928,7 @@ def wordnet(query):
                     psyn_tp = wrap_lines(ps, get_conf_of('textwidth'), len(str(index)),
                                          indent=4, gap=3)
                     print(f'{(len(str(index))+3) * " "}{psyn_c.color}{psyn_tp}')
-            if not config['compact']:
-                print()
+            print()
 
     return gsyn, gpsyn
 
@@ -846,7 +940,6 @@ def farlex_idioms_request(url):
         relevant_content = soup.find('section', {'data-src': 'FarlexIdi'})
 
         if relevant_content is None:
-            print(f'{err_c.color}Nie znaleziono podanego hasła w Farlex Idioms')
             return None
 
         return relevant_content
@@ -865,12 +958,12 @@ def farlex_idioms_request(url):
 
 
 def farlex_idioms(query):
-    global phrase
     global skip
 
     full_url = 'https://idioms.thefreedictionary.com/' + query
     relevant_content = farlex_idioms_request(full_url)
     if relevant_content is None:
+        print(f'{err_c.color}Nie znaleziono {R}"{query}"{err_c.color} w Farlex Idioms')
         skip = 1
         return [], [], []
 
@@ -891,8 +984,7 @@ def farlex_idioms(query):
         phrase_list.append(idiom)
 
         if last_phrase == idiom:
-            if not config['compact']:
-                print()
+            print()
         else:
             last_phrase = idiom
             print(f'{delimit_c.color}{get_conf_of("delimsize") * "-"}')
@@ -902,7 +994,7 @@ def farlex_idioms(query):
             print(f'  {phrase_c.color}{idiom}')
 
         idiom_def = definition.find(text=True, recursive=False)\
-            .strip('1234567890. ').replace('"', "'")
+            .lstrip('1234567890. ').replace('"', "'")
         # if there is an <i> tag in between definition's index and definition
         # e.g. '2. <i>verb</i> ...'
         if len(str(idiom_def)) < 5:
@@ -980,14 +1072,18 @@ def manage_dictionaries(_phrase, flags):
     poses = []
     etyms = []
     illusts = []
-    if 'i' in flags or '-idiom' in flags:
+    if 'i' in flags or 'idiom' in flags:
         defs, illusts, phrase_list = farlex_idioms(_phrase)
         _dict = 'farlex'
+    elif 'ahd' in flags:
+        defs, poses, etyms, phrase_list = ahdictionary(_phrase, *flags)
+        _dict = 'ahd'
     else:
-        defs, poses, etyms, phrase_list = ah_dictionary(_phrase)
+        defs, poses, etyms, phrase_list = ahdictionary(_phrase, *flags)
         if not skip:
             _dict = 'ahd'
         else:
+            print(f'{YEX.color}Szukam w Farlex Idioms...')
             skip = 0
             defs, illusts, phrase_list = farlex_idioms(_phrase)
             _dict = 'farlex'
@@ -1003,7 +1099,7 @@ def main():
     if not os.path.exists('Karty_audio') and config['audio_path'] == 'Karty_audio':
         os.mkdir('Karty_audio')
 
-    __version__ = 'v0.8.0-2'
+    __version__ = 'v0.9.0-1'
     print(f'{BOLD}- Dodawacz kart do Anki {__version__} -{END}\n'
           f'Wpisz "--help", aby wyświetlić pomoc\n\n')
 
@@ -1014,13 +1110,13 @@ def main():
 
         link_word = search_interface()
         phrase = link_word[0]
-        flags = link_word[1:]
+        flags = [x.strip('-') for x in link_word[1:]]
 
         if phrase in ('-rec', '--record'):
             ffmpeg.capture_audio()
             continue
 
-        if 'rec' in flags or '-record' in flags:
+        if 'rec' in flags or 'record' in flags:
             sentence_audio = ffmpeg.capture_audio(phrase)
         else:
             sentence_audio = ''
@@ -1042,20 +1138,19 @@ def main():
         # temporarily set phrase to the first element from the phrase_list
         # to always hide the correct query before input, e.g. preferred -> prefer
         phrase = phrase_list[0]
-        definitions, choice = input_func(
-            'Wybierz definicje', 'add_definitions', 'def_bulk', definitions, 'hide_definition_word')
-        if skip:
-            continue
 
-        phrase = pick_phrase(choice, phrase_list)
         if dictionary == 'ahd':
-            parts_of_speech, _ = input_func(
-                'Wybierz części mowy', 'add_parts_of_speech', 'pos_bulk', parts_of_speech, connector=' | ')
+            definitions, choice = input_field(definitions, **input_configuration['ahd_definitions'])
             if skip:
                 continue
 
-            etymologies, _ = input_func(
-                'Wybierz etymologie', 'add_etymologies', 'etym_bulk', etymologies)
+            phrase = phrase_list[choice - 1]
+
+            parts_of_speech, _ = input_field(parts_of_speech, **input_configuration['parts_of_speech'])
+            if skip:
+                continue
+
+            etymologies, _ = input_field(etymologies, **input_configuration['etymologies'])
             if skip:
                 continue
 
@@ -1066,13 +1161,11 @@ def main():
                 synonyms = ''
                 examples = ''
             else:
-                synonyms, _ = input_func(
-                    'Wybierz synonimy', 'add_synonyms', 'syn_bulk', synonyms_list, 'hide_disamb_word', connector=' | ')
+                synonyms, _ = input_field(synonyms_list, **input_configuration['wordnet_synonyms'])
                 if skip:
                     continue
 
-                examples, _ = input_func(
-                    'Wybierz przykłady', 'add_synonym_examples', 'psyn_bulk', examples_list, 'hide_disamb_word')
+                examples, _ = input_field(examples_list, **input_configuration['wordnet_synonym_examples'])
                 if skip:
                     continue
 
@@ -1084,11 +1177,16 @@ def main():
                     synonyms = synonyms + brk + examples
                     examples = ''
         else:
+            definitions, choice = input_field(definitions, **input_configuration['farlex_idioms'])
+            if skip:
+                continue
+
+            phrase = phrase_list[choice - 1]
+
             parts_of_speech = ''
             etymologies = ''
             synonyms = ''
-            examples, _ = input_func(
-                'Wybierz przykłady', 'add_idiom_examples', 'pidiom_bulk', illustrations, 'hide_idiom_word')
+            examples, _ = input_field(illustrations, **input_configuration['idiom_examples'])
             if skip:
                 continue
 
@@ -1106,7 +1204,7 @@ def main():
             'zdanie': zdanie, 'czesci_mowy': parts_of_speech, 'etymologia': etymologies, 'audio': audio,
             'sentence_audio': sentence_audio}
 
-        if config['showcard']:
+        if config['displaycard']:
             skip = display_card(field_values)
             if skip:
                 continue
