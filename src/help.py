@@ -4,7 +4,7 @@ from src.colors import R, BOLD, END
 def quick_help():
     print(f"""{R}\nPo wpisaniu hasła w pole "Szukaj" rozpocznie się cykl dodawania karty
 
-Najpierw pytany jest AHDictionary, jeżeli nie posiada szukanego hasła to
+Najpierw pytany jest AH Dictionary, jeżeli nie posiada szukanego hasła to
 zapytanie przechodzi do Farlex Idioms.
 
 {BOLD}Przy dodawaniu zdania:{END}
@@ -56,7 +56,7 @@ Części mowy nie są indeksowane, możemy sprecyzować wybór wpisując numer c
 mowy licząc od góry lub (-1, all, -all) aby dodać wszystkie części mowy.
  0 lub -s     pomija dodawanie elementu
 
-Specyfikator dla części mowy: " " (spacja)
+Specyfikator dla części mowy: ","
 
 {BOLD}Przy etymologiach:{END}
 Etymologie nie są indeksowane, wybór działa tak jak przy częściach mowy.
@@ -132,7 +132,7 @@ Aby zmienić wartość dla komendy wpisz {BOLD}on|off{END}
    (%appdata%)
 
 {BOLD}------[Komendy wyświetlania]------{END}
-Komendy wpływające na sposób w jaki są wyświetlanie informacje.
+Komendy wpływające na sposób w jaki są wyświetlane informacje.
 
 -displaycard                wyświetlanie podglądu karty
 -showdisamb                 pokazywanie słownika synonimów (WordNet)
@@ -152,14 +152,17 @@ Komendy wpływające na sposób w jaki są wyświetlanie informacje.
 Ukrywanie hasła to zamiana wyszukiwanego słowa na "..."
 Filtrowanie to usunięcie elementów spełniających określone warunki
 
--upz       ukrywanie hasła w zdaniu
--udef      ukrywanie hasła w definicjach
--udisamb   ukrywanie hasła w synonimach i przykładach
--uidiom    ukrywanie hasła w idiomach
--upreps    ukrywanie przyimków
+-upz        ukrywanie hasła w zdaniu
+-udef       ukrywanie hasła w definicjach
+-udisamb    ukrywanie hasła w synonimach i przykładach
+-uidiom     ukrywanie hasła w idiomach
+-upreps     ukrywanie przyimków
 
--fahd      filtrowanie poddefinicji (definicji bez ">") w AHDictionary
--fpsyn     filtrowanie przykładów synonimów niezawierających szukanego hasła
+-fahd       filtrowanie poddefinicji (definicji bez ">") w AH Dictionary
+-fnolabel   filtrowanie definicji niezawierających etykiet części mowy w AHD
+-fpsyn      filtrowanie przykładów synonimów niezawierających szukanego hasła
+
+-toipa      tłumaczenie zapisu fonetycznego używanego w AHD do IPA
 
 {BOLD}----[Pozostałe komendy]----{END}
 --delete-last [n >= 1],
@@ -213,7 +216,7 @@ np. -fo d 5                przesunie odkreślenie pod pole "zdanie" (5)
 
 {BOLD}------[Komendy audio]------{END}
 -server {{nazwa serwera}}    określa serwer z którego pozyskiwane jest audio dla
-                           haseł wyszukiwanych w AHDictionary
+                           haseł wyszukiwanych w AH Dictionary
 
 -device, --audio-device    konfiguracja urządzeń do nagrywania audio
 -rec, --record             rozpoczyna nagrywanie z wykorzystaniem wybranego
@@ -231,34 +234,62 @@ np. -fo d 5                przesunie odkreślenie pod pole "zdanie" (5)
                             4 - rekomendowana
 
 {BOLD}----------[Flagi]----------{END}
-Flagi pozwalają na włączenie komendy lub opcji tylko na czas tworzenia karty.
-Flagi stawiane są za wyszukiwaną frazą:
-  np. "cave in --idiom", "break -f" itd.
+Flagi pozwalają na włączenie/wyłączenie komendy lub opcji tylko na czas
+ jednego cyklu tworzenia kart.
+
+Flagi stawiane są za wyszukiwaną frazą, każda flaga musi być poprzedzona
+ myślnikiem i oddzielona spacją, kolejność flag nie ma znaczenia:
+  np. "cave in -idiom", "break -f -tr" itd.
 
 {BOLD}Flagi wyszukiwania:{END}
-  -i, --idiom   bezpośrednio pyta Farlex Idioms
-  -ahd          pyta tylko AHDictionary
+  i, idiom     pyta tylko Farlex Idioms
+  ahd          pyta tylko AH Dictionary
+
+{BOLD}Wyszukiwanie ze względu na etykiety w AH Dictionary:{END}
+  n, noun                rzeczowniki
+    pl, plural             w liczbie mnogiej
+
+  pron, pronoun          zaimki
+  v, verb                czasowniki:
+    tr, transitive         przechodnie
+    intr, intransitive     nieprzechodnie
+    aux, auxiliary         posiłkowe
+
+  adj, adjective         przymiotniki
+  adv, adverb            przysłówki
+  prep, preposition      przyimki
+  conj, conjunction      spójniki
+  interj, interjection   wykrzykniki
+
+  pref, prefix           przedrostki
+  suff, suffix           przyrostki
+  abbr, abbreviation     skróty
+
+  def, defart            przedimki określone
+  indef, indefart        przedimki nieokreślone
+
+  '', nolabel            brak etykiety (ludzie, organizacje itp.)
+                         ('' oznacza sam myślnik)
+
+  Etykiety typu: informal, archaic, slang, law itd.
+    mogą zostać wyszukane, ale nie posiadają swoich skróconych form.
+
+Aby odwrócić znaczenie flagi (tylko etykiet), poprzedzamy ją wykrzyknikiem.
+  W przeciwieństwie do "-n":
+    "pokaż wyłącznie rzeczowniki"
+
+  "-!n" oznacza:
+    "pokaż wszystko, tylko błagam nie rzeczowniki"
+
+{BOLD}NOTE:{END} Wystarczy tylko jedna flaga z '!', aby odwrócić znaczenie
+      wszystkich następnych flag.
+      np. wpisanie: "- -!trv -noun" oznacza: "-! -!trv -!noun"
 
 {BOLD}Flagi komend:{END}
-  -f, --fahd    włącza filtrowanie poddefinicji w AHDictionary
+  f, fahd   włącza filtrowanie poddefinicji w AH Dictionary
 
-{BOLD}Flagi audio:{END}
-Pozwalają na doprecyzowanie o którą wymowę szukanego hasła nam chodzi.
-
-flagi dla lexico:
-  -n, --noun              priorytetyzuje wymowę słowa jako rzeczownik
-  -v, --verb               ... jako czasownik
-  -adj, --adjective        ... jako przymiotnik
-  -adv, --adverb           ... jako przysłówek
-  -abbr, --abbreviation    ... jako skrót
-
-flagi dla diki:
-  -n, --noun
-  -v, --verb
-  -adj, --adjective
-
-{BOLD}NOTE:{END} Jeżeli połączymy flagi audio z wyrażeniem złożonym z kilku słów to flaga
-      zostanie zignorowana.\n""")
+Eksperymentalnie, Lexico i Diki spróbują pozyskać wymowę odpowiednią
+do sprecyzowanych flag części mowy.\n""")
 
 
 def bulk_help():

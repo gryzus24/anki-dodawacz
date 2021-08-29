@@ -76,11 +76,11 @@ commands = {
     '--help-bulk': h.bulk_help, '--help-defaults': h.bulk_help,
     '--help-commands': h.commands_help, '--help-command': h.commands_help,
     '--help-recording': h.recording_help,
-    '-config': c.print_config_representation, '-conf': c.print_config_representation,
+    '-config': c.print_config_representation, '-conf': c.print_config_representation
 }
 
 
-def search_interface() -> list:
+def search_interface() -> str:
     while True:
         word = input(f'{input_c.color}Szukaj ${inputtext_c.color} ').strip()
         if not word:
@@ -89,7 +89,7 @@ def search_interface() -> list:
         cmd = args[0]
         try:
             # don't forget to change the splice when adding/removing commands!
-            if cmd in tuple(data.command_data)[:28]:
+            if cmd in tuple(data.command_data)[:30]:
                 # to avoid writing all of them in the commands dict above
                 c.boolean_commands(*args)
             elif cmd in tuple(commands)[:25]:
@@ -98,7 +98,7 @@ def search_interface() -> list:
                 commands[cmd]()
         except KeyError:
             # command not found
-            return word.split(' -')
+            return word
 
 
 def get_audio_response(audio_link, audiofile_name):
@@ -472,8 +472,8 @@ def definition_cleanup(definition):
         rex = rex.replace(f"?{letter}. ", "? *")
     # private unicode characters cleanup, example words containing them:
     # long, all right
-    rex = rex.strip().replace('', '′').replace('', 'ōō')
-    return rex.replace('  ', ': ')
+    rex = rex.strip().replace('', 'ˌ').replace('', 'ōō')
+    return rex.replace('  ', ' # ')
 
 
 def manage_display_parameters(term_width):
@@ -483,6 +483,96 @@ def manage_display_parameters(term_width):
         c.save_commands(entry='delimsize', value=f'{term_width}* auto')
     if '* auto' in str(config['center']):
         c.save_commands(entry='center', value=f'{term_width}* auto')
+
+
+def get_phrase_and_phonetic_spelling(headword_elements: list) -> tuple:
+    phrase_elements = []
+    phonetics = []
+    for elem in headword_elements:
+        if elem.isnumeric():
+            continue
+        elif elem.istitle():
+            phrase_elements.append(elem)
+            continue
+
+        for char in '(,)':
+            if char in elem:
+                phonetics.append(elem)
+                break
+        else:
+            phrase_elements.append(elem)
+
+    return phrase_elements, phonetics
+
+
+def expand_labels(label_set: set) -> set:
+    # Expanding these sets offers more leeway when specifying flags
+    for item in label_set.copy():
+        try:
+            label_set.update(data.labels[item])
+        except KeyError:
+            pass
+    return label_set
+
+
+def label_skip(labels: set, flags: set, *, exclude_immediately: bool) -> bool:
+    # when config['nolabel_filter'] is True
+    if not flags:
+        return False
+
+    labels = {x.replace(' ', '').replace('.', '').lower() for x in labels}
+    if not labels:
+        labels.add('nolabel')
+
+    expanded_labels = expand_labels(labels)
+
+    for flag in flags:
+        # "else" doesn't execute if break occurs
+        if flag.startswith('!'):
+            break
+    else:
+        for flag in flags:
+            # check inclusive flags
+            if flag in expanded_labels:
+                return False
+        return True
+
+    # check exclusive flags
+    if exclude_immediately:
+        for flag in flags:
+            if flag.replace('!', '', 1) in expanded_labels:
+                return True
+        return False
+    else:
+        _flags = {x.strip('!') for x in flags}
+        if 'v' in _flags:
+            _flags.update(('intransitive', 'transitive', 'intr', 'tr',
+                           'intrv', 'trv', 'vintr', 'vtr', 'v', 'verb'))
+        expanded_flags = expand_labels(_flags)
+        if expanded_labels.intersection(expanded_flags) == expanded_labels:
+            return True
+        return False
+
+
+def ahd_to_ipa_translation(ahd_phonetics: str, th: str) -> str:
+    # AHD has its own phonetic alphabet that can be translated into IPA.
+    # diphthongs
+    ahd_phonetics = ahd_phonetics.replace('ch', 't∫')\
+        .replace('sh', 'ʃ').replace('îr', 'ɪəɹ')\
+        .replace('ng', 'ŋ').replace('ou', 'aʊ')\
+        .replace('oi', 'ɔɪ').replace('ər', 'ɚ')\
+        .replace('ûr', 'ɝ').replace('th', th)\
+        .replace('âr', 'ɛəɹ').replace('zh', 'ʒ')\
+        .replace('l', 'ɫ').replace('n', 'ən')\
+        .replace('r', 'ʊəɹ').replace('ôr', 'ɔəɹ')
+    # consonants and vowels
+    ahd_phonetics = ahd_phonetics.translate(data.AHD_IPA_translation)
+    # accentuation and hyphenation
+    ahd_phonetics = ahd_phonetics.replace('-', 'ˈ').replace('′', '-').replace('', 'ˌ')
+    # AHD uses 'ē' to represent both 'i' and "i:",
+    # IPA uses 'i' at the end of the word most of the time
+    ahd_phonetics = ahd_phonetics.replace('i:/', 'i/')
+    return ahd_phonetics
 
 
 def ahdictionary_request(url):
@@ -533,70 +623,116 @@ def ahdictionary(query, *flags):
         else:
             filter_subdefs = False
 
+    # only label specifying flags are relevant after ahd_filter had been settled
+    if flags:
+        flags = {
+            x.replace(' ', '').replace('.', '').lower()
+            for x in flags
+            if x.replace('!', '').replace(' ', '').replace('.', '').lower() not in
+            ('f', 'fahd', 'ahd', 'rec', 'record')  # 'i' and "idiom" flags cannot end up here
+        }
+
     subindex = 0
+    query_pos_labels = set()
     # whether 'results for (phrase)' was printed
     results_for_printed = False
 
-    tds = soup.find_all('td')
-    for td in tds:
+    for td in soup.find_all('td'):
+        # also used when printing definitions
+        labeled_blocks = td.find_all('div', class_='pseg', recursive=False)
+
+        if flags or config['nolabel_filter']:
+            _td_pos_labels = set()
+            for block in labeled_blocks:
+                lbls = block.find_all('i', recursive=False)
+                lbls = {x.text.strip() for x in lbls}
+                _td_pos_labels.update(lbls)
+                query_pos_labels.update(lbls)
+
+            # single "pl." occurs only when plural form of phrase is given
+            # we don't scrape this information at the moment
+            _td_pos_labels.discard('pl.')
+            query_pos_labels.discard('pl.')
+
+            if not _td_pos_labels:
+                if config['nolabel_filter']:
+                    continue
+                else:
+                    query_pos_labels.add('nolabel')
+
+            cond = True if len(labeled_blocks) == 1 else False
+            skip_current_td = label_skip(_td_pos_labels, flags, exclude_immediately=cond)
+            if skip_current_td:
+                continue
+
         print(f'{delimit_c.color}{get_conf_of("delimsize") * "-"}')
+        # example header: bat·ter 1  (băt′ər)
+        # example person header: Monk  (mŭngk), (James) Arthur  Known as  "Art."  Born 1957.
+        header = td.find('div', class_='rtseg', recursive=False)
+        # AHD uses italicized "th" to represent 'ð' and normal "th" to represent 'θ'
+        th = 'ð' if header.find('i') else 'θ'
+        header = (header.text.split('\n', 1)[0]).split()
+        _phrase, phon_spell = get_phrase_and_phonetic_spelling(header)
 
-        hpaps = td.find('div', class_='rtseg')
-        # hpaps = head phrase and phonetic spelling
-        # example hpaps: bat·ter 1  (băt′ər)
-        # example person hpaps: Monk  (mŭngk), (James) Arthur  Known as  "Art."  Born 1957.
-        hpaps = hpaps.text.split('Share:')[0] \
-            .replace('', '′').replace('', 'ōō').replace('', 'ōō').strip()
+        _phrase = ' '.join(_phrase)
+        no_accents_phrase = _phrase.replace('·', '')
 
-        phon_spell = '(' + hpaps.split(')')[0].split(' (')[-1].strip() + ')'
-        if phon_spell.strip('()') == hpaps:
-            phon_spell = ''
-        # get rid of phonetic spelling and then clean up
-        # (when hpaps is a person cleanup is necessary)
-        head_word = hpaps.replace(phon_spell, '').replace('  ,', ',') \
-            .replace('  ', ' ').replace('  ', ' ').replace(', ', ' ', 1).strip()
-        # removes numbers from headwords. AHD uses NBSP before a number
-        if ' ' in head_word:
-            phrase_ = head_word.split(' ')
-            part2 = phrase_[1].lstrip('1234567890')
-            phrase_ = phrase_[0].replace('·', '') + part2
+        phon_spell = ' '.join(phon_spell)
+        phon_spell = phon_spell.rstrip(',')
+        if config['convert_to_ipa']:
+            phon_spell = ahd_to_ipa_translation(phon_spell, th)
         else:
-            phrase_ = head_word.replace('·', '')
+            phon_spell = phon_spell.replace('-', 'ˈ')\
+                .replace('′', '-').replace('', 'ˌ')\
+                .replace('', 'ōō').replace('', 'ōō')
 
         if not results_for_printed:
-            ahd = 'AH Dictionary'
-            if filter_subdefs:
-                ahd += ' (filtered)'
+            ahd = 'AH Dictionary (filtered)' if filter_subdefs else 'AH Dictionary'
+
             print(f'{BOLD}{ahd.center(get_conf_of("center"))}{END}')
-            if phrase_.lower() != query.lower():
-                print(f' {BOLD}Wyniki dla {phrase_c.color}{phrase_.split()[0]}{END}')
+            if no_accents_phrase.lower() != query.lower():
+                print(f' {BOLD}Wyniki dla {phrase_c.color}{no_accents_phrase}{END}')
             results_for_printed = True
-        print(f' {phrase_c.color}{head_word.strip()}  {phon_c.color}{phon_spell}')
 
-        gloss_blocks = td.find_all('div', class_='pseg')
-        for block in gloss_blocks:
-            definitions = block.find_all('div', class_=('ds-list', 'ds-single'))
-            pos_label = block.find_all('i', recursive=False)
-            # verbs always come with a 'tr.' or 'intr.' label,
-            # additionally, verbs are supplied with an explicit 'v.'
-            # that I want to ignore to avoid duplication
-            pos_label = [x.text.strip() for x in pos_label
-                         if x.text.strip() and x.text.strip() != 'v.']
-            if pos_label:
-                pos_label = ' '.join(pos_label)
-                if pos_label in ('tr.', 'intr.'):
-                    pos_label += 'v.'
+        if len(_phrase) + len(phon_spell) + 3 > term_width:
+            print(f' {phrase_c.color}{_phrase}\n{phon_c.color}{phon_spell}')
+        else:
+            print(f' {phrase_c.color}{_phrase}  {phon_c.color}{phon_spell}')
+
+        for block in labeled_blocks:
+            # Gather definitions
+            definitions = block.find_all('div', class_=('ds-list', 'ds-single'), recursive=False)
+            if not definitions:
+                continue
+
+            # Gather part of speech labels
+            pos_labels = block.find_all('i', recursive=False)
+            pos_labels = {x.text.strip() for x in pos_labels if x.text.strip()}
+            pos_labels.discard('pl.')
+
+            if flags or config['nolabel_filter']:
+                if config['nolabel_filter'] and not pos_labels:
+                    continue
+                # part of speech labels from a single block
+                skip_current_block = label_skip(pos_labels, flags, exclude_immediately=True)
+                if skip_current_block:
+                    continue
+
+            if pos_labels:
+                pos_label = ' '.join(pos_labels)
+                print(f'\n {poslabel_c.color}{pos_label}')
+            else:
                 print()
-                print(f' {poslabel_c.color}{pos_label}')
 
-            # Adds definitions and phrases
+            # Add definitions and corresponding phrases
             for root_definition in definitions:
                 root_definition = definition_cleanup(root_definition.text)
 
                 subdefinitions = root_definition.split('*')
                 for i, subdefinition in enumerate(subdefinitions):
                     subindex += 1
-                    subdefinition = subdefinition.strip(': ')
+                    # strip an occasional leftover octothorpe
+                    subdefinition = subdefinition.strip('# ')
                     definition = wrap_lines(subdefinition, term_width, len(str(subindex)),
                                             indent=config['indent'], gap=2)
                     if i == 0:
@@ -610,25 +746,46 @@ def ahdictionary(query, *flags):
                         print(f'{defsign_c.color}{sign}{index_c.color}{subindex} {def2_c.color}{definition}')
 
                     defs.append(subdefinition)
-                    phrase_list.append(phrase_)
+                    phrase_list.append(no_accents_phrase)
                     if filter_subdefs:
                         break
         print()
-        # Adds parts of speech
-        for pos in td.find_all('div', class_='runseg'):
-            postring = pos.text.replace('', 'ōō').replace('', 'ōō').replace('', '′').replace('·', '').strip()
-            print(f' {pos_c.color}{postring}')
+        # Add parts of speech
+        for pos in td.find_all('div', class_='runseg', recursive=False):
+            postring = pos.text.split()
+            postring, phon_spell = get_phrase_and_phonetic_spelling(postring)
+
+            # accentuation and hyphenation
+            postring = ', '.join(postring).replace('·', 'ˈ').replace('′', '-').replace('', 'ˌ')
+            phon_spell = ' '.join(phon_spell).rstrip(',')
+
+            if config['convert_to_ipa']:
+                # this is very general, I have no idea how to differentiate these correctly
+                th = 'ð' if postring.startswith('th') else 'θ'
+                phon_spell = ahd_to_ipa_translation(phon_spell, th)
+            else:
+                phon_spell = phon_spell.replace('-', 'ˈ')\
+                    .replace('′', '-').replace('', 'ˌ')\
+                    .replace('', 'ōō').replace('', 'ōō')
+
+            print(f' {pos_c.color}{postring}  {phon_c.color}{phon_spell}')
             poses.append(postring)
         if poses:
             print()
-        # Adds etymologies
-        for etym in td.find_all('div', class_='etyseg'):
+        # Add etymologies
+        for etym in td.find_all('div', class_='etyseg', recursive=False):
             print(f' {etym_c.color}'
                   f'{wrap_lines(etym.text, term_width, 0, 1, 1)}')
             etyms.append(etym.text.strip())
     # So that newline is not printed in glosses without etymologies
     if etyms:
         print()
+
+    if not any((defs, poses, etyms, phrase_list)):
+        skip = 1
+        query_pos_labels = {x.replace(' ', '').replace('.', '').lower() for x in query_pos_labels}
+        print(f'{err_c.color}Podane kryteria zwróciły pusty słownik.\n'
+              f'Etykiety dla {R}"{query}"{err_c.color}: {R}{", ".join(query_pos_labels)} ')
     return defs, poses, etyms, phrase_list
 
 
@@ -652,7 +809,7 @@ def hide_phrase_in(func):
                 continue
 
             if not config['hide_prepositions']:
-                if word.lower() in data.prepositions:
+                if word.lower() in data.PREPOSITIONS:
                     continue
 
             content = content_replace(word, '...')
@@ -785,7 +942,7 @@ def input_field(content_list, prompt, add_field, bulk_element, hide, connector, 
             return users_element, 1, hide
 
     input_choice = input_choice.replace(' ', '').lower()
-    if input_choice in ('0', '-s'):
+    if input_choice in ('0', '-s', '-0'):
         return '', 1, False
     elif input_choice.startswith('-1'):
         input_choice = input_choice.replace('-1', f'1:{content_length}')
@@ -1025,16 +1182,15 @@ def display_card(field_values):
     delimit = get_conf_of('delimsize')
     centr = get_conf_of('center')
     options = (get_conf_of('textwidth'), 0, 0, 0)
-    conf_fo = config['fieldorder'].items()
 
     try:
         print(f'\n{delimit_c.color}{delimit * "-"}')
 
-        for field_number, field_name in conf_fo:
+        for field_number, field_name in config['fieldorder'].items():
             for fi in wrap_lines(field_values[field_name], *options).split('\n'):
                 print(f'{color_of[field_name]}{fi.center(centr)}')
-            # d = delimitation
-            if field_number == config['fieldorder_d']:
+
+            if field_number == config['fieldorder_d']:  # d = delimitation
                 print(f'{delimit_c.color}{delimit * "-"}')
 
         print(f'{delimit_c.color}{delimit * "-"}')
@@ -1042,6 +1198,14 @@ def display_card(field_values):
         print(f'{err_c.color}\nDodawanie karty do pliku nie powiodło się\n'
               f'Spróbuj przywrócić domyślne ustawienia pól wpisując {R}-fo default\n')
         return 1  # skip
+
+
+def merge_fields(field_to_merge_into: str, mergee: str, connector: str) -> tuple:
+    if not field_to_merge_into or not mergee:
+        connector = ''
+
+    merged_field = field_to_merge_into + connector + mergee
+    return merged_field, ''
 
 
 def save_card_to_file(field_vals):
@@ -1099,7 +1263,7 @@ def main():
     if not os.path.exists('Karty_audio') and config['audio_path'] == 'Karty_audio':
         os.mkdir('Karty_audio')
 
-    __version__ = 'v0.9.0-1'
+    __version__ = 'v0.9.1-1'
     print(f'{BOLD}- Dodawacz kart do Anki {__version__} -{END}\n'
           f'Wpisz "--help", aby wyświetlić pomoc\n\n')
 
@@ -1109,8 +1273,8 @@ def main():
         phrase = ''
 
         link_word = search_interface()
-        phrase = link_word[0]
-        flags = [x.strip('-') for x in link_word[1:]]
+        phrase, *flags = link_word.split(' -')
+        flags = [x.strip('-') for x in flags]
 
         if phrase in ('-rec', '--record'):
             ffmpeg.capture_audio()
@@ -1130,11 +1294,10 @@ def main():
             wordnet(phrase)
             continue
 
-        # input loop
+        # input fields loop
         zdanie, _ = sentence_input('hide_sentence_word')
         if skip:
             continue
-
         # temporarily set phrase to the first element from the phrase_list
         # to always hide the correct query before input, e.g. preferred -> prefer
         phrase = phrase_list[0]
@@ -1170,12 +1333,7 @@ def main():
                     continue
 
                 if config['merge_disambiguation']:
-                    if not synonyms or not examples:
-                        brk = ''
-                    else:
-                        brk = '<br>'
-                    synonyms = synonyms + brk + examples
-                    examples = ''
+                    synonyms, examples = merge_fields(synonyms, examples, '<br>')
         else:
             definitions, choice = input_field(definitions, **input_configuration['farlex_idioms'])
             if skip:
@@ -1192,12 +1350,7 @@ def main():
 
             audio = search_for_audio('diki', phrase, flags)
             if config['merge_idioms']:
-                if not definitions or not examples:
-                    brk = ''
-                else:
-                    brk = '<br><br>'
-                definitions = definitions + brk + examples
-                examples = ''
+                definitions, examples = merge_fields(definitions, examples, '<br><br>')
 
         field_values = {
             'definicja': definitions, 'synonimy': synonyms, 'przyklady': examples, 'phrase': phrase,
@@ -1219,6 +1372,6 @@ def main():
 if __name__ == '__main__':
     try:
         raise SystemExit(main())
-    except KeyboardInterrupt:
+    except (KeyboardInterrupt, EOFError):
         # R so that the color from "inputtext" isn't displayed
         print(f'{R}\nUnicestwiony')

@@ -85,7 +85,7 @@ def delete_cards(*args):
 
     with open('karty.txt', 'w') as w:
         w.write(new_file)
-    print(f"{YEX.color}Usunięto z pliku {R}'karty.txt'{YEX.color}: ")
+    print(f'{YEX.color}Usunięto z pliku {R}"karty.txt"{YEX.color}: ')
     for card_no, dl in enumerate(deleted_lines):
         card_numb = len(lines) + no_of_deletions - card_no
         dl = dl.strip('\t ').replace('\t', '  ')
@@ -93,6 +93,7 @@ def delete_cards(*args):
 
 
 def config_bulk(*args) -> None:
+    cmd = args[0]
     bulk_elements = ('def', 'pos', 'etym', 'syn', 'psyn', 'pidiom', 'all')
     input_messages = (
         'Wartość dla definicji', 'Wartość dla części mowy',
@@ -126,7 +127,6 @@ def config_bulk(*args) -> None:
             return str(val1)
         return f'{val1}:{val2}'
 
-    cmd = args[0]
     try:
         bulk_elem = args[1].lower()
     except IndexError:  # no arguments
@@ -144,16 +144,15 @@ def config_bulk(*args) -> None:
                     range_val = verify_range()
                     values_to_save.append(range_val)
                 elif -1 <= int(value) < 1000:
-                    values_to_save.append(int(value))
+                    values_to_save.append(value)
                 else:
-                    values_to_save.append(0)
+                    values_to_save.append('0')
                     print(f'{err_c.color}Nieobsługiwana wartość\n'
                           f'{YEX.color}Wartość zmieniona na: {R}0')
         except ValueError:
             print(f'{YEX.color}Opuszczam konfigurację\nWprowadzone zmiany nie zostaną zapisane')
-            return None
-
-        save_all_values()
+        else:
+            save_all_values()
         return None
 
     if bulk_elem in ('-h', '--help'):
@@ -196,8 +195,12 @@ def config_bulk(*args) -> None:
             return None
     else:
         try:
-            if not -1 <= int(value) < 1000:
+            # cast to int to prevent inputs like: 0000 or 00024 from saving
+            value = int(value)
+            if not -1 <= value < 1000:
                 raise ValueError
+            # cast to str to allow for string manipulation in input_func
+            value = str(value)
         except ValueError:
             print(f'{err_c.color}Nieobsługiwana wartość\n'
                   f'Dozwolone pojedyncze wartości: {R}-1 <= wartość < 1000')
@@ -247,8 +250,13 @@ def print_config_representation() -> None:
         color_b = bool_colors_from_string.get(state_b.strip(), '')
         color_c = bool_colors_from_string.get(state_c, '')
 
+        if '[' in b:
+            level_b = '\b\b\b\b\b\b'
+        else:
+            level_b = ''
+
         print(f'{a:13s}{color_a}{state_a:10s}{R}'
-              f'{b:12s}{color_b}{state_b:14s}{R}'
+              f'{b:12s}{color_b}{state_b:14s}{level_b}{R}'
               f'{c:11s}{color_c}{state_c}{R}')
 
     print(f'\n--audio-path: {config["audio_path"]}\n'

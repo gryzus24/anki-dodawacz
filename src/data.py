@@ -77,9 +77,15 @@ command_data = {
     '-fahd': {
         'config_entry': 'ahd_filter',
         'print_msg': 'Filtrowanie poddefinicji w AHD'},
+    '-fnolabel': {
+        'config_entry': 'nolabel_filter',
+        'print_msg': 'Filtrowanie definicji niezawierających etykiet części mowy'},
     '-fpsyn': {
         'config_entry': 'psyn_filter',
         'print_msg': 'Filtrowanie przykładów synonimów niezawierających szukanego hasła'},
+    '-toipa': {
+        'config_entry': 'convert_to_ipa',
+        'print_msg': 'Tłumaczenie zapisu fonetycznego AHD do IPA'},
 
     '-upz': {
         'config_entry': 'hide_sentence_word',
@@ -118,7 +124,7 @@ command_data = {
         'print_msg': 'Dodawanie kart poprzez AnkiConnect'},
     '-duplicates': {
         'config_entry': 'duplicates',
-        'print_msg': 'Dodawanie duplikatów poprzez AnkiConnect'},  # 28
+        'print_msg': 'Dodawanie duplikatów poprzez AnkiConnect'},  # 30
     # end of boolean commands
     '-dupescope': {
         'config_entry': 'dupescope',
@@ -189,7 +195,7 @@ input_configuration = {
         'bulk_element': 'pos_bulk',
         'hide': False,
         'connector': ' | ',
-        'spec_split': ' '
+        'spec_split': ','
         },
     'etymologies': {
         'prompt': 'Wybierz etymologie',
@@ -299,38 +305,95 @@ ankiconnect_base_fields = {
 }
 
 labels = {
-    # part of speech labels
-    'adj.': 'adjective',
-    'adv.': 'adverb',
-    'conj.': 'conjunction',
-    'def.art.': 'definite article',
-    'indef.art.': 'indefinite article',
-    'interj.': 'interjection',
-    'n.': 'noun',
-    'pl.': 'plural',
-    'n.pl.': 'plural noun',
-    'pl.n.': 'plural noun',
-    'sing.': 'singular',
-    'sing.n.': 'singular noun',
-    'n.sing.': 'singular noun',
-    'prep.': 'preposition',
-    'pron.': 'pronoun',
-    'v.': None,
+    # part of speech labels to extend
+    'adj': tuple(['adjective']),  # these have to be len 1 iterables
+    'adjective': tuple(['adj']),
 
-    'tr.': 'transitive verb',
-    'intr.': 'intransitive verb',
-    'aux.': 'auxiliary verb',
+    'adv': tuple(['adverb']),
+    'adverb': tuple(['adv']),
 
-    'tr.v.': 'transitive verb',
-    'intr.v.': 'intransitive verb',
-    'aux.v.': 'auxiliary verb',
-    'intr.&tr.v.': 'intransitive and transitive',
-    'pref.': 'prefix',
-    'suff.': 'suffix',
-    'abbr.': 'abbreviation'
+    'conj': tuple(['conjunction']),
+    'conjunction': tuple(['conj']),
+
+    'defart': tuple(['def']),
+    'def': tuple(['defart']),
+
+    'indef': tuple(['indefart']),
+    'indefart': tuple(['indef']),
+
+    'interj': tuple(['interjection']),
+    'interjection': tuple(['interj']),
+
+    'n': tuple(['noun']),
+    'noun': tuple(['n']),
+
+    'pl': ('plural', 'pln', 'npl', 'n', 'noun'),
+    'npl': ('plural', 'pl', 'pln', 'n', 'noun'),
+    'pln': ('plural', 'pl', 'npl', 'n', 'noun'),
+    'plural': ('pln', 'pl', 'npl', 'n', 'noun'),
+
+    # I haven't seen these yet, NotImplemented
+    # 'sing': 'singular',
+    # 'singn': 'singular noun',
+    # 'nsing': 'singular noun',
+
+    'prep': tuple(['preposition']),
+    'preposition': tuple(['prep']),
+
+    'pron': tuple(['pronoun']),
+    'pronoun': tuple(['pron']),
+
+    # verbs shouldn't be expanded when in labels, -!v won't work
+    # not all verbs are tr.v. or intr.v. ... etc.
+    'v': tuple(['verb']),
+    'verb': 'v',
+
+    'tr': ('transitive', 'trv', 'vtr', 'v', 'verb'),
+    'trv': ('transitive', 'tr', 'vtr', 'v', 'verb'),
+    'vtr': ('transitive', 'tr', 'trv', 'v', 'verb'),
+    'transitive': ('tr', 'trv', 'vtr', 'v', 'verb'),
+
+    'intr': ('intransitive', 'intrv', 'vintr', 'v', 'verb'),
+    'intrv': ('intransitive', 'intr', 'vintr', 'v', 'verb'),
+    'vintr': ('intransitive', 'intr', 'intrv', 'v', 'verb'),
+    'intransitive': ('intr', 'intrv', 'vintr', 'v', 'verb'),
+
+    'intr&trv': (
+        'intransitive', 'transitive', 'intr', 'tr',
+        'intrv', 'trv', 'vintr', 'vtr', 'v', 'verb'
+    ),
+
+    'aux': ('auxiliary', 'auxv'),
+    'auxv': ('auxiliary', 'aux'),
+    'auxiliary': ('aux', 'auxv'),
+
+    'pref': tuple(['prefix']),
+    'prefix': tuple(['pref']),
+
+    'suff': tuple(['suffix']),
+    'suffix': tuple(['suff']),
+
+    'abbr': tuple(['abbreviation']),
+    'abbreviation': tuple(['abbr']),
+
+    'nolabel': tuple(['']),
+    '': tuple(['nolabel']),
 }
 
-prepositions = (
+AHD_IPA_translation = str.maketrans({
+    'ă': 'æ',   'ā': 'eɪ',  'ä': 'ɑ',
+    'â': 'eə',  'ĕ': 'ɛ',   'ē': 'i:',  # there are some private symbols here
+    'ĭ': 'ɪ',   'î': 'ɪ',   'ī': 'aɪ',  # that AHD claims to have used, but
+    'i': 'aɪ',  'ŏ': 'ɑ',   'ō': 'oʊ',  # I haven't found any usages yet
+    'ô': 'ɔ',   '': 'ʊ',   '': 'ʊ',
+    '': 'u',   '': 'u:',  '': 'ð',
+    'ŭ': 'ʌ',   'û': 'ɔ:',  'y': 'j',
+    'j': 'dʒ',  'ü': 'y',   '': 'ç',
+    '': 'x',   '': 'bõ',  'ɴ': 'ⁿ',
+    '(': '/',   ')': '/'
+})
+
+PREPOSITIONS = (
     'about', 'above', 'across', 'after', 'against', 'along', 'among', 'around',
     'as', 'at', 'before', 'behind', 'below', 'beneath', 'beside', 'between',
     'beyond', 'by', 'despite', 'down', 'during', 'except', 'for', 'from', 'in',
@@ -350,13 +413,13 @@ config_columns = (
     ('-pidiom',              '-indent',                            ''),
     ('',                     '-delimsize',         '[config filtrów]'),
     ('-mergedisamb',         '-center',                       '-fahd'),
-    ('-mergeidiom',          '',                             '-fpsyn'),
-    ('',                     '[config ukrywania]',                 ''),
-    ('-audio',               '-upz',                 '[config audio]'),
-    ('-disamb',              '-udef',                       '-server'),
-    ('-savecards',           '-udisamb',                   '-quality'),
-    ('-createcards',         '-uidiom',                            ''),
-    ('',                     '-upreps',                            ''),
+    ('-mergeidiom',          '',                          '-fnolabel'),
+    ('',                     '[config ukrywania]',           '-fpsyn'),
+    ('-audio',               '-upz',                         '-toipa'),
+    ('-disamb',              '-udef',                              ''),
+    ('-savecards',           '-udisamb',             '[config audio]'),
+    ('-createcards',         '-uidiom',                     '-server'),
+    ('',                     '-upreps',                    '-quality'),
     ('[config ankiconnect]', '',                                   ''),
     ('-ankiconnect',         '',                                   ''),
     ('-duplicates',          '',                                   ''),

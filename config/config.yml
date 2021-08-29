@@ -13,6 +13,7 @@ attention_c: lightyellow
 audio_device: default
 audio_path: Karty_audio
 center: 79* auto
+convert_to_ipa: true
 create_card: true
 deck: '-'
 def1_c: reset
@@ -49,6 +50,7 @@ input_c: reset
 inputtext_c: reset
 merge_disambiguation: false
 merge_idioms: true
+nolabel_filter: false
 note: '-'
 phon_c: lightblack
 phrase_c: cyan

@@ -27,8 +27,12 @@ ahdictionary('vicious circle')
 # first headword numbered, second not and one phonetic spelling + Informal thingy
 ahdictionary('ok')
 
-# These are problematic with the current implementation
-# Two headwords with 'also' and two phonetic spellings
 ahdictionary('mastodon')
 # first headword numbered, second not and two phonetic spellings
 ahdictionary('like')
+
+# problematic:
+ahdictionary('a')
+ahdictionary('was')
+ahdictionary('the')
+ahdictionary('but')
