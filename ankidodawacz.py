@@ -19,7 +19,7 @@ import sys
 
 import requests
 from bs4 import BeautifulSoup
-from requests.exceptions import ConnectionError as requestsConnectError
+from requests.exceptions import ConnectionError as RqConnectionError
 from requests.exceptions import Timeout
 
 import src.anki_interface as anki
@@ -96,9 +96,29 @@ def search_interface() -> str:
                 commands[cmd](*args)
             else:
                 commands[cmd]()
-        except KeyError:
-            # command not found
+        except KeyError:  # command not found
             return word
+
+
+def handle_connection_exceptions(func):
+    def wrapper(*args, **kwargs):
+        dictionary_name = func.__name__.rsplit('_', 1)[0]
+        try:
+            result = func(*args, **kwargs)
+        except Timeout:
+            print(f'{err_c.color}{dictionary_name} nie odpowiada.')
+        except RqConnectionError:
+            print(f'{err_c.color}Połączenie z {dictionary_name} zostało zerwane.')
+        except ConnectionError:
+            print(f'{err_c.color}Nie udało się połączyć z {dictionary_name},\n'
+                  f'sprawdź swoje połączenie i spróbuj ponownie.')
+        except Exception:
+            print(f'{err_c.color}Wystąpił nieoczekiwany błąd podczas łączenia się z {dictionary_name}.')
+            raise
+        else:
+            return result
+
+    return wrapper
 
 
 def get_audio_response(audio_link, audiofile_name):
@@ -117,19 +137,14 @@ def get_audio_response(audio_link, audiofile_name):
         raise
 
 
-def get_audio_from_diki(raw_phrase, flag, url='https://www.diki.pl/slownik-angielskiego?q='):
-    def diki_request(full_url):
-        try:
-            reqs = requests.get(full_url, headers=USER_AGENT, timeout=10)
-            soup = BeautifulSoup(reqs.content, 'lxml', from_encoding='utf-8')
-            return soup.find_all('span', class_='audioIcon icon-sound dontprint soundOnClick')
-        except requestsConnectError:
-            print(f'{err_c.color}Diki zerwało połączenie\n'
-                  f'zmień serwer audio lub zrestartuj program i spróbuj ponownie')
-        except Timeout:
-            print(f'{err_c.color}Diki nie odpowiada\n'
-                  f'zmień serwer audio lub zrestartuj program i spróbuj ponownie')
+@handle_connection_exceptions
+def diki_request(full_url):
+    reqs = requests.get(full_url, headers=USER_AGENT, timeout=10)
+    soup = BeautifulSoup(reqs.content, 'lxml', from_encoding='utf-8')
+    return soup.find_all('span', class_='audioIcon icon-sound dontprint soundOnClick')
 
+
+def get_audio_from_diki(raw_phrase, flag, url='https://www.diki.pl/slownik-angielskiego?q='):
     def find_audio_url(filename, aurls):
         flag_values = {'noun': 'n', 'verb': 'v',
                        'adj': 'a', 'adjective': 'a'}
@@ -186,6 +201,8 @@ def get_audio_from_diki(raw_phrase, flag, url='https://www.diki.pl/slownik-angie
     def get_audio_url(_search_phrase, search_by_filename=True):
         _diki_phrase = _search_phrase.strip()
         audio_urls = diki_request(full_url=url + _diki_phrase)
+        if audio_urls is None:
+            return None, None
         if not search_by_filename:
             return (_diki_phrase, audio_urls[0]) if audio_urls else (_diki_phrase, audio_urls)
         # Cannot remove the apostrophe earlier cause diki needs it during search
@@ -196,6 +213,9 @@ def get_audio_from_diki(raw_phrase, flag, url='https://www.diki.pl/slownik-angie
     search_phrase = raw_phrase.replace('(', '').replace(')', '') \
         .replace(' or something', '').replace('someone', 'somebody')
     diki_phrase, audio_url = get_audio_url(search_phrase)
+    if diki_phrase is None:
+        return '', ''
+
     if not audio_url:
         print(f'{err_c.color}Diki nie posiada pożądanego audio\n{YEX.color}Spróbuję dodać co łaska...\n')
     if not audio_url and search_phrase.startswith('an '):
@@ -235,14 +255,16 @@ def get_audio_from_diki(raw_phrase, flag, url='https://www.diki.pl/slownik-angie
     return audio_link, audiofile_name
 
 
-def audio_ahd(query):
+def ahdictionary_audio(query):
     full_url = 'https://www.ahdictionary.com/word/search.html?q=' + query
     reqs = requests_session_ah.get(full_url)
     soup = BeautifulSoup(reqs.content, 'lxml', from_encoding='utf-8')
     audio_raw = soup.find('a', {'target': '_blank'}).get('href')
+
     if audio_raw == 'http://www.hmhco.com':
         print(f"{err_c.color}AH Dictionary nie posiada pożądanego audio\n{YEX.color}Sprawdzam diki...")
         return get_audio_from_diki(raw_phrase=phrase, flag='')
+
     audiofile_name = audio_raw.split('/')[-1]
     audiofile_name = audiofile_name.split('.')[0] + '.wav'
     audio_link = 'https://www.ahdictionary.com'
@@ -303,6 +325,7 @@ def audio_lexico(query, flag):
     reqs = requests.get(full_url, headers=USER_AGENT)
     soup = BeautifulSoup(reqs.content, 'lxml', from_encoding='utf-8')
     relevant_content = soup.find('div', class_='entryWrapper')
+
     if flag == '':
         lx_audio = relevant_content.find('a', class_='speaker')
     else:
@@ -317,6 +340,7 @@ def audio_lexico(query, flag):
     if lx_audio is None:
         print(f"{err_c.color}Lexico nie posiada pożądanego audio\n{YEX.color}Sprawdzam diki...")
         return get_audio_from_diki(raw_phrase=phrase, flag=flag)
+
     full_audio_link = str(lx_audio).split('src="')[-1].split('">')[0]
     audiofile_name = full_audio_link.split('/')[-1]
     return full_audio_link, audiofile_name
@@ -343,7 +367,7 @@ def search_for_audio(server, phrase_, flags):
         return ''
 
     if server == 'ahd':
-        audio_link, audiofile_name = audio_ahd(phrase_)
+        audio_link, audiofile_name = ahdictionary_audio(phrase_)
     elif server == 'lexico':
         flag = get_flag_from(flags, server)
         audio_link, audiofile_name = audio_lexico(phrase_.replace(' ', '_'), flag)
@@ -575,26 +599,15 @@ def ahd_to_ipa_translation(ahd_phonetics: str, th: str) -> str:
     return ahd_phonetics
 
 
+@handle_connection_exceptions
 def ahdictionary_request(url):
-    try:
-        reqs = requests_session_ah.get(url, timeout=10)
-        soup = BeautifulSoup(reqs.content, 'lxml', from_encoding='utf-8')
-        word_check = soup.find('div', {'id': 'results'})
+    reqs = requests_session_ah.get(url, timeout=10)
+    soup = BeautifulSoup(reqs.content, 'lxml', from_encoding='utf-8')
+    word_check = soup.find('div', {'id': 'results'})
 
-        if word_check.text == 'No word definition found':
-            return None
-
-        return soup
-    except ConnectionError:
-        print(f'{err_c.color}Nie udało się połączyć ze słownikiem, sprawdź swoje połączenie i spróbuj ponownie')
-    except requestsConnectError:
-        print(f'{err_c.color}AH Dictionary zerwał połączenie\n'
-              f'Zmień słownik lub zrestartuj program i spróbuj ponownie')
-    except Timeout:
-        print(f'{err_c.color}AH Dictionary nie odpowiada')
-    except Exception:
-        print(f'{err_c.color}Wystąpił nieoczekiwany błąd')
-        raise
+    if word_check.text == 'No word definition found':
+        return None
+    return soup
 
 
 def ahdictionary(query, *flags):
@@ -752,7 +765,9 @@ def ahdictionary(query, *flags):
         print()
         # Add parts of speech
         for pos in td.find_all('div', class_='runseg', recursive=False):
-            postring = pos.text.split()
+            # removing ',' makes parts of speech with multiple spelling variants get
+            # their phonetic spelling correctly detected
+            postring = pos.text.replace(',', '').split()
             postring, phon_spell = get_phrase_and_phonetic_spelling(postring)
 
             # accentuation and hyphenation
@@ -1012,30 +1027,19 @@ def add_elements(parsed_inputs: list, content_list: list, spec_split: str) -> li
     return content
 
 
+@handle_connection_exceptions
 def wordnet_request(url):
-    try:
-        # WordNet doesn't load faster when using requests.Session(),
-        # probably my implementation is wrong
-        # though it might be headers like keep-alive or cookies, I don't know
-        reqs_syn = requests.get(url, headers=USER_AGENT, timeout=10)
-        syn_soup = BeautifulSoup(reqs_syn.content, 'lxml', from_encoding='iso-8859-1')
-        header = syn_soup.find('h3').text
+    # WordNet doesn't load faster when using requests.Session(),
+    # probably my implementation is wrong
+    # though it might be headers like keep-alive or cookies, I don't know
+    reqs_syn = requests.get(url, headers=USER_AGENT, timeout=10)
+    syn_soup = BeautifulSoup(reqs_syn.content, 'lxml', from_encoding='iso-8859-1')
+    header = syn_soup.find('h3').text
 
-        if header.startswith('Your') or header.startswith('Sorry'):
-            print(f'{err_c.color}Nie znaleziono {phrase_c.color}{phrase}{err_c.color} na {R}WordNecie')
-            return None
-
-        return syn_soup
-    except ConnectionError:
-        print(f'{err_c.color}Nie udało się połączyć z WordNetem, sprawdź swoje połączenie i spróbuj ponownie')
-    except Timeout:
-        print(f'{err_c.color}WordNet nie odpowiada, spróbuj nawiązać połączenie później')
-    except requestsConnectError:
-        print(f'{err_c.color}WordNet zerwał połączenie\n'
-              f'zmień słownik lub zrestartuj program i spróbuj ponownie')
-    except Exception:
-        print(f'{err_c.color}Wystąpił nieoczekiwany błąd podczas nawiązywania połączenia z WordNetem\n')
-        raise
+    if header.startswith('Your') or header.startswith('Sorry'):
+        print(f'{err_c.color}Nie znaleziono {phrase_c.color}{phrase}{err_c.color} na {R}WordNecie')
+        return None
+    return syn_soup
 
 
 def wordnet(query):
@@ -1090,28 +1094,15 @@ def wordnet(query):
     return gsyn, gpsyn
 
 
+@handle_connection_exceptions
 def farlex_idioms_request(url):
-    try:
-        reqs_idioms = requests.get(url, headers=USER_AGENT, timeout=10)
-        soup = BeautifulSoup(reqs_idioms.content, 'lxml', from_encoding='utf-8')
-        relevant_content = soup.find('section', {'data-src': 'FarlexIdi'})
+    reqs_idioms = requests.get(url, headers=USER_AGENT, timeout=10)
+    soup = BeautifulSoup(reqs_idioms.content, 'lxml', from_encoding='utf-8')
+    relevant_content = soup.find('section', {'data-src': 'FarlexIdi'})
 
-        if relevant_content is None:
-            return None
-
-        return relevant_content
-    except ConnectionError:
-        print(f'{err_c.color}Nie udało się połączyć ze słownikiem idiomów\n'
-              f'sprawdź swoje połączenie i spróbuj ponownie')
-    except Timeout:
-        print(f'{err_c.color}Słownik idiomów nie odpowiada\n'
-              f'spróbuj nawiązać połączenie później')
-    except requestsConnectError:
-        print(f'{err_c.color}Farlex zerwał połączenie\n'
-              f'zmień słownik lub zrestartuj program i spróbuj ponownie')
-    except Exception:
-        print(f'{err_c.color}Wystąpił nieoczekiwany błąd podczas wyświetlania słownika idiomów\n')
-        raise
+    if relevant_content is None:
+        return None
+    return relevant_content
 
 
 def farlex_idioms(query):
@@ -1263,7 +1254,7 @@ def main():
     if not os.path.exists('Karty_audio') and config['audio_path'] == 'Karty_audio':
         os.mkdir('Karty_audio')
 
-    __version__ = 'v0.9.1-1'
+    __version__ = 'v0.9.1-2'
     print(f'{BOLD}- Dodawacz kart do Anki {__version__} -{END}\n'
           f'Wpisz "--help", aby wyświetlić pomoc\n\n')
 
