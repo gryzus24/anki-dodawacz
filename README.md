@@ -10,9 +10,9 @@ się w stu procentach za pomocą klawiatury.
 
 ## Instalacja:
 
-[link do pobrania v0.9.0-1.zip](https://github.com/gryzus24/anki-dodawacz/archive/refs/tags/v0.9.0-1.zip)
+[link do pobrania v0.9.1-1.zip](https://github.com/gryzus24/anki-dodawacz/archive/refs/tags/v0.9.1-1.zip)
 :-
-[link do pobrania v0.9.0-1.tar.gz](https://github.com/gryzus24/anki-dodawacz/archive/refs/tags/v0.9.0-1.tar.gz)
+[link do pobrania v0.9.1-1.tar.gz](https://github.com/gryzus24/anki-dodawacz/archive/refs/tags/v0.9.1-1.tar.gz)
 
 ### Windows:
 Pobieramy .zip i rozpakowujemy.
@@ -66,17 +66,13 @@ Możemy zmienić ścieżkę zapisu audio, jak i wszystkie domyślne ustawienia u
 Najlepiej dodać ścieżkę do folderu "collection.media", aby audio było automatycznie odtwarzane w Anki bez potrzeby
 ręcznego przenoszenia zawartości "Karty_audio".<br>
   Aby to zrobić możemy ręcznie wpisać ścieżkę używając komendy `-ap [ścieżka]`<br>
-  albo wpisać `-ap auto`, aby program wyszukał ścieżkę do "collection.media" automatycznie
+  albo wpisać `-ap auto`, aby program wyszukał ścieżkę do "collection.media" automatycznie.
 
 Customizacja wyglądu w części zależna jest od naszego emulatora terminala. Na Windowsie 10,
 aby zmienić czcionkę, przeźroczystość czy wielkość okna należy kliknąć górny pasek -> właściwości. Tutaj możemy
-dostosować wygląd okna do naszych preferencji.
-  
-![image](https://user-images.githubusercontent.com/82805891/116147106-999c3080-a6df-11eb-85ec-40de05b43a90.png)
+dostosować wygląd okna do naszych preferencji. Jednak, aby uzyskać lepszą czytelność i komfort korzystania zalecam używanie innego emulatora terminala niż "cmd". Wersja portable "Alacritty" oferuje bardzo dobre ustawienia domyślne, a paleta kolorów jest łatwiejsza dla oczu.
 
-Mamy możliwość bogatej konfiguracji z poziomu programu.  
-  
-![image](https://user-images.githubusercontent.com/82805891/130698280-a41c0200-aac2-49cd-b14e-eb3bf583925f.png)
+W Ankidodawaczu możemy zmieniać kolory pojedynczych elementów, ustawiać wcięcie, zawijanie, justowanie tekstu oraz włączać i wyłączać wyświetlanie niektórych elementów i wiadomości.
 
 ## Konfiguracja Anki i AnkiConnect
 
@@ -167,7 +163,7 @@ Jeżeli nie widzimy interesującego nas urządzenia na Windowsie:
   - Zaznaczamy "nasłuchuj tego urządzenia"
   - Zezwalamy aplikacjom na wykorzystywanie mikrofonu
 
-Na Linuxie jest dosyć duża szansa, że _ffmpeg_ jest zainstalowany i jest dostępny w $PATH.<br>
+Na Linuxie jest duża szansa, że _ffmpeg_ jest zainstalowany i jest dostępny w $PATH.<br>
 Więc jedyne co musimy zrobić to:<br>
   - Wpisujemy `-rec` w Ankidodawaczu
   - podczas nagrywania wchodzimy w mikser dźwięku pulseaudio -> Nagrywanie
