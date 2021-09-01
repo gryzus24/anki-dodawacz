@@ -5,8 +5,8 @@ add_etymologies: true
 add_idiom_examples: true
 add_parts_of_speech: true
 add_sentences: true
-add_synonym_examples: true
-add_synonyms: true
+add_synonym_examples: false
+add_synonyms: false
 ahd_filter: false
 ankiconnect: false
 attention_c: lightyellow
@@ -66,7 +66,6 @@ recording_quality: '4'
 save_card: true
 server: ahd
 showadded: true
-showdisamb: true
 success_c: lightgreen
 syn_bulk: '0'
 syn_c: yellow

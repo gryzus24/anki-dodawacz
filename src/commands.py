@@ -43,7 +43,7 @@ def delete_cards(*args):
     try:
         if args[1].lower() in ('-h', '--help'):
             print(f'{YEX.color}Usuwa ostatnio dodawane karty z pliku {R}"karty.txt"\n'
-                  f'{R}{cmd} [liczba >= 1]')
+                  f'{R}{cmd} [n >= 1]')
             return None
 
         no_of_deletions = int(args[1])
@@ -102,71 +102,44 @@ def config_bulk(*args) -> None:
     )
     values_to_save = []
 
-    def save_all_values(text_output=False) -> None:
-        for elem, val, msg in zip(bulk_elements, values_to_save, input_messages):
+    def save_all_values() -> None:
+        print(f'\n{GEX.color}Wartości domyślne zapisane dla:')
+        for elem, val in zip(bulk_elements, values_to_save):
             save_commands(entry=f'{elem}_bulk', value=val)
-            if text_output:
-                print(f'{R}{msg}: {val}')
-        print(f'{GEX.color}Wartości domyślne zapisane pomyślnie\n')
-
-    def verify_range() -> str:
-        two_values = value.split(':', 1)
-        # check for ValueError
-        val1 = int(two_values[0])
-        val2 = int(two_values[1])
-        if val1 == 0 and val2 == 0:
-            return '0'
-        # check ranges for each value
-        for val in (val1, val2):
-            if not 1 <= val < 1000:
-                print(f'{err_c.color}Nieobsługiwane wartości dla przedziału')
-                raise ValueError
-
-        if val1 == val2:
-            print(f'{YEX.color}Ustawiono: {R}{val1}')
-            return str(val1)
-        return f'{val1}:{val2}'
+            print(f'{R}{elem:7}: {val}')
+        print()
 
     try:
         bulk_elem = args[1].lower()
     except IndexError:  # no arguments
-        print(f'{R}{BOLD}Konfiguracja bulk{END}\n'
-              f'Pojedyncze wartości:\n'
-              f'-1 <= wartość < 1000\n\n'
-              f'Przedziały:\n'
-              f'1 <= wartość < 1000\n')
-        try:
-            for input_msg in input_messages:
-                # replace ';' with ':' to prevent annoying typos
-                # especially here, because one typo and configuration terminates
-                value = input(f'{input_c.color}{input_msg}:{inputtext_c.color} ').replace(';', ':')
-                if ':' in value and '-' not in value:
-                    range_val = verify_range()
-                    values_to_save.append(range_val)
-                elif -1 <= int(value) < 1000:
-                    values_to_save.append(value)
-                else:
-                    values_to_save.append('0')
-                    print(f'{err_c.color}Nieobsługiwana wartość\n'
-                          f'{YEX.color}Wartość zmieniona na: {R}0')
-        except ValueError:
-            print(f'{YEX.color}Opuszczam konfigurację\nWprowadzone zmiany nie zostaną zapisane')
-        else:
-            save_all_values()
+        print(f'{R}{BOLD}Konfiguracja domyślnych wartości{END}\n'
+              f'q - wyjdź z konfiguracji\n'
+              f'wq - zapisz i wyjdź z konfiguracji\n')
+
+        for input_msg in input_messages:
+            value = input(f'{input_c.color}{input_msg}:{inputtext_c.color} ').strip().lower()
+
+            if value == 'q':
+                print(f'{YEX.color}Opuszczam konfigurację')
+                return None
+            elif value == 'wq':
+                if values_to_save:
+                    save_all_values()
+                return None
+            elif not value:
+                values_to_save.append('0')
+            else:
+                values_to_save.append(value)
+
+        save_all_values()
         return None
 
     if bulk_elem in ('-h', '--help'):
         print(f'{YEX.color}Konfiguracja domyślnych wartości dodawania\n'
+              f'{R}{cmd} - rozpoczyna pełną konfigurację\n'
               f'{R}{cmd} {{element}} {{wartość}}\n'
-              f'Przedział:\n'
-              f'{cmd} {{element}} {{wartość:wartość}}\n\n'
               f'{BOLD}Elementy:{END}\n'
-              f'def, pos, etym, syn, psyn, pidiom, all\n\n'
-              f'{BOLD}Dostępne wartości:{END}\n'
-              f'Pojedyncze:\n'
-              f'-1 <= wartość < 1000\n\n'
-              f'Przedziały:\n'
-              f'1 <= wartość < 1000\n')
+              f'def, pos, etym, syn, psyn, pidiom, all\n')
         return None
 
     if bulk_elem not in bulk_elements:
@@ -176,41 +149,15 @@ def config_bulk(*args) -> None:
         return None
 
     try:
-        # replace ';' with ':' to prevent annoying typos
-        value = args[2].replace(';', ':')
+        value = args[2]
     except IndexError:
         print(f'{YEX.color}Brakuje wartości\n'
-              f'{R}{cmd} {bulk_elem} {{wartość}}\n'
-              f'        {{wartość:wartość}}\n')
+              f'{R}{cmd} {bulk_elem} {{wartość}}\n')
         return None
-
-    if ':' in value:
-        try:
-            value = verify_range()
-        # verify_range raises its own ValueError that complements this error message
-        except ValueError:
-            print(f'{err_c.color}Dozwolone wartości dla przedziałów: {R}1 <= wartość < 1000')
-            if bulk_elem != 'all':
-                print(f'{YEX.color}Wartość dla {R}{bulk_elem}{YEX.color} pozostaje: {R}{config[f"{bulk_elem}_bulk"]}')
-            return None
-    else:
-        try:
-            # cast to int to prevent inputs like: 0000 or 00024 from saving
-            value = int(value)
-            if not -1 <= value < 1000:
-                raise ValueError
-            # cast to str to allow for string manipulation in input_func
-            value = str(value)
-        except ValueError:
-            print(f'{err_c.color}Nieobsługiwana wartość\n'
-                  f'Dozwolone pojedyncze wartości: {R}-1 <= wartość < 1000')
-            if bulk_elem != 'all':
-                print(f'{YEX.color}Wartość dla {R}{bulk_elem}{YEX.color} pozostaje: {R}{config[f"{bulk_elem}_bulk"]}')
-            return None
 
     if bulk_elem == 'all':
         values_to_save = [value] * 6
-        save_all_values(text_output=True)
+        save_all_values()
     else:
         print(f"{YEX.color}Domyślna wartość dla {R}{bulk_elem}{YEX.color}: {R}{value}")
         save_commands(entry=f'{bulk_elem}_bulk', value=value)
@@ -237,7 +184,7 @@ def print_config_representation() -> None:
 
         if '_bulk' in c:
             state_c = ' ' + str(config[c])
-            if '-' in state_c:
+            if state_c.startswith(' -'):
                 state_c = state_c.strip()
             c = c[:-5]
         else:
@@ -261,65 +208,48 @@ def print_config_representation() -> None:
 
     print(f'\n--audio-path: {config["audio_path"]}\n'
           f'--audio-device: {config["audio_device"]}\n\n'
+          'konfiguracja domyślnych wartości: "-cd"\n'
           'konfiguracja kolorów: "-c -h"\n'
           'konfiguracja pól: "-fo -h"\n')
 
 
 def set_width_settings(*args):
     command = args[0]
+    msg = data.command_data[command]["print_msg"]
 
     try:
         value = args[1].lower()
         if value in ('-h', '--help'):
             raise IndexError  # to display the message
     except IndexError:
-        print(f'{YEX.color}{data.command_data[command]["print_msg"]}\n'
+        print(f'{YEX.color}{msg}\n'
               f'{R}{data.command_data[command]["comment"]}')
         return None
 
-    # gets current terminal width to save 'auto' values and
-    # provides a reasonable max value for indent
     try:
-        term_width_auto = os.get_terminal_size()[0]
-        term_width = term_width_auto
-        term_er = False
+        term_width = os.get_terminal_size()[0]
     except OSError:
         term_width = 79
-        term_er = True
 
-    else:
-        if value == 'auto' and not command == '-indent':
-            msg = data.command_data[command]["print_msg"]
-            print(f'{R}{msg}: {GEX.color}{value}')
-            save_commands(entry=command.strip('-'), value=f'{term_width}* auto')
+    if value == 'auto':
+        if command == '-indent':
+            print(f'{err_c.color}Wcięcie nie ma wartości {R}auto\n{YEX.color}Ustawiono domyślne {R}2')
+            save_commands(entry=command.strip('-'), value=2)
             return None
 
-    # the width of a monospaced 12 font on 4k resolution
-    max_val = 382
-    if command == '-indent':
-        max_val = term_width // 2
+        print(f'{R}{msg}: {GEX.color}{value}')
+        save_commands(entry=command.strip('-'), value=f'{term_width}* auto')
+        return None
+
     try:
         val = int(value)
-        if 0 <= val <= max_val:
-            msg = data.command_data[command]["print_msg"]
-            print(f'{R}{msg} (w znakach): {value}')
-            val = val
-        elif val > max_val:
-            print(f'{err_c.color}Wartość nie może być większa niż {R}{max_val}\n'
-                  f'{YEX.color}Ustawiono: {R}{max_val}')
-            val = max_val
-        else:
-            print(f'{err_c.color}Wartość nie może być ujemna\n'
-                  f'{YEX.color}Ustawiono: {R}0')
-            val = 0
-        save_commands(entry=command.strip('-'), value=val)
+        if val < 0:
+            raise ValueError
     except ValueError:
-        if not term_er and not command == '-indent':
-            print(f'{err_c.color}Nieobsługiwana wartość\n'
-                  f'podaj liczbę w przedziale od {R}0{err_c.color} do {R}{max_val}{err_c.color} lub {R}auto')
-        else:
-            print(f'{err_c.color}Nieobsługiwana wartość\n'
-                  f'podaj liczbę w przedziale od {R}0{err_c.color} do {R}{max_val}')
+        print(f'{err_c.color}Wartość musi być liczbą naturalną')
+    else:
+        print(f'{R}{msg}: {GEX.color}{value}')
+        save_commands(entry=command.strip('-'), value=val)
 
 
 def change_field_order(*args):
@@ -349,34 +279,39 @@ def change_field_order(*args):
         '9': 'sentence_audio'}
 
     cmd = args[0]
-    help_ = False
     try:
         number = args[1].lower()
-        if number in ('-h', '--help'):
-            help_ = True
-            raise IndexError
     except IndexError:
-        # no arguments
-        if help_:
-            print(f"{R}{cmd} default : przywraca domyślną kolejność pól\n"
-                  f"{cmd} {{1-9}} {{pole}} : zmienia pole pod podanym numerem na {{pole}}\n"
-                  f"{cmd} d {{1-9}} : przesuwa odkreślenie pod {{1-9}}\n")
         display_fields()
+        return None
+
+    if number in ('-h', '--help'):
+        print(f"{R}{cmd} default : przywraca domyślną kolejność pól\n"
+              f"{cmd} {{1-9}} {{pole}} : zmienia pole pod podanym numerem na {{pole}}\n"
+              f"{cmd} d {{1-9}} : przesuwa odkreślenie pod {{1-9}}\n")
+        display_fields()
+        return None
+    elif number == 'default':
+        print(f'{GEX.color}Przywrócono domyślną kolejność pól:')
+        save_commands(entry='fieldorder_d', value='3')
+        save_commands(entry='fieldorder', value=default_field_order)
+        display_fields()
+        return None
+    elif number not in ('1', '2', '3', '4', '5', '6', '7', '8', '9', 'd'):
+        print(f"{err_c.color}Nieprawidłowy argument: {R}{number}\n"
+              f"{cmd} default : przywraca domyślną kolejność pól\n"
+              f"{cmd} {{1-9}} {{pole}} : zmienia pole pod podanym numerem na {{pole}}\n"
+              f"{cmd} d {{1-9}} : przesuwa odkreślenie pod {{1-9}}\n")
         return None
 
     try:
         field_name = args[2].lower()
     except IndexError:
-        # one argument command
-        if number == 'default':
-            field_order = default_field_order
-            print(f'{GEX.color}Przywrócono domyślną kolejność pól:')
-            save_commands(entry='fieldorder_d', value='3')
-            save_commands(entry='fieldorder', value=field_order)
-            display_fields()
+        print(f"{err_c.color}Brakuje argumentu")
+        if number == 'd':
+            print(f"{cmd} d {{1-9}} : przesuwa odkreślenie pod {{1-9}}\n")
         else:
-            print(f"{err_c.color}Podano nieprawidłowy argument\n"
-                  f"Czy chodziło ci o {R}'default'{err_c.color} ?")
+            print(f"{R}{cmd} {{1-9}} {{pole}} : zmienia pole pod podanym numerem na {{pole}}\n")
         return None
 
     # two arguments commands
@@ -447,14 +382,12 @@ def set_audio_path(*args):
         else:
             tree = 'os not supported'
         path = get_paths(tree)
+        if path is None:
+            return None
     else:
         path = ' '.join(args[1:])
         if path.startswith('~'):
             path = path.replace('~', os.getenv('HOME'), 1)
-
-    # get_paths returns None when something is wrong
-    if path is None:
-        return None
 
     print(f'{YEX.color}{msg} ustawiona:\n'
           f'{R}"{path}"')

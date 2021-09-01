@@ -98,23 +98,23 @@ Wpisanie "-h" albo "--help" po komendzie
 
 {R}{BOLD}------[Komendy dodawania]------{END}
 Aby zmienić wartość dla komendy wpisz {BOLD}on|off{END}
-  np. "-pz off", "-disamb on", "-all off" itd.
+  np. "-pz off", "-wordnet on", "-all off" itd.
 
 {BOLD}[Komenda]      [włącza|wyłącza]{END}
--pz            pole na wpisywanie przykładowego zdania
--def           pole na wybór definicji
--pos           pole na wybór części mowy
--etym          pole na wybór etymologii
--syn           pole na wybór synonimów
--psyn          pole na wybór przykładów synonimów
--pidiom        pole na wybór przykładów idiomów
+-pz            pole przykładowego zdania
+-def           pole definicji
+-pos           pole części mowy
+-etym          pole etymologii
+-syn           pole synonimów
+-psyn          pole przykładów synonimów
+-pidiom        pole przykładów idiomów
 -all           zmienia wartości powyższych komend
 
--mergedisamb   dołączanie zawartości pola "przykłady" do pola "synonimy"
--mergeidiom    dołączanie przykładów synonimów do pola "definicja"
+-mergedisamb   dołączanie przykładów synonimów do pola "synonimy"
+-mergeidiom    dołączanie przykładów idiomów do pola "definicja"
 
 -audio         dodawanie audio
--disamb        pozyskiwanie synonimów i przykładów z WordNeta
+-wordnet       pozyskiwanie synonimów i przykładów z WordNeta
 -savecards     zapisywanie kart do pliku "karty.txt"
 -createcards   tworzenie/dodawanie kart
 
@@ -135,9 +135,6 @@ Aby zmienić wartość dla komendy wpisz {BOLD}on|off{END}
 Komendy wpływające na sposób w jaki są wyświetlane informacje.
 
 -displaycard                wyświetlanie podglądu karty
--showdisamb                 pokazywanie słownika synonimów (WordNet)
-                            (przydatne do ograniczenia przewijania podczas
-                             dodawania bulk)
 -showadded                  pokazywanie dodawanych elementów
 
 -wraptext                   zawijanie tekstu
@@ -173,9 +170,10 @@ Filtrowanie to usunięcie elementów spełniających określone warunki
 -c -h                      wyświetla konfigurację kolorów
 -c {{element}} {{kolor}}       zmienia kolor elementu
 
---help-bulk
+--help-bulk,
 --help-defaults            wyświetla informacje o masowym dodawaniu
 --help-commands            wyświetla informacje o komendach
+--help-recording           wyświetla informacje o nagrywaniu
 
 -cb, --config-bulk,
 -cd, --config-defaults     rozpoczyna konfigurację defaults/bulk
@@ -194,7 +192,7 @@ Filtrowanie to usunięcie elementów spełniających określone warunki
                            pod pole z podanym numerem
 
 np. -fo 1 audio            zmieni pole "definicja" (1) na pole "audio"
-np. -fo d 5                przesunie odkreślenie pod pole "zdanie" (5)
+np. -fo d 5                przesunie odkreślenie pod pole z numerem 5
 
 {BOLD}---[Komendy AnkiConnect]---{END}
 -ankiconnect {{on|off}}      bezpośrednie dodawanie kart do Anki poprzez
@@ -274,7 +272,7 @@ Flagi stawiane są za wyszukiwaną frazą, każda flaga musi być poprzedzona
   Etykiety typu: informal, archaic, slang, law itd.
     mogą zostać wyszukane, ale nie posiadają swoich skróconych form.
 
-Aby odwrócić znaczenie flagi (tylko etykiet), poprzedzamy ją wykrzyknikiem.
+Aby odwrócić znaczenie flag (tylko etykiet), poprzedzamy je wykrzyknikiem.
   W przeciwieństwie do "-n":
     "pokaż wyłącznie rzeczowniki"
 
@@ -302,19 +300,15 @@ Domyślne wartości wyświetlane są w nawiasach kwadratowych przy prompcie.
                  {BOLD}--^{END}
 Domyślnie, domyślne ustawienia dodawania to "0" dla każdego elementu.
 
--cb, --config-bulk,       rozpoczyna pełną konfigurację domyślnych wartości
--cd, --config-defaults    wpisanie litery wychodzi z konfiguracji
-                          i nie zapisuje wprowadzonych zmian
+-cb, --config-bulk,
+-cd, --config-defaults   rozpoczyna pełną konfigurację domyślnych wartości
 
 Możemy zmieniać domyślne wartości pojedynczych elementów
 lub wszystkich na raz używając "all"
 Elementy: def, pos, etym, syn, psyn, pidiom, all
 
--cd {{element}} {{-1 <= wartość < 1000}}
-Jeżeli wartość jest przedziałem:
-1 <= wartość < 1000
--cd {{element}} {{wartość:wartość}}
-np. "-cd pos -1", "-cd def 1:5", "--config-bulk syn 20" itd.
+-cd {{element}} {{wartość}}
+np. "-cd pos -1", "-cd def 1:5", "--config-bulk syn 1:4.1" itd.
 
 Aby domyślne wartości zostały wykorzystywane przy dodawaniu
   musimy wyłączyć pola na input.
@@ -328,22 +322,23 @@ Na przykład gdy wpiszemy "-all off", to przy następnym dodawaniu
 {BOLD}Możemy wykorzystać bulk do dodawania list słówek.{END}
   Słowa na liście musimy oddzielić nową linią.
   Potem wklejamy taką listę do programu.
+  Możemy wykorzystywać dostępne flagi i opcje.
 {BOLD}NOTE:{END} Nie zapomnij o nowej linii ze spacją na końcu listy
 
 Na przykład:
-'decay'      <-- słowo1
-'monolith'   <-- słowo2
-'dreg'       <-- słowo3
-' '          <-- nowa linia na końcu
+'decay -intr'  <-- słowo1
+'monolith'     <-- słowo2
+'dreg'         <-- słowo3
+' '            <-- nowa linia na końcu
 
 Lub z włączonym polem na 'przykładowe zdanie':
-'decay'                       <-- słowo1
-'the land began to decay'     <-- zdanie dla słowa1
-'monolith'                    <-- słowo2
-'the monolith crumbled'       <-- zdanie dla słowa2
-'dreg'                        <-- słowo3
-'fermented dregs scattered'   <-- zdanie dla słowa3
-' '                           <-- nowa linia na końcu
+'decay -intr'                <-- słowo1
+'the land began to decay'    <-- zdanie dla słowa1
+'monolith'                   <-- słowo2
+'the monolith crumbled'      <-- zdanie dla słowa2
+'dreg'                       <-- słowo3
+'fermented dregs scattered'  <-- zdanie dla słowa3
+' '                          <-- nowa linia na końcu
 
 {BOLD}NOTE:{END} Możesz używać "/" (np. przy polu na synonimy albo przykłady), aby dodać
       własny tekst bez ustawiania domyślnych wartości i wyłączania pól.\n""")
@@ -361,7 +356,7 @@ Aktualnie obsługiwane systemy operacyjne i konfiguracja audio:
 Oficjalna strona ffmpeg: https://www.ffmpeg.org/download.html
 
 Aby nagrywać audio musimy przenieść program ffmpeg do folderu z programem
-  lub dodać jego ścieżkę do systemowego $PATH.
+  lub dodać jego ścieżkę do $PATH.
 Następnie wybieramy urządzenie audio za pomocą którego chcemy nagrywać audio
   wpisując "-device" lub "--audio-device".
 
@@ -370,10 +365,13 @@ Jeżeli nie widzimy interesującego nas urządzenia na Windowsie:
   Zaznaczamy "nasłuchuj tego urządzenia".
   Zezwalamy aplikacjom na wykorzystywanie mikrofonu.
 
-Na Linuxie:
-  Wpisujemy "-rec", podczas nagrywania wchodzimy w mikser dźwięku pulseaudio
-   -> Nagrywanie, zmieniamy urządzenie monitorujące dla Lavf na urządzenie
-   wybrane przy konfiguracji za pomocą "-device".
+Na Linuxie jest duża szansa, że ffmpeg jest zainstalowany i jest dostępny
+  w $PATH, więc jedyne co musimy zrobić to:
+    Wpisujemy -rec w Ankidodawaczu
+    podczas nagrywania wchodzimy w mikser dźwięku pulseaudio -> Nagrywanie
+    zmieniamy urządzenie monitorujące dla Lavf na urządzenie wybrane przy
+     konfiguracji za pomocą -device lub --audio-device
+
 
 {BOLD}Komendy:{END}
 -rec, --record           rozpoczyna nagrywanie z wykorzystaniem wybranego

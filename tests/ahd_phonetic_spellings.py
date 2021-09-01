@@ -24,9 +24,10 @@ ahdictionary('fjord')
 ahdictionary('incandescent')
 # No pronunciation phrase
 ahdictionary('vicious circle')
-# first headword numbered, second not and one phonetic spelling + Informal thingy
+# first headword numbered, second not and one phonetic spelling + Informal label
 ahdictionary('ok')
 
+# with "also"
 ahdictionary('mastodon')
 # first headword numbered, second not and two phonetic spellings
 ahdictionary('like')
@@ -36,3 +37,4 @@ ahdictionary('a')
 ahdictionary('was')
 ahdictionary('the')
 ahdictionary('but')
+ahdictionary('frazzle')

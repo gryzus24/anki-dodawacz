@@ -66,7 +66,7 @@ commands = {
     '-quality': c.set_text_value_commands,
     '--add-note': anki.add_notes,
     '--field-order': c.change_field_order, '-fo': c.change_field_order,
-    '-color': c.set_colors, '-c': c.set_colors,
+    '-colors': c.set_colors, '-color': c.set_colors, '-c': c.set_colors,
     '--config-bulk': c.config_bulk, '--config-defaults': c.config_bulk,
     '-cd': c.config_bulk, '-cb': c.config_bulk,
     '--audio-device': ffmpeg.set_audio_device, '-device': ffmpeg.set_audio_device,
@@ -89,10 +89,10 @@ def search_interface() -> str:
         cmd = args[0]
         try:
             # don't forget to change the splice when adding/removing commands!
-            if cmd in tuple(data.command_data)[:30]:
+            if cmd in tuple(data.command_data)[:29]:
                 # to avoid writing all of them in the commands dict above
                 c.boolean_commands(*args)
-            elif cmd in tuple(commands)[:25]:
+            elif cmd in tuple(commands)[:26]:
                 commands[cmd](*args)
             else:
                 commands[cmd]()
@@ -539,7 +539,7 @@ def expand_labels(label_set: set) -> set:
     return label_set
 
 
-def label_skip(labels: set, flags: set, *, exclude_immediately: bool) -> bool:
+def eval_label_skip(labels: set, flags: set, *, exclude_immediately: bool) -> bool:
     # when config['nolabel_filter'] is True
     if not flags:
         return False
@@ -611,12 +611,32 @@ def ahdictionary_request(url):
 
 
 def ahdictionary(query, *flags):
+    def skip_this_td():
+        _td_pos_labels = set()
+        for lblock in labeled_blocks:
+            lbls = lblock.find_all('i', recursive=False)
+            lbls = {x.text.strip() for x in lbls}
+            _td_pos_labels.update(lbls)
+
+        # single "pl." occurs only when plural form of phrase is given
+        # we don't scrape this information at the moment
+        _td_pos_labels.discard('pl.')
+        if not _td_pos_labels:
+            if config['nolabel_filter']:
+                return True
+
+        exclude_condition = True if len(labeled_blocks) == 1 else False
+        skip_current_td = eval_label_skip(_td_pos_labels, flags, exclude_immediately=exclude_condition)
+        if skip_current_td:
+            return True
+        return False
+
     global skip
 
     full_url = 'https://www.ahdictionary.com/word/search.html?q=' + query
     soup = ahdictionary_request(full_url)
     if soup is None:
-        print(f'{err_c.color}Nie znaleziono {R}"{query}"{err_c.color} w AHDictionary')
+        print(f'{err_c.color}Nie znaleziono {R}"{query}"{err_c.color} w AH Dictionary')
         skip = 1
         return [], [], [], []
 
@@ -636,46 +656,31 @@ def ahdictionary(query, *flags):
         else:
             filter_subdefs = False
 
-    # only label specifying flags are relevant after ahd_filter had been settled
-    if flags:
+    subindex = 0
+    # whether 'results for (phrase)' was printed
+    results_for_printed = False
+
+    tds = soup.find_all('td')
+    if flags or config['nolabel_filter']:
         flags = {
             x.replace(' ', '').replace('.', '').lower()
             for x in flags
             if x.replace('!', '').replace(' ', '').replace('.', '').lower() not in
-            ('f', 'fahd', 'ahd', 'rec', 'record')  # 'i' and "idiom" flags cannot end up here
-        }
+            ('f', 'fahd', 'ahd', 'rec', 'record')}  # 'i' and "idiom" flags cannot end up here
 
-    subindex = 0
-    query_pos_labels = set()
-    # whether 'results for (phrase)' was printed
-    results_for_printed = False
+        for td in tds:
+            labeled_blocks = td.find_all('div', class_='pseg', recursive=False)
+            if not skip_this_td():
+                break
+        else:
+            flags = ()  # display all definitions
 
-    for td in soup.find_all('td'):
+    for td in tds:
         # also used when printing definitions
         labeled_blocks = td.find_all('div', class_='pseg', recursive=False)
 
         if flags or config['nolabel_filter']:
-            _td_pos_labels = set()
-            for block in labeled_blocks:
-                lbls = block.find_all('i', recursive=False)
-                lbls = {x.text.strip() for x in lbls}
-                _td_pos_labels.update(lbls)
-                query_pos_labels.update(lbls)
-
-            # single "pl." occurs only when plural form of phrase is given
-            # we don't scrape this information at the moment
-            _td_pos_labels.discard('pl.')
-            query_pos_labels.discard('pl.')
-
-            if not _td_pos_labels:
-                if config['nolabel_filter']:
-                    continue
-                else:
-                    query_pos_labels.add('nolabel')
-
-            cond = True if len(labeled_blocks) == 1 else False
-            skip_current_td = label_skip(_td_pos_labels, flags, exclude_immediately=cond)
-            if skip_current_td:
+            if skip_this_td():
                 continue
 
         print(f'{delimit_c.color}{get_conf_of("delimsize") * "-"}')
@@ -722,20 +727,18 @@ def ahdictionary(query, *flags):
             pos_labels = block.find_all('i', recursive=False)
             pos_labels = {x.text.strip() for x in pos_labels if x.text.strip()}
             pos_labels.discard('pl.')
+            if config['nolabel_filter'] and not pos_labels:
+                continue
 
-            if flags or config['nolabel_filter']:
-                if config['nolabel_filter'] and not pos_labels:
-                    continue
-                # part of speech labels from a single block
-                skip_current_block = label_skip(pos_labels, flags, exclude_immediately=True)
-                if skip_current_block:
-                    continue
+            # part of speech labels from a single block
+            skip_current_block = eval_label_skip(pos_labels, flags, exclude_immediately=True)
+            if skip_current_block:
+                continue
 
+            print()
             if pos_labels:
                 pos_label = ' '.join(pos_labels)
-                print(f'\n {poslabel_c.color}{pos_label}')
-            else:
-                print()
+                print(f' {poslabel_c.color}{pos_label}')
 
             # Add definitions and corresponding phrases
             for root_definition in definitions:
@@ -795,12 +798,6 @@ def ahdictionary(query, *flags):
     # So that newline is not printed in glosses without etymologies
     if etyms:
         print()
-
-    if not any((defs, poses, etyms, phrase_list)):
-        skip = 1
-        query_pos_labels = {x.replace(' ', '').replace('.', '').lower() for x in query_pos_labels}
-        print(f'{err_c.color}Podane kryteria zwróciły pusty słownik.\n'
-              f'Etykiety dla {R}"{query}"{err_c.color}: {R}{", ".join(query_pos_labels)} ')
     return defs, poses, etyms, phrase_list
 
 
@@ -951,10 +948,11 @@ def input_field(content_list, prompt, add_field, bulk_element, hide, connector, 
         input_choice = input(f'{input_c.color}{prompt} [{default_value}]:{inputtext_c.color} ')
         if not input_choice.strip():
             input_choice = default_value
-        elif input_choice.startswith('/'):
-            users_element = input_choice.replace('/', '', 1)
-            print_added_elements('Dodano', users_element)
-            return users_element, 1, hide
+
+    if input_choice.startswith('/'):
+        users_element = input_choice.replace('/', '', 1)
+        print_added_elements('Dodano', users_element)
+        return users_element, 1, hide
 
     input_choice = input_choice.replace(' ', '').lower()
     if input_choice in ('0', '-s', '-0'):
@@ -1045,7 +1043,10 @@ def wordnet_request(url):
 def wordnet(query):
     global skip_wordnet
 
-    if not config['add_disambiguation']:
+    if not config['add_disambiguation'] or \
+            (not config['add_synonyms'] and not config['add_synonym_examples']) and \
+            (config['syn_bulk'] == '0' and config['psyn_bulk'] == '0') and \
+            config['create_card']:
         # without skipping
         return [], []
 
@@ -1058,9 +1059,8 @@ def wordnet(query):
     gsyn = []
     gpsyn = []
 
-    if config['showdisamb']:
-        print(f'{delimit_c.color}{get_conf_of("delimsize") * "-"}')
-        print(f'{BOLD}{"WordNet".center(get_conf_of("center"))}{END}\n')
+    print(f'{delimit_c.color}{get_conf_of("delimsize") * "-"}')
+    print(f'{BOLD}{"WordNet".center(get_conf_of("center"))}{END}\n')
 
     syn_elems = syn_soup.find_all('li')
     for index, ele in enumerate(syn_elems, start=1):
@@ -1077,19 +1077,18 @@ def wordnet(query):
         gpsyn.append(psyn)
         gsyn.append(syn)
 
-        if config['showdisamb']:
-            syn_tp = wrap_lines(syn, get_conf_of('textwidth'), len(str(index)),
-                                indent=3, gap=4 + len(str(pos)))
-            gloss_tp = wrap_lines(gloss, get_conf_of('textwidth'), len(str(index)),
-                                  indent=3, gap=3)
-            print(f'{index_c.color}{index} : {synpos_c.color}{pos} {syn_c.color}{syn_tp}')
-            print(f'{(len(str(index))+3) * " "}{syngloss_c.color}{gloss_tp}')
-            if psyn:
-                for ps in psyn.split('; '):
-                    psyn_tp = wrap_lines(ps, get_conf_of('textwidth'), len(str(index)),
-                                         indent=4, gap=3)
-                    print(f'{(len(str(index))+3) * " "}{psyn_c.color}{psyn_tp}')
-            print()
+        syn_tp = wrap_lines(syn, get_conf_of('textwidth'), len(str(index)),
+                            indent=3, gap=4 + len(str(pos)))
+        gloss_tp = wrap_lines(gloss, get_conf_of('textwidth'), len(str(index)),
+                              indent=3, gap=3)
+        print(f'{index_c.color}{index} : {synpos_c.color}{pos} {syn_c.color}{syn_tp}')
+        print(f'{(len(str(index))+3) * " "}{syngloss_c.color}{gloss_tp}')
+        if psyn:
+            for ps in psyn.split('; '):
+                psyn_tp = wrap_lines(ps, get_conf_of('textwidth'), len(str(index)),
+                                     indent=4, gap=3)
+                print(f'{(len(str(index))+3) * " "}{psyn_c.color}{psyn_tp}')
+        print()
 
     return gsyn, gpsyn
 
@@ -1254,7 +1253,7 @@ def main():
     if not os.path.exists('Karty_audio') and config['audio_path'] == 'Karty_audio':
         os.mkdir('Karty_audio')
 
-    __version__ = 'v0.9.1-2'
+    __version__ = 'v0.9.1-3'
     print(f'{BOLD}- Dodawacz kart do Anki {__version__} -{END}\n'
           f'Wpisz "--help", aby wyświetlić pomoc\n\n')
 

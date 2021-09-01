@@ -30,37 +30,37 @@ command_data = {
     # boolean commands
     '-pz': {
         'config_entry': 'add_sentences',
-        'print_msg': 'Pole na przykładowe zdanie'},
+        'print_msg': 'Pole przykładowego zdania'},
     '-def': {
         'config_entry': 'add_definitions',
-        'print_msg': 'Pole na definicje'},
+        'print_msg': 'Pole definicji'},
     '-pos': {
         'config_entry': 'add_parts_of_speech',
-        'print_msg': 'Pole na części mowy'},
+        'print_msg': 'Pole części mowy'},
     '-etym': {
         'config_entry': 'add_etymologies',
-        'print_msg': 'Pole na etymologie'},
+        'print_msg': 'Pole etymologii'},
     '-syn': {
         'config_entry': 'add_synonyms',
-        'print_msg': 'Pole na synonimy'},
+        'print_msg': 'Pole synonimów'},
     '-psyn': {
         'config_entry': 'add_synonym_examples',
-        'print_msg': 'Pole na przykłady synonimów'},
+        'print_msg': 'Pole przykładów synonimów'},
     '-pidiom': {
         'config_entry': 'add_idiom_examples',
-        'print_msg': 'Pole na przykłady idiomów'},
+        'print_msg': 'Pole przykładów idiomów'},
 
     '-mergedisamb': {
         'config_entry': 'merge_disambiguation',
-        'print_msg': 'Włączenie przykładów synonimów do pola "synonimy"'},
+        'print_msg': 'Dołączanie przykładów synonimów do pola "synonimy"'},
     '-mergeidiom': {
         'config_entry': 'merge_idioms',
-        'print_msg': 'Włączenie przykładów idiomów do pola "definicja"'},
+        'print_msg': 'Dołączanie przykładów idiomów do pola "definicja"'},
 
     '-audio': {
         'config_entry': 'add_audio',
         'print_msg': 'Dodawanie audio'},
-    '-disamb': {
+    '-wordnet': {
         'config_entry': 'add_disambiguation',
         'print_msg': 'Pozyskiwanie synonimów i przykładów z WordNeta'},
     '-savecards': {
@@ -68,7 +68,7 @@ command_data = {
         'print_msg': 'Zapisywanie kart do pliku "karty.txt"'},
     '-createcards': {
         'config_entry': 'create_card',
-        'print_msg': 'Tworzenie kart'},
+        'print_msg': 'Tworzenie/dodawanie kart'},
 
     '-all': {
         'config_entry': 'all',  # dummy
@@ -106,9 +106,6 @@ command_data = {
     '-displaycard': {
         'config_entry': 'displaycard',
         'print_msg': 'Podgląd karty'},
-    '-showdisamb': {
-        'config_entry': 'showdisamb',
-        'print_msg': 'Pokazywanie słownika synonimów (WordNet)'},
     '-showadded': {
         'config_entry': 'showadded',
         'print_msg': 'Pokazywanie dodawanych elementów'},
@@ -124,7 +121,7 @@ command_data = {
         'print_msg': 'Dodawanie kart poprzez AnkiConnect'},
     '-duplicates': {
         'config_entry': 'duplicates',
-        'print_msg': 'Dodawanie duplikatów poprzez AnkiConnect'},  # 30
+        'print_msg': 'Dodawanie duplikatów poprzez AnkiConnect'},  # 29
     # end of boolean commands
     '-dupescope': {
         'config_entry': 'dupescope',
@@ -146,19 +143,19 @@ command_data = {
     '-textwidth': {
         'config_entry': 'textwidth',
         'print_msg': 'Szerokość tekstu do momentu zawinięcia',
-        'comment': '-textwidth {auto|0 <= n < 383}'},
+        'comment': '-textwidth {auto|liczba >= 0}'},
     '-indent': {
         'config_entry': 'indent',
         'print_msg': 'Szerokość wcięć',
-        'comment': '-indent {0 <= n < szerokość okna//2}'},
+        'comment': '-indent {liczba >= 0}'},
     '-delimsize': {
         'config_entry': 'delimsize',
         'print_msg': 'Szerokość odkreśleń',
-        'comment': '-delimsize {auto|0 <= n < 383}'},
+        'comment': '-delimsize {auto|liczba >= 0}'},
     '-center': {
         'config_entry': 'center',
         'print_msg': 'Wyśrodkowywanie tekstu',
-        'comment': '-center {auto|0 <= n < 383}'},
+        'comment': '-center {auto|liczba >= 0}'},
 
     '--audio-path': {
         'config_entry': 'audio_path',
@@ -175,7 +172,7 @@ command_data = {
     '-quality': {
         'config_entry': 'recording_quality',
         'print_msg': 'Jakość nagrywania',
-        'comment': '-quality {0 <= n <= 9}\n'
+        'comment': '-quality {0-9}\n'
                    '(0: najlepsza, 9: najgorsza, 4: rekomendowana)'
     }
 }
@@ -405,21 +402,21 @@ PREPOSITIONS = (
 
 config_columns = (
     ('-pz',                  '-displaycard',               'def_bulk'),
-    ('-def',                 '-showdisamb',                'pos_bulk'),
-    ('-pos',                 '-showadded',                'etym_bulk'),
-    ('-etym',                '-wraptext',                  'syn_bulk'),
-    ('-syn',                 '-justify',                  'psyn_bulk'),
-    ('-psyn',                '-textwidth',              'pidiom_bulk'),
-    ('-pidiom',              '-indent',                            ''),
-    ('',                     '-delimsize',         '[config filtrów]'),
-    ('-mergedisamb',         '-center',                       '-fahd'),
-    ('-mergeidiom',          '',                          '-fnolabel'),
-    ('',                     '[config ukrywania]',           '-fpsyn'),
-    ('-audio',               '-upz',                         '-toipa'),
-    ('-disamb',              '-udef',                              ''),
-    ('-savecards',           '-udisamb',             '[config audio]'),
-    ('-createcards',         '-uidiom',                     '-server'),
-    ('',                     '-upreps',                    '-quality'),
+    ('-def',                 '-showadded',                 'pos_bulk'),
+    ('-pos',                 '-wraptext',                 'etym_bulk'),
+    ('-etym',                '-justify',                   'syn_bulk'),
+    ('-syn',                 '-textwidth',                'psyn_bulk'),
+    ('-psyn',                '-indent',                 'pidiom_bulk'),
+    ('-pidiom',              '-delimsize',                         ''),
+    ('',                     '-center',            '[config filtrów]'),
+    ('-mergedisamb',         '',                              '-fahd'),
+    ('-mergeidiom',          '[config ukrywania]',        '-fnolabel'),
+    ('',                     '-upz',                         '-fpsyn'),
+    ('-audio',               '-udef',                        '-toipa'),
+    ('-wordnet',             '-udisamb',                           ''),
+    ('-savecards',           '-uidiom',              '[config audio]'),
+    ('-createcards',         '-upreps',                     '-server'),
+    ('',                     '',                           '-quality'),
     ('[config ankiconnect]', '',                                   ''),
     ('-ankiconnect',         '',                                   ''),
     ('-duplicates',          '',                                   ''),
