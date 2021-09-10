@@ -93,15 +93,21 @@ command_data = {
     '-udef': {
         'config_entry': 'hide_definition_word',
         'print_msg': 'Ukrywanie hasła w definicjach'},
-    '-udisamb': {
-        'config_entry': 'hide_disamb_word',
-        'print_msg': 'Ukrywanie hasła w synonimach i przykładach'},
-    '-uidiom': {
-        'config_entry': 'hide_idiom_word',
-        'print_msg': 'Ukrywanie hasła w idiomach'},
+    '-usyn': {
+        'config_entry': 'hide_synonym_word',
+        'print_msg': 'Ukrywanie hasła w synonimach'},
+    '-upsyn': {
+        'config_entry': 'hide_synonym_example_word',
+        'print_msg': 'Ukrywanie hasła w przykładach'},
+    '-upidiom': {
+        'config_entry': 'hide_idiom_example_word',
+        'print_msg': 'Ukrywanie hasła w przykładach idiomów'},
     '-upreps': {
         'config_entry': 'hide_prepositions',
         'print_msg': 'Ukrywanie przyimków'},
+    '-keependings': {
+        'config_entry': 'keep_endings',
+        'print_msg': 'Zachowój końcówki w odmienionych formach hasła (~ing, ~ed, etc.)'},
 
     '-displaycard': {
         'config_entry': 'displaycard',
@@ -121,8 +127,13 @@ command_data = {
         'print_msg': 'Dodawanie kart poprzez AnkiConnect'},
     '-duplicates': {
         'config_entry': 'duplicates',
-        'print_msg': 'Dodawanie duplikatów poprzez AnkiConnect'},  # 29
+        'print_msg': 'Dodawanie duplikatów poprzez AnkiConnect'},
     # end of boolean commands
+    '-hideas': {
+        'config_entry': 'hideas',
+        'print_msg': 'Ukrywaj za pomocą',
+        'comment': 'Znaki służące jako ukrywacz'},
+
     '-dupescope': {
         'config_entry': 'dupescope',
         'print_msg': 'Zasięg sprawdzania duplikatów',
@@ -192,7 +203,7 @@ input_configuration = {
         'bulk_element': 'pos_bulk',
         'hide': False,
         'connector': ' | ',
-        'spec_split': ','
+        'spec_split': ' |'
         },
     'etymologies': {
         'prompt': 'Wybierz etymologie',
@@ -206,7 +217,7 @@ input_configuration = {
         'prompt': 'Wybierz synonimy',
         'add_field': command_data['-syn']['config_entry'],
         'bulk_element': 'syn_bulk',
-        'hide': command_data['-udisamb']['config_entry'],
+        'hide': command_data['-usyn']['config_entry'],
         'connector': ' | ',
         'spec_split': ','
     },
@@ -214,7 +225,7 @@ input_configuration = {
         'prompt': 'Wybierz przykłady',
         'add_field': command_data['-psyn']['config_entry'],
         'bulk_element': 'psyn_bulk',
-        'hide': command_data['-udisamb']['config_entry'],
+        'hide': command_data['-upsyn']['config_entry'],
         'connector': '<br>',
         'spec_split': ';'
     },
@@ -222,7 +233,7 @@ input_configuration = {
         'prompt': 'Wybierz definicje',
         'add_field': command_data['-pidiom']['config_entry'],
         'bulk_element': 'pidiom_bulk',
-        'hide': command_data['-uidiom']['config_entry'],
+        'hide': command_data['-udef']['config_entry'],
         'connector': '<br>',
         'spec_split': '.'
     },
@@ -230,7 +241,7 @@ input_configuration = {
         'prompt': 'Wybierz przykłady',
         'add_field': command_data['-pidiom']['config_entry'],
         'bulk_element': 'pidiom_bulk',
-        'hide': command_data['-uidiom']['config_entry'],
+        'hide': command_data['-upidiom']['config_entry'],
         'connector': '<br>',
         'spec_split': '.'
     }
@@ -413,12 +424,12 @@ config_columns = (
     ('-mergeidiom',          '[config ukrywania]',        '-fnolabel'),
     ('',                     '-upz',                         '-fpsyn'),
     ('-audio',               '-udef',                        '-toipa'),
-    ('-wordnet',             '-udisamb',                           ''),
-    ('-savecards',           '-uidiom',              '[config audio]'),
-    ('-createcards',         '-upreps',                     '-server'),
-    ('',                     '',                           '-quality'),
-    ('[config ankiconnect]', '',                                   ''),
-    ('-ankiconnect',         '',                                   ''),
+    ('-wordnet',             '-usyn',                              ''),
+    ('-savecards',           '-upsyn',               '[config audio]'),
+    ('-createcards',         '-upidiom',                    '-server'),
+    ('',                     '-upreps',                    '-quality'),
+    ('[config ankiconnect]', '-keependings',                       ''),
+    ('-ankiconnect',         '-hideas',                            ''),
     ('-duplicates',          '',                                   ''),
     ('-dupescope',           '',                                   ''),
     ('-note',                '',                                   ''),
@@ -463,6 +474,7 @@ color_data = {
         'phrase': 'Kolor hasła',
         'phon': 'Kolor pisowni fonetycznej',
         'poslabel': 'Kolor etykiet części mowy',
+        'inflection': 'Kolor odmian hasła',
         'error': 'Kolor błędów',
         'attention': 'Kolor zwracający uwagę',
         'success': 'Kolor udanej operacji',

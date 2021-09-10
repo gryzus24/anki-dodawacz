@@ -22,7 +22,7 @@ import src.data as data
 from src.colors import R, BOLD, END, YEX, GEX, \
     def1_c, def2_c, defsign_c, pos_c, etym_c, syn_c, psyn_c, \
     pidiom_c, syngloss_c, synpos_c, index_c, phrase_c, \
-    phon_c, poslabel_c, err_c, delimit_c, input_c, inputtext_c
+    phon_c, poslabel_c, inflection_c, err_c, delimit_c, input_c, inputtext_c
 from src.data import root_dir, config, command_data, bool_colors_from_string
 
 
@@ -177,7 +177,7 @@ def print_config_representation() -> None:
 
         try:
             state_b = '  ' + str(config[command_data[b]['config_entry']])
-            if '*' in state_b or '[ config ukrywania ]' in state_b:
+            if '*' in state_b:
                 state_b = state_b.strip()
         except KeyError:
             state_b = ''
@@ -202,7 +202,12 @@ def print_config_representation() -> None:
         else:
             level_b = ''
 
-        print(f'{a:13s}{color_a}{state_a:10s}{R}'
+        if '[' in a:
+            level_a = '\b\b\b\b\b\b\b'
+        else:
+            level_a = ''
+
+        print(f'{a:13s}{color_a}{state_a:10s}{level_a}{R}'
               f'{b:12s}{color_b}{state_b:14s}{level_b}{R}'
               f'{c:11s}{color_c}{state_c}{R}')
 
@@ -398,7 +403,6 @@ def set_free_value_commands(*args):
     def prepare_value():
         if cmd == '-tags':
             return ''.join(value_list).strip(', ').lower().replace(',', ', ')
-        # if '-note', '-deck'
         return ' '.join(value_list)
 
     cmd = args[0]
@@ -530,6 +534,7 @@ index         {index_c.color}indeksów w słowniku{R}
 phrase        {phrase_c.color}wyszukanego w słowniku hasła{R}
 phon          {phon_c.color}pisowni fonetycznej{R}
 poslabel      {poslabel_c.color}etykiet części mowy{R}
+inflection    {inflection_c.color}odmian hasła{R}
 error         {err_c.color}błędów{R}
 attention     {YEX.color}zwracającego uwagę{R}
 success       {GEX.color}udanej operacji{R}

@@ -13,12 +13,12 @@ Wpisz swoje przykładowe zdanie
  -sc    pomija dodawanie karty
 
 {BOLD}Przy definicjach:{END}
-Znak ">" przy indeksie definicji w AHD oznacza, że definicja ta jest główną
-definicją, wszystkie definicje pod główną definicją są jej poddefinicjami.
+ Znak ">" przy indeksie definicji w AHD oznacza, że definicja ta jest główną
+ definicją, wszystkie definicje pod główną definicją są jej poddefinicjami.
 
-Aby wybrać definicję lub poddefinicję wpisz numer jej indeksu.
-Aby wybrać więcej definicji oddziel wybór przecinkiem lub
-użyj przedziałów oddzielając wybrane indeksy dwukropkiem.
+ Aby wybrać definicję lub poddefinicję wpisz numer jej indeksu.
+ Aby wybrać więcej definicji oddziel wybór przecinkiem lub
+ użyj przedziałów oddzielając wybrane indeksy dwukropkiem.
 
  np. 3          dodaje trzeci element
  np. 2,5        dodaje drugi i piąty element
@@ -28,59 +28,63 @@ użyj przedziałów oddzielając wybrane indeksy dwukropkiem.
  all            skrót dla przedziału zawierającego wszystkie elementy
  -all           "all" tylko przedział zaczyna się od ostatniego elementu
 
-Możemy także doprecyzować wybór używając '.' po numerze definicji lub
-przedziale. W ten sposób rozdzielamy wybraną definicję na każdym napotkanym
-specyfikatorze.
+ Możemy także doprecyzować wybór używając '.' po numerze definicji lub
+ przedziale. W ten sposób rozdzielamy wybraną definicję na każdym napotkanym
+ specyfikatorze.
 
-Specyfikator dla definicji: ":"
-(dwukropek zazwyczaj oddziela część definiującą od przykładu użycia.)
+ Specyfikator dla definicji: ":"
+ (dwukropek zazwyczaj oddziela część definiującą od przykładu użycia.)
 
-Np. "Not productive or prosperous; meager: lean years."
- wpisanie "1.1" doda: "Not productive or prosperous; meager",
- a wpisanie "1.2" doda samo: "lean years."
+ Np. "Not productive or prosperous; meager: lean years."
+  wpisanie "1.1" doda: "Not productive or prosperous; meager",
+  a wpisanie "1.2" doda samo: "lean years."
 
-Możemy łączyć specyfikatory zaraz po kropce:
- np. "1.21" doda: "lean years: Not productive or prosperous; meager"
+ Możemy łączyć specyfikatory zaraz po kropce:
+  np. "1.21" doda: "lean years: Not productive or prosperous; meager"
 
-Oraz mapować je na przedziały:
- np. "1:8.1" doda pierwszą część pierwszych ośmiu definicji,
- a np. "all.234" doda część przykładów ze wszystkich definicji dla hasła.
+ Oraz mapować je na przedziały:
+  np. "1:8.1" doda pierwszą część pierwszych ośmiu definicji,
+  a np. "all.234" doda część przykładów ze wszystkich definicji dla hasła.
 
-Aby dodać własny tekst w pola definicji wystarczy zacząć wpisywanie od "/"
- np. "/dwa grzyby 123" spowoduje dodaniem "dwa grzyby 123"
+ Aby dodać własny tekst w pola definicji wystarczy zacząć wpisywanie od "/"
+  np. "/dwa grzyby 123" spowoduje dodaniem "dwa grzyby 123"
 
-Wpisanie czegokolwiek niespełniającego zasad pomija dodawanie karty.
+ Wpisanie czegokolwiek niespełniającego zasad pomija dodawanie karty.
 
 {BOLD}Przy częściach mowy:{END}
-Części mowy nie są indeksowane, możemy sprecyzować wybór wpisując numer części
-mowy licząc od góry lub (-1, all, -all) aby dodać wszystkie części mowy.
- 0 lub -s     pomija dodawanie elementu
+ Części mowy występują w grupach, wybieramy wpisując numer bloku zawierającego
+ grupę części mowy licząc od góry lub doprecyzowując wybór konkretnych części
+ mowy z grupy używając specyfikatora.
+  np. 1        dodaje pierwszą grupę części mowy
+  np. 2.23     dodaje drugą i trzecią część mowy z drugiej grupy
+  0 lub -s     pomija dodawanie elementu
 
-Specyfikator dla części mowy: ","
+ Specyfikator dla części mowy: "\\n" (nowa linia)
 
 {BOLD}Przy etymologiach:{END}
-Etymologie nie są indeksowane, wybór działa tak jak przy częściach mowy.
+ Etymologie nie są indeksowane ani grupowane, wybieramy wpisując numer
+ etymologii licząc od góry.
 
-Specyfikator dla etymologii: ","
+ Specyfikator dla etymologii: ","
 
 {BOLD}Przy synonimach:{END}
-Synonimy wyświetlane są w grupach zawierających synonimy i przykłady.
-Wybieranie działa tak jak w definicjach.
-Dostępne pola:
- - synonimy
- - przykłady
+ Synonimy wyświetlane są w grupach zawierających synonimy i przykłady.
+ Wybieranie działa tak jak w definicjach.
+ Dostępne pola:
+  - synonimy
+  - przykłady
 
-Specyfikator dla synonimów: ","
-Specyfikator dla przykładów: "\\n" (nowa linia)
+ Specyfikator dla synonimów: ","
+ Specyfikator dla przykładów: "\\n" (nowa linia)
 
 {BOLD}Przy idiomach:{END}
-Idiomy wyświetlane są podobnie jak synonimy, wybieranie też działa podobnie,
-ale mamy kontrolę nad wyborem pojedynczych przykładów.
-Dostępne pola:
- - definicja
- - przykłady
+ Idiomy wyświetlane są podobnie jak synonimy, wybieranie też działa podobnie,
+ ale mamy kontrolę nad wyborem pojedynczych przykładów.
+ Dostępne pola:
+  - definicja
+  - przykłady
 
-Specyfikator dla idiomów: "."
+ Specyfikator dla idiomów: "."
 
 --help-commands   wyświetla informacje o komendach
 --help-bulk       wyświetla informacje o masowym dodawaniu
@@ -132,7 +136,7 @@ Aby zmienić wartość dla komendy wpisz {BOLD}on|off{END}
    (%appdata%)
 
 {BOLD}------[Komendy wyświetlania]------{END}
-Komendy wpływające na sposób w jaki są wyświetlane informacje.
+Komendy wpływające na sposób wyświetlania informacji.
 
 -displaycard                wyświetlanie podglądu karty
 -showadded                  pokazywanie dodawanych elementów
@@ -146,20 +150,23 @@ Komendy wpływające na sposób w jaki są wyświetlane informacje.
 -center {{wartość|auto}}      wyśrodkowywanie nagłówków i podglądu karty
 
 {BOLD}------[Komendy ukrywania i filtrów]------{END}
-Ukrywanie hasła to zamiana wyszukiwanego słowa na "..."
+Ukrywanie hasła to zamiana wyszukiwanego słowa na "..." (domyślnie)
 Filtrowanie to usunięcie elementów spełniających określone warunki
 
--upz        ukrywanie hasła w zdaniu
--udef       ukrywanie hasła w definicjach
--udisamb    ukrywanie hasła w synonimach i przykładach
--uidiom     ukrywanie hasła w idiomach
--upreps     ukrywanie przyimków
+-upz                ukrywanie hasła w zdaniu
+-udef               ukrywanie hasła w definicjach
+-usyn               ukrywanie hasła w synonimach
+-upsyn              ukrywanie hasła w przykładach synonimów
+-upidiom            ukrywanie hasła w przykładach idiomów
+-upreps             ukrywanie przyimków
+-keependings        zachowywanie końcówek odmienionych słów (~ed, ~ing etc.)
+-hideas [wartość]   ustawienie znaków służących jako ukrywacz
 
--fahd       filtrowanie poddefinicji (definicji bez ">") w AH Dictionary
--fnolabel   filtrowanie definicji niezawierających etykiet części mowy w AHD
--fpsyn      filtrowanie przykładów synonimów niezawierających szukanego hasła
+-fahd               filtrowanie poddefinicji (definicji bez ">") w AH Dictionary
+-fnolabel           filtrowanie definicji niezawierających etykiet części mowy w AHD
+-fpsyn              filtrowanie przykładów synonimów niezawierających szukanego hasła
 
--toipa      tłumaczenie zapisu fonetycznego używanego w AHD do IPA
+-toipa              tłumaczenie zapisu fonetycznego używanego w AHD do IPA
 
 {BOLD}----[Pozostałe komendy]----{END}
 --delete-last [n >= 1],
@@ -178,12 +185,9 @@ Filtrowanie to usunięcie elementów spełniających określone warunki
 -cb, --config-bulk,
 -cd, --config-defaults     rozpoczyna konfigurację defaults/bulk
 -cd {{element}} {{wartość}}    zmienia wartość elementu
-                           wartością może być dwuwartościowy przedział
-                           np. 1:4
 -cd all {{wartość}}          zmienia wartość wszystkich elementów
--conf,
--config                    wyświetla informacje o aktualnej konfiguracji
 
+-conf, -config             wyświetla informacje o aktualnej konfiguracji
 -fo, --field-order         zmiana kolejności dodawanych pól dla karty.txt
 -fo default                przywraca domyślną kolejność pól
 -fo {{1-9}} {{pole}}           zmienia pole znajdujące się pod podanym numerem na
@@ -279,6 +283,9 @@ Aby odwrócić znaczenie flag (tylko etykiet), poprzedzamy je wykrzyknikiem.
   "-!n" oznacza:
     "pokaż wszystko, tylko błagam nie rzeczowniki"
 
+  Jeżeli podane kryteria nie pasują do żadnych etykiet, wyświetlony zostanie
+  cały słownik.
+
 {BOLD}NOTE:{END} Wystarczy tylko jedna flaga z '!', aby odwrócić znaczenie
       wszystkich następnych flag.
       np. wpisanie: "- -!trv -noun" oznacza: "-! -!trv -!noun"
@@ -297,7 +304,7 @@ Bulk pozwala na dodawanie wielu kart na raz poprzez ustawianie
 
 Domyślne wartości wyświetlane są w nawiasach kwadratowych przy prompcie.
 " Wybierz definicje [0]: "
-                 {BOLD}--^{END}
+                   {BOLD}--^{END}
 Domyślnie, domyślne ustawienia dodawania to "0" dla każdego elementu.
 
 -cb, --config-bulk,
@@ -350,8 +357,8 @@ Ankidodawacz pozwala na nagrywanie audio prosto z komputera za wykorzystaniem
   ffmpeg.
 
 Aktualnie obsługiwane systemy operacyjne i konfiguracja audio:
-  Linux:    pulseaudio (z alsą)
-  Windows:  dshow
+  Linux   : pulseaudio (z alsą)
+  Windows : dshow
 
 Oficjalna strona ffmpeg: https://www.ffmpeg.org/download.html
 
@@ -371,7 +378,6 @@ Na Linuxie jest duża szansa, że ffmpeg jest zainstalowany i jest dostępny
     podczas nagrywania wchodzimy w mikser dźwięku pulseaudio -> Nagrywanie
     zmieniamy urządzenie monitorujące dla Lavf na urządzenie wybrane przy
      konfiguracji za pomocą -device lub --audio-device
-
 
 {BOLD}Komendy:{END}
 -rec, --record           rozpoczyna nagrywanie z wykorzystaniem wybranego

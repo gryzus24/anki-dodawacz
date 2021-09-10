@@ -31,7 +31,7 @@ from src.colors import \
     R, BOLD, END, YEX, GEX, \
     def1_c, def2_c, defsign_c, pos_c, etym_c, syn_c, psyn_c, \
     pidiom_c, syngloss_c, synpos_c, index_c, phrase_c, \
-    phon_c, poslabel_c, err_c, delimit_c, input_c, inputtext_c
+    phon_c, poslabel_c, inflection_c, err_c, delimit_c, input_c, inputtext_c
 from src.data import config, input_configuration
 
 if sys.platform.startswith('linux'):
@@ -60,6 +60,7 @@ commands = {
     '-note': c.set_free_value_commands,
     '-deck': c.set_free_value_commands,
     '-tags': c.set_free_value_commands,
+    '-hideas': c.set_free_value_commands,
     '--audio-path': c.set_audio_path, '-ap': c.set_audio_path,
     '-dupescope': c.set_text_value_commands,
     '-server': c.set_text_value_commands,
@@ -89,10 +90,10 @@ def search_interface() -> str:
         cmd = args[0]
         try:
             # don't forget to change the splice when adding/removing commands!
-            if cmd in tuple(data.command_data)[:29]:
+            if cmd in tuple(data.command_data)[:31]:
                 # to avoid writing all of them in the commands dict above
                 c.boolean_commands(*args)
-            elif cmd in tuple(commands)[:26]:
+            elif cmd in tuple(commands)[:27]:
                 commands[cmd](*args)
             else:
                 commands[cmd]()
@@ -488,7 +489,7 @@ def definition_cleanup(definition):
     rex = definition.lstrip('1234567890.')
     rex = rex.split(' See Usage Note at')[0]
     rex = rex.split(' See Synonyms at')[0]
-    for letter in 'abcdefghi':  # a maximum of 9 specifiers supported at the moment
+    for letter in 'abcdefghijklmn':
         rex = rex.replace(f":{letter}. ", ": *")
         rex = rex.replace(f".{letter}. ", ". *")
         rex = rex.replace(f" {letter}. ", " ")
@@ -578,6 +579,36 @@ def eval_label_skip(labels: set, flags: set, *, exclude_immediately: bool) -> bo
         return False
 
 
+def phrase_tenses_to_print(phrase_tenses: list) -> str:
+    skip_next = False
+    pht = []
+    for i, elem in enumerate(phrase_tenses):
+        if elem == 'or':
+            pht.pop()
+            ored = ' '.join((phrase_tenses[i - 1], phrase_tenses[i], phrase_tenses[i + 1]))
+            pht.append(ored)
+            skip_next = True
+        elif elem == 'also':
+            alsoed = ' '.join((phrase_tenses[i], phrase_tenses[i + 1]))
+            pht.append(alsoed)
+            skip_next = True
+        else:
+            if skip_next:
+                skip_next = False
+                continue
+            pht.append(elem)
+
+    return ' * '.join(pht)
+
+
+def get_phrase_tenses(contents) -> list:
+    return [
+        x.string.strip(', ') for x in contents
+        if x.string is not None and x.string.strip(', ') and
+        ('<b>' in str(x) or x.string.strip(', ') in ('or', 'also'))
+    ]
+
+
 def ahd_to_ipa_translation(ahd_phonetics: str, th: str) -> str:
     # AHD has its own phonetic alphabet that can be translated into IPA.
     # diphthongs
@@ -618,9 +649,8 @@ def ahdictionary(query, *flags):
             lbls = {x.text.strip() for x in lbls}
             _td_pos_labels.update(lbls)
 
-        # single "pl." occurs only when plural form of phrase is given
-        # we don't scrape this information at the moment
-        _td_pos_labels.discard('pl.')
+        # th is an artifact of <i>th</i> quirk in AHD pronunciation variant
+        _td_pos_labels.discard('th')
         if not _td_pos_labels:
             if config['nolabel_filter']:
                 return True
@@ -638,7 +668,7 @@ def ahdictionary(query, *flags):
     if soup is None:
         print(f'{err_c.color}Nie znaleziono {R}"{query}"{err_c.color} w AH Dictionary')
         skip = 1
-        return [], [], [], []
+        return None, None, None, None
 
     defs = []
     poses = []
@@ -718,15 +748,11 @@ def ahdictionary(query, *flags):
             print(f' {phrase_c.color}{_phrase}  {phon_c.color}{phon_spell}')
 
         for block in labeled_blocks:
-            # Gather definitions
-            definitions = block.find_all('div', class_=('ds-list', 'ds-single'), recursive=False)
-            if not definitions:
-                continue
-
             # Gather part of speech labels
             pos_labels = block.find_all('i', recursive=False)
             pos_labels = {x.text.strip() for x in pos_labels if x.text.strip()}
-            pos_labels.discard('pl.')
+            pos_labels.discard('th')
+
             if config['nolabel_filter'] and not pos_labels:
                 continue
 
@@ -735,12 +761,22 @@ def ahdictionary(query, *flags):
             if skip_current_block:
                 continue
 
-            print()
+            # Gather phrase tenses
+            phrase_tenses = get_phrase_tenses(block.contents[1:])
+            phrase_tenses_tp = phrase_tenses_to_print(phrase_tenses)
+
             if pos_labels:
-                pos_label = ' '.join(pos_labels)
-                print(f' {poslabel_c.color}{pos_label}')
+                print()
+            pos_label = ' '.join(pos_labels)
+            print(f' {poslabel_c.color}{pos_label}', end='')
+
+            if len(pos_label) + len(phrase_tenses_tp) + 3 > term_width:
+                print(f'\n {inflection_c.color}{phrase_tenses_tp}')
+            else:
+                print(f'  {inflection_c.color}{phrase_tenses_tp}')
 
             # Add definitions and corresponding phrases
+            definitions = block.find_all('div', class_=('ds-list', 'ds-single'), recursive=False)
             for root_definition in definitions:
                 root_definition = definition_cleanup(root_definition.text)
 
@@ -749,55 +785,60 @@ def ahdictionary(query, *flags):
                     subindex += 1
                     # strip an occasional leftover octothorpe
                     subdefinition = subdefinition.strip('# ')
-                    definition = wrap_lines(subdefinition, term_width, len(str(subindex)),
-                                            indent=config['indent'], gap=2)
+                    subdef_to_print = wrap_lines(subdefinition, term_width, len(str(subindex)),
+                                                 indent=config['indent'], gap=2)
                     if i == 0:
                         sign = '>'
                     else:
                         sign = ' '
 
                     if subindex % 2 == 1:
-                        print(f'{defsign_c.color}{sign}{index_c.color}{subindex} {def1_c.color}{definition}')
+                        print(f'{defsign_c.color}{sign}{index_c.color}{subindex} {def1_c.color}{subdef_to_print}')
                     else:
-                        print(f'{defsign_c.color}{sign}{index_c.color}{subindex} {def2_c.color}{definition}')
+                        print(f'{defsign_c.color}{sign}{index_c.color}{subindex} {def2_c.color}{subdef_to_print}')
 
                     defs.append(subdefinition)
                     phrase_list.append(no_accents_phrase)
                     if filter_subdefs:
                         break
-        print()
+
         # Add parts of speech
-        for pos in td.find_all('div', class_='runseg', recursive=False):
-            # removing ',' makes parts of speech with multiple spelling variants get
-            # their phonetic spelling correctly detected
-            postring = pos.text.replace(',', '').split()
-            postring, phon_spell = get_phrase_and_phonetic_spelling(postring)
-
-            # accentuation and hyphenation
-            postring = ', '.join(postring).replace('·', 'ˈ').replace('′', '-').replace('', 'ˌ')
-            phon_spell = ' '.join(phon_spell).rstrip(',')
-
-            if config['convert_to_ipa']:
-                # this is very general, I have no idea how to differentiate these correctly
-                th = 'ð' if postring.startswith('th') else 'θ'
-                phon_spell = ahd_to_ipa_translation(phon_spell, th)
-            else:
-                phon_spell = phon_spell.replace('-', 'ˈ')\
-                    .replace('′', '-').replace('', 'ˌ')\
-                    .replace('', 'ōō').replace('', 'ōō')
-
-            print(f' {pos_c.color}{postring}  {phon_c.color}{phon_spell}')
-            poses.append(postring)
-        if poses:
+        parts_of_speech = td.find_all('div', class_='runseg', recursive=False)
+        if parts_of_speech:
             print()
+            td_pos = ''
+            for pos in parts_of_speech:
+                # removing ',' makes parts of speech with multiple spelling variants get
+                # their phonetic spelling correctly detected
+                postring = pos.text.replace(',', '').split()
+                postring, phon_spell = get_phrase_and_phonetic_spelling(postring)
+
+                # accentuation and hyphenation
+                postring = ', '.join(postring).replace('·', 'ˈ').replace('′', '-').replace('', 'ˌ')
+                phon_spell = ' '.join(phon_spell).rstrip(',')
+
+                if config['convert_to_ipa']:
+                    # this is very general, I have no idea how to differentiate these correctly
+                    th = 'ð' if postring.startswith('th') else 'θ'
+                    phon_spell = ahd_to_ipa_translation(phon_spell, th)
+                else:
+                    phon_spell = phon_spell.replace('-', 'ˈ')\
+                        .replace('′', '-').replace('', 'ˌ')\
+                        .replace('', 'ōō').replace('', 'ōō')
+
+                print(f' {pos_c.color}{postring}  {phon_c.color}{phon_spell}')
+                td_pos += f'{postring} | '
+            poses.append(td_pos.rstrip('| '))
+
         # Add etymologies
-        for etym in td.find_all('div', class_='etyseg', recursive=False):
-            print(f' {etym_c.color}'
-                  f'{wrap_lines(etym.text, term_width, 0, 1, 1)}')
-            etyms.append(etym.text.strip())
-    # So that newline is not printed in glosses without etymologies
-    if etyms:
-        print()
+        etymologies = td.find_all('div', class_='etyseg', recursive=False)
+        if etymologies:
+            print()
+            for etym in etymologies:
+                print(f' {etym_c.color}'
+                      f'{wrap_lines(etym.text, term_width, 0, 1, 1)}')
+                etyms.append(etym.text.strip())
+    print()
     return defs, poses, etyms, phrase_list
 
 
@@ -824,14 +865,29 @@ def hide_phrase_in(func):
                 if word.lower() in data.PREPOSITIONS:
                     continue
 
-            content = content_replace(word, '...')
+            # "Ω" is a placeholder
+            content = content_replace(word, f"{config['hideas']}Ω")
             if word.endswith('e'):
-                content = content_replace(word[:-1] + 'ing', '...ing')
+                content = content_replace(word[:-1] + 'ing', f'{config["hideas"]}Ωing')
                 if word.endswith('ie'):
-                    content = content_replace(word[:-2] + 'ying', '...ying')
+                    content = content_replace(word[:-2] + 'ying', f'{config["hideas"]}Ωying')
             elif word.endswith('y'):
-                content = content_replace(word[:-1] + 'ies', '...ies')
-                content = content_replace(word[:-1] + 'ied', '...ied')
+                content = content_replace(word[:-1] + 'ies', f'{config["hideas"]}Ωies')
+                content = content_replace(word[:-1] + 'ied', f'{config["hideas"]}Ωied')
+
+        if config['keep_endings']:
+            content = content.replace('Ω', '')
+        else:
+            # e.g. from "We weren't ...Ωed for this." -> "We weren't ... for this."
+            split_content = content.split('Ω')
+            temp = [split_content[0].strip()]
+            for elem in split_content[1:]:
+                for letter in elem:
+                    if letter == ' ':
+                        break
+                    elem = elem.replace(letter, '', 1)
+                temp.append(elem.strip())
+            content = ' '.join(temp)
 
         return content, choice
 
@@ -1000,7 +1056,7 @@ def add_elements(parsed_inputs: list, content_list: list, spec_split: str) -> li
                 valid_choices.append(choice)
                 continue
 
-            sliced_content_element = content_element.split(spec_split)
+            sliced_content_element = (content_element.strip('. ')).split(spec_split)
             if len(sliced_content_element) == 1:
                 content.append(content_element)
                 valid_choices.append(choice)
@@ -1016,7 +1072,7 @@ def add_elements(parsed_inputs: list, content_list: list, spec_split: str) -> li
                 element.append(slice_of_content)
 
             # to properly join elements specified in reversed order
-            element = (spec_split.strip() + ' ').join(element)
+            element = (spec_split + ' ').join(element)
             if element.startswith('['):  # closing bracket in etymologies
                 element += ']'
             content.append(element)
@@ -1058,6 +1114,7 @@ def wordnet(query):
 
     gsyn = []
     gpsyn = []
+    textwidth = get_conf_of('textwidth')
 
     print(f'{delimit_c.color}{get_conf_of("delimsize") * "-"}')
     print(f'{BOLD}{"WordNet".center(get_conf_of("center"))}{END}\n')
@@ -1077,15 +1134,15 @@ def wordnet(query):
         gpsyn.append(psyn)
         gsyn.append(syn)
 
-        syn_tp = wrap_lines(syn, get_conf_of('textwidth'), len(str(index)),
+        syn_tp = wrap_lines(syn, textwidth, len(str(index)),
                             indent=3, gap=4 + len(str(pos)))
-        gloss_tp = wrap_lines(gloss, get_conf_of('textwidth'), len(str(index)),
+        gloss_tp = wrap_lines(gloss, textwidth, len(str(index)),
                               indent=3, gap=3)
         print(f'{index_c.color}{index} : {synpos_c.color}{pos} {syn_c.color}{syn_tp}')
         print(f'{(len(str(index))+3) * " "}{syngloss_c.color}{gloss_tp}')
         if psyn:
             for ps in psyn.split('; '):
-                psyn_tp = wrap_lines(ps, get_conf_of('textwidth'), len(str(index)),
+                psyn_tp = wrap_lines(ps, textwidth, len(str(index)),
                                      indent=4, gap=3)
                 print(f'{(len(str(index))+3) * " "}{psyn_c.color}{psyn_tp}')
         print()
@@ -1177,8 +1234,11 @@ def display_card(field_values):
         print(f'\n{delimit_c.color}{delimit * "-"}')
 
         for field_number, field_name in config['fieldorder'].items():
-            for fi in wrap_lines(field_values[field_name], *options).split('\n'):
-                print(f'{color_of[field_name]}{fi.center(centr)}')
+            formatted_lines = field_values[field_name].replace('<br>', '\n').split('\n')
+            for line in formatted_lines:
+                sublines = wrap_lines(line, *options).split('\n')
+                for subline in sublines:
+                    print(f'{color_of[field_name]}{subline.center(centr)}')
 
             if field_number == config['fieldorder_d']:  # d = delimitation
                 print(f'{delimit_c.color}{delimit * "-"}')
@@ -1253,9 +1313,9 @@ def main():
     if not os.path.exists('Karty_audio') and config['audio_path'] == 'Karty_audio':
         os.mkdir('Karty_audio')
 
-    __version__ = 'v0.9.1-3'
+    __version__ = 'v0.9.2-1'
     print(f'{BOLD}- Dodawacz kart do Anki {__version__} -{END}\n'
-          f'Wpisz "--help", aby wyświetlić pomoc\n\n')
+          'Wpisz "--help", aby wyświetlić pomoc\n\n')
 
     while True:
         skip = 0
