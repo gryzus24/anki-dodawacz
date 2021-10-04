@@ -3,7 +3,7 @@ import unittest
 # This file has to be moved to the project's main directory in order to work.
 # I have no idea how to get imports to work without fiddling with the sys.path.
 # AFAIK it's possible to do.
-from ankidodawacz import get_audio_from_diki
+from src.Dictionaries.diki import get_audio_from_diki
 
 link = 'https://www.diki.pl/images-common/en/mp3/'
 

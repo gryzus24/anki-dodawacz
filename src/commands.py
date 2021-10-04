@@ -20,8 +20,8 @@ import yaml
 
 import src.data as data
 from src.colors import R, BOLD, END, YEX, GEX, \
-    def1_c, def2_c, defsign_c, pos_c, etym_c, syn_c, psyn_c, \
-    pidiom_c, syngloss_c, synpos_c, index_c, phrase_c, \
+    def1_c, def2_c, defsign_c, pos_c, etym_c, syn_c, exsen_c, \
+    syngloss_c, index_c, phrase_c, \
     phon_c, poslabel_c, inflection_c, err_c, delimit_c, input_c, inputtext_c
 from src.data import root_dir, config, command_data, bool_colors_from_string
 
@@ -33,6 +33,7 @@ def save_commands(entry, value):
             config[command_entry] = value
     else:
         config[entry] = value
+
     with open(os.path.join(root_dir, 'config/config.yml'), 'w') as conf_file:
         yaml.dump(config, conf_file)
 
@@ -94,11 +95,11 @@ def delete_cards(*args):
 
 def config_bulk(*args) -> None:
     cmd = args[0]
-    bulk_elements = ('def', 'pos', 'etym', 'syn', 'psyn', 'pidiom', 'all')
+    bulk_elements = ('def', 'exsen', 'pos', 'etym', 'syn', 'all')
     input_messages = (
-        'Wartość dla definicji', 'Wartość dla części mowy',
-        'Wartość dla etymologii', 'Wartość dla synonimów',
-        'Wartość dla przykładów synonimów', 'Wartość dla przykładów idiomów'
+        'Wartość dla definicji', 'Wartość dla przykładów',
+        'Wartość dla części mowy', 'Wartość dla etymologii',
+        'Wartość dla synonimów'
     )
     values_to_save = []
 
@@ -106,7 +107,7 @@ def config_bulk(*args) -> None:
         print(f'\n{GEX.color}Wartości domyślne zapisane dla:')
         for elem, val in zip(bulk_elements, values_to_save):
             save_commands(entry=f'{elem}_bulk', value=val)
-            print(f'{R}{elem:7}: {val}')
+            print(f'{R}{elem:6s}: {val}')
         print()
 
     try:
@@ -139,13 +140,13 @@ def config_bulk(*args) -> None:
               f'{R}{cmd} - rozpoczyna pełną konfigurację\n'
               f'{R}{cmd} {{element}} {{wartość}}\n'
               f'{BOLD}Elementy:{END}\n'
-              f'def, pos, etym, syn, psyn, pidiom, all\n')
+              f'def, pos, etym, syn, exsen, all\n')
         return None
 
     if bulk_elem not in bulk_elements:
         print(f'{err_c.color}Nie znaleziono elementu\n'
               f'{R}{BOLD}Elementy:{END}\n'
-              f'def, pos, etym, syn, psyn, pidiom, all\n')
+              f'def, pos, etym, syn, exsen, all\n')
         return None
 
     try:
@@ -156,7 +157,7 @@ def config_bulk(*args) -> None:
         return None
 
     if bulk_elem == 'all':
-        values_to_save = [value] * 6
+        values_to_save = [value] * 5
         save_all_values()
     else:
         print(f"{YEX.color}Domyślna wartość dla {R}{bulk_elem}{YEX.color}: {R}{value}")
@@ -164,7 +165,7 @@ def config_bulk(*args) -> None:
 
 
 def print_config_representation() -> None:
-    print(f'\n{R}{BOLD}[config dodawania]     [config wyświetlania]     [defaults/bulk]{END}')
+    print(f'\n{R}{BOLD}[config dodawania]     [config wyświetlania]     [domyślne wart.]{END}')
     for a, b, c in data.config_columns:
         a = a.replace('[', f'{BOLD}[').replace(']', f']{END}')
         b = b.replace('[', f'{BOLD}[').replace(']', f']{END}')
@@ -176,20 +177,21 @@ def print_config_representation() -> None:
             state_a = ''
 
         try:
-            state_b = '  ' + str(config[command_data[b]['config_entry']])
-            if '*' in state_b:
-                state_b = state_b.strip()
+            state_b = config[command_data[b]['config_entry']]
+            if isinstance(state_b, list):
+                state_b = ''.join(map(str, state_b))
+            state_b = str(state_b)
         except KeyError:
             state_b = ''
 
         if '_bulk' in c:
-            state_c = ' ' + str(config[c])
-            if state_c.startswith(' -'):
-                state_c = state_c.strip()
+            state_c = config[c]
+            if state_c.startswith('-'):
+                state_c = '\b' + state_c
             c = c[:-5]
         else:
             try:
-                state_c = str(config[command_data[c]['config_entry']])
+                state_c = config[command_data[c]['config_entry']]
             except KeyError:
                 state_c = ''
 
@@ -198,7 +200,7 @@ def print_config_representation() -> None:
         color_c = bool_colors_from_string.get(state_c, '')
 
         if '[' in b:
-            level_b = '\b\b\b\b\b\b'
+            level_b = '\b\b\b\b'
         else:
             level_b = ''
 
@@ -208,7 +210,7 @@ def print_config_representation() -> None:
             level_a = ''
 
         print(f'{a:13s}{color_a}{state_a:10s}{level_a}{R}'
-              f'{b:12s}{color_b}{state_b:14s}{level_b}{R}'
+              f'{b:14s}{color_b}{state_b:12s}{level_b}{R}'
               f'{c:11s}{color_c}{state_c}{R}')
 
     print(f'\n--audio-path: {config["audio_path"]}\n'
@@ -239,11 +241,11 @@ def set_width_settings(*args):
     if value == 'auto':
         if command == '-indent':
             print(f'{err_c.color}Wcięcie nie ma wartości {R}auto\n{YEX.color}Ustawiono domyślne {R}2')
-            save_commands(entry=command.strip('-'), value=2)
+            save_commands(entry=command.strip('-'), value=[2, ''])
             return None
 
         print(f'{R}{msg}: {GEX.color}{value}')
-        save_commands(entry=command.strip('-'), value=f'{term_width}* auto')
+        save_commands(entry=command.strip('-'), value=[term_width, '* auto'])
         return None
 
     try:
@@ -254,22 +256,23 @@ def set_width_settings(*args):
         print(f'{err_c.color}Wartość musi być liczbą naturalną')
     else:
         print(f'{R}{msg}: {GEX.color}{value}')
-        save_commands(entry=command.strip('-'), value=val)
+        save_commands(entry=command.strip('-'), value=[val, ''])
 
 
 def change_field_order(*args):
     def display_fields():
+        fo = config['fieldorder']
         for field_number, field_value in default_field_order.items():
             yex = R
             default = ''
-            if field_order[field_number] != field_value:
+            if fo[field_number] != field_value:
                 # yellow indicates changes
                 yex = YEX.color
                 # Displays default field configuration on the right
                 default = f'# {field_value}'
             # END cause if field_number == '1' we want bold to reset before
             # printing defaults and R doesn't do that
-            printe = f' {yex}{field_number}: {field_order[field_number]:19s}{END}{R}{default}'
+            printe = f' {yex}{field_number}: {fo[field_number]:19s}{END}{R}{default}'
             if field_number == '1':
                 print(f'{BOLD}{printe}')
             else:
@@ -298,8 +301,8 @@ def change_field_order(*args):
         return None
     elif number == 'default':
         print(f'{GEX.color}Przywrócono domyślną kolejność pól:')
-        save_commands(entry='fieldorder_d', value='3')
         save_commands(entry='fieldorder', value=default_field_order)
+        save_commands(entry='fieldorder_d', value='3')
         display_fields()
         return None
     elif number not in ('1', '2', '3', '4', '5', '6', '7', '8', '9', 'd'):
@@ -421,9 +424,13 @@ def set_free_value_commands(*args):
 def set_text_value_commands(*args):
     cmd = args[0]
     msg = data.command_data[cmd]["print_msg"]
-    value_set = {'-dupescope': ('deck', 'collection'),
-                 '-server': ('ahd', 'diki', 'lexico'),
-                 '-quality': ('0', '1', '2', '3', '4', '5', '6', '7', '8', '9')}
+    value_dict = {'-dupescope': ('deck', 'collection'),
+                  '-recqual': ('0', '1', '2', '3', '4', '5', '6', '7', '8', '9'),
+                  '-textwrap': ('justify', 'regular', '-'),
+                  '-dict': ('ahd', 'lexico', 'idioms'),
+                  '-dict2': ('ahd', 'lexico', 'idioms', '-'),
+                  '-thes': ('wordnet', '-'),
+                  '-audio': ('ahd', 'lexico', 'diki', 'auto', '-')}
     try:
         val = args[1].lower()
         if val in ('-h', '--help'):
@@ -433,7 +440,7 @@ def set_text_value_commands(*args):
               f'{R}{data.command_data[cmd]["comment"]}')
         return None
 
-    if val in value_set[cmd]:
+    if val in value_dict[cmd]:
         print(f'{R}{msg}: {val}')
         save_commands(entry=data.command_data[cmd]['config_entry'], value=val)
     else:
@@ -523,13 +530,11 @@ np. "-color syn lightblue", "-c pos magenta" itd.
 def1          {def1_c.color}nieparzystych definicji i definicji idiomów{R}
 def2          {def2_c.color}parzystych definicji{R}
 defsign       {defsign_c.color}znaku głównej definicji (>){R}
+exsen         {exsen_c.color}przykładów pod definicjami{R}
 pos           {pos_c.color}części mowy w słowniku{R}
 etym          {etym_c.color}etymologii w słowniku{R}
 syn           {syn_c.color}synonimów na WordNecie{R}
-psyn          {psyn_c.color}przykładów pod synonimami{R}
-pidiom        {pidiom_c.color}przykładów pod idiomami{R}
 syngloss      {syngloss_c.color}definicji przy synonimach{R}
-synpos        {synpos_c.color}części mowy przy synonimach{R}
 index         {index_c.color}indeksów w słowniku{R}
 phrase        {phrase_c.color}wyszukanego w słowniku hasła{R}
 phon          {phon_c.color}pisowni fonetycznej{R}

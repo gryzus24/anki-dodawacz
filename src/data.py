@@ -14,7 +14,7 @@ except FileNotFoundError:
         # then the user can set up their config from scratch
         w.write("""attention_c: lightyellow\ndef1_c: reset\ndef2_c: reset\ndelimit_c: reset
 error_c: lightred\netym_c: reset\nindex_c: lightgreen\ninput_c: reset\ninputtext_c: reset
-pidiom_c: reset\npos_c: yellow\npsyn_c: reset\nsyn_c: yellow\nsyngloss_c: reset\nsynpos_c: reset
+pos_c: yellow\nsyn_c: yellow\nsyngloss_c: reset
 phrase_c: cyan\nphon_c: lightblack\nposlabel_c: green\naudio_device: default\naudio_path: ''""")
     with open(os.path.join(root_dir, 'config/config.yml'), 'r') as r:
         config = yaml.load(r, Loader=yaml.Loader)
@@ -43,26 +43,10 @@ command_data = {
     '-syn': {
         'config_entry': 'add_synonyms',
         'print_msg': 'Pole synonimów'},
-    '-psyn': {
-        'config_entry': 'add_synonym_examples',
-        'print_msg': 'Pole przykładów synonimów'},
-    '-pidiom': {
-        'config_entry': 'add_idiom_examples',
-        'print_msg': 'Pole przykładów idiomów'},
+    '-exsen': {
+        'config_entry': 'add_example_sentences',
+        'print_msg': 'Pole przykładów'},
 
-    '-mergedisamb': {
-        'config_entry': 'merge_disambiguation',
-        'print_msg': 'Dołączanie przykładów synonimów do pola "synonimy"'},
-    '-mergeidiom': {
-        'config_entry': 'merge_idioms',
-        'print_msg': 'Dołączanie przykładów idiomów do pola "definicja"'},
-
-    '-audio': {
-        'config_entry': 'add_audio',
-        'print_msg': 'Dodawanie audio'},
-    '-wordnet': {
-        'config_entry': 'add_disambiguation',
-        'print_msg': 'Pozyskiwanie synonimów i przykładów z WordNeta'},
     '-savecards': {
         'config_entry': 'save_card',
         'print_msg': 'Zapisywanie kart do pliku "karty.txt"'},
@@ -74,15 +58,12 @@ command_data = {
         'config_entry': 'all',  # dummy
         'print_msg': 'Wszystkie pola'},
 
-    '-fahd': {
-        'config_entry': 'ahd_filter',
-        'print_msg': 'Filtrowanie poddefinicji w AHD'},
+    '-fsubdefs': {
+        'config_entry': 'subdef_filter',
+        'print_msg': 'Filtrowanie poddefinicji w słownikach'},
     '-fnolabel': {
         'config_entry': 'nolabel_filter',
         'print_msg': 'Filtrowanie definicji niezawierających etykiet części mowy'},
-    '-fpsyn': {
-        'config_entry': 'psyn_filter',
-        'print_msg': 'Filtrowanie przykładów synonimów niezawierających szukanego hasła'},
     '-toipa': {
         'config_entry': 'convert_to_ipa',
         'print_msg': 'Tłumaczenie zapisu fonetycznego AHD do IPA'},
@@ -96,12 +77,9 @@ command_data = {
     '-usyn': {
         'config_entry': 'hide_synonym_word',
         'print_msg': 'Ukrywanie hasła w synonimach'},
-    '-upsyn': {
-        'config_entry': 'hide_synonym_example_word',
+    '-uexsen': {
+        'config_entry': 'hide_example_sentence_word',
         'print_msg': 'Ukrywanie hasła w przykładach'},
-    '-upidiom': {
-        'config_entry': 'hide_idiom_example_word',
-        'print_msg': 'Ukrywanie hasła w przykładach idiomów'},
     '-upreps': {
         'config_entry': 'hide_prepositions',
         'print_msg': 'Ukrywanie przyimków'},
@@ -109,18 +87,18 @@ command_data = {
         'config_entry': 'keep_endings',
         'print_msg': 'Zachowój końcówki w odmienionych formach hasła (~ing, ~ed, etc.)'},
 
+    '-top': {
+        'config_entry': 'top',
+        'print_msg': 'Wyrównywanie słowników do górnej granicy okna'},
     '-displaycard': {
         'config_entry': 'displaycard',
         'print_msg': 'Podgląd karty'},
     '-showadded': {
         'config_entry': 'showadded',
         'print_msg': 'Pokazywanie dodawanych elementów'},
-    '-wraptext': {
-        'config_entry': 'wraptext',
-        'print_msg': 'Zawijanie tekstu'},
-    '-justify': {
-        'config_entry': 'text_justification',
-        'print_msg': 'Justowanie tekstu'},
+    '-showexsen': {
+        'config_entry': 'showexsen',
+        'print_msg': 'Pokazywanie przykładów definicji pod definicjami'},
 
     '-ankiconnect': {
         'config_entry': 'ankiconnect',
@@ -129,6 +107,10 @@ command_data = {
         'config_entry': 'duplicates',
         'print_msg': 'Dodawanie duplikatów poprzez AnkiConnect'},
     # end of boolean commands
+    '-textwrap': {
+        'config_entry': 'textwrap',
+        'print_msg': 'Typ zawijania tekstu',
+        'comment': '-textwrap {justify|regular|-}'},
     '-hideas': {
         'config_entry': 'hideas',
         'print_msg': 'Ukrywaj za pomocą',
@@ -159,14 +141,6 @@ command_data = {
         'config_entry': 'indent',
         'print_msg': 'Szerokość wcięć',
         'comment': '-indent {liczba >= 0}'},
-    '-delimsize': {
-        'config_entry': 'delimsize',
-        'print_msg': 'Szerokość odkreśleń',
-        'comment': '-delimsize {auto|liczba >= 0}'},
-    '-center': {
-        'config_entry': 'center',
-        'print_msg': 'Wyśrodkowywanie tekstu',
-        'comment': '-center {auto|liczba >= 0}'},
 
     '--audio-path': {
         'config_entry': 'audio_path',
@@ -176,75 +150,56 @@ command_data = {
         'config_entry': 'audio_path',
         'print_msg': 'Ścieżka zapisu audio',
         'comment': '-ap, --audio-path {ścieżka|auto}'},
-    '-server': {
-        'config_entry': 'server',
-        'print_msg': 'Preferowany serwer audio',
-        'comment': '-server {ahd|diki|lexico}'},
-    '-quality': {
+    '-dict': {
+        'config_entry': 'dict',
+        'print_msg': 'Słownik pytany jako pierwszy',
+        'comment': '-dict {ahd|lexico|idioms}'},
+    '-dict2': {
+        'config_entry': 'dict2',
+        'print_msg': 'Słownik pytany jako drugi',
+        'comment': '-dict {ahd|lexico|idioms|-}'},
+    '-thes': {
+        'config_entry': 'thesaurus',
+        'print_msg': 'Słownik synonimów',
+        'comment': '-thes {wordnet|-}'},
+    '-audio': {
+        'config_entry': 'audio',
+        'print_msg': 'Serwer audio',
+        'comment': '-server {ahd|lexico|diki|auto|-}'},
+    '-recqual': {
         'config_entry': 'recording_quality',
         'print_msg': 'Jakość nagrywania',
-        'comment': '-quality {0-9}\n'
+        'comment': '-recqual {0-9}\n'
                    '(0: najlepsza, 9: najgorsza, 4: rekomendowana)'
     }
 }
 
-input_configuration = {
-    'ahd_definitions': {
-        'prompt': 'Wybierz definicje',
+field_config = {
+    'definitions': {
         'add_field': command_data['-def']['config_entry'],
         'bulk_element': 'def_bulk',
-        'hide': command_data['-udef']['config_entry'],
-        'connector': '<br>',
-        'spec_split': ':'
+        'prompt': 'Wybierz definicje'
+    },
+    'example_sentences': {
+        'add_field': command_data['-exsen']['config_entry'],
+        'bulk_element': 'exsen_bulk',
+        'prompt': 'Wybierz przykłady'
     },
     'parts_of_speech': {
-        'prompt': 'Wybierz części mowy',
         'add_field': command_data['-pos']['config_entry'],
         'bulk_element': 'pos_bulk',
-        'hide': False,
-        'connector': ' | ',
-        'spec_split': ' |'
+        'prompt': 'Wybierz części mowy',
         },
     'etymologies': {
-        'prompt': 'Wybierz etymologie',
         'add_field': command_data['-etym']['config_entry'],
         'bulk_element': 'etym_bulk',
-        'hide': False,
-        'connector': '<br>',
-        'spec_split': ','
+        'prompt': 'Wybierz etymologie',
     },
-    'wordnet_synonyms': {
-        'prompt': 'Wybierz synonimy',
+    'synonyms': {
         'add_field': command_data['-syn']['config_entry'],
         'bulk_element': 'syn_bulk',
-        'hide': command_data['-usyn']['config_entry'],
-        'connector': ' | ',
-        'spec_split': ','
+        'prompt': 'Wybierz synonimy',
     },
-    'wordnet_synonym_examples': {
-        'prompt': 'Wybierz przykłady',
-        'add_field': command_data['-psyn']['config_entry'],
-        'bulk_element': 'psyn_bulk',
-        'hide': command_data['-upsyn']['config_entry'],
-        'connector': '<br>',
-        'spec_split': ';'
-    },
-    'farlex_idioms': {
-        'prompt': 'Wybierz definicje',
-        'add_field': command_data['-pidiom']['config_entry'],
-        'bulk_element': 'pidiom_bulk',
-        'hide': command_data['-udef']['config_entry'],
-        'connector': '<br>',
-        'spec_split': '.'
-    },
-    'idiom_examples': {
-        'prompt': 'Wybierz przykłady',
-        'add_field': command_data['-pidiom']['config_entry'],
-        'bulk_element': 'pidiom_bulk',
-        'hide': command_data['-upidiom']['config_entry'],
-        'connector': '<br>',
-        'spec_split': '.'
-    }
 }
 boolean_values = {
     'on': True, 'off': False,
@@ -314,78 +269,52 @@ ankiconnect_base_fields = {
 
 labels = {
     # part of speech labels to extend
-    'adj': tuple(['adjective']),  # these have to be len 1 iterables
-    'adjective': tuple(['adj']),
+    'adj': ('adjective',),  # these have to be len 1 iterables
+    'adv': ('adverb',),
+    'conj': ('conjunction',),
+    'defart': ('def',),
+    'indef': ('indefart',),
+    'interj': ('interjection',),
+    'n': ('noun',),
 
-    'adv': tuple(['adverb']),
-    'adverb': tuple(['adv']),
+    'pl': ('plural', 'pln', 'npl', 'noun'),
+    'npl': ('plural', 'pl', 'pln', 'noun'),
+    'pln': ('plural', 'npl', 'noun'),
+    'plural': ('pln', 'npl', 'noun'),
 
-    'conj': tuple(['conjunction']),
-    'conjunction': tuple(['conj']),
-
-    'defart': tuple(['def']),
-    'def': tuple(['defart']),
-
-    'indef': tuple(['indefart']),
-    'indefart': tuple(['indef']),
-
-    'interj': tuple(['interjection']),
-    'interjection': tuple(['interj']),
-
-    'n': tuple(['noun']),
-    'noun': tuple(['n']),
-
-    'pl': ('plural', 'pln', 'npl', 'n', 'noun'),
-    'npl': ('plural', 'pl', 'pln', 'n', 'noun'),
-    'pln': ('plural', 'pl', 'npl', 'n', 'noun'),
-    'plural': ('pln', 'pl', 'npl', 'n', 'noun'),
-
-    # I haven't seen these yet, NotImplemented
+    # I haven't seen this yet, NotImplemented
     # 'sing': 'singular',
-    # 'singn': 'singular noun',
-    # 'nsing': 'singular noun',
 
-    'prep': tuple(['preposition']),
-    'preposition': tuple(['prep']),
-
-    'pron': tuple(['pronoun']),
-    'pronoun': tuple(['pron']),
+    'prep': ('preposition',),
+    'pron': ('pronoun',),
 
     # verbs shouldn't be expanded when in labels, -!v won't work
     # not all verbs are tr.v. or intr.v. ... etc.
-    'v': tuple(['verb']),
-    'verb': 'v',
+    'v': ('verb',),
 
-    'tr': ('transitive', 'trv', 'vtr', 'v', 'verb'),
-    'trv': ('transitive', 'tr', 'vtr', 'v', 'verb'),
-    'vtr': ('transitive', 'tr', 'trv', 'v', 'verb'),
-    'transitive': ('tr', 'trv', 'vtr', 'v', 'verb'),
+    'tr': ('transitive', 'trv', 'vtr', 'verb'),
+    'trv': ('transitive', 'vtr', 'verb'),
+    'vtr': ('transitive', 'trv', 'verb'),
 
-    'intr': ('intransitive', 'intrv', 'vintr', 'v', 'verb'),
-    'intrv': ('intransitive', 'intr', 'vintr', 'v', 'verb'),
-    'vintr': ('intransitive', 'intr', 'intrv', 'v', 'verb'),
-    'intransitive': ('intr', 'intrv', 'vintr', 'v', 'verb'),
+    'intr': ('intransitive', 'intrv', 'vintr', 'verb'),
+    'intrv': ('intransitive', 'vintr', 'verb'),
+    'vintr': ('intransitive', 'intrv', 'verb'),
 
     'intr&trv': (
-        'intransitive', 'transitive', 'intr', 'tr',
-        'intrv', 'trv', 'vintr', 'vtr', 'v', 'verb'
+        'intransitive', 'transitive', 'v',
+        'intrv', 'trv', 'vintr', 'vtr', 'verb'
+    ),
+    'tr&intrv': (
+        'intransitive', 'transitive', 'v',
+        'intrv', 'trv', 'vintr', 'vtr', 'verb'
     ),
 
     'aux': ('auxiliary', 'auxv'),
-    'auxv': ('auxiliary', 'aux'),
-    'auxiliary': ('aux', 'auxv'),
+    'auxv': ('auxiliary',),
 
-    'pref': tuple(['prefix']),
-    'prefix': tuple(['pref']),
-
-    'suff': tuple(['suffix']),
-    'suffix': tuple(['suff']),
-
-    'abbr': tuple(['abbreviation']),
-    'abbreviation': tuple(['abbr']),
-
-    'nolabel': tuple(['']),
-    '': tuple(['nolabel']),
+    'pref': ('prefix',),
+    'suff': ('suffix',),
+    'abbr': ('abbreviation',),
 }
 
 AHD_IPA_translation = str.maketrans({
@@ -411,30 +340,42 @@ PREPOSITIONS = (
     'with', 'within', 'without'
 )
 
+SEARCH_FLAGS = (
+    'f', 'fsubdefs',
+    'ahd', 'ahdictionary',
+    'i', 'idiom', 'idioms', 'farlex',
+    'l', 'lexico',
+    'rec', 'record'
+)
+
+USER_AGENT = {
+    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; rv:78.0) Gecko/20100101 Firefox/78.0'
+}
+
 config_columns = (
-    ('-pz',                  '-displaycard',               'def_bulk'),
-    ('-def',                 '-showadded',                 'pos_bulk'),
-    ('-pos',                 '-wraptext',                 'etym_bulk'),
-    ('-etym',                '-justify',                   'syn_bulk'),
-    ('-syn',                 '-textwidth',                'psyn_bulk'),
-    ('-psyn',                '-indent',                 'pidiom_bulk'),
-    ('-pidiom',              '-delimsize',                         ''),
-    ('',                     '-center',            '[config filtrów]'),
-    ('-mergedisamb',         '',                              '-fahd'),
-    ('-mergeidiom',          '[config ukrywania]',        '-fnolabel'),
-    ('',                     '-upz',                         '-fpsyn'),
-    ('-audio',               '-udef',                        '-toipa'),
-    ('-wordnet',             '-usyn',                              ''),
-    ('-savecards',           '-upsyn',               '[config audio]'),
-    ('-createcards',         '-upidiom',                    '-server'),
-    ('',                     '-upreps',                    '-quality'),
-    ('[config ankiconnect]', '-keependings',                       ''),
-    ('-ankiconnect',         '-hideas',                            ''),
+    ('-pz',                  '-top',                       'def_bulk'),
+    ('-def',                 '-displaycard',             'exsen_bulk'),
+    ('-exsen',               '-showadded',                 'pos_bulk'),
+    ('-pos',                 '-showexsen',                'etym_bulk'),
+    ('-etym',                '-textwrap',                  'syn_bulk'),
+    ('-syn',                 '-textwidth',                         ''),
+    ('',                     '-indent',             '[config źródeł]'),
+    ('-savecards',           '',                              '-dict'),
+    ('-createcards',         '[config ukrywania]',           '-dict2'),
+    ('',                     '-upz',                          '-thes'),
+    ('[config filtrowania]', '-udef',                        '-audio'),
+    ('-fsubdefs',            '-uexsen',                    '-recqual'),
+    ('-fnolabel',            '-usyn',                              ''),
+    ('-toipa',               '-upreps',                            ''),
+    ('',                     '-keependings',                       ''),
+    ('[config ankiconnect]', '-hideas',                            ''),
+    ('-ankiconnect',         '',                                   ''),
     ('-duplicates',          '',                                   ''),
     ('-dupescope',           '',                                   ''),
     ('-note',                '',                                   ''),
     ('-deck',                '',                                   ''),
-    ('-tags',                '',                                   '')
+    ('-tags',                '',                                   ''),
+    ('',                     '',                                   '')
 )
 
 color_data = {
@@ -466,8 +407,7 @@ color_data = {
         'pos': 'Kolor części mowy',
         'etym': 'Kolor etymologii',
         'syn': 'Kolor synonimów',
-        'psyn': 'Kolor przykładów synonimów',
-        'pidiom': 'Kolor przykładów idiomów',
+        'exsen': 'Kolor przykładów definicji',
         'syngloss': 'Kolor definicji przy synonimach',
         'synpos': 'Kolor części mowy przy synonimach',
         'index': 'Kolor indeksów',

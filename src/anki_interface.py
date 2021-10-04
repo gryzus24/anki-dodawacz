@@ -22,8 +22,7 @@ import yaml
 
 from notes import notes
 from src.colors import R, BOLD, END, YEX, GEX, err_c
-from src.data import \
-    root_dir, config, config_ac, ankiconnect_base_fields
+from src.data import root_dir, config, config_ac, ankiconnect_base_fields
 
 
 def add_notes(*args):
@@ -105,13 +104,13 @@ def create_note(note_config) -> str:
                f'Notatka nie została utworzona'
 
 
-def request_ankiconnect(action, **params):
+def ankiconnect_request(action, **params):
     return {'action': action, 'params': params, 'version': 6}
 
 
 def invoke(action, **params):
-    requestjson = json.dumps(request_ankiconnect(action, **params)).encode('utf-8')
-    response = json.load(urllib.request.urlopen(urllib.request.Request('http://localhost:8765', requestjson)))
+    requestjson = json.dumps(ankiconnect_request(action, **params)).encode('utf-8')
+    response = json.load(urllib.request.urlopen(urllib.request.Request('http://127.0.0.1:8765', requestjson)))
     if len(response) != 2:
         raise Exception('response has an unexpected number of fields')
     if 'error' not in response:
@@ -171,11 +170,11 @@ def organize_notes(base_fields, corresp_mf_config, print_errors):
     return None
 
 
-def create_card(field_values) -> None:
+def add_card(field_values) -> None:
     try:
         corresp_model_fields = {}
         fields_ankiconf = config_ac.get(config['note'])
-        # When organizing_notes return error, card shouldn't be created
+        # When organizing_notes returns an error, card shouldn't be created
         organize_err = None
         # So that familiar notes aren't reorganized
         if fields_ankiconf is None or config['note'] not in config_ac:
@@ -224,7 +223,7 @@ def create_card(field_values) -> None:
         elif r == 'no deck':
             print(f'{err_c.color}Karta nie została dodana, bo talia {R}{config["deck"]}{err_c.color} nie istnieje\n'
                   f'Aby zmienić talię wpisz {R}-deck [nazwa talii]\n'
-                  f'{err_c.color}Jeżeli nazwa talii wydaje się być prawidłowa,\n'
+                  f'{err_c.color}Jeżeli nazwa talii wydaje się być prawidłowa\n'
                   f'to spróbuj zmienić nazwę talii w Anki tak,\n'
                   f'aby używała pojedynczych spacji')
             return None
@@ -242,11 +241,7 @@ def create_card(field_values) -> None:
         added_fields = (x for x in corresp_model_fields if corresp_model_fields[x].strip())
         for added_field in added_fields:
             print(f'- {added_field}')
-
-        if ',' in config['tags']:
-            print(f'{YEX.color}Etykiety: {R}{config["tags"]}\n')
-        else:
-            print(f'{YEX.color}Etykieta: {R}{config["tags"]}\n')
+        print(f'{YEX.color}Etykiety: {R}{config["tags"]}\n')
 
     except URLError:
         print(f'{err_c.color}Nie udało się połączyć z AnkiConnect\n'
