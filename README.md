@@ -10,9 +10,9 @@ się w stu procentach za pomocą klawiatury.
 
 ## Instalacja:
 
-[link do pobrania v0.9.1-3.zip](https://github.com/gryzus24/anki-dodawacz/archive/refs/tags/v0.9.1-3.zip)
+[link do pobrania v0.9.2-1.zip](https://github.com/gryzus24/anki-dodawacz/archive/refs/tags/v0.9.2-1.zip)
 :-
-[link do pobrania v0.9.1-3.tar.gz](https://github.com/gryzus24/anki-dodawacz/archive/refs/tags/v0.9.1-3.tar.gz)
+[link do pobrania v0.9.2-1.tar.gz](https://github.com/gryzus24/anki-dodawacz/archive/refs/tags/v0.9.2-1.tar.gz)
 
 ### Windows:
 Pobieramy .zip i rozpakowujemy.
