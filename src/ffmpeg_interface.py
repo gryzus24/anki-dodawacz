@@ -16,16 +16,13 @@
 import datetime
 import os.path
 import subprocess
-import sys
+from sys import platform
 
 from src.colors import R, YEX, GEX, BOLD, END, index_c, err_c
 from src.commands import save_commands
 from src.data import config
 
-if sys.platform.startswith('win'):
-    ffmpeg_settings = {'format': 'dshow',
-                       'device': f"audio={config['audio_device']}"}
-
+if platform.startswith('win'):
     def find_devices() -> list:
         audio_devices = subprocess.run('ffmpeg -hide_banner -list_devices true -f dshow -i dummy',
                                        shell=True, capture_output=True, text=True)
@@ -40,10 +37,7 @@ if sys.platform.startswith('win'):
         audio_devices.insert(0, 'default')
         return audio_devices
 
-elif sys.platform.startswith('linux'):
-    ffmpeg_settings = {'format': 'pulse',
-                       'device': config['audio_device']}
-
+elif platform.startswith('linux'):
     def find_devices() -> list:
         audio_devices = subprocess.run('pactl list sources | grep alsa_output',
                                        shell=True, capture_output=True, text=True)
@@ -59,6 +53,19 @@ else:
 
 
 def record(filepath: str):
+    if platform.startswith('linux'):
+        ffmpeg_settings = {
+            'format': 'pulse',
+            'device': config['audio_device']
+        }
+    elif platform.startswith('win'):
+        ffmpeg_settings = {
+            'format': 'dshow',
+            'device': f"audio={config['audio_device']}"
+        }
+    else:
+        raise NameError  # os not supported
+
     print(f'{YEX.color}Rozpoczęto nagrywanie...\n'
           f'{R}wciśnij [q], aby zakończyć i zapisać')
     result = subprocess.run((

@@ -136,7 +136,8 @@ class Dictionary:
 
     def print_title(self, title):
         title = f'[ {BOLD}{title}{END}{delimit_c.color} ]'
-        self.print(f'{delimit_c.color}{title.center(self.textwidth + 13, self.HORIZONTAL_BAR)}')
+        magic_len = len(BOLD) + len(END) + len(delimit_c.color)
+        self.print(f'{delimit_c.color}{title.center(self.textwidth + magic_len, self.HORIZONTAL_BAR)}')
 
     def display_card(self, field_values):
         self.manage_terminal_size()
