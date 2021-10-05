@@ -174,7 +174,7 @@ class Lexico(Dictionary):
 
         for block in entry_blocks:
             block_id = block.get('id')
-            if block_id is not None:
+            if block_id is not None:  # header
                 skip_index = -1
                 # example skip_dict for query "mint -l -n":
                 # {'h70098473699380': [False], 'h70098474045940': [False, True, True]}
@@ -295,7 +295,12 @@ class Lexico(Dictionary):
 
             elif block.get('class')[0] == 'etymology' and block.h3.text == 'Origin':
                 skip = skips[skip_index]
-                if skip:
+                # To properly display an etymology after filtering out every, but the last gramb
+                # e.g. query "respite -l -n" => no etymology
+                # and skip has be there to avoid two newlines printed above the title if the resulting
+                # dictionary consists of more than two headers and the top one is filtered out
+                # e.g. query "mint -l -!n"
+                if skip and not etym:
                     continue
 
                 etym_to_print = wrap_lines(etym, self.textwidth, 0, 1, 1)

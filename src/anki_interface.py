@@ -22,7 +22,7 @@ import yaml
 
 from notes import notes
 from src.colors import R, BOLD, END, YEX, GEX, err_c
-from src.data import root_dir, config, config_ac, ankiconnect_base_fields
+from src.data import ROOT_DIR, config, config_ac, ankiconnect_base_fields
 
 
 def add_notes(*args):
@@ -57,7 +57,7 @@ def refresh_notes():
         # change current note to a note with unsupported fields -> THEN refresh ->
         # change note back to the previous one and try adding cards.
         # all of that in the same session
-        with open(os.path.join(root_dir, 'config/ankiconnect.yml'), 'w') as ank:
+        with open(os.path.join(ROOT_DIR, 'config/ankiconnect.yml'), 'w') as ank:
             ank.write('{}')
         organize_notes(ankiconnect_base_fields, corresp_mf_config={}, print_errors=False)
         print(f'{YEX.color}Notatki przebudowane')
@@ -96,7 +96,7 @@ def create_note(note_config) -> str:
         note_ok = input(f'Czy chcesz ustawić "{note_config["modelName"]}" jako -note? [T/n]: ')
         if note_ok.lower() in ('', 't', 'y', 'tak', 'yes', '1'):
             config['note'] = note_config['modelName']
-            with open(os.path.join(root_dir, 'config/config.yml'), 'w') as conf_f:
+            with open(os.path.join(ROOT_DIR, 'config/config.yml'), 'w') as conf_f:
                 yaml.dump(config, conf_f)
         return ''
     except URLError:
@@ -165,7 +165,7 @@ def organize_notes(base_fields, corresp_mf_config, print_errors):
         return 'all fields empty'
 
     config_ac[config['note']] = corresp_mf_config
-    with open(os.path.join(root_dir, 'config/ankiconnect.yml'), 'w') as ank:
+    with open(os.path.join(ROOT_DIR, 'config/ankiconnect.yml'), 'w') as ank:
         yaml.dump(config_ac, ank)
     return None
 
@@ -247,7 +247,7 @@ def add_card(field_values) -> None:
         print(f'{err_c.color}Nie udało się połączyć z AnkiConnect\n'
               f'Otwórz Anki i spróbuj ponownie\n')
     except AttributeError:
-        with open(os.path.join(root_dir, 'config/ankiconnect.yml'), 'w') as ank:
+        with open(os.path.join(ROOT_DIR, 'config/ankiconnect.yml'), 'w') as ank:
             ank.write('{}')
         print(f'{err_c.color}Karta nie została dodana, bo plik {R}"ankiconnect.yml"{err_c.color} był pusty\n'
               f'Zrestartuj program i spróbuj dodać ponownie')

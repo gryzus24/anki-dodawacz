@@ -23,7 +23,7 @@ from src.colors import R, BOLD, END, YEX, GEX, \
     def1_c, def2_c, defsign_c, pos_c, etym_c, syn_c, exsen_c, \
     syngloss_c, index_c, phrase_c, \
     phon_c, poslabel_c, inflection_c, err_c, delimit_c, input_c, inputtext_c
-from src.data import root_dir, config, command_data, bool_colors_from_string
+from src.data import ROOT_DIR, config, command_data, bool_colors_from_string
 
 
 def save_commands(entry, value):
@@ -34,7 +34,7 @@ def save_commands(entry, value):
     else:
         config[entry] = value
 
-    with open(os.path.join(root_dir, 'config/config.yml'), 'w') as conf_file:
+    with open(os.path.join(ROOT_DIR, 'config/config.yml'), 'w') as conf_file:
         yaml.dump(config, conf_file)
 
 
@@ -178,15 +178,16 @@ def print_config_representation() -> None:
 
         try:
             state_b = config[command_data[b]['config_entry']]
-            if isinstance(state_b, list):
+            if b in ('-textwidth', '-indent'):
                 state_b = ''.join(map(str, state_b))
-            state_b = str(state_b)
+            else:
+                state_b = str(state_b)
         except KeyError:
             state_b = ''
 
         if '_bulk' in c:
             state_c = config[c]
-            if state_c.startswith('-'):
+            if state_c.startswith('-'):  # to align negative values
                 state_c = '\b' + state_c
             c = c[:-5]
         else:
@@ -196,22 +197,15 @@ def print_config_representation() -> None:
                 state_c = ''
 
         color_a = bool_colors_from_string.get(state_a, '')
-        color_b = bool_colors_from_string.get(state_b.strip(), '')
-        color_c = bool_colors_from_string.get(state_c, '')
+        color_b = bool_colors_from_string.get(state_b, '')
+        # no need for the third column color at the moment
 
-        if '[' in b:
-            level_b = '\b\b\b\b'
-        else:
-            level_b = ''
-
-        if '[' in a:
-            level_a = '\b\b\b\b\b\b\b'
-        else:
-            level_a = ''
+        level_a = '\b\b\b\b\b\b\b' if '[' in a else ''
+        level_b = '\b\b\b\b' if '[' in b else ''
 
         print(f'{a:13s}{color_a}{state_a:10s}{level_a}{R}'
               f'{b:14s}{color_b}{state_b:12s}{level_b}{R}'
-              f'{c:11s}{color_c}{state_c}{R}')
+              f'{c:11s}{state_c}{R}')
 
     print(f'\n--audio-path: {config["audio_path"]}\n'
           f'--audio-device: {config["audio_device"]}\n\n'

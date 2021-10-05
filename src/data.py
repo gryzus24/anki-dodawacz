@@ -1,29 +1,29 @@
-import os
+import os.path
 
 import yaml
 from colorama import Fore
 
-root_dir = os.path.split(os.path.abspath(os.path.dirname(__file__)))[0]
+ROOT_DIR = os.path.split(os.path.abspath(os.path.dirname(__file__)))[0]
 
 try:
-    with open(os.path.join(root_dir, 'config/config.yml'), 'r') as r:
+    with open(os.path.join(ROOT_DIR, 'config/config.yml'), 'r') as r:
         config = yaml.load(r, Loader=yaml.Loader)
 except FileNotFoundError:
-    with open(os.path.join(root_dir, 'config/config.yml'), 'w') as w:
+    with open(os.path.join(ROOT_DIR, 'config/config.yml'), 'w') as w:
         # if config.yml file not found, just write necessary data to open the program
         # then the user can set up their config from scratch
         w.write("""attention_c: lightyellow\ndef1_c: reset\ndef2_c: reset\ndelimit_c: reset
 error_c: lightred\netym_c: reset\nindex_c: lightgreen\ninput_c: reset\ninputtext_c: reset
 pos_c: yellow\nsyn_c: yellow\nsyngloss_c: reset
 phrase_c: cyan\nphon_c: lightblack\nposlabel_c: green\naudio_device: default\naudio_path: ''""")
-    with open(os.path.join(root_dir, 'config/config.yml'), 'r') as r:
+    with open(os.path.join(ROOT_DIR, 'config/config.yml'), 'r') as r:
         config = yaml.load(r, Loader=yaml.Loader)
 
 try:
-    with open(os.path.join(root_dir, 'config/ankiconnect.yml'), 'r') as a:
+    with open(os.path.join(ROOT_DIR, 'config/ankiconnect.yml'), 'r') as a:
         config_ac = yaml.load(a, Loader=yaml.Loader)
 except FileNotFoundError:
-    with open(os.path.join(root_dir, 'config/ankiconnect.yml'), 'w') as a:
+    with open(os.path.join(ROOT_DIR, 'config/ankiconnect.yml'), 'w') as a:
         a.write('{}')
 
 command_data = {
