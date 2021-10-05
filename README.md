@@ -44,7 +44,7 @@ Pobieramy archiwum tar.gz i rozpakowujemy.
   Możemy użyć komendy:<br>
   `tar -xvf <pobrany tar.gz> -C <ścieżka gdzie chcemy rozpakować>`
   
-  Na Linuxie odpowiednia wersja Pythona powinna być już zainstalowana.
+  Na większości dystrybucji odpowiednia wersja Pythona powinna być już zainstalowana.
   
   Instalujemy wymagane biblioteki:<br>
     `pip install BeautifulSoup4 colorama pyyaml requests lxml cchardet`
