@@ -157,8 +157,8 @@ class AHDictionary(Dictionary):
 
         self.manage_terminal_size()
 
-        filter_labels = config['nolabel_filter']
-        if config['subdef_filter'] or ('f' in flags or 'fsubdefs' in flags):
+        filter_labels = config['fnolabel']
+        if config['fsubdefs'] or ('f' in flags or 'fsubdefs' in flags):
             filter_subdefs = True
         else:
             filter_subdefs = False
@@ -206,7 +206,7 @@ class AHDictionary(Dictionary):
 
             phon_spell = ' '.join(phon_spell)
             phon_spell = phon_spell.rstrip(',')
-            if config['convert_to_ipa']:
+            if config['toipa']:
                 phon_spell = ahd_to_ipa_translation(phon_spell, th)
             else:
                 phon_spell = phon_spell.replace('-', 'ˈ') \
@@ -289,7 +289,7 @@ class AHDictionary(Dictionary):
                 postring = ', '.join(postring).replace('·', 'ˈ').replace('′', '-').replace('', 'ˌ')
                 phon_spell = ' '.join(phon_spell).rstrip(',')
 
-                if config['convert_to_ipa']:
+                if config['toipa']:
                     # this is very general, I have no idea how to differentiate these correctly
                     th = 'ð' if postring.startswith('th') else 'θ'
                     phon_spell = ahd_to_ipa_translation(phon_spell, th)
@@ -344,7 +344,7 @@ class AHDictionary(Dictionary):
         self.chosen_phrase = self.phrases[fc]
         self.chosen_audio_url = self.choose_audio_url(fc)
 
-        if config['hide_definition_word'] and chosen_defs:
+        if config['udef'] and chosen_defs:
             chosen_defs.hide(self.chosen_phrase)
 
         auto_choice = self.choices_to_auto_choice(mapped_choices)

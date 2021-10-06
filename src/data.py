@@ -26,190 +26,160 @@ except FileNotFoundError:
     with open(os.path.join(ROOT_DIR, 'config/ankiconnect.yml'), 'w') as a:
         a.write('{}')
 
-command_data = {
-    # boolean commands
-    '-pz': {
-        'config_entry': 'add_sentences',
-        'print_msg': 'Pole przykładowego zdania'},
-    '-def': {
-        'config_entry': 'add_definitions',
-        'print_msg': 'Pole definicji'},
-    '-pos': {
-        'config_entry': 'add_parts_of_speech',
-        'print_msg': 'Pole części mowy'},
-    '-etym': {
-        'config_entry': 'add_etymologies',
-        'print_msg': 'Pole etymologii'},
-    '-syn': {
-        'config_entry': 'add_synonyms',
-        'print_msg': 'Pole synonimów'},
-    '-exsen': {
-        'config_entry': 'add_example_sentences',
-        'print_msg': 'Pole przykładów'},
 
-    '-savecards': {
-        'config_entry': 'save_card',
-        'print_msg': 'Zapisywanie kart do pliku "karty.txt"'},
-    '-createcards': {
-        'config_entry': 'create_card',
-        'print_msg': 'Tworzenie/dodawanie kart'},
+command_help = {
+    # Boolean commands
+    '-pz': 'Pole przykładowego zdania',
+    '-def': 'Pole definicji',
+    '-pos': 'Pole części mowy',
+    '-etym': 'Pole etymologii',
+    '-syn': 'Pole synonimów',
+    '-exsen': 'Pole przykładów',
 
-    '-all': {
-        'config_entry': 'all',  # dummy
-        'print_msg': 'Wszystkie pola'},
+    '-savecards': 'Zapisywanie kart do pliku "karty.txt"',
+    '-createcards': 'Tworzenie/dodawanie kart',
 
-    '-fsubdefs': {
-        'config_entry': 'subdef_filter',
-        'print_msg': 'Filtrowanie poddefinicji w słownikach'},
-    '-fnolabel': {
-        'config_entry': 'nolabel_filter',
-        'print_msg': 'Filtrowanie definicji niezawierających etykiet części mowy'},
-    '-toipa': {
-        'config_entry': 'convert_to_ipa',
-        'print_msg': 'Tłumaczenie zapisu fonetycznego AHD do IPA'},
+    '-all': 'Wszystkie pola',
 
-    '-upz': {
-        'config_entry': 'hide_sentence_word',
-        'print_msg': 'Ukrywanie hasła w zdaniu'},
-    '-udef': {
-        'config_entry': 'hide_definition_word',
-        'print_msg': 'Ukrywanie hasła w definicjach'},
-    '-usyn': {
-        'config_entry': 'hide_synonym_word',
-        'print_msg': 'Ukrywanie hasła w synonimach'},
-    '-uexsen': {
-        'config_entry': 'hide_example_sentence_word',
-        'print_msg': 'Ukrywanie hasła w przykładach'},
-    '-upreps': {
-        'config_entry': 'hide_prepositions',
-        'print_msg': 'Ukrywanie przyimków'},
-    '-keependings': {
-        'config_entry': 'keep_endings',
-        'print_msg': 'Zachowój końcówki w odmienionych formach hasła (~ing, ~ed, etc.)'},
+    '-fsubdefs': 'Filtrowanie poddefinicji w słownikach',
+    '-fnolabel': 'Filtrowanie definicji niezawierających etykiet części mowy',
+    '-toipa': 'Tłumaczenie zapisu fonetycznego AHD do IPA',
 
-    '-top': {
-        'config_entry': 'top',
-        'print_msg': 'Wyrównywanie słowników do górnej granicy okna'},
-    '-displaycard': {
-        'config_entry': 'displaycard',
-        'print_msg': 'Podgląd karty'},
-    '-showadded': {
-        'config_entry': 'showadded',
-        'print_msg': 'Pokazywanie dodawanych elementów'},
-    '-showexsen': {
-        'config_entry': 'showexsen',
-        'print_msg': 'Pokazywanie przykładów definicji pod definicjami'},
+    '-upz': 'Ukrywanie hasła w zdaniu',
+    '-udef': 'Ukrywanie hasła w definicjach',
+    '-usyn': 'Ukrywanie hasła w synonimach',
+    '-uexsen': 'Ukrywanie hasła w przykładach',
+    '-upreps': 'Ukrywanie przyimków',
+    '-keependings': 'Zachowój końcówki w odmienionych formach hasła (~ing, ~ed, etc.)',
 
-    '-ankiconnect': {
-        'config_entry': 'ankiconnect',
-        'print_msg': 'Dodawanie kart poprzez AnkiConnect'},
-    '-duplicates': {
-        'config_entry': 'duplicates',
-        'print_msg': 'Dodawanie duplikatów poprzez AnkiConnect'},
-    # end of boolean commands
-    '-textwrap': {
-        'config_entry': 'textwrap',
-        'print_msg': 'Typ zawijania tekstu',
-        'comment': '-textwrap {justify|regular|-}'},
-    '-hideas': {
-        'config_entry': 'hideas',
-        'print_msg': 'Ukrywaj za pomocą',
-        'comment': 'Znaki służące jako ukrywacz'},
+    '-top': 'Wyrównywanie słowników do górnej granicy okna',
+    '-displaycard': 'Podgląd karty',
+    '-showadded': 'Pokazywanie dodawanych elementów',
+    '-showexsen': 'Pokazywanie przykładów definicji pod definicjami',
 
-    '-dupescope': {
-        'config_entry': 'dupescope',
-        'print_msg': 'Zasięg sprawdzania duplikatów',
-        'comment': '-dupescope {deck|collection}'},
-    '-note': {
-        'config_entry': 'note',
-        'print_msg': 'Notatka używana do dodawania kart',
-        'comment': '-note [nazwa notatki w Anki]'},
-    '-deck': {
-        'config_entry': 'deck',
-        'print_msg': 'Talia do której trafiają dodawane karty',
-        'comment': '-deck [nazwa talii w Anki]'},
-    '-tags': {
-        'config_entry': 'tags',
-        'print_msg': 'Tagi dla kart dodawanych poprzez AnkiConnect',
-        'comment': '-tags [tagi oddzielone przecinkiem]'},
-
-    '-textwidth': {
-        'config_entry': 'textwidth',
-        'print_msg': 'Szerokość tekstu do momentu zawinięcia',
-        'comment': '-textwidth {auto|liczba >= 0}'},
-    '-indent': {
-        'config_entry': 'indent',
-        'print_msg': 'Szerokość wcięć',
-        'comment': '-indent {liczba >= 0}'},
-
-    '--audio-path': {
-        'config_entry': 'audio_path',
-        'print_msg': 'Ścieżka zapisu audio',
-        'comment': '-ap, --audio-path {ścieżka|auto}'},
-    '-ap': {
-        'config_entry': 'audio_path',
-        'print_msg': 'Ścieżka zapisu audio',
-        'comment': '-ap, --audio-path {ścieżka|auto}'},
-    '-dict': {
-        'config_entry': 'dict',
-        'print_msg': 'Słownik pytany jako pierwszy',
-        'comment': '-dict {ahd|lexico|idioms}'},
-    '-dict2': {
-        'config_entry': 'dict2',
-        'print_msg': 'Słownik pytany jako drugi',
-        'comment': '-dict {ahd|lexico|idioms|-}'},
-    '-thes': {
-        'config_entry': 'thesaurus',
-        'print_msg': 'Słownik synonimów',
-        'comment': '-thes {wordnet|-}'},
-    '-audio': {
-        'config_entry': 'audio',
-        'print_msg': 'Serwer audio',
-        'comment': '-server {ahd|lexico|diki|auto|-}'},
-    '-recqual': {
-        'config_entry': 'recording_quality',
-        'print_msg': 'Jakość nagrywania',
-        'comment': '-recqual {0-9}\n'
-                   '(0: najlepsza, 9: najgorsza, 4: rekomendowana)'
-    }
+    '-ankiconnect': 'Dodawanie kart poprzez AnkiConnect',
+    '-duplicates': 'Zezwól na dodawanie duplikatów poprzez AnkiConnect',
+    #
+    # Text commands
+    #
+    '-textwrap': (
+        'Zawijanie tekstu',
+        '{justify|regular|-}'),
+    '-hideas': (
+        'Znaki służące jako ukrywacz',
+        '{ whatever floats your boat }'),
+    '-dupescope': (
+        'Zasięg sprawdzania duplikatów',
+        '{deck|collection}'),
+    '-note': (
+        'Notatka używana do dodawania kart',
+        '{nazwa notatki w Anki}'),
+    '-deck': (
+        'Talia do której trafiają dodawane karty',
+        '{nazwa talii w Anki}'),
+    '-tags': (
+        'Tagi dla kart dodawanych poprzez AnkiConnect',
+        '{tagi oddzielone przecinkiem|-}'),
+    '-textwidth': (
+        'Szerokość tekstu do momentu zawinięcia',
+        '{liczba >= 0|auto}'),
+    '-indent': (
+        'Szerokość wcięć',
+        '{liczba >= 0}'),
+    '--audio-path': (
+        'Ścieżka zapisu audio',
+        '{ścieżka|auto}'),
+    '-ap': (
+        'Ścieżka zapisu audio',
+        '{ścieżka|auto}'),
+    '-dict': (
+        'Słownik pytany jako pierwszy',
+        '{ahd|lexico|idioms}'),
+    '-dict2': (
+        'Słownik pytany jako drugi',
+        '{ahd|lexico|idioms|-}'),
+    '-thes': (
+        'Słownik synonimów',
+        '{wordnet|-}'),
+    '-audio': (
+        'Serwer audio',
+        '{ahd|lexico|diki|auto|-}'),
+    '-recqual': (
+        'Jakość nagrywania',
+        '{0-9}\n'
+        '(0: najlepsza, 9: najgorsza, 4: rekomendowana)'),
+    #
+    # Action commands
+    #
+    '--delete-last': (
+        'Usuwa ostatnio dodawane karty z pliku "karty.txt"',
+        '{ilość >= 1}'),
+    '--delete-recent': (
+        'Usuwa ostatnio dodawane karty z pliku "karty.txt"',
+        '{ilość >= 1}'),
+    '--add-note': (
+        'Dodaje notatkę do kolekcji aktualnie zalogowanego użytkownika',
+        '{nazwa notatki}'),
+    '-fo': (
+        'Zmiana kolejności zapisywania i wyświetlania pól',
+        '{\n'
+        '  default      : przywraca domyślną kolejność pól\n'
+        '  {1-9} {pole} : zmienia pole pod podanym numerem na {pole}\n'
+        '  d {1-9}      : przesuwa odkreślenie pod {1-9}\n'
+        '}'),
+    '--field-order': (
+        'Zmiana kolejności zapisywania i wyświetlania pól',
+        '{\n'
+        '  default      : przywraca domyślną kolejność pól\n'
+        '  {1-9} {pole} : zmienia pole pod podanym numerem na {pole}\n'
+        '  d {1-9}      : przesuwa odkreślenie pod {1-9}\n'
+        '}'),
+    '-c': (
+        'Zmiana koloru elementów',
+        '{element} {kolor}'),
+    '-color': (
+        'Zmiana koloru elementów',
+        '{element} {kolor}'),
+    '-cd': (
+        'Zmiana domyślnych wartości',
+        '{element} {wartość}')
 }
 
 field_config = {
     'definitions': {
-        'add_field': command_data['-def']['config_entry'],
-        'bulk_element': 'def_bulk',
+        'field_name': 'def',
         'prompt': 'Wybierz definicje'
     },
     'example_sentences': {
-        'add_field': command_data['-exsen']['config_entry'],
-        'bulk_element': 'exsen_bulk',
+        'field_name': 'exsen',
         'prompt': 'Wybierz przykłady'
     },
     'parts_of_speech': {
-        'add_field': command_data['-pos']['config_entry'],
-        'bulk_element': 'pos_bulk',
+        'field_name': 'pos',
         'prompt': 'Wybierz części mowy',
         },
     'etymologies': {
-        'add_field': command_data['-etym']['config_entry'],
-        'bulk_element': 'etym_bulk',
+        'field_name': 'etym',
         'prompt': 'Wybierz etymologie',
     },
     'synonyms': {
-        'add_field': command_data['-syn']['config_entry'],
-        'bulk_element': 'syn_bulk',
+        'field_name': 'syn',
         'prompt': 'Wybierz synonimy',
     },
 }
-boolean_values = {
-    'on': True, 'off': False,
-    'true': True, 'false': False,
-    'yin': True, 'yang': False,
-    'tak': True, 'nie': False,
-    'yes': True, 'no': False,
-    'yay': True, 'nay': False,
-    'y': True, 't': True, 'n': False,
+
+DEFAULT_FIELD_ORDER = {
+    '1': 'definicja',
+    '2': 'synonimy',
+    '3': 'przyklady',
+    '4': 'phrase',
+    '5': 'zdanie',
+    '6': 'czesci_mowy',
+    '7': 'etymologia',
+    '8': 'audio',
+    '9': 'sentence_audio'
 }
+
 # fields used for Anki note recognition
 ankiconnect_base_fields = {
     'defin': 'definicja',
@@ -217,54 +187,54 @@ ankiconnect_base_fields = {
     'wyjaś': 'definicja',
     'wyjas': 'definicja',
 
-    'synon': 'synonimy',
-    'disamb': 'synonimy',
+    'synon':     'synonimy',
+    'disamb':    'synonimy',
     'usunięcie': 'synonimy',
     'usuniecie': 'synonimy',
-    'ujedn': 'synonimy',
+    'ujedn':     'synonimy',
 
     'przykłady': 'przyklady',
     'przyklady': 'przyklady',
-    'illust': 'przyklady',
-    'examples': 'przyklady',
-    'psyn': 'przyklady',
+    'illust':    'przyklady',
+    'examples':  'przyklady',
+    'psyn':      'przyklady',
 
     'słowo': 'phrase',
     'slowo': 'phrase',
-    'fraz': 'phrase',
+    'fraz':  'phrase',
     'phras': 'phrase',
-    'word': 'phrase',
+    'word':  'phrase',
     'vocab': 'phrase',
     'idiom': 'phrase',
 
-    'zdanie': 'zdanie',
+    'zdanie':      'zdanie',
     'przykładowe': 'zdanie',
     'przykladowe': 'zdanie',
-    'sentence': 'zdanie',
-    'pz': 'zdanie',
+    'sentence':    'zdanie',
+    'pz':          'zdanie',
 
     'części': 'czesci_mowy',
     'czesci': 'czesci_mowy',
-    'parts': 'czesci_mowy',
-    'part': 'czesci_mowy',
+    'parts':  'czesci_mowy',
+    'part':   'czesci_mowy',
 
     'etym': 'etymologia',
 
-    'audio': 'audio',
+    'audio':  'audio',
     'wymowa': 'audio',
     'dźwięk': 'audio',
     'dzwiek': 'audio',
     'pronunciation': 'audio',
-    'sound': 'audio',
-    'media': 'audio',
+    'sound':  'audio',
+    'media':  'audio',
 
     'nagran': 'sentence_audio',
     'nagryw': 'sentence_audio',
-    'recor': 'sentence_audio',
-    'sentence_a': 'sentence_audio',
+    'recor':  'sentence_audio',
+    'sentence_a':    'sentence_audio',
     'sentenceaudio': 'sentence_audio',
-    'sentence_r': 'sentence_audio',
-    'sentencerec': 'sentence_audio'
+    'sentence_r':    'sentence_audio',
+    'sentencerec':   'sentence_audio'
 }
 
 labels = {
@@ -323,7 +293,7 @@ AHD_IPA_translation = str.maketrans({
     'ĭ': 'ɪ',   'î': 'ɪ',   'ī': 'aɪ',  # that AHD claims to have used, but
     'i': 'aɪ',  'ŏ': 'ɑ',   'ō': 'oʊ',  # I haven't found any usages yet
     'ô': 'ɔ',   '': 'ʊ',   '': 'ʊ',
-    '': 'u',   '': 'u:',  '': 'ð',
+    '': 'u',   '': 'u:', '': 'ð',
     'ŭ': 'ʌ',   'û': 'ɔ:',  'y': 'j',
     'j': 'dʒ',  'ü': 'y',   '': 'ç',
     '': 'x',   '': 'bõ',  'ɴ': 'ⁿ',
@@ -341,10 +311,10 @@ PREPOSITIONS = (
 )
 
 SEARCH_FLAGS = (
-    'f', 'fsubdefs',
-    'ahd', 'ahdictionary',
-    'i', 'idiom', 'idioms', 'farlex',
-    'l', 'lexico',
+    'f',   'fsubdefs',
+    'ahd',
+    'i',   'idiom', 'idioms', 'farlex',
+    'l',   'lexico',
     'rec', 'record'
 )
 
@@ -375,7 +345,6 @@ config_columns = (
     ('-note',                '',                                   ''),
     ('-deck',                '',                                   ''),
     ('-tags',                '',                                   ''),
-    ('',                     '',                                   '')
 )
 
 color_data = {
@@ -422,6 +391,17 @@ color_data = {
         'input': 'Kolor pól na input',
         'inputtext': 'Kolor wpisywanego tekstu'
     },
+}
+
+boolean_values = {
+    'on':   True, 'off':   False,
+    'true': True, 'false': False,
+    'yin':  True, 'yang':  False,
+    'tak':  True, 'nie':   False,
+    'yes':  True, 'no':    False,
+    'yay':  True, 'nay':   False,
+    'y':    True, 'n':     False,
+    't':    True,
 }
 
 bool_colors = {

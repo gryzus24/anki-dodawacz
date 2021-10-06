@@ -21,32 +21,8 @@ from urllib.error import URLError
 import yaml
 
 from notes import notes
-from src.colors import R, BOLD, END, YEX, GEX, err_c
+from src.colors import R, YEX, GEX, err_c
 from src.data import ROOT_DIR, config, config_ac, ankiconnect_base_fields
-
-
-def add_notes(*args):
-    available_notes = ', '.join(notes.available_notes.keys())
-
-    try:
-        note_name = args[1].lower()
-        if note_name in ('-h', '--help'):
-            raise IndexError
-    except IndexError:
-        print(f'{R}--add-note {{nazwa notatki}}\n'
-              f'{BOLD}Dostępne notatki to:{END}\n'
-              f'{available_notes}\n')
-        return None
-
-    note_config = notes.available_notes.get(note_name)
-    if note_config is None:
-        print(f'{err_c.color}Notatka {R}"{note_name}"{err_c.color} nie została znaleziona')
-        return None
-
-    response_err = create_note(note_config)
-    if response_err:
-        print(f'{response_err}')
-    print()
 
 
 def refresh_notes():
@@ -68,40 +44,45 @@ def refresh_notes():
         print(f'{err_c.color}Plik {R}ankiconnect.yml{err_c.color} nie istnieje')
 
 
-def create_note(note_config) -> str:
+def create_note(*args, **kwargs) -> str:
+    note_name = args[1].lower()
+
+    note_config = notes.available_notes.get(note_name)
+    if note_config is None:
+        return f'Notatka {R}"{note_name}"{err_c.color} nie została znaleziona'
+
     try:
         response = invoke('modelNames')
         if response == 'out of reach':
-            return f'{err_c.color}Wybierz profil, aby dodać notatkę'
+            return 'Wybierz profil, aby dodać notatkę'
     except URLError:
-        return f'{err_c.color}Włącz Anki, aby dodać notatkę'
+        return 'Włącz Anki, aby dodać notatkę'
+
+    if note_config['modelName'] in response:
+        return f'{YEX.color}Notatka {R}"{note_config["modelName"]}"{YEX.color} już znajduje się w bazie notatek'
 
     try:
-        if note_config['modelName'] in response:
-            return f'{YEX.color}Notatka {R}"{note_config["modelName"]}"{YEX.color} już znajduje się w bazie notatek'
-
-        result = invoke('createModel',
-                        modelName=note_config['modelName'],
-                        inOrderFields=note_config['fields'],
-                        css=note_config['css'],
-                        cardTemplates=[{'Name': note_config['cardName'],
-                                        'Front': note_config['front'],
-                                        'Back': note_config['back']}])
-        if result == 'out of reach':
-            return f'{err_c.color}Nie można nawiązać połączenia z Anki\n' \
+        response = invoke('createModel',
+                          modelName=note_config['modelName'],
+                          inOrderFields=note_config['fields'],
+                          css=note_config['css'],
+                          cardTemplates=[{'Name': note_config['cardName'],
+                                          'Front': note_config['front'],
+                                          'Back': note_config['back']}])
+        if response == 'out of reach':
+            return f'Nie można nawiązać połączenia z Anki\n' \
                    f'Notatka nie została utworzona'
-        else:
-            print(f'{GEX.color}Notatka utworzona pomyślnie')
-
-        note_ok = input(f'Czy chcesz ustawić "{note_config["modelName"]}" jako -note? [T/n]: ')
-        if note_ok.lower() in ('', 't', 'y', 'tak', 'yes', '1'):
-            config['note'] = note_config['modelName']
-            with open(os.path.join(ROOT_DIR, 'config/config.yml'), 'w') as conf_f:
-                yaml.dump(config, conf_f)
-        return ''
     except URLError:
-        return f'{err_c.color}Nie można nawiązać połączenia z Anki' \
-               f'Notatka nie została utworzona'
+        return 'Nie można nawiązać połączenia z Anki\n' \
+               'Notatka nie została utworzona'
+
+    print(f'{GEX.color}Notatka dodana pomyślnie')
+
+    note_ok = input(f'Czy chcesz ustawić "{note_config["modelName"]}" jako -note? [T/n]: ')
+    if note_ok.lower() in ('', 't', 'y', 'tak', 'yes', '1'):
+        config['note'] = note_config['modelName']
+        with open(os.path.join(ROOT_DIR, 'config/config.yml'), 'w') as conf_f:
+            yaml.dump(config, conf_f)
 
 
 def ankiconnect_request(action, **params):
@@ -110,6 +91,7 @@ def ankiconnect_request(action, **params):
 
 def invoke(action, **params):
     requestjson = json.dumps(ankiconnect_request(action, **params)).encode('utf-8')
+    # Using 127.0.0.1 as Windows is very slow to resolve "localhost" for some reason
     response = json.load(urllib.request.urlopen(urllib.request.Request('http://127.0.0.1:8765', requestjson)))
     if len(response) != 2:
         raise Exception('response has an unexpected number of fields')
@@ -203,7 +185,7 @@ def add_card(field_values) -> None:
                              'allowDuplicate': config['duplicates'],
                              'duplicateScope': config['dupescope']
                          },
-                         'tags': config['tags'].split(', ')}
+                         'tags': config['tags'].replace('-', '', 1).split(', ')}
                    )
         if r == 'empty':
             print(f'{err_c.color}Karta nie została dodana\n'

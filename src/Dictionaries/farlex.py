@@ -105,7 +105,7 @@ class FarlexIdioms(Dictionary):
         fc = valid_index_or_zero(choices)
         self.chosen_phrase = self.phrases[fc]
 
-        if config['hide_definition_word'] and chosen_defs:
+        if config['udef'] and chosen_defs:
             chosen_defs.hide(self.chosen_phrase)
 
         auto_choice = self.choices_to_auto_choice(choices)
@@ -114,7 +114,7 @@ class FarlexIdioms(Dictionary):
         if chosen_exsen is None:
             return None
 
-        if config['hide_example_sentence_word'] and chosen_exsen:
+        if config['uexsen'] and chosen_exsen:
             chosen_exsen.hide(self.chosen_phrase)
 
         return {

@@ -155,7 +155,7 @@ class Lexico(Dictionary):
 
         self.manage_terminal_size()
 
-        if config['subdef_filter'] or ('f' in flags or 'fsubdefs' in flags):
+        if config['fsubdefs'] or ('f' in flags or 'fsubdefs' in flags):
             filter_subdefs = True
         else:
             filter_subdefs = False
@@ -294,13 +294,7 @@ class Lexico(Dictionary):
                 self.last_definition_indexes_in_gramb.append(subindex)
 
             elif block.get('class')[0] == 'etymology' and block.h3.text == 'Origin':
-                skip = skips[skip_index]
-                # To properly display an etymology after filtering out every, but the last gramb
-                # e.g. query "respite -l -n" => no etymology
-                # and skip has be there to avoid two newlines printed above the title if the resulting
-                # dictionary consists of more than two headers and the top one is filtered out
-                # e.g. query "mint -l -!n"
-                if skip and not etym:
+                if all(skips):
                     continue
 
                 etym_to_print = wrap_lines(etym, self.textwidth, 0, 1, 1)
@@ -342,7 +336,7 @@ class Lexico(Dictionary):
         fc = valid_index_or_zero(choices_mapped_to_block)
         self.chosen_phrase = self.phrases[fc]
 
-        if config['hide_definition_word'] and chosen_defs:
+        if config['udef'] and chosen_defs:
             chosen_defs.hide(self.chosen_phrase)
 
         choices_mapped_to_gramb = def_field.get_choices(mapping=self.last_definition_indexes_in_gramb)
@@ -353,7 +347,7 @@ class Lexico(Dictionary):
         chosen_exsentence = exsen_field.get_element(self.example_sentences, exsen_auto_choice)
         if chosen_exsentence is None:
             return None
-        if config['hide_example_sentence_word'] and chosen_exsentence:
+        if config['uexsen'] and chosen_exsentence:
             chosen_exsentence.hide(self.chosen_phrase)
 
         etym_auto_choice = self.choices_to_auto_choice(choices_mapped_to_block)

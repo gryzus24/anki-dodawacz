@@ -56,7 +56,7 @@ hasła to zapytanie przechodzi do Farlex Idioms.
  mowy z grupy używając specyfikatora.
   np. 1        dodaje pierwszą grupę części mowy
   np. 2.23     dodaje drugą i trzecią część mowy z drugiej grupy
-  a lub auto   dodaje części mowy bazując na wybranych definicjach
+  auto         dodaje części mowy bazując na wybranych definicjach
   0 lub -s     pomija dodawanie elementu
 
  Specyfikator dla części mowy: "\\n" (nowa linia)
@@ -64,7 +64,7 @@ hasła to zapytanie przechodzi do Farlex Idioms.
 {BOLD}Przy etymologiach:{END}
  Etymologie nie są indeksowane ani grupowane, wybieramy wpisując numer
  etymologii licząc od góry.
-  a lub auto   dodaje etymologie bazując na wybranych definicjach
+  auto   dodaje etymologie bazując na wybranych definicjach
 
  Specyfikator dla etymologii: ","
 
@@ -73,7 +73,7 @@ hasła to zapytanie przechodzi do Farlex Idioms.
 
  Specyfikator dla synonimów: ","
 
-
+-config           wyświetla pełną listę ustawień
 --help-commands   wyświetla informacje o komendach
 --help-bulk       wyświetla informacje o masowym dodawaniu
 --help-recording  wyświetla informacje o nagrywaniu\n""")
@@ -81,16 +81,8 @@ hasła to zapytanie przechodzi do Farlex Idioms.
 
 def commands_help():
     print(f"""{R}
-{{}} - wartość jest wymagana
-[] - wartość jest opcjonalna
-| - lub
-
-Wpisanie "-h" lub "--help" po komendzie
-  wyświetli informacje o użyciu
-
 {R}{BOLD}{'[ Komendy dodawania ]'.center(79,  '─')}{END}
-Aby zmienić wartość dla komendy wpisz {BOLD}on|off{END}
-  np. "-pz off", "-wordnet on", "-all off" itd.
+Wpisanie komendy wyświetli informacje o użyciu.
 
 {BOLD}[Komenda]      [włącza|wyłącza]{END}
 -pz            pole przykładowego zdania
@@ -106,7 +98,7 @@ Aby zmienić wartość dla komendy wpisz {BOLD}on|off{END}
 
 -ap, --audio-path {{ścieżka|auto}}   ścieżka zapisu plików audio
                                    (domyślnie "Karty_audio")
-Ścieżki dla "collection.media":
+Ścieżki "collection.media":
  Na Linuxie:
   "~/.local/share/Anki2/{{Użytkownik Anki}}/collection.media"
  Na Macu:
@@ -123,26 +115,26 @@ Komendy wpływające na sposób wyświetlania informacji.
 -showadded                       pokazywanie dodawanych elementów
 -showexsen                       pokazywanie przykładów w słowniku
 
--textwrap  {{justify|regular|-}}   typ zawijania tekstu
--textwidth {{wartość|auto}}        szerokość tekstu
--indent    {{wartość}}             szerokość wcięcia
+-textwrap  {{justify|regular|-}}   zawijanie tekstu
+-textwidth {{liczba >= 0|auto}}    szerokość tekstu do momentu zawinięcia
+-indent    {{liczba >= 0}}         szerokość wcięć
 
 {BOLD}{'[ Komendy ukrywania i filtrowania ]'.center(79,  '─')}{END}
 Ukrywanie hasła to zamiana wyszukiwanego słowa na "..." (domyślnie)
 Filtrowanie to usunięcie elementów spełniających określone warunki
 
--upz                ukrywanie hasła w zdaniu
--udef               ukrywanie hasła w definicjach
--uexsen             ukrywanie hasła w przykładach
--usyn               ukrywanie hasła w synonimach
--upreps             ukrywanie przyimków
--keependings        zachowywanie końcówek odmienionych słów (~ed, ~ing etc.)
--hideas [wartość]   ustawienie znaków służących jako ukrywacz
+-upz            ukrywanie hasła w zdaniu
+-udef           ukrywanie hasła w definicjach
+-uexsen         ukrywanie hasła w przykładach
+-usyn           ukrywanie hasła w synonimach
+-upreps         ukrywanie przyimków
+-keependings    zachowywanie końcówek odmienionych słów (~ed, ~ing etc.)
+-hideas         znaki służące jako ukrywacz
 
--fsubdefs           filtrowanie poddefinicji (definicji bez ">")
--fnolabel           filtrowanie definicji niezawierających etykiet części mowy
+-fsubdefs       filtrowanie poddefinicji (definicji bez ">")
+-fnolabel       filtrowanie definicji niezawierających etykiet części mowy
 
--toipa              tłumaczenie zapisu fonetycznego używanego w AHD do IPA
+-toipa          tłumaczenie zapisu fonetycznego używanego w AHD do IPA
 
 {BOLD}{'[ Komendy źródeł i nagrywania ]'.center(79,  '─')}{END}
 -dict  {{ahd|lexico|idioms}}        słownik pytany jako pierwszy
@@ -157,58 +149,42 @@ Filtrowanie to usunięcie elementów spełniających określone warunki
 
 [hasło] -rec, --record    rozpoczyna nagrywanie, dodaje do nazwy pliku
                           wyjściowego [hasło], po zakończeniu nagrywania
-                          wyszukuje [hasło] w słowniku i dodaje audio na kartę
+                          wyszukuje [hasło] i dodaje nagranie na kartę
 
 -recqual {{0-9}}            jakość nagrywania:
-                             0 - najlepsza
-                             9 - najgorsza
-                             4 - rekomendowana
-
-{BOLD}{'[ Pozostałe komendy ]'.center(79,  '─')}{END}
---delete-last   [n >= 1]   usuwa ostatnią dodaną kartę z pliku karty.txt
---delete-recent [n >= 1]   lub sprecyzowaną ilość kart
-
--c, -color                 wyświetla dostępne kolory
--c -h                      wyświetla konfigurację kolorów
--c {{element}} {{kolor}}       zmienia kolor elementu
-
---help-bulk,
---help-defaults            wyświetla informacje o masowym dodawaniu
---help-commands            wyświetla informacje o komendach
---help-recording           wyświetla informacje o nagrywaniu
-
--cd, --config-defaults     rozpoczyna konfigurację domyślnych wartości
--cd {{element}} {{wartość}}    zmienia wartość elementu
--cd all {{wartość}}          zmienia wartość wszystkich elementów
-
--conf, -config             wyświetla informacje o aktualnej konfiguracji
--fo, --field-order         zmiana kolejności dodawanych pól do "karty.txt"
--fo default                przywraca domyślną kolejność pól
--fo {{1-9}} {{pole}}           zmienia pole znajdujące się pod podanym numerem na
-                           wskazane pole
--fo d {{1-9}}                przesuwa odkreślenie (delimitation)
-                           pod pole z podanym numerem
-
-np. -fo 1 audio            zmieni pole "definicja" (1) na pole "audio"
-np. -fo d 5                przesunie odkreślenie pod pole z numerem 5
+                            0 - najlepsza
+                            9 - najgorsza
+                            4 - rekomendowana
 
 {BOLD}{'[ Komendy AnkiConnect ]'.center(79,  '─')}{END}
--ankiconnect {{on|off}}      bezpośrednie dodawanie kart do Anki poprzez
-                           AnkiConnect
--duplicates  {{on|off}}      dodawanie duplikatów
+-ankiconnect           bezpośrednie dodawanie kart do Anki poprzez AnkiConnect
+-duplicates            zezwolenie na dodawanie duplikatów
+-dupescope             określa zasięg sprawdzania duplikatów:
+          deck          w obrębie talii
+          collection    w obrębie całej kolekcji (wszystkich talii)
 
--dupescope                 określa zasięg sprawdzania duplikatów:
-           deck             w obrębie talii
-           collection       w obrębie całej kolekcji (wszystkich talii)
--note [nazwa notatki]      notatka używana do dodawania kart
--refresh                   odświeża informacje o aktualnej notatce
-                           (użyć jeżeli nazwy pól notatki były zmieniane)
--deck [nazwa talii]        talia do której trafiają karty
--tags [tagi]               tagi dodawane wraz z kartą
-                           aby dodać więcej tagów, oddziel je przecinkiem
+-note {{notatka}}        notatka używana do dodawania kart
+-deck {{talia}}          talia do której trafiają karty
+-tags {{tagi|-}}         tagi dodawane wraz z kartą
+                       (aby dodać więcej tagów oddziel je przecinkiem)
 
---add-note                 pokazuje gotowe do dodania notatki
---add-note {{notatka}}       dodaje notatkę do kolekcji zalogowanego użytkownika
+--add-note {{notatka}}   dodaje notatkę do kolekcji zalogowanego użytkownika
+-refresh               odświeża informacje o aktualnej notatce
+                       (użyć jeżeli pola notatki zostały zmienione w Anki)
+
+{BOLD}{'[ Pozostałe komendy ]'.center(79,  '─')}{END}
+--delete-last,
+--delete-recent      usuwa ostatnio dodawane karty z pliku karty.txt
+
+-c, -color           zmiana koloru poszczególnych elementów
+-cd                  zmiana domyślnych wartości
+-fo, --field-order   zmiana kolejności zapisywania i wyświetlania pól
+
+-conf, -config       wyświetla pełną listę opcji i ich konfigurację
+--help-bulk,
+--help-defaults      wyświetla informacje o masowym dodawaniu
+--help-commands      wyświetla informacje o komendach
+--help-recording     wyświetla informacje o nagrywaniu
 
 {BOLD}{'[ Flagi ]'.center(79,  '─')}{END}
 Flagi pozwalają na włączenie/wyłączenie komendy lub opcji tylko na czas

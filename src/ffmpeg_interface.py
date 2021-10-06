@@ -18,7 +18,7 @@ import os.path
 import subprocess
 from sys import platform
 
-from src.colors import R, YEX, GEX, BOLD, END, index_c, err_c
+from src.colors import R, YEX, GEX, index_c, err_c
 from src.commands import save_commands
 from src.data import config
 
@@ -78,33 +78,20 @@ def record(filepath: str):
         '-channel_layout', 'stereo',
         '-i', ffmpeg_settings['device'],
         '-acodec', 'libmp3lame',
-        '-q:a', config['recording_quality'],
+        '-q:a', config['recqual'],
         filepath
     ), capture_output=True, text=True)
     return result
 
 
-def set_audio_device(*args) -> None:
-    try:
-        arg = args[1].lower()
-    except IndexError:  # no arguments
-        pass
-    else:
-        if arg in ('-h', '--help'):
-            print(f"{BOLD}Konfiguracja urządzenia do przechwytywania audio poprzez ffmpeg{END}\n"
-                  f"{YEX.color}Aktualne urządzenie:\n"
-                  f"{R}{config['audio_device']}\n")
-            return None
+def set_audio_device():
     try:
         audio_devices = find_devices()
         if audio_devices is None:
-            print(f'{err_c.color}Nagrywanie audio niedostępne na obecnym systemie operacyjnym')
-            return None
-
+            return 'Nagrywanie audio niedostępne na obecnym systemie operacyjnym'
     except FileNotFoundError:
-        print(f'{err_c.color}Ffmpeg nie został odnaleziony\n'
-              f'Umieść ffmpeg w folderze z programem lub $PATH')
-        return None
+        return 'Ffmpeg nie został odnaleziony\n' \
+               'Umieść ffmpeg w folderze z programem lub $PATH'
 
     print('Wybierz urządzenie do przechwytywania audio poprzez ffmpeg:\n')
     for index, a in enumerate(audio_devices, start=1):
@@ -120,8 +107,7 @@ def set_audio_device(*args) -> None:
         choice = None
 
     if choice is None or choice > len(audio_devices):
-        print(f'{err_c.color}Nieprawidłowa wartość, opuszczam konfigurację')
-        return None
+        return 'Nieprawidłowa wartość, opuszczam konfigurację'
 
     audio_device = audio_devices[choice - 1]
     save_commands('audio_device', audio_device)

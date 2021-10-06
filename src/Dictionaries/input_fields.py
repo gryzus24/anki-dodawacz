@@ -27,7 +27,7 @@ class ChosenElement:
             if word.lower() in nonoes:
                 continue
 
-            if not config['hide_prepositions']:
+            if not config['upreps']:
                 if word.lower() in PREPOSITIONS:
                     continue
 
@@ -41,7 +41,7 @@ class ChosenElement:
                 content_replace(word[:-1] + 'ies', f'{config["hideas"]}Ωies')
                 content_replace(word[:-1] + 'ied', f'{config["hideas"]}Ωied')
 
-        if config['keep_endings']:
+        if config['keependings']:
             self.content = self.content.replace('Ω', '')
         else:
             # e.g. from "We weren't ...Ωed for this." -> "We weren't ... for this."
@@ -57,9 +57,8 @@ class ChosenElement:
 
 
 class InputField:
-    def __init__(self, add_field, bulk_element, prompt='Wybierz element', connector='<br>', spec_split='.'):
-        self.add_field = add_field
-        self.bulk_element = bulk_element
+    def __init__(self, field_name, prompt='Wybierz element', connector='<br>', spec_split='.'):
+        self.field_name = field_name
         self.prompt = prompt
         self.connector = connector
         self.spec_split = spec_split
@@ -79,12 +78,12 @@ class InputField:
         return self.choices if not indexes else indexes
 
     def _user_input(self, auto_choice):
-        default_value = config[self.bulk_element]
+        default_value = config[f'{self.field_name}_bulk']
 
         if default_value.lower() in ('a', 'auto'):
             default_value = auto_choice
 
-        if not config[self.add_field]:
+        if not config[self.field_name]:
             return default_value
         else:
             input_choice = input(f'{input_c.color}{self.prompt} [{default_value}]:{inputtext_c.color} ')
@@ -181,7 +180,7 @@ class InputField:
 
 
 def sentence_input():
-    if not config['add_sentences']:
+    if not config['pz']:
         return ChosenElement()
 
     sentence = input(f'{input_c.color}Dodaj przykładowe zdanie:{inputtext_c.color} ')

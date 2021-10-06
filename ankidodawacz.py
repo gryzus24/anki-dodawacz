@@ -22,6 +22,7 @@ import src.commands as c
 import src.data as data
 import src.ffmpeg_interface as ffmpeg
 import src.help as h
+from notes.notes import available_notes
 from src.Dictionaries.ahdictionary import AHDictionary
 from src.Dictionaries.dictionary_base import request_session
 from src.Dictionaries.diki import get_audio_from_diki
@@ -57,12 +58,13 @@ commands = {
     '-dupescope': c.set_text_value_commands,
     '-audio': c.set_text_value_commands,
     '-recqual': c.set_text_value_commands,
-    '--add-note': anki.add_notes,
+    '--add-note': anki.create_note,
     '--field-order': c.change_field_order, '-fo': c.change_field_order,
-    '-colors': c.set_colors, '-color': c.set_colors, '-c': c.set_colors,
-    '--config-defaults': c.config_bulk, '-cd': c.config_bulk,
+    '-color': c.set_colors, '-c': c.set_colors,
+    '-cd': c.config_defaults,
+}
+no_arguments_commands = {
     '--audio-device': ffmpeg.set_audio_device, '-device': ffmpeg.set_audio_device,
-    # commands that take no arguments
     '-refresh': anki.refresh_notes,
     '--help': h.quick_help, '-help': h.quick_help, '-h': h.quick_help,
     '--help-bulk': h.bulk_help, '--help-defaults': h.bulk_help,
@@ -78,19 +80,49 @@ def search_interface() -> str:
         if not word:
             continue
 
+        if word in no_arguments_commands:
+            no_arguments_commands[word]()
+            continue
+
         args = word.split()
         cmd = args[0]
-        try:
-            # don't forget to change the splice when adding/removing commands!
-            if cmd in tuple(data.command_data)[:24]:
-                # to avoid writing all of them in the commands dict above
-                c.boolean_commands(*args)
-            elif cmd in tuple(commands)[:27]:
-                commands[cmd](*args)
-            else:
-                commands[cmd]()
-        except KeyError:  # command not found
+        if cmd in tuple(data.command_help)[:24]:
+            method = c.boolean_commands
+            message = data.command_help[cmd]
+            usage = '{on|off}'
+        elif cmd in commands:
+            method = commands[cmd]
+            message, usage = data.command_help[cmd]
+        else:
             return word
+
+        try:
+            first_arg = args[1].lower()
+            if first_arg.lstrip('-') in ('h', 'help'):
+                raise IndexError
+
+        except IndexError:  # Print help
+            print(f'{YEX.color}{message}\n'
+                  f'{R}{cmd} {usage}')
+
+            # Print additional information
+            if cmd in ('-ap', '--audio-path'):
+                print(f'{BOLD}Aktualna ścieżka:\n'
+                      f'{END}{config["audio_path"]}\n')
+            elif cmd == '--add-note':
+                print(f'{BOLD}Dostępne notatki:{END}\n'
+                      f'{", ".join(available_notes)}\n')
+            elif cmd in ('-fo', '--field-order'):
+                c.display_field_order()
+            elif cmd in ('-c', '-color'):
+                c.color_command()
+            elif cmd == '-cd':
+                print(f'{BOLD}Dostępne elementy:{END}\n'
+                      f'def, exsen, pos, etym, syn, all\n')
+        else:
+            err = method(*args, message=message)
+            if err is not None:
+                print(f'{err_c.color}{err}')
 
 
 def save_audio(audio_link, audiofile_name):
@@ -206,7 +238,7 @@ def main():
     if not os.path.exists('Karty_audio') and config['audio_path'] == 'Karty_audio':
         os.mkdir('Karty_audio')
 
-    __version__ = 'v1.0.0-1'
+    __version__ = 'v1.0.1-1'
     print(f'{BOLD}- Dodawacz kart do Anki {__version__} -{END}\n'
           'Wpisz "--help", aby wyświetlić pomoc\n\n')
 
@@ -243,14 +275,14 @@ def main():
         # to always get the correct query, e.g. preferred -> prefer
         phrase = dictionary.phrases[0]
 
-        if not config['create_card']:
+        if not config['createcards']:
             WordNet().get_thesaurus(phrase)
             continue
 
         zdanie = sentence_input()
         if zdanie is None:
             continue
-        if config['hide_sentence_word']:
+        if config['upz']:
             zdanie.hide(phrase)
 
         dictionary_contents = dictionary.input_cycle()
@@ -280,7 +312,7 @@ def main():
 
         if config['ankiconnect']:
             anki.add_card(field_values)
-        if config['save_card']:
+        if config['savecards']:
             save_card_to_file(field_values)
 
 

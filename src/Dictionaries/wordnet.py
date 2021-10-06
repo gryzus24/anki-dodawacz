@@ -36,7 +36,7 @@ class WordNet(Dictionary):
 
     def get_thesaurus(self, query):
         self.chosen_phrase = query
-        if config['thesaurus'] == '-':
+        if config['thes'] == '-':
             # without skipping
             return self
 
@@ -73,7 +73,7 @@ class WordNet(Dictionary):
         chosen_synonyms = syn_field.get_element(self.synonyms, auto_choice='0')
         if chosen_synonyms is None:
             return None
-        if config['hide_synonym_word'] and chosen_synonyms:
+        if config['usyn'] and chosen_synonyms:
             chosen_synonyms.hide(self.chosen_phrase)
 
         return {'synonimy': chosen_synonyms.content}
