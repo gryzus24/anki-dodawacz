@@ -74,7 +74,7 @@ aby zmienić czcionkę, przeźroczystość czy wielkość okna należy kliknąć
 dostosować wygląd okna do naszych preferencji. Jednak, aby uzyskać lepszą czytelność i komfort korzystania zalecam używanie innego emulatora terminala niż "cmd". Wersja portable "Alacritty" oferuje bardzo dobre ustawienia domyślne, a paleta kolorów jest łatwiejsza dla oczu.
 
 Aby wyświetlić pełną listę ustawień wpisujemy `-config` lub `-conf`.<br>
-Aby sprawdzić działanie i użycie danej komendy wpisujemy `[-komenda] -h`.
+Aby sprawdzić działanie i użycie danej komendy wpisujemy jej nazwę.
 
 ![image](https://user-images.githubusercontent.com/82805891/136023117-961a04a5-34c1-4a12-bc7a-c7d9c58f2f10.png)
 
