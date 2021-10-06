@@ -1,22 +1,20 @@
 # Ankidodawacz
 
-Prosty i otwarty na konfigurację program do tworzenia monojęzycznych kart do Anki.<br>
-Pozyskuje informacje z American Heritage Dictionary, Farlex Dictionary of Idioms i WordNet 3.1.<br>
-Pozwala na szybki wybór definicji, części mowy, etymologii, synonimów oraz audio.
+Prosty i otwarty na konfigurację program do szybkiego tworzenia monojęzycznych kart do Anki.<br>
+Pozyskuje informacje z American Heritage Dictionary, Lexico, Farlex Dictionary of Idioms i WordNet 3.1.<br>
 
 Celem programu jest ułatwienie i uprzyjemnienie żmudnego i zniechęcającego procesu dodawania kart, który konwencjonalnie odbywa się
-za pomocą powtarzalnych ruchów myszką i przekopiowywania informacji do edytora kart.<br>Z Ankidodawaczem ten proces odbywa
+za pomocą powtarzalnych ruchów myszki i przekopiowywania informacji do edytora kart.<br>Z Ankidodawaczem ten proces odbywa
 się w stu procentach za pomocą klawiatury.
 
 ## Instalacja:
 
-[link do pobrania v0.9.2-1.zip](https://github.com/gryzus24/anki-dodawacz/archive/refs/tags/v0.9.2-1.zip)
-:-
-[link do pobrania v0.9.2-1.tar.gz](https://github.com/gryzus24/anki-dodawacz/archive/refs/tags/v0.9.2-1.tar.gz)
-
 ### Windows:
+[link do pobrania .zip](https://github.com/gryzus24/anki-dodawacz/archive/refs/tags/v1.0.0-3.zip)
+:-
+
 Pobieramy .zip i rozpakowujemy.
-##### Po rozpakowaniu folderu:
+##### Po rozpakowaniu archiwum:
 
 Aby uruchomić program potrzebujemy Pythona 3.7 lub nowszego.<br>
 Pythona pobieramy z oficjalnej strony: https://www.python.org/downloads/<br>
@@ -38,13 +36,16 @@ Gdy jesteśmy w folderze z programem, aby uruchomić Ankidodawacza wpisujemy:<br
 Na Windowsie kliknięcie w ikonkę też powinno otworzyć program, jednak przy wystąpieniu jakiegokolwiek nieoczekiwanego błędu, okno zamknie się natychmiastowo.
 
 ### Linux:
-Na Linuxie odpowiednia wersja Pythona powinna być już zainstalowana.
+[link do pobrania .tar.gz](https://github.com/gryzus24/anki-dodawacz/archive/refs/tags/v1.0.0-3.tar.gz)
+:-
 
-  Pobieramy archiwum tar.gz i rozpakowujemy
+Pobieramy archiwum tar.gz i rozpakowujemy.
   
   Możemy użyć komendy:<br>
   `tar -xvf <pobrany tar.gz> -C <ścieżka gdzie chcemy rozpakować>`
-
+  
+  Na większości dystrybucji odpowiednia wersja Pythona powinna być już zainstalowana.
+  
   Instalujemy wymagane biblioteki:<br>
     `pip install BeautifulSoup4 colorama pyyaml requests lxml cchardet`
 
@@ -58,7 +59,7 @@ części mowy, etymologii i synonimów. Po przejściu przez wszystkie pola progr
 tekstowym "karty.txt",<br>
 który od razu jest gotowy do zaimportowania do Anki.
 
-![image](https://user-images.githubusercontent.com/82805891/130697928-8901f8c8-a0ee-45d1-85ba-7e672de6680a.png)
+![image](https://user-images.githubusercontent.com/82805891/136019942-4f6dc200-880c-49cc-92af-f36659312b2d.png)
   
 Audio domyślnie zapisywane jest w folderze "Karty_audio" w folderze z programem.<br>
 Możemy zmienić ścieżkę zapisu audio, jak i wszystkie domyślne ustawienia używając komend.
@@ -72,7 +73,10 @@ Customizacja wyglądu w części zależna jest od naszego emulatora terminala. N
 aby zmienić czcionkę, przeźroczystość czy wielkość okna należy kliknąć górny pasek -> właściwości. Tutaj możemy
 dostosować wygląd okna do naszych preferencji. Jednak, aby uzyskać lepszą czytelność i komfort korzystania zalecam używanie innego emulatora terminala niż "cmd". Wersja portable "Alacritty" oferuje bardzo dobre ustawienia domyślne, a paleta kolorów jest łatwiejsza dla oczu.
 
-W Ankidodawaczu możemy zmieniać kolory pojedynczych elementów, ustawiać wcięcie, zawijanie, justowanie tekstu oraz włączać i wyłączać wyświetlanie niektórych elementów i wiadomości.
+Aby wyświetlić pełną listę ustawień wpisujemy `-config` lub `-conf`.<br>
+Aby sprawdzić działanie i użycie danej komendy wpisujemy `[-komenda] -h`.
+
+![image](https://user-images.githubusercontent.com/82805891/136023117-961a04a5-34c1-4a12-bc7a-c7d9c58f2f10.png)
 
 ## Konfiguracja Anki i AnkiConnect
 
