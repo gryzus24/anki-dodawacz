@@ -54,10 +54,8 @@ Pobieramy archiwum tar.gz i rozpakowujemy.
     
 ## Konfiguracja i działanie programu
 
-Cykl dodawanie jest bardzo prosty. Wyszukujemy słowo i przechodzimy przez różne pola: przykładowego zdania, definicji,
-części mowy, etymologii i synonimów. Po przejściu przez wszystkie pola program zapisuje nasz wybór w dokumencie
-tekstowym "karty.txt",<br>
-który od razu jest gotowy do zaimportowania do Anki.
+Cykl dodawanie jest bardzo prosty. Wyszukujemy słowo, przechodzimy przez pola wyboru elementów takich jak definicje, przykłady czy też synonimy.
+Następnie program zapisuje nasz wybór do pliku "karty.txt", który możemy zaimportować do Anki.
 
 ![image](https://user-images.githubusercontent.com/82805891/136019942-4f6dc200-880c-49cc-92af-f36659312b2d.png)
   
@@ -69,14 +67,15 @@ ręcznego przenoszenia zawartości "Karty_audio".<br>
   Aby to zrobić możemy ręcznie wpisać ścieżkę używając komendy `-ap [ścieżka]`<br>
   albo wpisać `-ap auto`, aby program wyszukał ścieżkę do "collection.media" automatycznie.
 
-Customizacja wyglądu w części zależna jest od naszego emulatora terminala. Na Windowsie 10,
-aby zmienić czcionkę, przeźroczystość czy wielkość okna należy kliknąć górny pasek -> właściwości. Tutaj możemy
-dostosować wygląd okna do naszych preferencji. Jednak, aby uzyskać lepszą czytelność i komfort korzystania zalecam używanie innego emulatora terminala niż "cmd". Wersja portable "Alacritty" oferuje bardzo dobre ustawienia domyślne, a paleta kolorów jest łatwiejsza dla oczu.
-
 Aby wyświetlić pełną listę ustawień wpisujemy `-config` lub `-conf`.<br>
 Aby sprawdzić działanie i użycie danej komendy wpisujemy jej nazwę.
 
 ![image](https://user-images.githubusercontent.com/82805891/136023117-961a04a5-34c1-4a12-bc7a-c7d9c58f2f10.png)
+
+Customizacja wyglądu jest w dużej części zależna od naszego emulatora terminala. Na Windowsie 10,
+aby zmienić czcionkę, przeźroczystość czy wielkość okna należy kliknąć górny pasek -> właściwości. Tutaj możemy
+dostosować wygląd okna do naszych preferencji.<br>
+Jeżeli opcje oferowane przez cmd są niewystarczające lub nie chcecie się bawić w customizację w niedomagającym windowsowym terminalu to wersja portable "Alacritty" oferuje bardzo dobre ustawienia domyślne, a paleta kolorów jest łatwiejsza dla oczu.
 
 ## Konfiguracja Anki i AnkiConnect
 
@@ -142,7 +141,7 @@ Aby zaimportować karty do Anki, na górnym pasku klikamy w "Plik" i "Importuj..
 Gdy raz ustawimy opcje importowania w Anki, nie musimy się przejmować ich ponownym ustawianiem. Ścieżka importu też
 powinna zostać zapisana.
 
-Po dodaniu kart możemy usunąć zawartość pliku "karty.txt", jednak gdy zostawimy go, importowanie nie powinno zostać
+Po dodaniu kart możemy usunąć zawartość pliku "karty.txt", jednak gdy zostawimy go to kolejna próba importowania nie powinna zostać
 skompromitowane dzięki opcji "Ignoruj linie, których pierwsze pole pasuje do istniejącej notatki". Warto o tym pamiętać.
 
 ## Konfiguracja nagrywania
@@ -160,7 +159,7 @@ Oficjalna strona ffmpeg: https://www.ffmpeg.org/download.html
 Aby nagrywać audio musimy przenieść program _ffmpeg_ do folderu z programem
   lub dodać jego ścieżkę do $PATH.
 Następnie wybieramy urządzenie audio za pomocą którego chcemy nagrywać audio
-  wpisując `-device` lub `--audio-device`
+  wpisując `--audio-device`.
 
 Jeżeli nie widzimy interesującego nas urządzenia na Windowsie:
   - Włączamy "Miks stereo" w ustawieniach dźwięku
@@ -171,7 +170,7 @@ Na Linuxie jest duża szansa, że _ffmpeg_ jest zainstalowany i jest dostępny w
 Więc jedyne co musimy zrobić to:<br>
   - Wpisujemy `-rec` w Ankidodawaczu
   - podczas nagrywania wchodzimy w mikser dźwięku pulseaudio -> Nagrywanie
-  - zmieniamy urządzenie monitorujące dla Lavf na urządzenie wybrane przy konfiguracji za pomocą `-device` lub `--audio-device`
+  - zmieniamy urządzenie monitorujące dla Lavf na urządzenie wybrane przy konfiguracji za pomocą `--audio-device`
 
 ## Kod
 
