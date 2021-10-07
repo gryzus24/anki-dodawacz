@@ -72,7 +72,7 @@ Aby sprawdzić działanie i użycie danej komendy wpisujemy jej nazwę.
 
 ![image](https://user-images.githubusercontent.com/82805891/136023117-961a04a5-34c1-4a12-bc7a-c7d9c58f2f10.png)
 
-Customizacja wyglądu jest w dużej części zależna od naszego emulatora terminala. Na Windowsie 10,
+Customizacja wyglądu jest w dużej mierze zależna od naszego emulatora terminala. Na Windowsie 10,
 aby zmienić czcionkę, przeźroczystość czy wielkość okna należy kliknąć górny pasek -> właściwości. Tutaj możemy
 dostosować wygląd okna do naszych preferencji.<br>
 Jeżeli opcje oferowane przez cmd są niewystarczające lub nie chcecie się bawić w customizację w niedomagającym windowsowym terminalu to wersja portable "Alacritty" oferuje bardzo dobre ustawienia domyślne, a paleta kolorów jest łatwiejsza dla oczu.
