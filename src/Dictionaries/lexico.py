@@ -208,11 +208,14 @@ class Lexico(Dictionary):
                         etym = ''
                         break
                     elif next_sib.get('class')[0] == 'etymology':
-                        while next_sib.h3.text != 'Origin':  # until "Origin" header is found
+                        while next_sib is not None and next_sib.h3.text != 'Origin':  # until "Origin" header is found
                             next_sib = next_sib.next_sibling
 
-                        etym = next_sib.find('div', class_='senseInnerWrapper', recursive=False)
-                        etym = '[' + etym.text.strip() + ']'
+                        # next_sib can be None if the last entry_block is
+                        # an etymology div that has no Origin header  e.g. "ad -l"
+                        if next_sib is not None:
+                            etym = next_sib.find('div', class_='senseInnerWrapper', recursive=False)
+                            etym = '[' + etym.text.strip() + ']'
                         break
                     next_sib = next_sib.next_sibling
 
@@ -227,7 +230,10 @@ class Lexico(Dictionary):
 
                 pos_label = block.find('span', class_='pos').text.strip()
                 trans_note = block.find('span', class_='transitivity').text.strip()
-                self.print(f'\n {poslabel_c.color}{pos_label} {trans_note}')
+
+                self.print()
+                if pos_label:
+                    self.print(f' {poslabel_c.color}{pos_label} {trans_note}')
 
                 semb = block.find('ul', class_='semb', recursive=False)
                 if semb is None:
@@ -282,7 +288,11 @@ class Lexico(Dictionary):
                 else:
                     gramb_audio = semb.next_sibling
                     if gramb_audio is not None:
-                        audio_url = gramb_audio.find_all('audio')[-1].get('src')
+                        gram_urls = gramb_audio.find_all('audio')
+                        if gram_urls:
+                            audio_url = gram_urls[-1].get('src')
+                        else:
+                            audio_url = ''
                     else:
                         if self.audio_urls:
                             # gets previous url

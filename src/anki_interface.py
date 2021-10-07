@@ -27,21 +27,16 @@ from src.data import ROOT_DIR, config, config_ac, ankiconnect_base_fields
 
 def refresh_notes():
     try:
-        # when there is any error just overwrite existing ankiconnect.yml without dumping
-        # because I presume no one will:
-        # change ankiconnect.yml content manually -> get '-refresh' communicate ->
-        # change current note to a note with unsupported fields -> THEN refresh ->
-        # change note back to the previous one and try adding cards.
-        # all of that in the same session
         with open(os.path.join(ROOT_DIR, 'config/ankiconnect.yml'), 'w') as ank:
             ank.write('{}')
+
         organize_notes(ankiconnect_base_fields, corresp_mf_config={}, print_errors=False)
         print(f'{YEX.color}Notatki przebudowane')
     except URLError:
-        print(f'{err_c.color}Nie udało się połączyć z AnkiConnect\n'
-              f'Otwórz Anki i spróbuj ponownie\n')
+        return 'Nie udało się połączyć z AnkiConnect\n' \
+               'Otwórz Anki i spróbuj ponownie'
     except FileNotFoundError:
-        print(f'{err_c.color}Plik {R}ankiconnect.yml{err_c.color} nie istnieje')
+        return f'Plik {R}ankiconnect.yml{err_c.color} nie istnieje'
 
 
 def create_note(*args, **kwargs) -> str:

@@ -142,7 +142,7 @@ Filtrowanie to usunięcie elementów spełniających określone warunki
 -thes  {{wordnet|-}}                słownik synonimów
 -audio {{ahd|lexico|diki|auto|-}}   serwer audio
 
--device, --audio-device   konfiguracja urządzeń do nagrywania audio
+--audio-device            konfiguracja urządzeń do nagrywania audio
 -rec, --record            rozpoczyna nagrywanie z wykorzystaniem wybranego
                           urządzenia audio
                           (zapisuje nagranie, ale nie dodaje audio na kartę)
@@ -181,8 +181,7 @@ Filtrowanie to usunięcie elementów spełniających określone warunki
 -fo, --field-order   zmiana kolejności zapisywania i wyświetlania pól
 
 -conf, -config       wyświetla pełną listę opcji i ich konfigurację
---help-bulk,
---help-defaults      wyświetla informacje o masowym dodawaniu
+--help-bulk          wyświetla informacje o masowym dodawaniu
 --help-commands      wyświetla informacje o komendach
 --help-recording     wyświetla informacje o nagrywaniu
 
@@ -306,7 +305,7 @@ Oficjalna strona ffmpeg: https://www.ffmpeg.org/download.html
 Aby nagrywać audio musimy przenieść program ffmpeg do folderu z programem
   lub dodać jego ścieżkę do $PATH.
 Następnie wybieramy urządzenie audio za pomocą którego chcemy nagrywać audio
-  wpisując "-device" lub "--audio-device".
+  wpisując "--audio-device".
 
 Jeżeli nie widzimy interesującego nas urządzenia na Windowsie:
   Włączamy "Miks stereo" w ustawieniach dźwięku.
@@ -318,7 +317,7 @@ Na Linuxie jest duża szansa, że ffmpeg jest zainstalowany i jest dostępny
     Wpisujemy -rec w Ankidodawaczu
     podczas nagrywania wchodzimy w mikser dźwięku pulseaudio -> Nagrywanie
     zmieniamy urządzenie monitorujące dla Lavf na urządzenie wybrane przy
-     konfiguracji za pomocą -device lub --audio-device
+     konfiguracji za pomocą "--audio-device".
 
 {BOLD}Komendy:{END}
 -rec, --record           rozpoczyna nagrywanie z wykorzystaniem wybranego

@@ -140,11 +140,11 @@ def print_config_representation() -> None:
         color_b = bool_colors_from_string.get(state_b, '')
         # no need for the third column color at the moment
 
-        level_a = '\b\b\b\b\b\b\b' if '[' in a else ''
-        level_b = '\b\b\b\b' if '[' in b else ''
+        level_a = '\b\b\b\b\b' if '[' in a else ''
+        level_b = '\b\b\b\b\b' if '[' in b else ''
 
         print(f'{a:13s}{color_a}{state_a:10s}{level_a}{R}'
-              f'{b:14s}{color_b}{state_b:12s}{level_b}{R}'
+              f'{b:15s}{color_b}{state_b:11s}{level_b}{R}'
               f'{c:10s}{state_c}{R}')
 
     print(f'\n--audio-path: {config["audio_path"]}\n'

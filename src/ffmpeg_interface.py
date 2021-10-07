@@ -16,13 +16,13 @@
 import datetime
 import os.path
 import subprocess
-from sys import platform
+import sys
 
 from src.colors import R, YEX, GEX, index_c, err_c
 from src.commands import save_commands
 from src.data import config
 
-if platform.startswith('win'):
+if sys.platform.startswith('win'):
     def find_devices() -> list:
         audio_devices = subprocess.run('ffmpeg -hide_banner -list_devices true -f dshow -i dummy',
                                        shell=True, capture_output=True, text=True)
@@ -37,7 +37,7 @@ if platform.startswith('win'):
         audio_devices.insert(0, 'default')
         return audio_devices
 
-elif platform.startswith('linux'):
+elif sys.platform.startswith('linux'):
     def find_devices() -> list:
         audio_devices = subprocess.run('pactl list sources | grep alsa_output',
                                        shell=True, capture_output=True, text=True)
@@ -53,12 +53,12 @@ else:
 
 
 def record(filepath: str):
-    if platform.startswith('linux'):
+    if sys.platform.startswith('linux'):
         ffmpeg_settings = {
             'format': 'pulse',
             'device': config['audio_device']
         }
-    elif platform.startswith('win'):
+    elif sys.platform.startswith('win'):
         ffmpeg_settings = {
             'format': 'dshow',
             'device': f"audio={config['audio_device']}"
@@ -98,16 +98,15 @@ def set_audio_device():
         print(f"{index_c.color}{index} {R}{a}")
 
     choice = input('Wybierz urządzenie [1]: ').strip()
-
-    if choice.isnumeric() and choice != '0':
-        choice = int(choice)
-    elif not choice:
+    if not choice:
         choice = 1
     else:
-        choice = None
-
-    if choice is None or choice > len(audio_devices):
-        return 'Nieprawidłowa wartość, opuszczam konfigurację'
+        try:
+            choice = int(choice)
+            if choice < 1 or choice > len(audio_devices):
+                raise ValueError
+        except ValueError:
+            return 'Nieprawidłowa wartość, opuszczam konfigurację'
 
     audio_device = audio_devices[choice - 1]
     save_commands('audio_device', audio_device)
@@ -158,5 +157,4 @@ def capture_audio(*args) -> str:
 
     print(f'{GEX.color}Nagranie pomyślnie zapisane jako:\n'
           f'{R}{filepath}')
-
     return f"[sound:{date}_sentence{metadata}{recording_no}.mp3]"

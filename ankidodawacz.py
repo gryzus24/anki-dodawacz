@@ -64,10 +64,10 @@ commands = {
     '-cd': c.config_defaults,
 }
 no_arguments_commands = {
-    '--audio-device': ffmpeg.set_audio_device, '-device': ffmpeg.set_audio_device,
+    '--audio-device': ffmpeg.set_audio_device,
     '-refresh': anki.refresh_notes,
     '--help': h.quick_help, '-help': h.quick_help, '-h': h.quick_help,
-    '--help-bulk': h.bulk_help, '--help-defaults': h.bulk_help,
+    '--help-bulk': h.bulk_help,
     '--help-commands': h.commands_help, '--help-command': h.commands_help,
     '--help-recording': h.recording_help,
     '-config': c.print_config_representation, '-conf': c.print_config_representation
@@ -81,7 +81,9 @@ def search_interface() -> str:
             continue
 
         if word in no_arguments_commands:
-            no_arguments_commands[word]()
+            err = no_arguments_commands[word]()
+            if err is not None:
+                print(f'{err_c.color}{err}')
             continue
 
         args = word.split()
@@ -211,6 +213,8 @@ def manage_dictionaries(_phrase, flags):
             except KeyError:
                 continue
             else:
+                # If we don't break out of the for loop, we can query multiple
+                # dictionaries by specifying more than one dictionary flag
                 dictionary = dict_to_call().get_dictionary(_phrase, flags=flags)
                 if dictionary is None:
                     return None
@@ -238,7 +242,7 @@ def main():
     if not os.path.exists('Karty_audio') and config['audio_path'] == 'Karty_audio':
         os.mkdir('Karty_audio')
 
-    __version__ = 'v1.0.1-1'
+    __version__ = 'v1.0.1-2'
     print(f'{BOLD}- Dodawacz kart do Anki {__version__} -{END}\n'
           'Wpisz "--help", aby wyświetlić pomoc\n\n')
 
