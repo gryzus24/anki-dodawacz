@@ -27,7 +27,7 @@ from src.data import ROOT_DIR, DEFAULT_FIELD_ORDER, config, bool_colors
 
 def save_config(c):
     with open(os.path.join(ROOT_DIR, 'config/config.json'), 'w') as f:
-        json.dump(c, f, ensure_ascii=False, indent=0)
+        json.dump(c, f, indent=0)
 
 
 def save_command(entry, value):

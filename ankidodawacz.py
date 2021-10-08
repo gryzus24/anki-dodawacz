@@ -241,7 +241,7 @@ def main():
     if not os.path.exists('Karty_audio') and config['audio_path'] == 'Karty_audio':
         os.mkdir('Karty_audio')
 
-    __version__ = 'v1.0.2-1'
+    __version__ = 'v1.0.2-2'
     print(f'{BOLD}- Dodawacz kart do Anki {__version__} -{END}\n'
           'Wpisz "--help", aby wyświetlić pomoc\n\n')
 

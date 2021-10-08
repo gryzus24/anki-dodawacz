@@ -25,7 +25,7 @@ from src.data import ROOT_DIR, config, config_ac, ankiconnect_base_fields
 
 def save_ac_config(c):
     with open(os.path.join(ROOT_DIR, 'config/ankiconnect.json'), 'w') as f:
-        json.dump(c, f, ensure_ascii=False, indent=2)
+        json.dump(c, f, indent=2)
 
 
 def refresh_notes():
