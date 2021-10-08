@@ -10,7 +10,7 @@ się w stu procentach za pomocą klawiatury.
 ## Instalacja:
 
 ### Windows:
-[link do pobrania .zip](https://github.com/gryzus24/anki-dodawacz/archive/refs/tags/v1.0.1-2.zip)
+[link do pobrania .zip](https://github.com/gryzus24/anki-dodawacz/archive/refs/tags/v1.0.2-1.zip)
 :-
 
 Pobieramy .zip i rozpakowujemy.
@@ -23,7 +23,7 @@ Przy instalacji zaznaczamy "Add python to PATH"
 ##### Po zainstalowaniu Pythona:<br>
 
 Otwieramy terminal (cmd na windowsie) i pobieramy wymagane biblioteki wpisując:<br>
-`pip install BeautifulSoup4 colorama pyyaml requests lxml cchardet`<br>
+`pip install BeautifulSoup4 colorama requests lxml cchardet`<br>
 (cchardet jest opcjonalny, ale przyspiesza wyświetlanie słowników)
 
 Następnie wpisujemy:<br>
@@ -36,7 +36,7 @@ Gdy jesteśmy w folderze z programem, aby uruchomić Ankidodawacza wpisujemy:<br
 Na Windowsie kliknięcie w ikonkę też powinno otworzyć program, jednak przy wystąpieniu jakiegokolwiek nieoczekiwanego błędu, okno zamknie się natychmiastowo.
 
 ### Linux:
-[link do pobrania .tar.gz](https://github.com/gryzus24/anki-dodawacz/archive/refs/tags/v1.0.1-2.tar.gz)
+[link do pobrania .tar.gz](https://github.com/gryzus24/anki-dodawacz/archive/refs/tags/v1.0.2-1.tar.gz)
 :-
 
 Pobieramy archiwum tar.gz i rozpakowujemy.
@@ -47,7 +47,7 @@ Pobieramy archiwum tar.gz i rozpakowujemy.
   Na większości dystrybucji odpowiednia wersja Pythona powinna być już zainstalowana.
   
   Instalujemy wymagane biblioteki:<br>
-    `pip install BeautifulSoup4 colorama pyyaml requests lxml cchardet`
+    `pip install BeautifulSoup4 colorama requests lxml cchardet`
 
   Otwieramy za pomocą Pythona:<br>
     `python ankidodawacz.py` lub `python3 ankidodawacz.py`
@@ -178,4 +178,4 @@ Jestem początkujący, jeżeli chodzi o programowanie. Jest to mój pierwszy pro
 
 Jestem otwarty na sugestie i krytykę. Mam nadzieję, że narzędzie okaże się pomocne.
 
-Użyte biblioteki: BeautifulSoup4, requests, colorama, pyyaml, lxml
+Użyte biblioteki: BeautifulSoup4, requests, colorama, lxml
