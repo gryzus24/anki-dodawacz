@@ -1,30 +1,23 @@
+import json
 import os.path
 
-import yaml
 from colorama import Fore
 
 ROOT_DIR = os.path.split(os.path.abspath(os.path.dirname(__file__)))[0]
 
 try:
-    with open(os.path.join(ROOT_DIR, 'config/config.yml'), 'r') as r:
-        config = yaml.load(r, Loader=yaml.Loader)
+    with open(os.path.join(ROOT_DIR, 'config/ankiconnect.json'), 'r') as af:
+        config_ac = json.load(af)
 except FileNotFoundError:
-    with open(os.path.join(ROOT_DIR, 'config/config.yml'), 'w') as w:
-        # if config.yml file not found, just write necessary data to open the program
-        # then the user can set up their config from scratch
-        w.write("""attention_c: lightyellow\ndef1_c: reset\ndef2_c: reset\ndelimit_c: reset
-error_c: lightred\netym_c: reset\nindex_c: lightgreen\ninput_c: reset\ninputtext_c: reset
-pos_c: yellow\nsyn_c: yellow\nsyngloss_c: reset
-phrase_c: cyan\nphon_c: lightblack\nposlabel_c: green\naudio_device: default\naudio_path: ''""")
-    with open(os.path.join(ROOT_DIR, 'config/config.yml'), 'r') as r:
-        config = yaml.load(r, Loader=yaml.Loader)
+    with open(os.path.join(ROOT_DIR, 'config/ankiconnect.json'), 'w') as af:
+        af.write('{}')
 
 try:
-    with open(os.path.join(ROOT_DIR, 'config/ankiconnect.yml'), 'r') as a:
-        config_ac = yaml.load(a, Loader=yaml.Loader)
+    with open(os.path.join(ROOT_DIR, 'config/config.json'), 'r') as conf_file:
+        config = json.load(conf_file)
 except FileNotFoundError:
-    with open(os.path.join(ROOT_DIR, 'config/ankiconnect.yml'), 'w') as a:
-        a.write('{}')
+    print('Plik "config.json" nie istnieje')
+    raise
 
 
 command_help = {
@@ -223,13 +216,13 @@ ankiconnect_base_fields = {
 
     'audio':  'audio',
     'wymowa': 'audio',
-    'pron': 'audio',
+    'pron':   'audio',
     'dźwięk': 'audio',
     'dzwiek': 'audio',
     'sound':  'audio',
     'media':  'audio',
 
-    'nagr': 'sentence_audio',
+    'nagr':   'sentence_audio',
     'recor':  'sentence_audio',
     'sentence_a':    'sentence_audio',
     'sentenceaudio': 'sentence_audio',
@@ -323,26 +316,26 @@ USER_AGENT = {
 }
 
 config_columns = (
-    ('-pz',                  '-top',                       'def_bulk'),
-    ('-def',                 '-displaycard',             'exsen_bulk'),
-    ('-exsen',               '-showadded',                 'pos_bulk'),
-    ('-pos',                 '-showexsen',                'etym_bulk'),
-    ('-etym',                '-textwrap',                  'syn_bulk'),
-    ('-syn',                 '-textwidth',                         ''),
-    ('',                     '-indent',             '[config źródeł]'),
-    ('-savecards',           '',                              '-dict'),
-    ('-createcards',         '[config filtrowania]',         '-dict2'),
-    ('',                     '-fsubdefs',                     '-thes'),
-    ('[config ukrywania]',   '-fnolabel',                    '-audio'),
-    ('-upz',                 '-toipa',                     '-recqual'),
-    ('-udef',                '',                                   ''),
-    ('-uexsen',              '[config ankiconnect]',               ''),
-    ('-usyn',                '-ankiconnect',                       ''),
-    ('-upreps',              '-duplicates',                        ''),
-    ('-keependings',         '-dupescope',                         ''),
-    ('-hideas',              '-note',                              ''),
-    ('',                     '-deck',                              ''),
-    ('',                     '-tags',                              ''),
+    ('-pz',                '-top',                       'def_bulk'),
+    ('-def',               '-displaycard',             'exsen_bulk'),
+    ('-exsen',             '-showadded',                 'pos_bulk'),
+    ('-pos',               '-showexsen',                'etym_bulk'),
+    ('-etym',              '-textwrap',                  'syn_bulk'),
+    ('-syn',               '-textwidth',                         ''),
+    ('',                   '-indent',             '[config źródeł]'),
+    ('-savecards',         '',                              '-dict'),
+    ('-createcards',       '[config filtrowania]',         '-dict2'),
+    ('',                   '-fsubdefs',                     '-thes'),
+    ('[config ukrywania]', '-fnolabel',                    '-audio'),
+    ('-upz',               '-toipa',                     '-recqual'),
+    ('-udef',              '',                                   ''),
+    ('-uexsen',            '[config ankiconnect]',               ''),
+    ('-usyn',              '-ankiconnect',                       ''),
+    ('-upreps',            '-duplicates',                        ''),
+    ('-keependings',       '-dupescope',                         ''),
+    ('-hideas',            '-note',                              ''),
+    ('',                   '-deck',                              ''),
+    ('',                   '-tags',                              ''),
 )
 
 color_data = {
@@ -404,10 +397,7 @@ boolean_values = {
 
 bool_colors = {
     True: Fore.LIGHTGREEN_EX,
-    False: Fore.LIGHTRED_EX
-}
-
-bool_colors_from_string = {
+    False: Fore.LIGHTRED_EX,
     'True': Fore.LIGHTGREEN_EX,
     'False': Fore.LIGHTRED_EX
 }

@@ -1,0 +1,18 @@
+{
+  "modelName": "gryzus-std",
+  "cardName": "Definition-vocab card",
+  "css": ".card {\n  font-family:;\n  font-size: 30px;\n  text-align: center;\n  background-color: #FBFBEF; #F1F9F6;\n  margin-left: 12%;\n  margin-right: 12%;\n  margin-top: 10px;\n}\n.mobile .card {\n  font-size: 22px;\n}\n.night_mode.card {\n  background-color: #060606;\n}\n\n#questionBox {\n  margin-top: 1em;\n}\n@media screen and (max-width: 900px) {\n  #questionBox {\n    margin-left: -10%;\n    margin-right: -10%;\n    margin-top: 0px;\n  }\n}\n\n#answerBox {\n  margin-top: 2em;\n}\n@media screen and (max-width: 900px) {\n  #answerBox { \n    margin-left: -10%;\n    margin-right: -10%;\n    margin-top: 1em;\n  }\n}\n\n/* Hide answerBox on question side. */\n:not(#answerSide) > #questionSide rt,\n:not(#answerSide) > #questionSide #answerBox {\n   visibility: hidden;\n}\n\n#def {\n  color: black;\n  margin-bottom: 0.7em;\n}\n.night_mode #def {\n  color: #EEE;\n}\n\n#syn {\n  font-size: 0.85em;\n  color: #DA8547;\n  margin-bottom: 0em;\n}\n.night_mode #syn {\n  color: #DA8547;\n}\n\n#exsen {\n  font-size: 0.85em;\n  margin-top: 0.25em; \n  color: #777;\n  margin-bottom: 4em;\n}\n.night_mode #exsen {\n  color: #c0c0c0;\n}\n\n#pz {\n  font-size: 1.15em;\n  margin-bottom: 1.5em;\n  color: #495F75;\n}\n.night_mode #pz {\n  color: #99a;\n}\n\n#pos  {\n  font-size: 0.8em; \n  color: #DA8547;\n  margin-top: 1em;\n}\n.night_mode #pos {\n  color: #cca;\n}\n\n#etym {\n  font-size: 0.7em;\n  margin-top: 0.5em; \n  color: grey;\n  margin-bottom: 1em;\n}\n.night_mode #etym {\n  color: #777;\n}\n\ninput {\n  font-size: 38px !important;\n  width: 80% !important;\n  color: black;\n  background-color: #F1F9F6 !important;\n  border-radius: 6px;\n  border-style: groove;\n  padding-left: 0.3em;\n}\n.night_mode input {\n  color: white;\n  background-color: #060606 !important;\n  border-style: solid;\n  border-color: grey;\n  border-width: thin;\n}\n\n.typeGood {\n  background: #13C700;\n  font-size: 38px;\n  color: black;\n  border-radius: 0px;\n  padding-right: 3px;\n  padding-left: 3px;\n}\n.mobile .typeGood {\n  font-size: 30px;\n}\n.night_mode .typeGood {\n  background: green;\n}\n\n.typeBad {\n  background: red;\n  font-size: 38px;\n  color: black;\n  border-radius: 0px;\n  padding-right: 3px;\n  padding-left: 3px;\n}\n.mobile .typeBad {\n  font-size: 30px;\n}\n\n.typeMissed {\n  background: orange;\n  color: black;\n  font-size: 38px;\n  border-radius: 0px;\n  padding-right: 3px;\n  padding-left: 3px;\n}\n.mobile .typeMissed {\n  font-size: 30px;\n}\n\n.replay-button svg circle {\n  fill: white;\n}\n.replay-button svg path {\n  stroke: white;\n  fill: grey;\n}\n.night_mode .replay-button svg circle {\n  fill: #777;\n}\n.night_mode .replay-button svg path {\n  stroke: #060606;\n  fill: #060606;\n}",
+  "front": "<div id=\"questionSide\">\n  <div id=\"questionBox\">\n    <div id=\"def\">{{Definicja}}</div>\n    <div id=\"syn\">{{Synonimy}}</div>\n    <div id=\"exsen\">{{Przykłady}}</div>\n    <div id=\"def\">{{type:Słowo}}</div>\n  </div>\n\n  <div id=\"answerBox\">\n    <div id=\"pz\">{{Przykładowe zdanie}}</div>\n    <div id=\"pos\">{{Części mowy}}</div>\n    <div id=\"etym\">{{Etymologia}}</div>\n  </div>\n</div>",
+  "back": "<div id=\"answerSide\">\n  {{FrontSide}}\n  <div>{{Audio}}</div>\n  <div>{{Nagranie}}</div>\n</div>",
+  "fields": [
+    "Definicja",
+    "Synonimy",
+    "Przykłady",
+    "Słowo",
+    "Przykładowe zdanie",
+    "Części mowy",
+    "Etymologia",
+    "Audio",
+    "Nagranie"
+  ]
+}

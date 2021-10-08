@@ -13,28 +13,26 @@
 # You should have received a copy of the GNU General Public License
 # along with this program. If not, see <http://www.gnu.org/licenses/>.
 
+import json
 import os
 import sys
-
-import yaml
 
 import src.data as data
 from src.colors import R, BOLD, END, YEX, GEX, \
     def1_c, def2_c, defsign_c, pos_c, etym_c, syn_c, exsen_c, \
     syngloss_c, index_c, phrase_c, \
     phon_c, poslabel_c, inflection_c, err_c, delimit_c, input_c, inputtext_c
-from src.data import ROOT_DIR, DEFAULT_FIELD_ORDER, config, bool_colors_from_string
+from src.data import ROOT_DIR, DEFAULT_FIELD_ORDER, config, bool_colors
 
 
-def save_commands(entry, value):
-    if entry == 'all':
-        for cmd in list(data.command_help)[:6]:
-            config[cmd[1:]] = value
-    else:
-        config[entry] = value
+def save_config(c):
+    with open(os.path.join(ROOT_DIR, 'config/config.json'), 'w') as f:
+        json.dump(c, f, ensure_ascii=False, indent=0)
 
-    with open(os.path.join(ROOT_DIR, 'config/config.yml'), 'w') as conf_file:
-        yaml.dump(config, conf_file)
+
+def save_command(entry, value):
+    config[entry.lstrip('-')] = value
+    save_config(config)
 
 
 def delete_cards(*args, **kwargs):
@@ -96,12 +94,14 @@ def config_defaults(*args, **kwargs):
         values_to_save = [value] * 5
         print(f'{GEX.color}Wartości domyślne zapisane dla:')
         for elem, val in zip(bulk_elements, values_to_save):
-            save_commands(f'{elem}_bulk', val)
+            config[f'{elem}_bulk'] = val
             print(f'{R}{elem:6s}: {val}')
+
+        save_config(config)
         print()
     else:
         print(f"{YEX.color}Domyślna wartość dla {R}{bulk_elem}{YEX.color}: {R}{value}")
-        save_commands(f'{bulk_elem}_bulk', value)
+        save_command(f'{bulk_elem}_bulk', value)
 
 
 def print_config_representation() -> None:
@@ -136,8 +136,8 @@ def print_config_representation() -> None:
             except KeyError:
                 state_c = ''
 
-        color_a = bool_colors_from_string.get(state_a, '')
-        color_b = bool_colors_from_string.get(state_b, '')
+        color_a = bool_colors.get(state_a, '')
+        color_b = bool_colors.get(state_b, '')
         # no need for the third column color at the moment
 
         level_a = '\b\b\b\b\b' if '[' in a else ''
@@ -160,7 +160,7 @@ def set_width_settings(*args, message):
     if value == 'auto':
         if cmd == '-indent':
             print(f'{R}{message}: {GEX.color}2')
-            save_commands(entry=cmd[1:], value=[2, ''])
+            save_command(cmd, [2, ''])
             return None
 
         try:
@@ -169,7 +169,7 @@ def set_width_settings(*args, message):
             term_width = 79
 
         print(f'{R}{message}: {GEX.color}{term_width}* {value}')
-        save_commands(entry=cmd[1:], value=[term_width, '* auto'])
+        save_command(cmd, [term_width, '* auto'])
     else:
         try:
             val = int(value)
@@ -180,7 +180,7 @@ def set_width_settings(*args, message):
                    f'{cmd} {data.command_help[cmd][1]}'
         else:
             print(f'{R}{message}: {GEX.color}{value}')
-            save_commands(entry=cmd[1:], value=[val, ''])
+            save_command(cmd, [val, ''])
 
 
 def display_field_order():
@@ -211,8 +211,9 @@ def change_field_order(*args, **kwargs):
         print(f'{GEX.color}Przywrócono domyślną kolejność pól:')
         # I'm not sure what causes config's field_order to change DEFAULT_FIELD_ORDER
         # .copy() somehow works
-        save_commands('fieldorder', DEFAULT_FIELD_ORDER.copy())
-        save_commands('fieldorder_d', '3')
+        config['fieldorder'] = DEFAULT_FIELD_ORDER.copy()
+        config['fieldorder_d'] = '3'
+        save_config(config)
         display_field_order()
         return None
 
@@ -233,11 +234,11 @@ def change_field_order(*args, **kwargs):
         if field_name not in DEFAULT_FIELD_ORDER.values():
             return 'Podano nieprawidłową nazwę pola'
         field_order[first_arg] = field_name
-        save_commands(entry='fieldorder', value=field_order)
+        save_command('fieldorder', field_order)
     elif first_arg == 'd':
         if field_name not in DEFAULT_FIELD_ORDER:
             return 'Podano nieprawidłowy numer pola'
-        save_commands(entry='fieldorder_d', value=field_name)
+        save_command('fieldorder_d', field_name)
 
     display_field_order()
 
@@ -283,7 +284,7 @@ def set_audio_path(*args, message):
 
     print(f'{YEX.color}{message} ustawiona:\n'
           f'{R}"{path}"')
-    save_commands('audio_path', path)
+    save_command('audio_path', path)
 
 
 def set_free_value_commands(*args, message):
@@ -295,7 +296,7 @@ def set_free_value_commands(*args, message):
         value = ' '.join(args[1:])
 
     print(f'{R}{message}: "{value}"')
-    save_commands(cmd[1:], value)
+    save_command(cmd, value)
 
 
 def set_text_value_commands(*args, message):
@@ -313,7 +314,7 @@ def set_text_value_commands(*args, message):
 
     if value in values_dict[cmd]:
         print(f'{R}{message}: {value}')
-        save_commands(cmd[1:], value)
+        save_command(cmd, value)
     else:
         return f'Nieprawidłowa wartość: {R}{value}\n' \
                f'{cmd} {data.command_help[cmd][1]}'
@@ -340,7 +341,7 @@ def set_colors(*args, **kwargs):
     message_color = data.color_data['colors'][color]
 
     print(f'{R}{msg} ustawiony na: {message_color}{color}')
-    save_commands(entry=f'{element}_c', value=color)
+    save_command(f'{element}_c', color)
 
 
 def boolean_commands(*args, message):
@@ -354,7 +355,12 @@ def boolean_commands(*args, message):
                f'{R}{cmd} {{on|off}}'
 
     print(f'{R}{message}: {data.bool_colors[value]}{value}')
-    save_commands(cmd[1:], value)
+    if cmd == '-all':
+        for cmd in list(data.command_help)[:6]:
+            config[cmd[1:]] = value
+        save_config(config)
+    else:
+        save_command(cmd, value)
 
 
 def show_available_colors():

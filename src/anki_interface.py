@@ -18,38 +18,40 @@ import os
 import urllib.request
 from urllib.error import URLError
 
-import yaml
-
-from notes import notes
 from src.colors import R, YEX, GEX, err_c
+from src.commands import save_config
 from src.data import ROOT_DIR, config, config_ac, ankiconnect_base_fields
+
+
+def save_ac_config(c):
+    with open(os.path.join(ROOT_DIR, 'config/ankiconnect.json'), 'w') as f:
+        json.dump(c, f, ensure_ascii=False, indent=2)
 
 
 def refresh_notes():
     try:
-        with open(os.path.join(ROOT_DIR, 'config/ankiconnect.yml'), 'w') as ank:
-            ank.write('{}')
-
+        save_ac_config({})
         organize_notes(ankiconnect_base_fields, corresp_mf_config={}, print_errors=False)
         print(f'{YEX.color}Notatki przebudowane')
     except URLError:
         return 'Nie udało się połączyć z AnkiConnect\n' \
                'Otwórz Anki i spróbuj ponownie'
     except FileNotFoundError:
-        return f'Plik {R}ankiconnect.yml{err_c.color} nie istnieje'
+        return f'Plik {R}"ankiconnect.json"{err_c.color} nie istnieje'
 
 
 def create_note(*args, **kwargs) -> str:
     note_name = args[1].lower()
 
-    note_config = notes.available_notes.get(note_name)
-    if note_config is None:
-        return f'Notatka {R}"{note_name}"{err_c.color} nie została znaleziona'
-
     try:
+        with open(os.path.join(ROOT_DIR, f'notes/{note_name}.json'), 'r') as f:
+            note_config = json.load(f)
+
         response = invoke('modelNames')
         if response == 'out of reach':
             return 'Wybierz profil, aby dodać notatkę'
+    except FileNotFoundError:
+        return f'Notatka {R}"{note_name}"{err_c.color} nie została znaleziona'
     except URLError:
         return 'Włącz Anki, aby dodać notatkę'
 
@@ -65,8 +67,7 @@ def create_note(*args, **kwargs) -> str:
                                           'Front': note_config['front'],
                                           'Back': note_config['back']}])
         if response == 'out of reach':
-            return f'Nie można nawiązać połączenia z Anki\n' \
-                   f'Notatka nie została utworzona'
+            raise URLError
     except URLError:
         return 'Nie można nawiązać połączenia z Anki\n' \
                'Notatka nie została utworzona'
@@ -76,8 +77,7 @@ def create_note(*args, **kwargs) -> str:
     note_ok = input(f'Czy chcesz ustawić "{note_config["modelName"]}" jako -note? [T/n]: ')
     if note_ok.lower() in ('', 't', 'y', 'tak', 'yes', '1'):
         config['note'] = note_config['modelName']
-        with open(os.path.join(ROOT_DIR, 'config/config.yml'), 'w') as conf_f:
-            yaml.dump(config, conf_f)
+        save_config(config)
 
 
 def ankiconnect_request(action, **params):
@@ -133,7 +133,7 @@ def organize_notes(base_fields, corresp_mf_config, print_errors):
             if base_field in ufield.lower().split(' ')[0]:
                 corresp_mf_config[ufield] = base_fields[base_field]
                 break
-    # So that blank notes are not saved in ankiconnect.yml
+    # So that blank notes are not saved in ankiconnect.json
     if not corresp_mf_config:
         if print_errors:
             print(f'{err_c.color}Karta nie została dodana\n'
@@ -142,9 +142,7 @@ def organize_notes(base_fields, corresp_mf_config, print_errors):
         return 'all fields empty'
 
     config_ac[config['note']] = corresp_mf_config
-    with open(os.path.join(ROOT_DIR, 'config/ankiconnect.yml'), 'w') as ank:
-        yaml.dump(config_ac, ank)
-    return None
+    save_ac_config(config_ac)
 
 
 def add_card(field_values) -> None:
@@ -162,7 +160,7 @@ def add_card(field_values) -> None:
         # When note is not found return an empty dict so that
         # there's no attribute error in the try block below
         config_note = config_ac.get(config['note'], {})
-        # Get note fields from ankiconnect.yml
+        # Get note fields from ankiconnect.json
         try:
             for ankifield, value in config_note.items():
                 corresp_model_fields[ankifield] = field_values[value]
@@ -224,7 +222,6 @@ def add_card(field_values) -> None:
         print(f'{err_c.color}Nie udało się połączyć z AnkiConnect\n'
               f'Otwórz Anki i spróbuj ponownie\n')
     except AttributeError:
-        with open(os.path.join(ROOT_DIR, 'config/ankiconnect.yml'), 'w') as ank:
-            ank.write('{}')
-        print(f'{err_c.color}Karta nie została dodana, bo plik {R}"ankiconnect.yml"{err_c.color} był pusty\n'
+        save_ac_config({})
+        print(f'{err_c.color}Karta nie została dodana, bo plik {R}"ankiconnect.json"{err_c.color} był pusty\n'
               f'Zrestartuj program i spróbuj dodać ponownie')

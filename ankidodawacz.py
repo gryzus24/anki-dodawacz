@@ -22,7 +22,6 @@ import src.commands as c
 import src.data as data
 import src.ffmpeg_interface as ffmpeg
 import src.help as h
-from notes.notes import available_notes
 from src.Dictionaries.ahdictionary import AHDictionary
 from src.Dictionaries.dictionary_base import request_session
 from src.Dictionaries.diki import get_audio_from_diki
@@ -113,7 +112,7 @@ def search_interface() -> str:
                       f'{END}{config["audio_path"]}\n')
             elif cmd == '--add-note':
                 print(f'{BOLD}Dostępne notatki:{END}\n'
-                      f'{", ".join(available_notes)}\n')
+                      'gryzus-std\n')
             elif cmd in ('-fo', '--field-order'):
                 c.display_field_order()
             elif cmd in ('-c', '-color'):
@@ -242,7 +241,7 @@ def main():
     if not os.path.exists('Karty_audio') and config['audio_path'] == 'Karty_audio':
         os.mkdir('Karty_audio')
 
-    __version__ = 'v1.0.1-2'
+    __version__ = 'v1.0.2-1'
     print(f'{BOLD}- Dodawacz kart do Anki {__version__} -{END}\n'
           'Wpisz "--help", aby wyświetlić pomoc\n\n')
 

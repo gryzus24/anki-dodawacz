@@ -23,7 +23,7 @@ from src.Dictionaries.utils import handle_connection_exceptions, wrap_lines
 from src.colors import R, YEX, BOLD, END, \
     def1_c, syn_c, exsen_c, pos_c, etym_c, phrase_c, \
     err_c, delimit_c
-from src.commands import save_commands
+from src.commands import save_command
 from src.data import config, labels, USER_AGENT, SEARCH_FLAGS
 
 request_session = requests.Session()
@@ -171,7 +171,7 @@ class Dictionary:
 
         if config['textwidth'][1] == '* auto':
             if __class__.textwidth != current_term_width:
-                save_commands(entry='textwidth', value=[current_term_width, '* auto'])
+                save_command('textwidth', [current_term_width, '* auto'])
                 __class__.textwidth = current_term_width
         else:
             __class__.textwidth = config['textwidth'][0]

@@ -19,7 +19,7 @@ import subprocess
 import sys
 
 from src.colors import R, YEX, GEX, index_c, err_c
-from src.commands import save_commands
+from src.commands import save_command
 from src.data import config
 
 if sys.platform.startswith('win'):
@@ -109,7 +109,7 @@ def set_audio_device():
             return 'Nieprawidłowa wartość, opuszczam konfigurację'
 
     audio_device = audio_devices[choice - 1]
-    save_commands('audio_device', audio_device)
+    save_command('audio_device', audio_device)
     print(f'{GEX.color}Urządzenie przechwytujące audio ustawiono:\n'
           f'{R}{audio_device}\n')
 
