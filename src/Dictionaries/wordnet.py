@@ -68,7 +68,7 @@ class WordNet(Dictionary):
         return self
 
     def input_cycle(self):
-        syn_field = InputField(**field_config['synonyms'], connector=' | ', spec_split=',')
+        syn_field = InputField(*field_config['synonyms'], connector=' | ', spec_split=',')
 
         chosen_synonyms = syn_field.get_element(self.synonyms, auto_choice='0')
         if chosen_synonyms is None:

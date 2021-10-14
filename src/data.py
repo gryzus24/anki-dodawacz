@@ -139,26 +139,21 @@ command_help = {
 }
 
 field_config = {
-    'definitions': {
-        'field_name': 'def',
-        'prompt': 'Wybierz definicje'
-    },
-    'example_sentences': {
-        'field_name': 'exsen',
-        'prompt': 'Wybierz przykłady'
-    },
-    'parts_of_speech': {
-        'field_name': 'pos',
-        'prompt': 'Wybierz części mowy',
-        },
-    'etymologies': {
-        'field_name': 'etym',
-        'prompt': 'Wybierz etymologie',
-    },
-    'synonyms': {
-        'field_name': 'syn',
-        'prompt': 'Wybierz synonimy',
-    },
+    'definitions': (
+        'def', 'Wybierz definicje'
+    ),
+    'example_sentences': (
+        'exsen', 'Wybierz przykłady'
+    ),
+    'parts_of_speech': (
+        'pos', 'Wybierz części mowy'
+    ),
+    'etymologies': (
+        'etym', 'Wybierz etymologie'
+    ),
+    'synonyms': (
+        'syn', 'Wybierz synonimy'
+    ),
 }
 
 DEFAULT_FIELD_ORDER = {

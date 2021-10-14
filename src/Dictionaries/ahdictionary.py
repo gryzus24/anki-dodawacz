@@ -19,7 +19,7 @@ from src.Dictionaries.utils import wrap_lines, valid_index_or_zero
 from src.colors import \
     R, BOLD, END, \
     def1_c, def2_c, defsign_c, pos_c, etym_c, \
-    index_c, phrase_c, \
+    index_c, phrase_c, exsen_c, \
     phon_c, poslabel_c, inflection_c, err_c, delimit_c
 from src.data import field_config, config, AHD_IPA_translation
 
@@ -262,8 +262,10 @@ class AHDictionary(Dictionary):
                         subindex += 1
                         # strip an occasional leftover octothorpe
                         subdefinition = subdefinition.strip('# ')
-                        subdef_to_print = wrap_lines(subdefinition, self.textwidth, len(str(subindex)),
-                                                     indent=self.indent, gap=2)
+                        subdef_to_print = wrap_lines(
+                            subdefinition, self.textwidth, len(str(subindex)),
+                            indent=self.indent, gap=2
+                        ).replace(':', f':{exsen_c.color}', 1)
 
                         sign = '>' if i == 0 else ' '
                         def_c = def1_c if subindex % 2 else def2_c
@@ -331,9 +333,9 @@ class AHDictionary(Dictionary):
         return None
 
     def input_cycle(self):
-        def_field = InputField(**field_config['definitions'], spec_split=':')
-        pos_field = InputField(**field_config['parts_of_speech'], connector=' | ', spec_split=' |')
-        etym_field = InputField(**field_config['etymologies'], spec_split=',')
+        def_field = InputField(*field_config['definitions'], spec_split=':')
+        pos_field = InputField(*field_config['parts_of_speech'], connector=' | ', spec_split=' |')
+        etym_field = InputField(*field_config['etymologies'], spec_split=',')
 
         chosen_defs = def_field.get_element(self.definitions, auto_choice='1')
         if chosen_defs is None:

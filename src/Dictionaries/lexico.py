@@ -334,9 +334,9 @@ class Lexico(Dictionary):
         return '/' + self.example_sentences[fc - 1]
 
     def input_cycle(self):
-        def_field = InputField(**field_config['definitions'])
-        exsen_field = InputField(**field_config['example_sentences'])
-        etym_field = InputField(**field_config['etymologies'], spec_split=',')
+        def_field = InputField(*field_config['definitions'], spec_split=',')
+        exsen_field = InputField(*field_config['example_sentences'])
+        etym_field = InputField(*field_config['etymologies'], spec_split=',')
 
         chosen_defs = def_field.get_element(self.definitions, auto_choice='1')
         if chosen_defs is None:

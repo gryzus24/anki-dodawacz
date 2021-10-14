@@ -79,17 +79,16 @@ class InputField:
 
     def _user_input(self, auto_choice):
         default_value = config[f'{self.field_name}_bulk']
-
-        if default_value.lower() in ('a', 'auto'):
+        if default_value.lower() == 'auto':
             default_value = auto_choice
 
         if not config[self.field_name]:
             return default_value
-        else:
-            input_choice = input(f'{input_c.color}{self.prompt} [{default_value}]:{inputtext_c.color} ')
-            if not input_choice.strip():
-                return default_value
-            return input_choice
+
+        input_choice = input(f'{input_c.color}{self.prompt} [{default_value}]:{inputtext_c.color} ')
+        if not input_choice.strip():
+            return default_value
+        return input_choice
 
     @staticmethod
     def print_added_elements(message: str, elements='') -> None:
@@ -110,19 +109,17 @@ class InputField:
             return ChosenElement()
         elif input_choice.isnumeric() and int(input_choice) > content_length:
             input_choice = '0'
-        elif input_choice in ('a', 'auto'):
-            input_choice = auto_choice
-
-        input_choice = input_choice.replace('-all', f'{content_length}:1', 1)
-        input_choice = input_choice.replace('all', f'1:{content_length}', 1)
-        input_choice = input_choice.replace('-1', f'1:{content_length}', 1)
+        else:
+            input_choice = input_choice\
+                .replace('-all', f'{content_length}:1')\
+                .replace('all', f'1:{content_length}')\
+                .replace('-1', f'1:{content_length}')\
+                .replace('auto', auto_choice.replace(' ', '').lower())
 
         parsed_inputs = parse_inputs(input_choice.split(','), content_length)
         if parsed_inputs is None:
             print(f'{GEX.color}Pominięto dodawanie karty')
             return None
-
-        chosen_content_list = self.add_elements(parsed_inputs, content_list)
 
         if f'1:{content_length}' in input_choice:
             self.choices = [-1]
@@ -131,6 +128,8 @@ class InputField:
 
         if not self.choices:
             self.choices = [0]
+
+        chosen_content_list = self.add_elements(parsed_inputs, content_list)
         return ChosenElement(self.connector.join(chosen_content_list))
 
     def add_elements(self, parsed_inputs, content_list) -> list:
@@ -154,7 +153,7 @@ class InputField:
                     valid_choices.append(choice)
                     continue
 
-                sliced_content_element = (content_element.strip('. ')).split(self.spec_split)
+                sliced_content_element = (content_element.strip(' .[]')).split(self.spec_split)
                 if len(sliced_content_element) == 1:
                     content.append(content_element)
                     valid_choices.append(choice)
@@ -162,17 +161,18 @@ class InputField:
 
                 element = []
                 for specifier in specifiers:
-                    if int(specifier) == 0 or int(specifier) > len(sliced_content_element):
+                    specifier = int(specifier)
+                    if specifier == 0 or specifier > len(sliced_content_element):
                         continue
 
-                    slice_of_content = sliced_content_element[int(specifier) - 1].strip('. ')
+                    slice_of_content = sliced_content_element[specifier - 1].strip()
                     valid_choices.append(f'{choice}.{specifier}')
                     element.append(slice_of_content)
 
-                # to properly join elements specified in reversed order
+                # join specified elements
                 element = (self.spec_split + ' ').join(element)
-                if element.startswith('['):  # closing bracket in etymologies
-                    element += ']'
+                if element and content_element.startswith('['):  # brackets in etymologies
+                    element = '[' + element.strip('[]') + ']'
                 content.append(element)
 
         self.print_added_elements('Dodane elementy', ', '.join(map(str, valid_choices)))
@@ -193,7 +193,7 @@ def sentence_input():
     return ChosenElement(sentence)
 
 
-def map_specifiers_to_inputs(range_tuples: tuple) -> tuple:
+def map_specifiers_to_inputs(range_tuples: list) -> tuple:
     # yields (input_values, specifiers)
     for tup in range_tuples:
         if len(tup) <= 3:  # if len(tuple with specifiers) <= 3
@@ -204,7 +204,7 @@ def map_specifiers_to_inputs(range_tuples: tuple) -> tuple:
                 yield tup[0 + i:2 + i], tup[-1]
 
 
-def filter_tuples(tup: tuple) -> bool:
+def valid_tup(tup: tuple) -> bool:
     # tuples for input: 2:3, 5.41., 6.2, asdf...3, 7:9.123:
     # ('2', '3', ''), ('5', '41.'), ('6', '2'), ('asdf', '..3'), ('7', '9', '123')
 
@@ -224,22 +224,25 @@ def filter_tuples(tup: tuple) -> bool:
 def parse_inputs(inputs: list, content_length: int):
     # example valid inputs: 1:4:2.1, 4:0.234, 1:6:2:8, 4, 6, 5.2
     # example invalid inputs: 1:5:2.3.1, 4:-1, 1:6:2:s, 4., 6.., 5.asd
-    input_block = []
     # '' = no specifiers
+
+    # Check whether input is valid
+    valid_input_list = []
     for _input in inputs:
         head, _, specifiers = _input.partition('.')
         tup = head.split(':')
-        # specifiers are always referenced by [-1]
         tup.append(specifiers)
-        input_block.append(tuple(tup))
+        # specifiers are always referenced by [-1]
+        tup = tuple(tup)
+        if valid_tup(tup):
+            valid_input_list.append(tup)
 
-    # get rid of invalid inputs
-    valid_range_tuples = tuple(filter(filter_tuples, input_block))
-    if not valid_range_tuples:
+    if not valid_input_list:
         return None
 
+    # Convert input to
     input_blocks = []
-    for _input, specifiers in map_specifiers_to_inputs(valid_range_tuples):
+    for _input, specifiers in map_specifiers_to_inputs(valid_input_list):
         val1 = int(_input[0])
         # [-1] allows for single inputs after the comma, e.g.: 5:6, 2, 3, 9
         val2 = int(_input[-1])
@@ -248,13 +251,13 @@ def parse_inputs(inputs: list, content_length: int):
         # check with length to ease the computation for the range function
         val1 = val1 if val1 <= content_length else content_length
         val2 = val2 if val2 <= content_length else content_length
-        # check for reversed sequences
+        # establish step for reversed sequences
         if val1 > val2:
-            rev = -1
+            step = -1
         else:
-            rev = 1
+            step = 1
         # e.g. from val1 = 7 and val2 = 4 produce: 7, 6, 5, 4
-        input_block = [x for x in range(val1, val2 + rev, rev)]
+        input_block = [x for x in range(val1, val2 + step, step)]
         input_block.append(specifiers)
         input_blocks.append(input_block)
     return input_blocks

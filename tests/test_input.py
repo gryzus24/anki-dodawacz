@@ -4,9 +4,9 @@ from src.data import field_config
 test_list = ['a', 'b', 'c', 'd', '', 'e', '', 'f', 'g']
 
 
-def get_element_testing(tl=None, ac='1'):
+def get_element_testing(tl=None, ac='1', s='.'):
     def tested(input_, output_):
-        test_field = i.InputField(**field_config['definitions'], connector=';')
+        test_field = i.InputField(*field_config['definitions'], connector=';', spec_split=s)
 
         i.input = lambda _: input_
         r = test_field.get_element(content_list=tl, auto_choice=ac)
@@ -52,13 +52,13 @@ def test_basic_functionality():
     test('-all', 'g;f;e;d;c;b;a')
     test('   -aLl ', 'g;f;e;d;c;b;a')
     test(' -   aL  l ', 'g;f;e;d;c;b;a')
-    test('allall', None)
+    test('allall', 'a;b;c;d;e;f;g;g')
     test(' --   aL  l ', None)
 
     test('-1', 'a;b;c;d;e;f;g')
     test('    -1 ', 'a;b;c;d;e;f;g')
     test('   -   1 ', 'a;b;c;d;e;f;g')
-    test('-1-1', None)
+    test('-1-1', 'a;b;c;d;e;f;g;g')
     test('-2', None)
 
     test('/', '')
@@ -71,9 +71,9 @@ def test_basic_functionality():
     test('d', None)
     test('aa', None)
     test('auto', 'a')
-    test('a', 'a')
+    test('a', None)
     get_element_testing(ac='2')('   auto ', 'b')
-    get_element_testing(ac='3')('   a ', 'c')
+    get_element_testing(ac='3')('   aut ', None)
 
 
 def test_comma_separated_singles():
@@ -99,7 +99,7 @@ def test_comma_separated_singles():
     test(',14,14,8,', 'f')
     test('  ,1     4, 1  4 ,  8   ,  ', 'f')
 
-    test('-1,-1', 'a;b;c;d;e;f;g')
+    test('-1,-1', 'a;b;c;d;e;f;g;a;b;c;d;e;f;g')
     test('all,-1', 'a;b;c;d;e;f;g;a;b;c;d;e;f;g')
     test('all,-all', 'a;b;c;d;e;f;g;g;f;e;d;c;b;a')
     test('-all,2', 'g;f;e;d;c;b;a;b')
@@ -117,593 +117,180 @@ def test_comma_separated_singles():
     test('.,.,.', None)
 
 
-#
-# OLD TESTS TO BE REWRITTEN
-#
-
-"""
-# ['a', 'b', 'c', 'd', '', 'e.', '', 'f', 'g.']
 def test_double_range_inputs():
-    ak.input = lambda _: '1:3'
-    result = ak.input_field(test_list, auto_choice, **field_config['ahd_definitions'])
-    assert result == ('a<br>b<br>c', [1])
+    # test_list = ['a', 'b', 'c', 'd', '', 'e', '', 'f', 'g']
+    test = get_element_testing(tl=test_list, ac='2:4')
 
-    ak.input = lambda _: '3:7'
-    result = ak.input_field(test_list, auto_choice, **field_config['ahd_definitions'])
-    assert result == ('c<br>d<br>e.', 3)
+    test('1:3', 'a;b;c')
+    test('3:7', 'c;d;e')
+    test('2:10', 'b;c;d;e;f;g')
+    test('1:3423', 'a;b;c;d;e;f;g')
+    test('2:2', 'b')
+    test('3:1', 'c;b;a')
+    test('3824:5', 'g;f;e')
+    test('6453232:14', '')
 
-    ak.input = lambda _: '2:10'
-    result = ak.input_field(test_list, auto_choice, **field_config['ahd_definitions'])
-    assert result == ('b<br>c<br>d<br>e.<br>f<br>g.', 2)
+    test('   1 :  3', 'a;b;c')
+    test('  5  :5  ', '')
+    test('  3 43 1 12  :  4', 'g;f;e;d')
 
-    ak.input = lambda _: '1:3423'
-    result = ak.input_field(test_list, auto_choice, **field_config['ahd_definitions'])
-    assert result == ('a<br>b<br>c<br>d<br>e.<br>f<br>g.', [1])
+    test('0:4', 'a;b;c;d')
+    test('0:5', 'a;b;c;d')
+    test('-1:4', 'a;b;c;d;e;f;g;g;f;e;d')
+    test('all:-all', 'a;b;c;d;e;f;g;g;g;f;e;d;c;b;a')
+    test('auto', 'b;c;d')
+    test('auto:2', 'b;c;d;d;c;b')
+    test('a ut o', 'b;c;d')
+    test('', 'b;c;d')
 
-    ak.input = lambda _: '2:2'
-    result = ak.input_field(test_list, auto_choice, **field_config['ahd_definitions'])
-    assert result == ('b', 2)
+    test('0:0', '')
+    test('0:-0', None)
+    test('-s:0', None)
+    test(':0', None)
+    test('1:', None)
+    test(':12:', None)
+    test(':', None)
+    test(': :  :   :', None)
 
-    ak.input = lambda _: '3:1'
-    result = ak.input_field(test_list, auto_choice, **field_config['ahd_definitions'])
-    assert result == ('c<br>b<br>a', 3)
-
-    ak.input = lambda _: '3823:5'
-    result = ak.input_field(test_list, auto_choice, **field_config['ahd_definitions'])
-    assert result == ('g.<br>f<br>e.', 9)
-
-    ak.input = lambda _: '3823:14'
-    result = ak.input_field(test_list, auto_choice, **field_config['ahd_definitions'])
-    assert result == ('', [1])
-
-    # spaces
-    ak.input = lambda _: '1   :    3'
-    result = ak.input_field(test_list, auto_choice, **field_config['ahd_definitions'])
-    assert result == ('a<br>b<br>c', [1])
-
-    ak.input = lambda _: '  3  :   7  '
-    result = ak.input_field(test_list, auto_choice, **field_config['ahd_definitions'])
-    assert result == ('c<br>d<br>e.', 3)
-
-    ak.input = lambda _: '2    :10'
-    result = ak.input_field(test_list, auto_choice, **field_config['ahd_definitions'])
-    assert result == ('b<br>c<br>d<br>e.<br>f<br>g.', 2)
-
-    ak.input = lambda _: '1:    3423'
-    result = ak.input_field(test_list, auto_choice, **field_config['ahd_definitions'])
-    assert result == ('a<br>b<br>c<br>d<br>e.<br>f<br>g.', [1])
-
-    ak.input = lambda _: ' 2:2 '
-    result = ak.input_field(test_list, auto_choice, **field_config['ahd_definitions'])
-    assert result == ('b', 2)
-
-    ak.input = lambda _: '3 :1   '
-    result = ak.input_field(test_list, auto_choice, **field_config['ahd_definitions'])
-    assert result == ('c<br>b<br>a', 3)
-
-    ak.input = lambda _: ' 3  8   23:    5'
-    result = ak.input_field(test_list, auto_choice, **field_config['ahd_definitions'])
-    assert result == ('g.<br>f<br>e.', 9)
-
-    ak.input = lambda _: '382 3:1  4   '
-    result = ak.input_field(test_list, auto_choice, **field_config['ahd_definitions'])
-    assert result == ('', [1])
-
-    # obscure
-    ak.input = lambda _: '0:4'
-    result = ak.input_field(test_list, auto_choice, **field_config['ahd_definitions'])
-    assert result == ('a<br>b<br>c<br>d', [1])
-
-    ak.input = lambda _: '0:5'  # 5 is empty
-    result = ak.input_field(test_list, auto_choice, **field_config['ahd_definitions'])
-    assert result == ('a<br>b<br>c<br>d', [1])
-
-    ak.input = lambda _: '-1:4'
-    result = ak.input_field(test_list, auto_choice, **field_config['ahd_definitions'])
-    assert result == ('a<br>b<br>c<br>d<br>e.<br>f<br>g.<br>g.<br>f<br>e.<br>d', [1])
-
-    ak.input = lambda _: '-0:-0'
-    result = ak.input_field(test_list, auto_choice, **field_config['ahd_definitions'])
-    assert result == ('', [1])
-
-    ak.input = lambda _: '0:0'
-    result = ak.input_field(test_list, auto_choice, **field_config['ahd_definitions'])
-    assert result == ('', [1])
-
-    ak.input = lambda _: ':0'
-    result = ak.input_field(test_list, auto_choice, **field_config['ahd_definitions'])
-    assert result == ('', [1])
-
-    ak.input = lambda _: '0:'
-    result = ak.input_field(test_list, auto_choice, **field_config['ahd_definitions'])
-    assert result == ('', [1])
-
-    ak.input = lambda _: ':0:'
-    result = ak.input_field(test_list, auto_choice, **field_config['ahd_definitions'])
-    assert result == ('', [1])
-
-    ak.input = lambda _: ':'
-    result = ak.input_field(test_list, auto_choice, **field_config['ahd_definitions'])
-    assert result == ('', [1])
-
-    ak.input = lambda _: '::::'
-    result = ak.input_field(test_list, auto_choice, **field_config['ahd_definitions'])
-    assert result == ('', [1])
-
-    # garbage
-    ak.input = lambda _: ':d'
-    result = ak.input_field(test_list, auto_choice, **field_config['ahd_definitions'])
-    assert result == ('', [1])
-
-    ak.input = lambda _: '-s:-sc'
-    result = ak.input_field(test_list, auto_choice, **field_config['ahd_definitions'])
-    assert result == ('', [1])
-
-    ak.input = lambda _: '-:-'
-    result = ak.input_field(test_list, auto_choice, **field_config['ahd_definitions'])
-    assert result == ('', [1])
-
-    ak.input = lambda _: '-:'
-    result = ak.input_field(test_list, auto_choice, **field_config['ahd_definitions'])
-    assert result == ('', [1])
-
-    ak.input = lambda _: 'asdf:asdf'
-    result = ak.input_field(test_list, auto_choice, **field_config['ahd_definitions'])
-    assert result == ('', [1])
-
-    ak.input = lambda _: 'asdf:4'
-    result = ak.input_field(test_list, auto_choice, **field_config['ahd_definitions'])
-    assert result == ('', [1])
-
-    ak.input = lambda _: '5:asdf'
-    result = ak.input_field(test_list, auto_choice, **field_config['ahd_definitions'])
-    assert result == ('', [1])
-
-    ak.input = lambda _: ':kcz:'
-    result = ak.input_field(test_list, auto_choice, **field_config['ahd_definitions'])
-    assert result == ('', [1])
-
-    ak.input = lambda _: 'stuff:'
-    result = ak.input_field(test_list, auto_choice, **field_config['ahd_definitions'])
-    assert result == ('', [1])
-
-    ak.input = lambda _: '600:try*%4\/'
-    result = ak.input_field(test_list, auto_choice, **field_config['ahd_definitions'])
-    assert result == ('', [1])
-
-    ak.input = lambda _: '-1:4'
-    result = ak.input_field(test_list, auto_choice, **field_config['ahd_definitions'])
-    assert result == ('a<br>b<br>c<br>d<br>e.<br>f<br>g.<br>g.<br>f<br>e.<br>d', [1])
+    test(':d', None)
+    test('', 'b;c;d')
+    test('-:-', None)
+    test('asdf:asdf', None)
+    test('ds:4', None)
+    test('600:try*%4\\/\b\n', None)
 
 
-# ['a', 'b', 'c', 'd', '', 'e.', '', 'f', 'g.']
 def test_multi_range_inputs():
-    ak.input = lambda _: '1:2:4'
-    result = ak.input_field(test_list, auto_choice, **field_config['ahd_definitions'])
-    assert result == ('a<br>b<br>b<br>c<br>d', [1])
+    # test_list = ['a', 'b', 'c', 'd', '', 'e', '', 'f', 'g']
+    test = get_element_testing(tl=test_list, ac='1:3:1')
 
-    ak.input = lambda _: '1:2:1'
-    result = ak.input_field(test_list, auto_choice, **field_config['ahd_definitions'])
-    assert result == ('a<br>b<br>b<br>a', [1])
+    test('', 'a;b;c;c;b;a')
+    test('auto', 'a;b;c;c;b;a')
+    test('1:2:4', 'a;b;b;c;d')
+    test('1:2:1', 'a;b;b;a')
+    test('0:2:1', 'a;b;b;a')
+    test('1:2:0', 'a;b;b;a')
+    test('1:90:0', 'a;b;c;d;e;f;g;g;f;e;d;c;b;a')
+    test('3:90:90:3', 'c;d;e;f;g;g;f;e;d;c')
+    test('3:90:90:90:3', 'c;d;e;f;g;g;f;e;d;c')
+    test('1:2:3:4:5:6', 'a;b;b;c;c;d;d;e')
+    test('6:2', 'e;d;c;b')
+    test('1:2:0:2:0:3', 'a;b;b;a;a;b;b;a;a;b;c')
 
-    ak.input = lambda _: '0:2:1'
-    result = ak.input_field(test_list, auto_choice, **field_config['ahd_definitions'])
-    assert result == ('a<br>b<br>b<br>a', [1])
-
-    ak.input = lambda _: '1:2:0'
-    result = ak.input_field(test_list, auto_choice, **field_config['ahd_definitions'])
-    assert result == ('a<br>b<br>b<br>a', [1])
-
-    ak.input = lambda _: '1:90:0'
-    result = ak.input_field(test_list, auto_choice, **field_config['ahd_definitions'])
-    assert result == ('a<br>b<br>c<br>d<br>e.<br>f<br>g.<br>g.<br>f<br>e.<br>d<br>c<br>b<br>a', [1])
-
-    ak.input = lambda _: '3:90:90:0'
-    result = ak.input_field(test_list, auto_choice, **field_config['ahd_definitions'])
-    assert result == ('c<br>d<br>e.<br>f<br>g.<br>g.<br>f<br>e.<br>d<br>c<br>b<br>a', 3)
-
-    ak.input = lambda _: '1:2:3:4:5:6'
-    result = ak.input_field(test_list, auto_choice, **field_config['ahd_definitions'])
-    assert result == ('a<br>b<br>b<br>c<br>c<br>d<br>d<br>e.', [1])
-
-    ak.input = lambda _: '6:5:4:4:4:2'
-    result = ak.input_field(test_list, auto_choice, **field_config['ahd_definitions'])
-    assert result == ('e.<br>d<br>d<br>d<br>d<br>c<br>b', 6)
-
-    ak.input = lambda _: '1:2:0:2:0:3'
-    result = ak.input_field(test_list, auto_choice, **field_config['ahd_definitions'])
-    assert result == ('a<br>b<br>b<br>a<br>a<br>b<br>b<br>a<br>a<br>b<br>c', [1])
-
-    ak.input = lambda _: '0:2:0'
-    result = ak.input_field(test_list, auto_choice, **field_config['ahd_definitions'])
-    assert result == ('a<br>b<br>b<br>a', [1])
-
-    ak.input = lambda _: '-1:90:0'
-    result = ak.input_field(test_list, auto_choice, **field_config['ahd_definitions'])
-    assert result == ('a<br>b<br>c<br>d<br>e.<br>f<br>g.<br>g.<br>g.<br>f<br>e.<br>d<br>c<br>b<br>a', [1])
-
-    # invalid
-    ak.input = lambda _: '3:90:90:-0'
-    result = ak.input_field(test_list, auto_choice, **field_config['ahd_definitions'])
-    assert result == ('', [1])
-
-    ak.input = lambda _: ':90:90:'
-    result = ak.input_field(test_list, auto_choice, **field_config['ahd_definitions'])
-    assert result == ('', [1])
-
-    ak.input = lambda _: ':2:90:'
-    result = ak.input_field(test_list, auto_choice, **field_config['ahd_definitions'])
-    assert result == ('', [1])
-
-    ak.input = lambda _: '1:90:-0'
-    result = ak.input_field(test_list, auto_choice, **field_config['ahd_definitions'])
-    assert result == ('', [1])
-
-    ak.input = lambda _: '1:-90:0'
-    result = ak.input_field(test_list, auto_choice, **field_config['ahd_definitions'])
-    assert result == ('', [1])
-
-    ak.input = lambda _: '1as:fdsa:asdf'
-    result = ak.input_field(test_list, auto_choice, **field_config['ahd_definitions'])
-    assert result == ('', [1])
-
-    ak.input = lambda _: '4:7:2:$'
-    result = ak.input_field(test_list, auto_choice, **field_config['ahd_definitions'])
-    assert result == ('', [1])
+    test('-1:', None)
+    test('490:90:-0', None)
+    test(':90:90:', None)
+    test(':2:90:', None)
+    test('0:-1:-0', None)
+    test('1:-99:0', None)
+    test('1as:fdas:kcz', None)
+    test('4:7:2:$,', None)
 
 
-# ['a', 'b', 'c', 'd', '', 'e.', '', 'f', 'g.']
 def test_combined_inputs():
-    ak.input = lambda _: '1, 1:2'
-    result = ak.input_field(test_list, auto_choice, **field_config['ahd_definitions'])
-    assert result == ('a<br>a<br>b', [1])
+    # test_list = ['a', 'b', 'c', 'd', '', 'e', '', 'f', 'g']
+    test = get_element_testing(tl=test_list, ac='1:3:1')
 
-    ak.input = lambda _: '1:2,2'
-    result = ak.input_field(test_list, auto_choice, **field_config['ahd_definitions'])
-    assert result == ('a<br>b<br>b', [1])
+    test('1,  1:2', 'a;a;b')
+    test('1:2,2', 'a;b;b')
+    test(',2,1:2,2', 'b;a;b;b')
+    test(',2,1:11:,2', 'b;b')
+    test(',2,2:-11,2', 'b;b;a;a;b;c;d;e;f;g;b')
+    test('1;,3', 'c')
+    test('1;,3;', None)
+    test('1;,3,1:3', 'c;a;b;c')
+    test('1;1,  3  ,3 :   0', 'c;c;b;a')
+    test('1;1, 3,  1  0:  0', 'c;g;f;e;d;c;b;a')
+    test(',-1:-all,', 'a;b;c;d;e;f;g;g;g;f;e;d;c;b;a')
 
-    ak.input = lambda _: ',2,1:2,2'
-    result = ak.input_field(test_list, auto_choice, **field_config['ahd_definitions'])
-    assert result == ('b<br>a<br>b<br>b', 2)
-
-    ak.input = lambda _: ',2,1:11:,2'
-    result = ak.input_field(test_list, auto_choice, **field_config['ahd_definitions'])
-    assert result == ('b<br>b', 2)
-
-    ak.input = lambda _: ',2,1:-11,2'
-    result = ak.input_field(test_list, auto_choice, **field_config['ahd_definitions'])
-    assert result == ('b<br>b', 2)
-
-    ak.input = lambda _: ',2,0:-11,2'
-    result = ak.input_field(test_list, auto_choice, **field_config['ahd_definitions'])
-    assert result == ('b<br>b', 2)
-
-    ak.input = lambda _: '1;,3'
-    result = ak.input_field(test_list, auto_choice, **field_config['ahd_definitions'])
-    assert result == ('c', 3)
-
-    ak.input = lambda _: '1;,3;'
-    result = ak.input_field(test_list, auto_choice, **field_config['ahd_definitions'])
-    assert result == ('', [1])
-
-    ak.input = lambda _: '1;,3,1:3'
-    result = ak.input_field(test_list, auto_choice, **field_config['ahd_definitions'])
-    assert result == ('c<br>a<br>b<br>c', 3)
-
-    ak.input = lambda _: '1;1,3,3:0'
-    result = ak.input_field(test_list, auto_choice, **field_config['ahd_definitions'])
-    assert result == ('c<br>c<br>b<br>a', 3)
-
-    ak.input = lambda _: ' 1;1, 3  ,3 : 0 '
-    result = ak.input_field(test_list, auto_choice, **field_config['ahd_definitions'])
-    assert result == ('c<br>c<br>b<br>a', 3)
-
-    ak.input = lambda _: ' 1;1, 3  ,1 0: 0 '
-    result = ak.input_field(test_list, auto_choice, **field_config['ahd_definitions'])
-    assert result == ('c<br>g.<br>f<br>e.<br>d<br>c<br>b<br>a', 3)
-
-    ak.input = lambda _: ' 1;1, 3  ,10: 0 '
-    result = ak.input_field(test_list, auto_choice, **field_config['ahd_definitions'])
-    assert result == ('c<br>g.<br>f<br>e.<br>d<br>c<br>b<br>a', 3)
-
-    ak.input = lambda _: 'all,'
-    result = ak.input_field(test_list, auto_choice, **field_config['ahd_definitions'])
-    assert result == ('a<br>b<br>c<br>d<br>e.<br>f<br>g.', [1])
-
-    ak.input = lambda _: 'all:'
-    result = ak.input_field(test_list, auto_choice, **field_config['ahd_definitions'])
-    assert result == ('', [1])
-
-    ak.input = lambda _: '0,all:'
-    result = ak.input_field(test_list, auto_choice, **field_config['ahd_definitions'])
-    assert result == ('', [1])
-
-    ak.input = lambda _: ',asd.f2-s ,-s,-sc,.1d0: 6.,:m,0 d'
-    result = ak.input_field(test_list, auto_choice, **field_config['ahd_definitions'])
-    assert result == ('', [1])
-
-    ak.input = lambda _: ',:,'
-    result = ak.input_field(test_list, auto_choice, **field_config['ahd_definitions'])
-    assert result == ('', [1])
-
-    ak.input = lambda _: ',"=:,'
-    result = ak.input_field(test_list, auto_choice, **field_config['ahd_definitions'])
-    assert result == ('', [1])
+    test(',asd.f2-s ,-s,-sc,.1d0: 6.,:m,0 d', None)
+    test(',:,', None)
+    test(',"=:,\v\b,', None)
 
 
 def test_empty_content_list():
-    test_list = []
+    # test_list = []
+    test = get_element_testing(tl=[], ac='0')
 
-    # combined_inputs
-    ak.input = lambda _: '1, 1:2'
-    result = ak.input_field(test_list, auto_choice, **field_config['ahd_definitions'])
-    assert result == ('', [1])
-    ak.input = lambda _: '1:2,2'
-    result = ak.input_field(test_list, auto_choice, **field_config['ahd_definitions'])
-    assert result == ('', [1])
-    ak.input = lambda _: ',2,1:2,2'
-    result = ak.input_field(test_list, auto_choice, **field_config['ahd_definitions'])
-    assert result == ('', [1])
-    ak.input = lambda _: ',2,1:11:,2'
-    result = ak.input_field(test_list, auto_choice, **field_config['ahd_definitions'])
-    assert result == ('', [1])
-    ak.input = lambda _: ',2,1:-11,2'
-    result = ak.input_field(test_list, auto_choice, **field_config['ahd_definitions'])
-    assert result == ('', [1])
-    ak.input = lambda _: ',2,0:-11,2'
-    result = ak.input_field(test_list, auto_choice, **field_config['ahd_definitions'])
-    assert result == ('', [1])
-    ak.input = lambda _: '1;,3'
-    result = ak.input_field(test_list, auto_choice, **field_config['ahd_definitions'])
-    assert result == ('', [1])
-    ak.input = lambda _: '1;,3;'
-    result = ak.input_field(test_list, auto_choice, **field_config['ahd_definitions'])
-    assert result == ('', [1])
-    ak.input = lambda _: '1;,3,1:3'
-    result = ak.input_field(test_list, auto_choice, **field_config['ahd_definitions'])
-    assert result == ('', [1])
-    ak.input = lambda _: '1;1,3,3:0'
-    result = ak.input_field(test_list, auto_choice, **field_config['ahd_definitions'])
-    assert result == ('', [1])
-    ak.input = lambda _: ' 1;1, 3  ,3 : 0 '
-    result = ak.input_field(test_list, auto_choice, **field_config['ahd_definitions'])
-    assert result == ('', [1])
-    ak.input = lambda _: ' 1;1, 3  ,1 0: 0 '
-    result = ak.input_field(test_list, auto_choice, **field_config['ahd_definitions'])
-    assert result == ('', [1])
-    ak.input = lambda _: ' 1;1, 3  ,10: 0 '
-    result = ak.input_field(test_list, auto_choice, **field_config['ahd_definitions'])
-    assert result == ('', [1])
-    ak.input = lambda _: '1,'
-    result = ak.input_field(test_list, auto_choice, **field_config['ahd_definitions'])
-    assert result == ('', [1])
-    ak.input = lambda _: '1,2'
-    result = ak.input_field(test_list, auto_choice, **field_config['ahd_definitions'])
-    assert result == ('', [1])
-    ak.input = lambda _: '1,5'
-    result = ak.input_field(test_list, auto_choice, **field_config['ahd_definitions'])
-    assert result == ('', [1])
-    ak.input = lambda _: '1,6'
-    result = ak.input_field(test_list, auto_choice, **field_config['ahd_definitions'])
-    assert result == ('', [1])
-    ak.input = lambda _: '1,10'
-    result = ak.input_field(test_list, auto_choice, **field_config['ahd_definitions'])
-    assert result == ('', [1])
-    ak.input = lambda _: '1,1234'
-    result = ak.input_field(test_list, auto_choice, **field_config['ahd_definitions'])
-    assert result == ('', [1])
-    ak.input = lambda _: '1   ,   '
-    result = ak.input_field(test_list, auto_choice, **field_config['ahd_definitions'])
-    assert result == ('', [1])
-    ak.input = lambda _: '1 ,  2'
-    result = ak.input_field(test_list, auto_choice, **field_config['ahd_definitions'])
-    assert result == ('', [1])
-    ak.input = lambda _: '   1  ,  5  '
-    result = ak.input_field(test_list, auto_choice, **field_config['ahd_definitions'])
-    assert result == ('', [1])
-    ak.input = lambda _: '    1,  6'
-    result = ak.input_field(test_list, auto_choice, **field_config['ahd_definitions'])
-    assert result == ('', [1])
-    ak.input = lambda _: ' 1 ,  10      '
-    result = ak.input_field(test_list, auto_choice, **field_config['ahd_definitions'])
-    assert result == ('', [1])
-    ak.input = lambda _: '1, 1234 '
-    result = ak.input_field(test_list, auto_choice, **field_config['ahd_definitions'])
-    assert result == ('', [1])
-    ak.input = lambda _: ',,,,,,,'
-    result = ak.input_field(test_list, auto_choice, **field_config['ahd_definitions'])
-    assert result == ('', [1])
-    ak.input = lambda _: ',,,,0,,,'
-    result = ak.input_field(test_list, auto_choice, **field_config['ahd_definitions'])
-    assert result == ('', [1])
-    ak.input = lambda _: ',,,,0,,,asdf'
-    result = ak.input_field(test_list, auto_choice, **field_config['ahd_definitions'])
-    assert result == ('', [1])
+    test('', '')
+    test('auto', '')
+    test('1,1:2', '')
+    test('1:90:,2', '')
+    test(',2,1:2,2', '')
+    test(' 1;1,  3  ,3 : 0 ', '')
+    test('1,2', '')
+    test(' ,0,1.,', '')
+    test('auto.12', '')
+    test('1.419', '')
+    test(',', None)
 
 
 def test_specifiers():
-    test_list = ['abba:baba', 'gabe : power', '   blue: zenith ', 'cztery', '', 'raz: dwa: trzy: cztery.', ':.:>:', 'f', ':g.']
+    test_list = ['[1,2,3.]', 'a,b,c,d.', 'single', '-1,  -2,  -3, ,', 'sen1.,sen2.,sen3...']
+    test = get_element_testing(tl=test_list, ac='1.21, 2.36', s=',')
 
-    ak.input = lambda _: '1.1'
-    result = ak.input_field(test_list, auto_choice, **field_config['ahd_definitions'])
-    assert result == ('abba', [1])
+    test('1.123', '[1, 2, 3]')
+    test('1.321', '[3, 2, 1]')
+    test('1.213', '[2, 1, 3]')
+    test('1.444', '')
+    test('1.543', '[3]')
+    test('1.01020304', '[1, 2, 3]')
+    test('1.500203', '[2, 3]')
+    test('1.0', '[1,2,3.]')
+    test('1.0000', '[1,2,3.]')
+    test('1.-1', None)
+    test('1.', '[1,2,3.]')
+    test('1...', None)
 
-    ak.input = lambda _: '1.0'
-    result = ak.input_field(test_list, auto_choice, **field_config['ahd_definitions'])
-    assert result == ('abba:baba', [1])
+    test('2.1', 'a')
+    test('2.12', 'a, b')
+    test('2.543', 'd, c')
+    test('2.0', 'a,b,c,d.')
+    test('2.0000', 'a,b,c,d.')
+    test('2.00001', 'a')
+    test('2.00012000', 'a, b')
+    test('2.1000123', 'a, a, b, c')
+    test('2.100333', 'a, c, c, c')
+    test('2.1 2 3', 'a, b, c')
+    test('2.444', 'd, d, d')
 
-    ak.input = lambda _: '1.-1'
-    result = ak.input_field(test_list, auto_choice, **field_config['ahd_definitions'])
-    assert result == ('', [1])
+    test('3.0', 'single')
+    test('3.123', 'single')
+    test('3.0001023034', 'single')
+    test('3.1:3', None)
+    test('3.1.', None)
 
-    ak.input = lambda _: '1.'
-    result = ak.input_field(test_list, auto_choice, **field_config['ahd_definitions'])
-    assert result == ('abba:baba', [1])
+    test('4.000', '-1,  -2,  -3, ,')
+    test('4.12', '-1, -2')
+    test('4.31', '-3, -1')
+    test('4.87654', ', ')
+    test('4.185', '-1, ')
 
-    ak.input = lambda _: '1.12'
-    result = ak.input_field(test_list, auto_choice, **field_config['ahd_definitions'])
-    assert result == ('abba: baba', [1])
+    test('5.12', 'sen1., sen2.')
+    test('5.0', 'sen1.,sen2.,sen3...')
+    test('5.3', 'sen3')
+    test('5.432', 'sen3, sen2.')
 
-    ak.input = lambda _: '1.21'
-    result = ak.input_field(test_list, auto_choice, **field_config['ahd_definitions'])
-    assert result == ('baba: abba', [1])
+    test('all.1', '[1];a;single;-1;sen1.')
+    test('-all.21', 'sen2., sen1.;-2, -1;single;b, a;[2, 1]')
+    test('2,all.1', 'a,b,c,d.;[1];a;single;-1;sen1.')
 
-    ak.input = lambda _: '1.152'
-    result = ak.input_field(test_list, auto_choice, **field_config['ahd_definitions'])
-    assert result == ('abba: baba', [1])
+    test('', '[2, 1];c')
+    test('auto', '[2, 1];c')
+    test('auto.0', '[2, 1]')
+    test('auto.1', '[2, 1]')
+    test('.', None)
+    test('a.1', None)
+    test('2.a', None)
+    test('all.a', None)
+    test('-1-1.-1', None)
 
-    ak.input = lambda _: '1.251111'
-    result = ak.input_field(test_list, auto_choice, **field_config['ahd_definitions'])
-    assert result == ('baba: abba: abba: abba: abba', [1])
-
-    ak.input = lambda _: '2.1'
-    result = ak.input_field(test_list, auto_choice, **field_config['ahd_definitions'])
-    assert result == ('gabe', 2)
-
-    ak.input = lambda _: '2.0'
-    result = ak.input_field(test_list, auto_choice, **field_config['ahd_definitions'])
-    assert result == ('gabe : power', 2)
-
-    ak.input = lambda _: '2.0000'
-    result = ak.input_field(test_list, auto_choice, **field_config['ahd_definitions'])
-    assert result == ('gabe : power', 2)
-
-    ak.input = lambda _: '2.0001'
-    result = ak.input_field(test_list, auto_choice, **field_config['ahd_definitions'])
-    assert result == ('gabe', 2)
-
-    ak.input = lambda _: '2.0001200'
-    result = ak.input_field(test_list, auto_choice, **field_config['ahd_definitions'])
-    assert result == ('gabe: power', 2)
-
-    ak.input = lambda _: '2.00012300'
-    result = ak.input_field(test_list, auto_choice, **field_config['ahd_definitions'])
-    assert result == ('gabe: power', 2)
-
-    ak.input = lambda _: '2.100123'
-    result = ak.input_field(test_list, auto_choice, **field_config['ahd_definitions'])
-    assert result == ('gabe: gabe: power', 2)
-
-    ak.input = lambda _: '2.100333'
-    result = ak.input_field(test_list, auto_choice, **field_config['ahd_definitions'])
-    assert result == ('gabe', 2)
-
-    ak.input = lambda _: '2.102333'
-    result = ak.input_field(test_list, auto_choice, **field_config['ahd_definitions'])
-    assert result == ('gabe: power', 2)
-
-    ak.input = lambda _: '2.333'
-    result = ak.input_field(test_list, auto_choice, **field_config['ahd_definitions'])
-    assert result == ('', 2)
-
-    ak.input = lambda _: '2.12'
-    result = ak.input_field(test_list, auto_choice, **field_config['ahd_definitions'])
-    assert result == ('gabe: power', 2)
-
-    ak.input = lambda _: '2.123'
-    result = ak.input_field(test_list, auto_choice, **field_config['ahd_definitions'])
-    assert result == ('gabe: power', 2)
-
-    ak.input = lambda _: '3.123456'
-    result = ak.input_field(test_list, auto_choice, **field_config['ahd_definitions'])
-    assert result == ('blue: zenith', 3)
-
-    ak.input = lambda _: '3.1212512'
-    result = ak.input_field(test_list, auto_choice, **field_config['ahd_definitions'])
-    assert result == ('blue: zenith: blue: zenith: blue: zenith', 3)
-
-    ak.input = lambda _: '3.1415'
-    result = ak.input_field(test_list, auto_choice, **field_config['ahd_definitions'])
-    assert result == ('blue: blue', 3)
-
-    ak.input = lambda _: '4.1415'
-    result = ak.input_field(test_list, auto_choice, **field_config['ahd_definitions'])
-    assert result == ('cztery', 4)
-
-    ak.input = lambda _: '4.2'
-    result = ak.input_field(test_list, auto_choice, **field_config['ahd_definitions'])
-    assert result == ('cztery', 4)
-
-    ak.input = lambda _: '4.008768'
-    result = ak.input_field(test_list, auto_choice, **field_config['ahd_definitions'])
-    assert result == ('cztery', 4)
-
-    ak.input = lambda _: '5.13'
-    result = ak.input_field(test_list, auto_choice, **field_config['ahd_definitions'])
-    assert result == ('', 5)
-
-    ak.input = lambda _: '5.0'
-    result = ak.input_field(test_list, auto_choice, **field_config['ahd_definitions'])
-    assert result == ('', 5)
-
-    ak.input = lambda _: '6.13'
-    result = ak.input_field(test_list, auto_choice, **field_config['ahd_definitions'])
-    assert result == ('raz: trzy', 6)
-
-    ak.input = lambda _: '6.0'
-    result = ak.input_field(test_list, auto_choice, **field_config['ahd_definitions'])
-    assert result == ('raz: dwa: trzy: cztery.', 6)
-
-    ak.input = lambda _: 'all'
-    result = ak.input_field(test_list, auto_choice, **field_config['ahd_definitions'])
-    assert result == (
-        'abba:baba<br>gabe : power<br>   blue: zenith <br>cztery<br>raz: dwa: trzy: cztery.<br>:.:>:<br>f<br>:g.', [1])
-
-    ak.input = lambda _: 'all.'
-    result = ak.input_field(test_list, auto_choice, **field_config['ahd_definitions'])
-    assert result == (
-        'abba:baba<br>gabe : power<br>   blue: zenith <br>cztery<br>raz: dwa: trzy: cztery.<br>:.:>:<br>f<br>:g.', [1])
-
-    ak.input = lambda _: 'all.1'
-    result = ak.input_field(test_list, auto_choice, **field_config['ahd_definitions'])
-    assert result == ('abba<br>gabe<br>blue<br>cztery<br>raz<br><br>f<br>', [1])
-
-    ak.input = lambda _: '2,all.1'
-    result = ak.input_field(test_list, auto_choice, **field_config['ahd_definitions'])
-    assert result == ('gabe : power<br>abba<br>gabe<br>blue<br>cztery<br>raz<br><br>f<br>', 2)
-
-    ak.input = lambda _: '-1.1'
-    result = ak.input_field(test_list, auto_choice, **field_config['ahd_definitions'])
-    assert result == ('abba<br>gabe<br>blue<br>cztery<br>raz<br><br>f<br>', [1])
-
-    ak.input = lambda _: '2,-1.1'
-    result = ak.input_field(test_list, auto_choice, **field_config['ahd_definitions'])
-    assert result == ('gabe : power', 2)
-
-    ak.input = lambda _: '-all'
-    result = ak.input_field(test_list, auto_choice, **field_config['ahd_definitions'])
-    assert result == (':g.<br>f<br>:.:>:<br>raz: dwa: trzy: cztery.<br>cztery<br>   blue: zenith <br>gabe : power<br>abba:baba', 9)
-
-    # ['abba:baba', 'gabe : power', '   blue: zenith ', 'cztery', '', 'raz: dwa: trzy: cztery.', ':.:>:', 'f', ':g.']
-    ak.input = lambda _: '1:5.12'
-    result = ak.input_field(test_list, auto_choice, **field_config['ahd_definitions'])
-    assert result == ('abba: baba<br>gabe: power<br>blue: zenith<br>cztery', [1])
-
-    ak.input = lambda _: '2:5.12'
-    result = ak.input_field(test_list, auto_choice, **field_config['ahd_definitions'])
-    assert result == ('gabe: power<br>blue: zenith<br>cztery', 2)
-
-    ak.input = lambda _: '2:5.12'
-    result = ak.input_field(test_list, auto_choice, **field_config['ahd_definitions'])
-    assert result == ('gabe: power<br>blue: zenith<br>cztery', 2)
-
-    ak.input = lambda _: '3:6.12'
-    result = ak.input_field(test_list, auto_choice, **field_config['ahd_definitions'])
-    assert result == ('blue: zenith<br>cztery<br>raz: dwa', 3)
-
-    ak.input = lambda _: '3:6.421'
-    result = ak.input_field(test_list, auto_choice, **field_config['ahd_definitions'])
-    assert result == ('zenith: blue<br>cztery<br>cztery: dwa: raz', 3)
-
-    ak.input = lambda _: '3:6:6.421'
-    result = ak.input_field(test_list, auto_choice, **field_config['ahd_definitions'])
-    assert result == ('zenith: blue<br>cztery<br>cztery: dwa: raz<br>cztery: dwa: raz', 3)
-
-    ak.input = lambda _: '3:6:6.8421'
-    result = ak.input_field(test_list, auto_choice, **field_config['ahd_definitions'])
-    assert result == ('zenith: blue<br>cztery<br>cztery: dwa: raz<br>cztery: dwa: raz', 3)
-"""
 
 if __name__ == '__main__':
     test_basic_functionality()
     test_comma_separated_singles()
+    test_double_range_inputs()
+    test_multi_range_inputs()
+    test_combined_inputs()
+    test_empty_content_list()
+    test_specifiers()

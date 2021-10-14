@@ -138,14 +138,15 @@ def print_config_representation() -> None:
 
         color_a = bool_colors.get(state_a, '')
         color_b = bool_colors.get(state_b, '')
-        # no need for the third column color at the moment
+        color_c = bool_colors.get(state_c, '')
+        if color_c: state_c = 10*'\b'+'watch?v=LDl544TI_mU'
 
         level_a = '\b\b\b\b\b' if '[' in a else ''
         level_b = '\b\b\b\b\b' if '[' in b else ''
 
         print(f'{a:13s}{color_a}{state_a:10s}{level_a}{R}'
               f'{b:15s}{color_b}{state_b:11s}{level_b}{R}'
-              f'{c:10s}{state_c}{R}')
+              f'{c:10s}{color_c}{state_c}{R}')
 
     print(f'\n--audio-path: {config["audio_path"]}\n'
           f'--audio-device: {config["audio_device"]}\n\n'
