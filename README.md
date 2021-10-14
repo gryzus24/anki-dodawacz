@@ -23,8 +23,7 @@ Przy instalacji zaznaczamy "Add python to PATH"
 ##### Po zainstalowaniu Pythona:<br>
 
 Otwieramy terminal (cmd na windowsie) i pobieramy wymagane biblioteki wpisując:<br>
-`pip install BeautifulSoup4 colorama requests lxml cchardet`<br>
-(cchardet jest opcjonalny, ale przyspiesza wyświetlanie słowników)
+`pip install BeautifulSoup4 colorama requests lxml`<br>
 
 Następnie wpisujemy:<br>
 `cd <ścieżka do folderu z programem>`<br>
@@ -47,7 +46,7 @@ Pobieramy archiwum tar.gz i rozpakowujemy.
   Na większości dystrybucji odpowiednia wersja Pythona powinna być już zainstalowana.
   
   Instalujemy wymagane biblioteki:<br>
-    `pip install BeautifulSoup4 colorama requests lxml cchardet`
+    `pip install BeautifulSoup4 colorama requests lxml`
 
   Otwieramy za pomocą Pythona:<br>
     `python ankidodawacz.py` lub `python3 ankidodawacz.py`
