@@ -141,6 +141,9 @@ class Lexico(Dictionary):
                 self.print(f'{len(str(subindex)) * " "}  {index_c.color}- {exsen_c.color}{exg_to_print}')
 
         soup = request_soup(self.URL + query)
+        if soup is None:
+            return None
+
         main_div = soup.find('div', class_='entryWrapper')
         page_check = main_div.find('div', class_='breadcrumbs layout', recursive=False)
         if page_check.get_text(strip=True) == 'HomeEnglish':

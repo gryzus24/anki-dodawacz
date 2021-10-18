@@ -184,13 +184,14 @@ def sentence_input():
         return ChosenElement()
 
     sentence = input(f'{input_c.color}Dodaj przykładowe zdanie:{inputtext_c.color} ')
-    if sentence.lower() == '-s':
-        print(f'{GEX.color}Pominięto dodawanie zdania')
-        return ChosenElement()
-    elif sentence.lower() == '-sc':
+    if sentence.lower() == '-sc':
         print(f'{GEX.color}Pominięto dodawanie karty')
         return None
-    return ChosenElement(sentence)
+    elif sentence.lower() == '-s':
+        print(f'{GEX.color}Pominięto dodawanie zdania')
+        return ChosenElement()
+    else:
+        return ChosenElement(sentence)
 
 
 def map_specifiers_to_inputs(range_tuples: list) -> tuple:

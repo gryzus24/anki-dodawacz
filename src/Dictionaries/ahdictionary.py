@@ -151,6 +151,9 @@ class AHDictionary(Dictionary):
             return True
 
         soup = request_soup(self.URL + query)
+        if soup is None:
+            return None
+
         if soup.find('div', {'id': 'results'}).text == 'No word definition found':
             print(f'{err_c.color}Nie znaleziono {R}"{query}"{err_c.color} w AH Dictionary')
             return None

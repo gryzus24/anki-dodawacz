@@ -41,6 +41,9 @@ class WordNet(Dictionary):
             return self
 
         syn_soup = request_soup(self.URL + query)
+        if syn_soup is None:
+            return None
+
         header = syn_soup.find('h3').text
         if header.startswith('Your') or header.startswith('Sorry'):
             print(f'{err_c.color}Nie znaleziono {R}"{query}"{err_c.color} na WordNecie')

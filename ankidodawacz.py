@@ -39,6 +39,7 @@ if sys.platform.startswith('linux'):
     import readline
     readline.read_init_file()
 
+__version__ = 'v1.0.3-2'
 
 commands = {
     # commands that take arguments
@@ -241,7 +242,6 @@ def main():
     if not os.path.exists('Karty_audio') and config['audio_path'] == 'Karty_audio':
         os.mkdir('Karty_audio')
 
-    __version__ = 'v1.0.3-1'
     print(f'{BOLD}- Dodawacz kart do Anki {__version__} -{END}\n'
           'Wpisz "--help", aby wyświetlić pomoc\n\n')
 

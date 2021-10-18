@@ -44,6 +44,9 @@ class FarlexIdioms(Dictionary):
 
     def get_dictionary(self, query, **kw):
         soup = request_soup(self.URL + query)
+        if soup is None:
+            return None
+
         relevant_content = soup.find('section', {'data-src': 'FarlexIdi'})
         if relevant_content is None:
             print(f'{err_c.color}Nie znaleziono {R}"{query}"{err_c.color} w Farlex Idioms')
