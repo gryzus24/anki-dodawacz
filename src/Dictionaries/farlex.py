@@ -13,15 +13,15 @@
 # You should have received a copy of the GNU General Public License
 # along with this program. If not, see <http://www.gnu.org/licenses/>.
 
-from src.Dictionaries.dictionary_base import Dictionary, request_soup
-from src.Dictionaries.diki import get_audio_from_diki
+from src.Dictionaries.audio_dictionaries import diki_audio
+from src.Dictionaries.dictionary_base import Dictionary
 from src.Dictionaries.input_fields import InputField
-from src.Dictionaries.utils import wrap_lines, valid_index_or_zero
+from src.Dictionaries.utils import wrap_lines, request_soup
 from src.colors import \
     R, \
     def1_c, \
     exsen_c, index_c, phrase_c, \
-    err_c, delimit_c
+    err_c
 from src.data import field_config, config
 
 
@@ -53,6 +53,7 @@ class FarlexIdioms(Dictionary):
             return None
 
         self.manage_terminal_size()
+        self.print_title('Farlex Idioms', end='')
 
         last_phrase = ''
         content_blocks = relevant_content.find_all('div', class_=('ds-single', 'ds-list'), recursive=False)
@@ -61,34 +62,33 @@ class FarlexIdioms(Dictionary):
             idiom_phrase = content_block.find_previous_sibling('h2').text.strip()
             self.phrases.append(idiom_phrase)
 
-            if last_phrase == idiom_phrase:
-                self.print()
-            else:
+            if last_phrase != idiom_phrase:
                 last_phrase = idiom_phrase
-                if blockindex == 1:
-                    self.print_title('Farlex Idioms')
-                else:
-                    self.print(f'{delimit_c.color}{self.textwidth * self.HORIZONTAL_BAR}')
-                self.print(f'  {phrase_c.color}{idiom_phrase}')
+                self.print(f'\n  {phrase_c.color}{idiom_phrase}')
 
             # Gather definitions
             idiom_definition = content_block.find('span', class_='illustration', recursive=False)
-            idiom_definition = idiom_definition.previous_element.lstrip('1234567890.').strip()
+            # idiom_definition can be None if there are no illustrations
+            if idiom_definition is None:
+                idiom_definition = content_block.text.lstrip('1234567890.').strip()
+            else:
+                idiom_definition = idiom_definition.previous_element.lstrip('1234567890.').strip()
             self.definitions.append(idiom_definition)
 
-            idiom_def_tp = wrap_lines(idiom_definition, self.textwidth, len(str(blockindex)), indent=self.indent - 1,
-                                      gap=1)
+            bilen = len(str(blockindex))
+            idiom_def_tp = wrap_lines(idiom_definition, self.textwidth, bilen, self.indent - 1, 1)
             self.print(f'{index_c.color}{blockindex} {def1_c.color}{idiom_def_tp}')
 
             # Gather idiom examples
             illustrations = content_block.find_all('span', class_='illustration', recursive=False)
-            temp = ''
+            temp = []
             for illust in illustrations:
                 illust = "'" + illust.text.strip() + "'"
-                illust_tp = wrap_lines(illust, self.textwidth, len(str(blockindex)), indent=2 + self.indent, gap=3)
-                self.print(f'{len(str(blockindex)) * " "} {index_c.color}- {exsen_c.color}{illust_tp}')
-                temp += illust + '<br>'
-            self.example_sentences.append(temp[:-4])
+                temp.append(illust)
+                if config['showexsen']:
+                    illust_tp = wrap_lines(illust, self.textwidth, bilen, self.indent, 1)
+                    self.print(f'{bilen * " "} {exsen_c.color}{illust_tp}')
+            self.example_sentences.append('<br>'.join(temp))
 
         if config['top']:
             print('\n' * (self.usable_height - 2))
@@ -105,14 +105,13 @@ class FarlexIdioms(Dictionary):
             return None
 
         choices = def_field.get_choices()
-        fc = valid_index_or_zero(choices)
+        fc = choices.first_choice_or_zero
         self.chosen_phrase = self.phrases[fc]
 
         if config['udef'] and chosen_defs:
             chosen_defs.hide(self.chosen_phrase)
 
-        auto_choice = self.choices_to_auto_choice(choices)
-
+        auto_choice = choices.as_exsen_auto_choice(self.example_sentences)
         chosen_exsen = exsen_field.get_element(self.example_sentences, auto_choice)
         if chosen_exsen is None:
             return None
@@ -121,10 +120,9 @@ class FarlexIdioms(Dictionary):
             chosen_exsen.hide(self.chosen_phrase)
 
         return {
-            'phrase': self.chosen_phrase,
             'definicja': chosen_defs.content,
             'przyklady': chosen_exsen.content
         }
 
     def get_audio(self):
-        return get_audio_from_diki(self.chosen_phrase, flag='')
+        return diki_audio(raw_phrase=self.chosen_phrase, flag='')

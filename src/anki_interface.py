@@ -18,9 +18,15 @@ import os
 import urllib.request
 from urllib.error import URLError
 
-from src.colors import R, YEX, GEX, err_c
-from src.commands import save_config
-from src.data import ROOT_DIR, config, config_ac, ankiconnect_base_fields
+from src.Dictionaries.input_fields import ask_yes_no
+from src.colors import R, BOLD, END, YEX, GEX, index_c, err_c
+from src.commands import save_command
+from src.data import ROOT_DIR, config, config_ac, AC_BASE_FIELDS, number_to_note_dict
+
+# Module global configuration allows for hard refresh
+# of saved notes without restarting the program and
+# takes care of some edge cases
+_config_ac = config_ac
 
 
 def save_ac_config(c):
@@ -28,56 +34,50 @@ def save_ac_config(c):
         json.dump(c, f, indent=2)
 
 
-def refresh_notes():
-    try:
-        save_ac_config({})
-        organize_notes(ankiconnect_base_fields, corresp_mf_config={}, print_errors=False)
-        print(f'{YEX.color}Notatki przebudowane')
-    except URLError:
-        return 'Nie udało się połączyć z AnkiConnect\n' \
-               'Otwórz Anki i spróbuj ponownie'
-    except FileNotFoundError:
-        return f'Plik {R}"ankiconnect.json"{err_c.color} nie istnieje'
+def refresh_cached_notes():
+    global _config_ac
+    _config_ac = {}
+
+    err = cache_current_note(refresh=True)
+    if err is not None:
+        try:
+            save_ac_config(_config_ac)
+        except FileNotFoundError:
+            return f'Plik {R}"ankiconnect.json"{err_c.color} nie istnieje'
+    print(f'{YEX.color}Notatki przebudowane')
 
 
-def create_note(*args, **kwargs) -> str:
-    note_name = args[1].lower()
+def show_available_notes():
+    print(f'{BOLD}Dostępne notatki:{END}')
+    for i, note in number_to_note_dict.items():
+        print(f'{index_c.color}{i} {R}{note}')
+    print()
+
+
+def add_note_to_anki(*args, **kwargs) -> str:
+    arg = args[1].lower()
+    note_name = number_to_note_dict.get(arg, arg)
 
     try:
         with open(os.path.join(ROOT_DIR, f'notes/{note_name}.json'), 'r') as f:
             note_config = json.load(f)
-
-        response = invoke('modelNames')
-        if response == 'out of reach':
-            return 'Wybierz profil, aby dodać notatkę'
     except FileNotFoundError:
         return f'Notatka {R}"{note_name}"{err_c.color} nie została znaleziona'
-    except URLError:
-        return 'Włącz Anki, aby dodać notatkę'
 
-    if note_config['modelName'] in response:
-        return f'{YEX.color}Notatka {R}"{note_config["modelName"]}"{YEX.color} już znajduje się w bazie notatek'
-
-    try:
-        response = invoke('createModel',
-                          modelName=note_config['modelName'],
-                          inOrderFields=note_config['fields'],
-                          css=note_config['css'],
-                          cardTemplates=[{'Name': note_config['cardName'],
-                                          'Front': note_config['front'],
-                                          'Back': note_config['back']}])
-        if response == 'out of reach':
-            raise URLError
-    except URLError:
-        return 'Nie można nawiązać połączenia z Anki\n' \
-               'Notatka nie została utworzona'
+    model_name = note_config['modelName']
+    _, err = invoke('createModel',
+                    modelName=model_name,
+                    inOrderFields=note_config['fields'],
+                    css=note_config['css'],
+                    cardTemplates=[{'Name': note_config['cardName'],
+                                    'Front': note_config['front'],
+                                    'Back': note_config['back']}])
+    if err is not None:
+        return f'{err_c.color}Notatka nie została dodana:\n{err}\n'
 
     print(f'{GEX.color}Notatka dodana pomyślnie')
-
-    note_ok = input(f'Czy chcesz ustawić "{note_config["modelName"]}" jako -note? [T/n]: ')
-    if note_ok.lower() in ('', 't', 'y', 'tak', 'yes', '1'):
-        config['note'] = note_config['modelName']
-        save_config(config)
+    if ask_yes_no(f'Czy chcesz ustawić "{model_name}" jako -note?', default=True):
+        save_command('note', model_name)
 
 
 def ankiconnect_request(action, **params):
@@ -86,142 +86,121 @@ def ankiconnect_request(action, **params):
 
 def invoke(action, **params):
     requestjson = json.dumps(ankiconnect_request(action, **params)).encode('utf-8')
-    # Using 127.0.0.1 as Windows is very slow to resolve "localhost" for some reason
-    response = json.load(urllib.request.urlopen(urllib.request.Request('http://127.0.0.1:8765', requestjson)))
+
+    try:
+        # Using 127.0.0.1 as Windows is very slow to resolve "localhost" for some reason
+        response = json.load(urllib.request.urlopen(urllib.request.Request('http://127.0.0.1:8765', requestjson)))
+    except URLError:
+        return None, '  Nie udało się nawiązać połączenia z Anki:\n' \
+                     '    Otwórz Anki i spróbuj ponownie.'
+
     if len(response) != 2:
         raise Exception('response has an unexpected number of fields')
     if 'error' not in response:
         raise Exception('response is missing required error field')
     if 'result' not in response:
         raise Exception('response is missing required result field')
-    if response['error'] is None:
-        return response['result']
-    if response['error'].startswith('model was not found:'):
-        return 'no note'
-    if response['error'].startswith('cannot create note because it is empty'):
-        return 'empty'
-    if response['error'].startswith('cannot create note because it is a duplicate'):
-        return 'duplicate'
-    if response['error'].startswith('collection is not available'):
-        return 'out of reach'
-    if response['error'].startswith('deck was not found'):
-        return 'no deck'
-    if response['error'] is not None:
+
+    err = response['error']
+    if err is None:
+        return response['result'], None
+
+    err = err.lower()
+    if err.startswith('model was not found:'):
+        msg = f'  Nie znaleziono notatki: {R}{config["note"]}{err_c.color}\n' \
+              f'  Aby zmienić notatkę użyj: {R}-note {{nazwa notatki}}'
+    elif err.startswith('deck was not found'):
+        msg = f'  Nie znaleziono talii: {R}{config["deck"]}{err_c.color}\n' \
+              f'  Aby zmienić talię użyj: {R}-deck {{nazwa talii}}\n' \
+              f'  {err_c.color}Jeżeli nazwa talii wydaje się być prawidłowa zmień\n' \
+              f'  nazwę talii w Anki, aby używała pojedynczych spacji.'
+    elif err.startswith('cannot create note because it is empty'):
+        msg = f'  Pierwsze pole notatki nie zostało wypełnione.\n' \
+              f'  Sprawdź czy notatka {R}{config["note"]}{err_c.color} zawiera wymagane pola\n' \
+              f'  lub jeżeli nazwy pól notatki były zmieniane, użyj {R}-refresh'
+    elif err.startswith('cannot create note because it is a duplicate'):
+        msg = f'  Duplikat.\n' \
+              f'  Aby zezwolić na duplikaty użyj: {R}-duplicates {{on|off}}{err_c.color}\n' \
+              f'  lub zmień zakres ich sprawdzania: {R}-dupescope {{deck|collection}}'
+    elif err.startswith('model name already exists'):
+        msg = '  Notatka już znajduje się w bazie notatek.'
+    elif err.startswith('collection is not available'):
+        msg = '  Sprawdź czy Anki jest w pełni otwarte.'
+    else:
         raise Exception(response['error'])
-    return response['result']
+
+    return None, msg  # error
 
 
-def organize_notes(base_fields, corresp_mf_config, print_errors):
-    usable_fields = invoke('modelFieldNames', modelName=config['note'])
+def cache_current_note(*, refresh=False):
+    model_name = config['note']
+    model_fields, err = invoke('modelFieldNames', modelName=model_name)
+    if err is not None:
+        return err
 
-    if usable_fields == 'no note':
-        if print_errors:
-            print(f'{err_c.color}Karta nie została dodana\n'
-                  f'Nie znaleziono notatki {R}{config["note"]}{err_c.color}\n'
-                  f'Aby zmienić notatkę użyj {R}-note [nazwa notatki]')
-        return 'no note'
-
-    if usable_fields == 'out of reach':
-        if print_errors:
-            print(f'{err_c.color}Karta nie została dodana\n'
-                  f'Kolekcja jest nieosiągalna\n'
-                  f'Sprawdź czy Anki jest w pełni otwarte')
-        return 'out of reach'
     # tries to recognize familiar fields and arranges them
-    for ufield in usable_fields:
-        for base_field in base_fields:
-            if base_field in ufield.lower().split(' ')[0]:
-                corresp_mf_config[ufield] = base_fields[base_field]
+    organized_fields = {}
+    for mfield in model_fields:
+        for scheme, base in AC_BASE_FIELDS:
+            if scheme in mfield.lower().split(' ')[0]:
+                organized_fields[mfield] = base
                 break
+
     # So that blank notes are not saved in ankiconnect.json
-    if not corresp_mf_config:
-        if print_errors:
-            print(f'{err_c.color}Karta nie została dodana\n'
-                  f'Sprawdź czy notatka {R}{config["note"]}{err_c.color} zawiera wymagane pola\n'
-                  f'lub jeżeli nazwy pól aktualnej notatki zostały zmienione, wpisz {R}-refresh')
-        return 'all fields empty'
+    if not organized_fields:
+        if refresh:
+            return None
+        return f'  Sprawdź czy notatka {R}{model_name}{err_c.color} zawiera wymagane pola\n' \
+               f'  lub jeżeli nazwy pól aktualnej notatki zostały zmienione, wpisz {R}-refresh'
 
-    config_ac[config['note']] = corresp_mf_config
-    save_ac_config(config_ac)
+    _config_ac[model_name] = organized_fields
+    save_ac_config(_config_ac)
 
 
-def add_card(field_values) -> None:
+def add_card_to_anki(field_values) -> None:
+    note_name = config['note']
+
+    # So that familiar notes aren't reorganized
+    if note_name not in _config_ac:
+        err = cache_current_note()
+        if err is not None:
+            print(f'{err_c.color}Nie udało się rozpoznać notatki:\n{err}\n')
+            return None
+
+    # When note is not found return an empty dict so that
+    # there's no attribute error in the try block below
+    fields_to_add = {}
+    note_from_config = _config_ac.get(note_name, {})
     try:
-        corresp_model_fields = {}
-        fields_ankiconf = config_ac.get(config['note'])
-        # When organizing_notes returns an error, card shouldn't be created
-        organize_err = None
-        # So that familiar notes aren't reorganized
-        if fields_ankiconf is None or config['note'] not in config_ac:
-            organize_err = organize_notes(ankiconnect_base_fields, corresp_mf_config={}, print_errors=True)
+        for anki_field_name, base in note_from_config.items():
+            fields_to_add[anki_field_name] = field_values[base]
+    except KeyError:  # shouldn't happen if ankiconnect.json isn't tampered with
+        print(f'{err_c.color}Karta nie została dodana:\n'
+              f'  Sprawdź czy notatka {R}{note_name}{err_c.color} zawiera wymagane pola\n'
+              f'  lub jeżeli nazwy pól aktualnej notatki zostały zmienione, wpisz {R}-refresh\n')
+        return None
 
-        if organize_err is not None:
-            return None
-        # When note is not found return an empty dict so that
-        # there's no attribute error in the try block below
-        config_note = config_ac.get(config['note'], {})
-        # Get note fields from ankiconnect.json
-        try:
-            for ankifield, value in config_note.items():
-                corresp_model_fields[ankifield] = field_values[value]
-        except KeyError:
-            print(f'{err_c.color}Karta nie została dodana\n'
-                  f'Sprawdź czy notatka {R}{config["note"]}{err_c.color} zawiera wymagane pola\n'
-                  f'lub jeżeli nazwy pól aktualnej notatki zostały zmienione, wpisz {R}-refresh')
-            return None
-        # r represents card id or an error
-        r = invoke('addNote',
-                   note={'deckName': config['deck'],
-                         'modelName': config['note'],
-                         'fields': corresp_model_fields,
-                         'options': {
-                             'allowDuplicate': config['duplicates'],
-                             'duplicateScope': config['dupescope']
-                         },
-                         'tags': config['tags'].replace('-', '', 1).split(', ')}
-                   )
-        if r == 'empty':
-            print(f'{err_c.color}Karta nie została dodana\n'
-                  f'Pierwsze pole notatki nie zostało wypełnione\n'
-                  f'Sprawdź czy notatka {R}{config["note"]}{err_c.color} zawiera wymagane pola\n'
-                  f'lub jeżeli nazwy pól aktualnej notatki zostały zmienione, wpisz {R}-refresh')
-            return None
-        elif r == 'duplicate':
-            print(f'{err_c.color}Karta nie została dodana, bo jest duplikatem\n'
-                  f'Zezwól na dodawanie duplikatów wpisując {R}-duplicates on\n'
-                  f'{err_c.color}lub zmień zasięg sprawdzania duplikatów {R}-dupescope {{deck|collection}}')
-            return None
-        elif r == 'out of reach':
-            print(f'{err_c.color}Karta nie została dodana, bo kolekcja jest nieosiągalna\n'
-                  f'Sprawdź czy Anki jest w pełni otwarte')
-            return None
-        elif r == 'no deck':
-            print(f'{err_c.color}Karta nie została dodana, bo talia {R}{config["deck"]}{err_c.color} nie istnieje\n'
-                  f'Aby zmienić talię wpisz {R}-deck [nazwa talii]\n'
-                  f'{err_c.color}Jeżeli nazwa talii wydaje się być prawidłowa\n'
-                  f'to spróbuj zmienić nazwę talii w Anki tak,\n'
-                  f'aby używała pojedynczych spacji')
-            return None
-        elif r == 'no note':
-            print(f'{err_c.color}Karta nie została dodana\n'
-                  f'Nie znaleziono notatki {R}{config["note"]}{err_c.color}\n'
-                  f'Aby zmienić notatkę użyj {R}-note [nazwa notatki]')
-            return None
+    _, err = invoke('addNote',
+                    note={
+                        'deckName': config['deck'],
+                        'modelName': note_name,
+                        'fields': fields_to_add,
+                        'options': {
+                            'allowDuplicate': config['duplicates'],
+                            'duplicateScope': config['dupescope']
+                        },
+                        'tags': config['tags'].replace('-', '', 1).split(', ')
+                    })
+    if err is not None:
+        print(f'{err_c.color}Karta nie została dodana do Anki:\n{err}\n')
+        return None
 
-        print(f'{GEX.color}Karta pomyślnie dodana do Anki\n'
-              f'{YEX.color}Talia: {R}{config["deck"]}\n'
-              f'{YEX.color}Notatka: {R}{config["note"]}\n'
-              f'{YEX.color}Wykorzystane pola:')
+    print(f'{GEX.color}Karta pomyślnie dodana do Anki\n'
+          f'{YEX.color}Talia: {R}{config["deck"]}\n'
+          f'{YEX.color}Notatka: {R}{note_name}\n'
+          f'{YEX.color}Wykorzystane pola:')
 
-        added_fields = (x for x in corresp_model_fields if corresp_model_fields[x].strip())
-        for added_field in added_fields:
-            print(f'- {added_field}')
-        print(f'{YEX.color}Etykiety: {R}{config["tags"]}\n')
-
-    except URLError:
-        print(f'{err_c.color}Nie udało się połączyć z AnkiConnect\n'
-              f'Otwórz Anki i spróbuj ponownie\n')
-    except AttributeError:
-        save_ac_config({})
-        print(f'{err_c.color}Karta nie została dodana, bo plik {R}"ankiconnect.json"{err_c.color} był pusty\n'
-              f'Zrestartuj program i spróbuj dodać ponownie')
+    for anki_field_name, content in fields_to_add.items():
+        if content.strip():
+            print(f'- {anki_field_name}')
+    print(f'{YEX.color}Etykiety: {R}{config["tags"]}\n')

@@ -13,9 +13,9 @@
 # You should have received a copy of the GNU General Public License
 # along with this program. If not, see <http://www.gnu.org/licenses/>.
 
-from src.Dictionaries.dictionary_base import Dictionary, request_soup, prepare_flags, evaluate_skip
+from src.Dictionaries.dictionary_base import Dictionary, prepare_flags, evaluate_skip
 from src.Dictionaries.input_fields import InputField
-from src.Dictionaries.utils import wrap_lines, valid_index_or_zero
+from src.Dictionaries.utils import wrap_lines, request_soup
 from src.colors import \
     R, BOLD, END, \
     def1_c, def2_c, defsign_c, pos_c, etym_c, \
@@ -66,12 +66,10 @@ def phrase_tenses_to_print(phrase_tenses: list) -> str:
     for i, elem in enumerate(phrase_tenses):
         if elem == 'or':
             pht.pop()
-            ored = ' '.join((phrase_tenses[i - 1], phrase_tenses[i], phrase_tenses[i + 1]))
-            pht.append(ored)
+            pht.append(' '.join((phrase_tenses[i-1], phrase_tenses[i], phrase_tenses[i+1])))
             skip_next = True
         elif elem == 'also':
-            alsoed = ' '.join((phrase_tenses[i], phrase_tenses[i + 1]))
-            pht.append(alsoed)
+            pht.append(' '.join((phrase_tenses[i], phrase_tenses[i+1])))
             skip_next = True
         else:
             if skip_next:
@@ -112,7 +110,6 @@ def ahd_to_ipa_translation(ahd_phonetics: str, th: str) -> str:
 
 
 class AHDictionary(Dictionary):
-    URL = 'https://www.ahdictionary.com/word/search.html?q='
     name = 'ahd'
     allow_thesaurus = True
 
@@ -120,6 +117,7 @@ class AHDictionary(Dictionary):
         super().__init__()
         self.phrases = []
         self.definitions = []
+        self.example_sentences = []
         self.parts_of_speech = []
         self.etymologies = []
         self.audio_urls = []
@@ -150,7 +148,7 @@ class AHDictionary(Dictionary):
                 return False
             return True
 
-        soup = request_soup(self.URL + query)
+        soup = request_soup('https://www.ahdictionary.com/word/search.html?q=' + query)
         if soup is None:
             return None
 
@@ -255,7 +253,7 @@ class AHDictionary(Dictionary):
                 br = '\n' if len(pos_label) + len(phrase_tenses_tp) + 3 > self.textwidth else ' '
                 self.print(f'{br} {inflection_c.color}{phrase_tenses_tp}')
 
-                # Add definitions and corresponding phrases
+                # Add definitions and their corresponding elements
                 definitions = block.find_all('div', class_=('ds-list', 'ds-single'), recursive=False)
                 for root_definition in definitions:
                     root_definition = definition_cleanup(root_definition.text)
@@ -265,16 +263,27 @@ class AHDictionary(Dictionary):
                         subindex += 1
                         # strip an occasional leftover octothorpe
                         subdefinition = subdefinition.strip('# ')
+
                         subdef_to_print = wrap_lines(
-                            subdefinition, self.textwidth, len(str(subindex)),
-                            indent=self.indent, gap=2
-                        ).replace(':', f':{exsen_c.color}', 1)
+                            subdefinition, self.textwidth, len(str(subindex)), self.indent, 2
+                        )
+                        if config['showexsen']:
+                            subdef_to_print = subdef_to_print.replace(':', f':{exsen_c.color}', 1)
+                        else:
+                            subdef_to_print = subdef_to_print.split(':', 1)[0].strip(' .') + '.'
 
                         sign = '>' if i == 0 else ' '
                         def_c = def1_c if subindex % 2 else def2_c
                         self.print(f'{defsign_c.color}{sign}{index_c.color}{subindex} {def_c.color}{subdef_to_print}')
 
-                        self.definitions.append(subdefinition)
+                        subdef_exsen = subdefinition.split(':', 1)
+
+                        self.definitions.append(subdef_exsen[0].strip(' .') + '.')
+                        if len(subdef_exsen) == 2:
+                            self.example_sentences.append(subdef_exsen[1].strip())
+                        else:
+                            self.example_sentences.append('')
+
                         if filter_subdefs:
                             break
 
@@ -283,7 +292,7 @@ class AHDictionary(Dictionary):
             if parts_of_speech:
                 self.print()
 
-            td_pos = ''
+            td_pos = []
             for pos in parts_of_speech:
                 # removing ',' makes parts of speech with multiple spelling variants get
                 # their phonetic spelling correctly detected
@@ -304,8 +313,8 @@ class AHDictionary(Dictionary):
                         .replace('', 'ōō').replace('', 'ōō')
 
                 self.print(f' {pos_c.color}{postring}  {phon_c.color}{phon_spell}')
-                td_pos += f'{postring} | '
-            self.parts_of_speech.append(td_pos.rstrip('| '))
+                td_pos.append(postring)
+            self.parts_of_speech.append(' | '.join(td_pos))
 
             # Add etymologies
             etymology = td.find('div', class_='etyseg', recursive=False)
@@ -336,24 +345,32 @@ class AHDictionary(Dictionary):
         return None
 
     def input_cycle(self):
-        def_field = InputField(*field_config['definitions'], spec_split=':')
+        def_field = InputField(*field_config['definitions'])
+        exsen_field = InputField(*field_config['example_sentences'], spec_split=';')
         pos_field = InputField(*field_config['parts_of_speech'], connector=' | ', spec_split=' |')
-        etym_field = InputField(*field_config['etymologies'], spec_split=',')
+        etym_field = InputField(*field_config['etymologies'])
 
         chosen_defs = def_field.get_element(self.definitions, auto_choice='1')
         if chosen_defs is None:
             return None
 
-        mapped_choices = def_field.get_choices(mapping=self.last_definition_indexes)
-        fc = valid_index_or_zero(mapped_choices)
+        mapped_choices = def_field.get_choices(self.last_definition_indexes)
+        fc = mapped_choices.first_choice_or_zero
         self.chosen_phrase = self.phrases[fc]
         self.chosen_audio_url = self.choose_audio_url(fc)
 
         if config['udef'] and chosen_defs:
             chosen_defs.hide(self.chosen_phrase)
 
-        auto_choice = self.choices_to_auto_choice(mapped_choices)
+        auto_choice = def_field.get_choices().as_exsen_auto_choice(self.example_sentences)
+        chosen_exsen = exsen_field.get_element(self.example_sentences, auto_choice)
+        if chosen_exsen is None:
+            return None
 
+        if config['uexsen'] and chosen_exsen:
+            chosen_exsen.hide(self.chosen_phrase)
+
+        auto_choice = mapped_choices.as_auto_choice
         chosen_pos = pos_field.get_element(self.parts_of_speech, auto_choice)
         if chosen_pos is None:
             return None
@@ -363,25 +380,8 @@ class AHDictionary(Dictionary):
             return None
 
         return {
-            'phrase': self.chosen_phrase,
             'definicja': chosen_defs.content,
+            'przyklady': chosen_exsen.content,
             'czesci_mowy': chosen_pos.content,
             'etymologia': chosen_etyms.content
         }
-
-    @staticmethod
-    def ahd_audio_url(url):
-        def called(query):
-            soup = request_soup(url + query)
-            audio_url = soup.find('a', {'target': '_blank'}).get('href')
-            if audio_url == 'http://www.hmhco.com':
-                return None
-            return 'https://www.ahdictionary.com' + audio_url
-        return called
-
-    def get_audio(self, query=None):
-        return self._get_audio(
-            phrase_=query,
-            dict_name='AHD',
-            fallback_func=self.ahd_audio_url(self.URL)
-        )

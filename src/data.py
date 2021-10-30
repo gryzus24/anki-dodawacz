@@ -1,26 +1,34 @@
 import json
 import os.path
+from json import JSONDecodeError
 
 from colorama import Fore
 
 ROOT_DIR = os.path.split(os.path.abspath(os.path.dirname(__file__)))[0]
 
 try:
-    with open(os.path.join(ROOT_DIR, 'config/ankiconnect.json'), 'r') as af:
-        config_ac = json.load(af)
-except FileNotFoundError:
-    with open(os.path.join(ROOT_DIR, 'config/ankiconnect.json'), 'w') as af:
-        af.write('{}')
-
-try:
-    with open(os.path.join(ROOT_DIR, 'config/config.json'), 'r') as conf_file:
-        config = json.load(conf_file)
-except FileNotFoundError:
-    print('Plik "config.json" nie istnieje')
+    with open(os.path.join(ROOT_DIR, 'config/config.json'), 'r') as cf:
+        config = json.load(cf)
+except (FileNotFoundError, JSONDecodeError):
+    print(' Plik "config.json" nie istnieje '.center(79, '='))
     raise
 
+try:
+    with open(os.path.join(ROOT_DIR, 'config/ankiconnect.json'), 'r') as af:
+        config_ac = json.load(af)
+except (FileNotFoundError, JSONDecodeError):
+    with open(os.path.join(ROOT_DIR, 'config/ankiconnect.json'), 'w') as af:
+        af.write('{}')
+    config_ac = json.loads('{}')
 
-command_help = {
+# Creates an ID to NOTE_NAME dictionary from the contents of ../notes:
+#   e.g. {'1': 'gryzus-std', '2': 'gryzus-std-light', '3': 'gryzus-std-dark'}
+_notes = os.listdir(os.path.join(ROOT_DIR, 'notes'))
+number_to_note_dict = dict(
+    zip(map(str, range(1, len(_notes) + 1)), map(lambda x: x[:-5], sorted(_notes, reverse=True)))
+)
+
+command_to_help_dict = {
     # Boolean commands
     '-pz': 'Pole przykładowego zdania',
     '-def': 'Pole definicji',
@@ -29,6 +37,7 @@ command_help = {
     '-syn': 'Pole synonimów',
     '-exsen': 'Pole przykładów',
 
+    '-formatdefs': 'Formatowanie definicji',
     '-savecards': 'Zapisywanie kart do pliku "karty.txt"',
     '-createcards': 'Tworzenie/dodawanie kart',
 
@@ -112,7 +121,7 @@ command_help = {
         '{ilość >= 1}'),
     '--add-note': (
         'Dodaje notatkę do kolekcji aktualnie zalogowanego użytkownika',
-        '{nazwa notatki}'),
+        '{numer notatki|nazwa notatki}'),
     '-fo': (
         'Zmiana kolejności zapisywania i wyświetlania pól',
         '{\n'
@@ -135,7 +144,7 @@ command_help = {
         '{element} {kolor}'),
     '-cd': (
         'Zmiana domyślnych wartości',
-        '{element} {wartość}')
+        '{element} {wartość}'),
 }
 
 field_config = {
@@ -169,61 +178,63 @@ DEFAULT_FIELD_ORDER = {
 }
 
 # fields used for Anki note recognition
-ankiconnect_base_fields = {
-    'def':   'definicja',
-    'gloss': 'definicja',
-    'wyjaś': 'definicja',
-    'wyjas': 'definicja',
+AC_BASE_FIELDS = (
+    # The most common field name schemes
+    ('def',         'definicja'),
+    ('syn',         'synonimy'),
+    ('disamb',      'synonimy'),
+    ('przykłady',   'przyklady'),
+    ('słowo',       'phrase'),
+    ('zdanie',      'zdanie'),
+    ('przykładowe', 'zdanie'),
+    ('części',      'czesci_mowy'),
+    ('etym',        'etymologia'),
+    ('audio',       'audio'),
+    ('nagr',        'sentence_audio'),
 
-    'syn':       'synonimy',
-    'disamb':    'synonimy',
-    'usunięcie': 'synonimy',
-    'usuniecie': 'synonimy',
-    'ujedn':     'synonimy',
+    # Others
+    ('gloss', 'definicja'),
+    ('wyjaś', 'definicja'),
+    ('wyjas', 'definicja'),
 
-    'przykłady': 'przyklady',
-    'przyklady': 'przyklady',
-    'illust':    'przyklady',
-    'examples':  'przyklady',
-    'exsen':     'przyklady',
+    ('usunięcie', 'synonimy'),
+    ('usuniecie', 'synonimy'),
+    ('ujedn',     'synonimy'),
 
-    'słowo': 'phrase',
-    'slowo': 'phrase',
-    'fraz':  'phrase',
-    'phras': 'phrase',
-    'word':  'phrase',
-    'vocab': 'phrase',
-    'idiom': 'phrase',
+    ('przyklady', 'przyklady'),
+    ('illust',    'przyklady'),
+    ('examples',  'przyklady'),
+    ('exsen',     'przyklady'),
 
-    'zdanie':      'zdanie',
-    'przykładowe': 'zdanie',
-    'przykladowe': 'zdanie',
-    'sentence':    'zdanie',
-    'pz':          'zdanie',
+    ('slowo', 'phrase'),
+    ('fraz',  'phrase'),
+    ('phras', 'phrase'),
+    ('word',  'phrase'),
+    ('vocab', 'phrase'),
+    ('idiom', 'phrase'),
 
-    'części': 'czesci_mowy',
-    'czesci': 'czesci_mowy',
-    'parts':  'czesci_mowy',
-    'part':   'czesci_mowy',
-    'pos':    'czesci_mowy',
+    ('przykladowe', 'zdanie'),
+    ('sentence',    'zdanie'),
+    ('pz',          'zdanie'),
 
-    'etym': 'etymologia',
+    ('czesci', 'czesci_mowy'),
+    ('parts',  'czesci_mowy'),
+    ('part',   'czesci_mowy'),
+    ('pos',    'czesci_mowy'),
 
-    'audio':  'audio',
-    'wymowa': 'audio',
-    'pron':   'audio',
-    'dźwięk': 'audio',
-    'dzwiek': 'audio',
-    'sound':  'audio',
-    'media':  'audio',
+    ('wymowa', 'audio'),
+    ('pron',   'audio'),
+    ('dźwięk', 'audio'),
+    ('dzwiek', 'audio'),
+    ('sound',  'audio'),
+    ('media',  'audio'),
 
-    'nagr':   'sentence_audio',
-    'recor':  'sentence_audio',
-    'sentence_a':    'sentence_audio',
-    'sentenceaudio': 'sentence_audio',
-    'sentence_r':    'sentence_audio',
-    'sentencerec':   'sentence_audio'
-}
+    ('recor',         'sentence_audio'),
+    ('sentence_a',    'sentence_audio'),
+    ('sentenceaudio', 'sentence_audio'),
+    ('sentence_r',    'sentence_audio'),
+    ('sentencerec',   'sentence_audio'),
+)
 
 labels = {
     # part of speech labels to extend
@@ -239,9 +250,6 @@ labels = {
     'npl': ('plural', 'pl', 'pln', 'noun'),
     'pln': ('plural', 'npl', 'noun'),
     'plural': ('pln', 'npl', 'noun'),
-
-    # I haven't seen this yet, NotImplemented
-    # 'sing': 'singular',
 
     'prep': ('preposition',),
     'pron': ('pronoun',),
@@ -303,7 +311,7 @@ SEARCH_FLAGS = (
     'ahd',
     'i',   'idiom', 'idioms', 'farlex',
     'l',   'lexico',
-    'rec', 'record'
+    'rec', 'record',
 )
 
 USER_AGENT = {
@@ -318,68 +326,64 @@ config_columns = (
     ('-etym',              '-textwrap',                  'syn_bulk'),
     ('-syn',               '-textwidth',                         ''),
     ('',                   '-indent',             '[config źródeł]'),
-    ('-savecards',         '',                              '-dict'),
-    ('-createcards',       '[config filtrowania]',         '-dict2'),
-    ('',                   '-fsubdefs',                     '-thes'),
-    ('[config ukrywania]', '-fnolabel',                    '-audio'),
-    ('-upz',               '-toipa',                     '-recqual'),
-    ('-udef',              '',                                   ''),
-    ('-uexsen',            '[config ankiconnect]',               ''),
-    ('-usyn',              '-ankiconnect',                       ''),
-    ('-upreps',            '-duplicates',                        ''),
-    ('-keependings',       '-dupescope',                         ''),
-    ('-hideas',            '-note',                              ''),
-    ('',                   '-deck',                              ''),
+    ('-formatdefs',        '',                              '-dict'),
+    ('-savecards',         '[config filtrowania]',         '-dict2'),
+    ('-createcards',       '-fsubdefs',                     '-thes'),
+    ('',                   '-fnolabel',                    '-audio'),
+    ('[config ukrywania]', '-toipa',                     '-recqual'),
+    ('-upz',               '',                                   ''),
+    ('-udef',              '[config ankiconnect]',               ''),
+    ('-uexsen',            '-ankiconnect',                       ''),
+    ('-usyn',              '-duplicates',                        ''),
+    ('-upreps',            '-dupescope',                         ''),
+    ('-keependings',       '-note',                              ''),
+    ('-hideas',            '-deck',                              ''),
     ('',                   '-tags',                              ''),
 )
 
-color_data = {
-    'colors': {
-        'black': Fore.BLACK,
-        'red': Fore.RED,
-        'green': Fore.GREEN,
-        'yellow': Fore.YELLOW,
-        'blue': Fore.BLUE,
-        'magenta': Fore.MAGENTA,
-        'cyan': Fore.CYAN,
-        'white': Fore.WHITE,
-
-        'lightblack': Fore.LIGHTBLACK_EX,
-        'lightred': Fore.LIGHTRED_EX,
-        'lightgreen': Fore.LIGHTGREEN_EX,
-        'lightyellow': Fore.LIGHTYELLOW_EX,
-        'lightblue': Fore.LIGHTBLUE_EX,
-        'lightmagenta': Fore.LIGHTMAGENTA_EX,
-        'lightcyan': Fore.LIGHTCYAN_EX,
-        'lightwhite': Fore.LIGHTWHITE_EX,
-        'reset': Fore.RESET
-    },
-
-    'k:elements_val:msg': {
-        'def1': 'Kolor nieparzystych definicji',
-        'def2': 'Kolor parzystych definicji',
-        'defsign': 'Kolor znaku głównej definicji (>)',
-        'pos': 'Kolor części mowy',
-        'etym': 'Kolor etymologii',
-        'syn': 'Kolor synonimów',
-        'exsen': 'Kolor przykładów definicji',
-        'syngloss': 'Kolor definicji przy synonimach',
-        'synpos': 'Kolor części mowy przy synonimach',
-        'index': 'Kolor indeksów',
-        'phrase': 'Kolor hasła',
-        'phon': 'Kolor pisowni fonetycznej',
-        'poslabel': 'Kolor etykiet części mowy',
-        'inflection': 'Kolor odmian hasła',
-        'error': 'Kolor błędów',
-        'attention': 'Kolor zwracający uwagę',
-        'success': 'Kolor udanej operacji',
-        'delimit': 'Kolor odkreśleń',
-        'input': 'Kolor pól na input',
-        'inputtext': 'Kolor wpisywanego tekstu'
-    },
+str_colors_to_color = {
+    'black': Fore.BLACK,
+    'red': Fore.RED,
+    'green': Fore.GREEN,
+    'yellow': Fore.YELLOW,
+    'blue': Fore.BLUE,
+    'magenta': Fore.MAGENTA,
+    'cyan': Fore.CYAN,
+    'white': Fore.WHITE,
+    'lightblack': Fore.LIGHTBLACK_EX,
+    'lightred': Fore.LIGHTRED_EX,
+    'lightgreen': Fore.LIGHTGREEN_EX,
+    'lightyellow': Fore.LIGHTYELLOW_EX,
+    'lightblue': Fore.LIGHTBLUE_EX,
+    'lightmagenta': Fore.LIGHTMAGENTA_EX,
+    'lightcyan': Fore.LIGHTCYAN_EX,
+    'lightwhite': Fore.LIGHTWHITE_EX,
+    'reset': Fore.RESET,
+}
+color_elements_to_msg = {
+    'def1': 'Kolor nieparzystych definicji',
+    'def2': 'Kolor parzystych definicji',
+    'defsign': 'Kolor znaku głównej definicji (>)',
+    'pos': 'Kolor części mowy',
+    'etym': 'Kolor etymologii',
+    'syn': 'Kolor synonimów',
+    'exsen': 'Kolor przykładów definicji',
+    'syngloss': 'Kolor definicji przy synonimach',
+    'synpos': 'Kolor części mowy przy synonimach',
+    'index': 'Kolor indeksów',
+    'phrase': 'Kolor hasła',
+    'phon': 'Kolor pisowni fonetycznej',
+    'poslabel': 'Kolor etykiet części mowy',
+    'inflection': 'Kolor odmian hasła',
+    'error': 'Kolor błędów',
+    'attention': 'Kolor zwracający uwagę',
+    'success': 'Kolor udanej operacji',
+    'delimit': 'Kolor odkreśleń',
+    'input': 'Kolor pól na input',
+    'inputtext': 'Kolor wpisywanego tekstu',
 }
 
-boolean_values = {
+bool_values_dict = {
     'on':   True, 'off':   False,
     'true': True, 'false': False,
     'yin':  True, 'yang':  False,
@@ -390,9 +394,9 @@ boolean_values = {
     't':    True,
 }
 
-bool_colors = {
+bool_colors_dict = {
     True: Fore.LIGHTGREEN_EX,
     False: Fore.LIGHTRED_EX,
     'True': Fore.LIGHTGREEN_EX,
-    'False': Fore.LIGHTRED_EX
+    'False': Fore.LIGHTRED_EX,
 }

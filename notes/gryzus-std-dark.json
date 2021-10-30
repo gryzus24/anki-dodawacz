@@ -1,0 +1,18 @@
+{
+  "modelName": "gryzus-std-dark",
+  "cardName": "Definition -> (type)Phrase",
+  "css": ".card {\n  font-family: Times New Roman;\n  font-size: 30px;\n  text-align: center;\n  background: #060606;\n  margin-left: 12%;\n  margin-right: 12%;\n}\n.mobile .card {\n  font-size: 22px;\n}\n.nightMode.card {\n  background: #060606;\n}\n \n@media screen and (max-width: 900px) {\n  .card  {\n    margin-left: 3%;\n    margin-right: 3%;\n  }\n}\n \n#answerBox {\n  margin-top: 1em;\n}\n \n:not(#answerSide) > #questionSide #answerBox {\n   visibility: hidden;\n}\n \n#def {\n  color: #EEE;\n  margin-bottom: .5em;\n}\n \n#syn {\n  font-size: .85em;\n  color: #DA8547;\n  margin-bottom: .2em;\n}\n \n#exsen {\n  font-size: .85em;\n  color: #c0c0c0;\n  margin-bottom: 4em;\n}\n \n#pz {\n  color: #99a;\n  margin-bottom: 1.5em;\n}\n \n#pos  {\n  font-size: .8em;\n  color: #cca;\n  margin-bottom: .4em;\n}\n \n#etym {\n  font-size: .7em;\n  color: #777;\n  margin-bottom: 1em;\n}\n \ninput {\n  font-size: 38px !important;\n  width: 80% !important;\n  color: #FFF;\n  background: #060606 !important;\n  border-style: solid;\n  border-color: #777;\n  border-radius: 6px;\n  border-width: thin;\n  padding-left: .3em;\n}\n \n.typeGood {\n  font-size: 38px;\n  background: green;\n  color: #000;\n  border-radius: 12px;\n  padding-right: 3px;\n  padding-left: 3px;\n}\n.mobile .typeGood {\n  font-size: 30px;\n}\n \n.typeBad {\n  font-size: 38px;\n  background: red;\n  color: #000;\n  border-radius: 12px;\n  padding-right: 3px;\n  padding-left: 3px;\n}\n.mobile .typeBad {\n  font-size: 30px;\n}\n \n.typeMissed {\n  font-size: 38px;\n  background: orange;\n  color: #000;\n  border-radius: 12px;\n  padding-right: 3px;\n  padding-left: 3px;\n}\n.mobile .typeMissed {\n  font-size: 30px;\n}",
+  "front": "<div id=\"questionSide\">\n  <div id=\"def\">{{Definicja}}</div>\n  <div id=\"syn\">{{Synonimy}}</div>\n  <div id=\"exsen\">{{Przyk\u0142ady}}</div>\n  <div id=\"def\">{{type:S\u0142owo}}</div>\n \n  <div id=\"answerBox\">\n    <div id=\"pz\">{{Przyk\u0142adowe zdanie}}</div>\n    <div id=\"pos\">{{Cz\u0119\u015bci mowy}}</div>\n    <div id=\"etym\">{{Etymologia}}</div>\n  </div>\n</div>",
+  "back": "<div id=\"answerSide\">\n  {{FrontSide}}\n  <div>{{Audio}}</div>\n  <div>{{Nagranie}}</div>\n</div>",
+  "fields": [
+    "Definicja",
+    "Synonimy",
+    "Przyk\u0142ady",
+    "S\u0142owo",
+    "Przyk\u0142adowe zdanie",
+    "Cz\u0119\u015bci mowy",
+    "Etymologia",
+    "Audio",
+    "Nagranie"
+  ]
+}

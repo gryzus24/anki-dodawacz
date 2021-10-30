@@ -16,13 +16,14 @@
 import json
 import os
 import sys
+from shutil import get_terminal_size
 
 import src.data as data
 from src.colors import R, BOLD, END, YEX, GEX, \
     def1_c, def2_c, defsign_c, pos_c, etym_c, syn_c, exsen_c, \
     syngloss_c, index_c, phrase_c, \
     phon_c, poslabel_c, inflection_c, err_c, delimit_c, input_c, inputtext_c
-from src.data import ROOT_DIR, DEFAULT_FIELD_ORDER, config, bool_colors
+from src.data import ROOT_DIR, DEFAULT_FIELD_ORDER, config, bool_colors_dict
 
 
 def save_config(c):
@@ -105,7 +106,7 @@ def config_defaults(*args, **kwargs):
 
 
 def print_config_representation() -> None:
-    print(f'\n{R}{BOLD}[config dodawania]     [config wyświetlania]     [domyślne wart.]{END}')
+    print(f'{R}{BOLD}[config dodawania]     [config wyświetlania]     [domyślne wart.]{END}')
     for a, b, c in data.config_columns:
         a = a.replace('[', f'{BOLD}[').replace(']', f']{END}')
         b = b.replace('[', f'{BOLD}[').replace(']', f']{END}')
@@ -136,9 +137,9 @@ def print_config_representation() -> None:
             except KeyError:
                 state_c = ''
 
-        color_a = bool_colors.get(state_a, '')
-        color_b = bool_colors.get(state_b, '')
-        color_c = bool_colors.get(state_c, '')
+        color_a = bool_colors_dict.get(state_a, '')
+        color_b = bool_colors_dict.get(state_b, '')
+        color_c = bool_colors_dict.get(state_c, '')
         if color_c: state_c = 10*'\b'+'watch?v=LDl544TI_mU'
 
         level_a = '\b\b\b\b\b' if '[' in a else ''
@@ -164,11 +165,7 @@ def set_width_settings(*args, message):
             save_command(cmd, [2, ''])
             return None
 
-        try:
-            term_width = os.get_terminal_size().columns
-        except OSError:
-            term_width = 79
-
+        term_width = get_terminal_size().columns
         print(f'{R}{message}: {GEX.color}{term_width}* {value}')
         save_command(cmd, [term_width, '* auto'])
     else:
@@ -178,7 +175,7 @@ def set_width_settings(*args, message):
                 raise ValueError
         except ValueError:
             return f'Nieprawidłowa wartość: {R}{value}\n' \
-                   f'{cmd} {data.command_help[cmd][1]}'
+                   f'{cmd} {data.command_to_help_dict[cmd][1]}'
         else:
             print(f'{R}{message}: {GEX.color}{value}')
             save_command(cmd, [val, ''])
@@ -186,15 +183,16 @@ def set_width_settings(*args, message):
 
 def display_field_order():
     for field_number, default_field_name in DEFAULT_FIELD_ORDER.items():
-        line_color = R
-        default = ''
         actual_field = config['fieldorder'][field_number]
 
+        bold = BOLD if field_number == '1' else ''
         if actual_field != default_field_name:
             # change to yellow to indicate changes
             line_color = YEX.color
             default = f'# {default_field_name}'
-        bold = BOLD if field_number == '1' else ''
+        else:
+            line_color = R
+            default = ''
 
         # END cause if field_number == '1' we want bold to reset before
         # printing defaults and R doesn't do that
@@ -205,7 +203,6 @@ def display_field_order():
 
 
 def change_field_order(*args, **kwargs):
-    field_order = config['fieldorder']
     first_arg = args[1]
 
     if first_arg == 'default':
@@ -221,7 +218,7 @@ def change_field_order(*args, **kwargs):
     if first_arg not in ('1', '2', '3', '4', '5', '6', '7', '8', '9', 'd'):
         cmd = args[0]
         return f'Nieprawidłowy argument: {R}{first_arg}\n' \
-               f'{cmd} {data.command_help[cmd][1]}'
+               f'{cmd} {data.command_to_help_dict[cmd][1]}'
 
     try:
         field_name = args[2].lower()
@@ -234,6 +231,7 @@ def change_field_order(*args, **kwargs):
     if first_arg in DEFAULT_FIELD_ORDER:
         if field_name not in DEFAULT_FIELD_ORDER.values():
             return 'Podano nieprawidłową nazwę pola'
+        field_order = config['fieldorder']
         field_order[first_arg] = field_name
         save_command('fieldorder', field_order)
     elif first_arg == 'd':
@@ -318,13 +316,13 @@ def set_text_value_commands(*args, message):
         save_command(cmd, value)
     else:
         return f'Nieprawidłowa wartość: {R}{value}\n' \
-               f'{cmd} {data.command_help[cmd][1]}'
+               f'{cmd} {data.command_to_help_dict[cmd][1]}'
 
 
 def set_colors(*args, **kwargs):
     cmd, element = args[0], args[1]
 
-    if element not in data.color_data['k:elements_val:msg']:
+    if element not in data.color_elements_to_msg:
         return f'Nieprawidłowy element: {R}{element}\n' \
                f'Aby wyświetlić dostępne elementy wpisz "{cmd}"'
 
@@ -334,31 +332,30 @@ def set_colors(*args, **kwargs):
         return f'{YEX.color}Brakuje koloru\n' \
                f'{R}{cmd} {element} {{kolor}}'
 
-    if color not in data.color_data['colors']:
+    if color not in data.str_colors_to_color:
         return f'Nieprawidłowy kolor: {R}{color}\n' \
                f'Aby wyświetlić dostępne kolory wpisz "{cmd}"'
 
-    msg = data.color_data['k:elements_val:msg'][element]
-    message_color = data.color_data['colors'][color]
+    msg = data.color_elements_to_msg[element]
+    thiscolor = data.str_colors_to_color[color]
 
-    print(f'{R}{msg} ustawiony na: {message_color}{color}')
+    print(f'{R}{msg} ustawiony na: {thiscolor}{color}')
     save_command(f'{element}_c', color)
 
 
 def boolean_commands(*args, message):
     cmd = args[0]
-    arg = args[1].lower()
 
     try:
-        value = data.boolean_values[arg]
+        value = data.bool_values_dict[args[1].lower()]
     except KeyError:
         return f'{err_c.color}Nieprawidłowa wartość, użyj:\n' \
                f'{R}{cmd} {{on|off}}'
 
-    print(f'{R}{message}: {data.bool_colors[value]}{value}')
+    print(f'{R}{message}: {data.bool_colors_dict[value]}{value}')
     if cmd == '-all':
-        for cmd in list(data.command_help)[:6]:
-            config[cmd[1:]] = value
+        for cmd in ('pz', 'def', 'pos', 'etym', 'syn', 'exsen'):
+            config[cmd] = value
         save_config(config)
     else:
         save_command(cmd, value)
@@ -366,19 +363,19 @@ def boolean_commands(*args, message):
 
 def show_available_colors():
     print(f'{R}{BOLD}Dostępne kolory:{END}')
-    for color in data.color_data['colors']:
+    for color, thiscolor in data.str_colors_to_color.items():
         if color == 'reset':
             print(f'{R}{color}\n')
             break
 
-        print(f'{data.color_data["colors"][color]}{color}', end=', ')
+        print(f'{thiscolor}{color}', end=', ')
         if color in ('yellow', 'white', 'lightyellow', 'lightwhite'):
             print()
 
 
 def color_command():
-    print(f"""{R}
-{BOLD}[Elementy]    [Zmiana koloru]{END}
+    print(f"""\
+{R}{BOLD}[Elementy]    [Zmiana koloru]{END}
 def1          {def1_c.color}nieparzystych definicji i definicji idiomów{R}
 def2          {def2_c.color}parzystych definicji{R}
 defsign       {defsign_c.color}znaku głównej definicji (>){R}

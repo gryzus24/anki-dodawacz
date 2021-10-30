@@ -3,7 +3,7 @@ import sys
 import colorama
 from colorama import Fore
 
-from src.data import color_data, config
+from src.data import str_colors_to_color, config
 
 colorama.init(autoreset=True)
 
@@ -27,7 +27,7 @@ class Color:
     @property
     def color(self):
         try:
-            return color_data['colors'][config[self.color_name]]
+            return str_colors_to_color[config[self.color_name]]
         except KeyError:
             return ''
 

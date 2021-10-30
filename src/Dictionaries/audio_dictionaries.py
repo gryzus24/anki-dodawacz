@@ -13,14 +13,17 @@
 # You should have received a copy of the GNU General Public License
 # along with this program. If not, see <http://www.gnu.org/licenses/>.
 
+import os.path
+
 import requests
 from bs4 import BeautifulSoup
 
 from src.Dictionaries.utils import handle_connection_exceptions
+from src.Dictionaries.utils import request_soup, request_session
 from src.colors import \
     R, YEX, \
     err_c
-from src.data import USER_AGENT
+from src.data import config, USER_AGENT
 
 
 @handle_connection_exceptions
@@ -30,7 +33,10 @@ def diki_request(full_url):
     return soup.find_all('span', class_='audioIcon icon-sound dontprint soundOnClick')
 
 
-def get_audio_from_diki(raw_phrase, flag, url='https://www.diki.pl/slownik-angielskiego?q='):
+#
+# Diki needs a hardcore refactor
+#
+def diki_audio(raw_phrase, flag, url='https://www.diki.pl/slownik-angielskiego?q='):
     def find_audio_url(filename, aurls):
         flag_values = {'noun': 'n', 'verb': 'v',
                        'adj': 'a', 'adjective': 'a'}
@@ -139,3 +145,43 @@ def get_audio_from_diki(raw_phrase, flag, url='https://www.diki.pl/slownik-angie
 
     audio_link = 'https://www.diki.pl' + url_end
     return audio_link, audiofile_name
+
+
+def save_audio(audio_link, audiofile_name):
+    try:
+        with open(os.path.join(config['audio_path'], audiofile_name), 'wb') as file:
+            response = request_session.get(audio_link)
+            file.write(response.content)
+        return f'[sound:{audiofile_name}]'
+    except FileNotFoundError:
+        print(f"{err_c.color}Zapisywanie pliku audio {R}{audiofile_name}{err_c.color} nie powiodło się\n"
+              f"Aktualna ścieżka zapisu audio: {R}{config['audio_path']}\n"
+              f"{err_c.color}Upewnij się, że taki folder istnieje i spróbuj ponownie\n")
+        return ''
+    except Exception:
+        print(f'{err_c.color}Wystąpił nieoczekiwany błąd podczas zapisywania audio')
+        raise
+
+
+def ahd_audio(query):
+    soup = request_soup('https://www.ahdictionary.com/word/search.html?q=' + query)
+    audio_url = soup.find('a', {'target': '_blank'}).get('href')
+    if audio_url == 'http://www.hmhco.com':
+        print(f'{err_c.color}AHD nie posiada audio dla {R}{query}\n'
+              f'{YEX.color}Sprawdzam diki...')
+        return diki_audio(raw_phrase=query, flag='')
+
+    audio_url = 'https://www.ahdictionary.com' + audio_url
+    return audio_url, audio_url.rsplit('/')[-1]
+
+
+def lexico_audio(query):
+    soup = request_soup('https://www.lexico.com/definition/' + query.replace(' ', '_'))
+    audio_url = soup.find('audio')
+    if audio_url is None:
+        print(f'{err_c.color}Lexico nie posiada audio dla {R}{query}\n'
+              f'{YEX.color}Sprawdzam diki...')
+        return diki_audio(raw_phrase=query, flag='')
+
+    audio_url = audio_url.get('src')
+    return audio_url, audio_url.rsplit('/')[-1]

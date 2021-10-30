@@ -13,9 +13,9 @@
 # You should have received a copy of the GNU General Public License
 # along with this program. If not, see <http://www.gnu.org/licenses/>.
 
-from src.Dictionaries.dictionary_base import Dictionary, request_soup, prepare_flags, evaluate_skip
+from src.Dictionaries.dictionary_base import Dictionary, prepare_flags, evaluate_skip
 from src.Dictionaries.input_fields import InputField
-from src.Dictionaries.utils import wrap_lines, valid_index_or_zero
+from src.Dictionaries.utils import wrap_lines, request_soup
 from src.colors import \
     R, BOLD, END, \
     def1_c, def2_c, defsign_c, exsen_c, etym_c, \
@@ -91,7 +91,6 @@ def create_skip_dict(entry_blocks, flags: set) -> dict:
 
 
 class Lexico(Dictionary):
-    URL = 'https://www.lexico.com/definition/'
     name = 'lexico'
     allow_thesaurus = True
 
@@ -128,19 +127,20 @@ class Lexico(Dictionary):
             self.definitions.append(definition_)
             if gram_note_:
                 gram_note_ = '[' + gram_note_ + '] '
+
             gn_len = len(gram_note_)
+            silen = len(str(subindex))
 
-            def_to_print = wrap_lines(definition_, self.textwidth, len(str(subindex)), self.indent, 2 + gn_len)
-
+            def_to_print = wrap_lines(definition_, self.textwidth, silen, self.indent, 2 + gn_len)
             def_c = def1_c if subindex % 2 else def2_c
             self.print(f'{defsign_c.color}{defsign}{index_c.color}{subindex} '
                        f'{poslabel_c.color}{gram_note_}{def_c.color}{def_to_print}')
 
             if config['showexsen'] and example_:
-                exg_to_print = wrap_lines(example_, self.textwidth, len(str(subindex)), self.indent, 4)
-                self.print(f'{len(str(subindex)) * " "}  {index_c.color}- {exsen_c.color}{exg_to_print}')
+                exg_to_print = wrap_lines(example_, self.textwidth, silen, self.indent + 1, 2)
+                self.print(f'{silen * " "}  {exsen_c.color}{exg_to_print}')
 
-        soup = request_soup(self.URL + query)
+        soup = request_soup('https://www.lexico.com/definition/' + query)
         if soup is None:
             return None
 
@@ -330,64 +330,41 @@ class Lexico(Dictionary):
                 return audio_url
         return None
 
-    def exsentence_auto_choice(self, choices):
-        fc = choices[0]
-        if config['showexsen'] or fc in (0, -1) or len(choices) > 1:
-            return ','.join(map(str, choices))
-        return '/' + self.example_sentences[fc - 1]
-
     def input_cycle(self):
-        def_field = InputField(*field_config['definitions'], spec_split=',')
+        def_field = InputField(*field_config['definitions'])
         exsen_field = InputField(*field_config['example_sentences'])
-        etym_field = InputField(*field_config['etymologies'], spec_split=',')
+        etym_field = InputField(*field_config['etymologies'])
 
         chosen_defs = def_field.get_element(self.definitions, auto_choice='1')
         if chosen_defs is None:
             return None
 
-        choices_mapped_to_block = def_field.get_choices(mapping=self.last_definition_indexes_in_block_family)
-        fc = valid_index_or_zero(choices_mapped_to_block)
+        block_mapped_choices = def_field.get_choices(self.last_definition_indexes_in_block_family)
+        fc = block_mapped_choices.first_choice_or_zero
         self.chosen_phrase = self.phrases[fc]
 
         if config['udef'] and chosen_defs:
             chosen_defs.hide(self.chosen_phrase)
 
-        choices_mapped_to_gramb = def_field.get_choices(mapping=self.last_definition_indexes_in_gramb)
-        fc = valid_index_or_zero(choices_mapped_to_gramb)
+        gramb_mapped_choices = def_field.get_choices(self.last_definition_indexes_in_gramb)
+        fc = gramb_mapped_choices.first_choice_or_zero
         self.chosen_audio_url = self.choose_audio_url(fc)
 
-        exsen_auto_choice = self.exsentence_auto_choice(def_field.get_choices())
-        chosen_exsentence = exsen_field.get_element(self.example_sentences, exsen_auto_choice)
-        if chosen_exsentence is None:
+        auto_choice = def_field.get_choices().as_exsen_auto_choice(self.example_sentences)
+        chosen_exsen = exsen_field.get_element(self.example_sentences, auto_choice)
+        if chosen_exsen is None:
             return None
-        if config['uexsen'] and chosen_exsentence:
-            chosen_exsentence.hide(self.chosen_phrase)
 
-        etym_auto_choice = self.choices_to_auto_choice(choices_mapped_to_block)
+        if config['uexsen'] and chosen_exsen:
+            chosen_exsen.hide(self.chosen_phrase)
+
+        etym_auto_choice = block_mapped_choices.as_auto_choice
         chosen_etyms = etym_field.get_element(self.etymologies, etym_auto_choice)
         if chosen_etyms is None:
             return None
 
         return {
-            'phrase': self.chosen_phrase,
             'definicja': chosen_defs.content,
-            'przyklady': chosen_exsentence.content,
+            'przyklady': chosen_exsen.content,
             'etymologia': chosen_etyms.content
         }
-
-    @staticmethod
-    def lexico_audio_url(url):
-        def called(query):
-            soup = request_soup(url + query)
-            audio_url = soup.find('audio')
-            if audio_url is None:
-                return None
-            return audio_url.get('src')
-        return called
-
-    def get_audio(self, query=None):
-        return self._get_audio(
-            phrase_=query,
-            dict_name='Lexico',
-            fallback_func=self.lexico_audio_url(self.URL)
-        )

@@ -13,9 +13,9 @@
 # You should have received a copy of the GNU General Public License
 # along with this program. If not, see <http://www.gnu.org/licenses/>.
 
-from src.Dictionaries.dictionary_base import Dictionary, request_soup
+from src.Dictionaries.dictionary_base import Dictionary
 from src.Dictionaries.input_fields import InputField
-from src.Dictionaries.utils import wrap_lines
+from src.Dictionaries.utils import wrap_lines, request_soup
 from src.colors import \
     R, syn_c, poslabel_c, \
     syngloss_c, index_c, err_c
@@ -23,7 +23,6 @@ from src.data import field_config, config
 
 
 class WordNet(Dictionary):
-    URL = 'http://wordnetweb.princeton.edu/perl/webwn?s='
     name = 'wordnet'
 
     def __init__(self):
@@ -40,7 +39,7 @@ class WordNet(Dictionary):
             # without skipping
             return self
 
-        syn_soup = request_soup(self.URL + query)
+        syn_soup = request_soup('http://wordnetweb.princeton.edu/perl/webwn?s=' + query)
         if syn_soup is None:
             return None
 
@@ -54,28 +53,32 @@ class WordNet(Dictionary):
 
         syn_elems = syn_soup.find_all('li')
         for index, ele in enumerate(syn_elems, start=1):
-            pos = '(' + ele.text.split(') ', 1)[0].split('(')[-1] + ')'
-            syn = (ele.text.split(') ', 1)[-1].split(' (')[0]).strip()
-            gloss = '(' + ((ele.text.rsplit(') ', 1)[0] + ')').strip('S: (').split(' (', 1)[-1])
+            ele = ele.text.replace('S:', '', 1).strip()
+            temp = ele.split(')', 1)
+            pos, temp = temp[0] + ')', temp[1].split('(', 1)
+            syn = temp[0].strip()
+            gloss = '(' + temp[1].rsplit(')', 1)[0].strip() + ')'
 
             self.synonyms.append(syn)
 
-            syn_tp = wrap_lines(syn, self.textwidth, len(str(index)), indent=1, gap=2 + len(str(pos)))
-            gloss_tp = wrap_lines(gloss, self.textwidth, len(str(index)), indent=1, gap=1)
+            silen = len(str(index))
+            syn_tp = wrap_lines(syn, self.textwidth, silen, 1, 2 + len(str(pos)))
+            gloss_tp = wrap_lines(gloss, self.textwidth, silen, 1, 1)
 
             self.print(f'{index_c.color}{index} {poslabel_c.color}{pos} {syn_c.color}{syn_tp}')
-            self.print(f'{(len(str(index)) + 1) * " "}{syngloss_c.color}{gloss_tp}\n')
+            self.print(f'{silen * " "} {syngloss_c.color}{gloss_tp}\n')
 
         if config['top']:
             print('\n' * (self.usable_height - 2))
         return self
 
     def input_cycle(self):
-        syn_field = InputField(*field_config['synonyms'], connector=' | ', spec_split=',')
+        syn_field = InputField(*field_config['synonyms'], connector=' | ')
 
         chosen_synonyms = syn_field.get_element(self.synonyms, auto_choice='0')
         if chosen_synonyms is None:
             return None
+
         if config['usyn'] and chosen_synonyms:
             chosen_synonyms.hide(self.chosen_phrase)
 
