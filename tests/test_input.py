@@ -4,6 +4,10 @@ from src.data import field_config
 test_list = ['a', 'b', 'c', 'd', '', 'e', '', 'f', 'g']
 
 
+# SETUP:
+#   -cd all auto
+#   -all on
+
 def get_element_testing(tl=None, ac='1', s='.'):
     def tested(input_, output_):
         test_field = i.InputField(*field_config['definitions'], connector=';', spec_split=s)

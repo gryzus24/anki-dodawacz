@@ -1,0 +1,17 @@
+{
+  "modelName": "gryzus-tsc",
+  "cardName": "Sentence(Phrase) -> Definition",
+  "css": ".card {\n  font-family: Times New Roman;\n  font-size: 30px;\n  color: #455;\n  text-align: center;\n  background: #FBFBEF;\n  margin-top: 85px;\n  margin-left: 12%;\n  margin-right: 12%;\n}\n.mobile .card {\n  font-size: 22px;\n}\n.nightMode.card {\n  background: #060606;\n}\n\n@media screen and (max-width: 900px) {\n  .card  {\n    margin-left: 3%;\n    margin-right: 3%;\n  }\n}\n\n#answerBox {\n  margin-top: 1em;\n}\n\n:not(#answerSide) > #questionSide #answerBox {\n   visibility: hidden;\n}\n\n#pz {\n  font-size: 1.25em;\n  margin-bottom: 1.2em;\n}\n.nightMode #pz {\n  color: #CCC;\n}\n\n#def {\n  margin-bottom: 1.5em;\n}\n.nightMode #def {\n  color: #CCC;\n}\n\n#exsen {\n  font-size: .85em;\n  color: #CCC;\n  margin-bottom: .6em;\n}\n\n#etym {\n  font-size: .85em;\n  color: #777;\n  margin-bottom: .6em;\n}\n\n#syn  {\n  font-size: .8em;\n  color: #DA8547;\n  margin-bottom: .2em;\n}\n\n#pos {\n  font-size: .8em;\n  color: #DA8547;\n  margin-bottom: .2em;\n}\n.nightMode #pos {\n  color: #cca;\n}",
+  "front": "<div id=\"questionSide\">\n <div id=\"pz\">{{Zdanie}}</div>\n\n  <div id=\"answerBox\">\n    <div id=\"def\">{{Definicje}}</div>\n    <div id=\"syn\">{{Synonimy}}</div>\n    <div id=\"exsen\">{{Przyk\u0142ady}}</div>\n    <div id=\"pos\">{{Cz\u0119\u015bci mowy}}</div>\n    <div id=\"etym\">{{Etymologia}}</div>\n  </div>\n</div>",
+  "back": "<div id=\"answerSide\">\n  {{FrontSide}}\n  <div>{{Audio}}</div>\n  <div>{{Nagranie}}</div>\n</div>",
+  "fields": [
+    "Zdanie",
+    "Definicje",
+    "Synonimy",
+    "Przyk\u0142ady",
+    "Cz\u0119\u015bci mowy",
+    "Etymologia",
+    "Audio",
+    "Nagranie"
+  ]
+}

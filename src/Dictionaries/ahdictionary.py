@@ -132,209 +132,7 @@ class AHDictionary(Dictionary):
                 f'{self.audio_urls=}\n'
                 f'{self.last_definition_indexes=}')
 
-    def get_dictionary(self, query, flags=''):
-        def skip_this_td():
-            skip_set = set()
-            for lblock in labeled_blocks:
-                lbls = lblock.find_all('i', recursive=False)
-                lbls = {x.text.strip() for x in lbls}
-                if filter_labels and not lbls:
-                    return True
-
-                skip = evaluate_skip(lbls, flags)
-                skip_set.add(skip)
-
-            if False in skip_set:
-                return False
-            return True
-
-        soup = request_soup('https://www.ahdictionary.com/word/search.html?q=' + query)
-        if soup is None:
-            return None
-
-        if soup.find('div', {'id': 'results'}).text == 'No word definition found':
-            print(f'{err_c.color}Nie znaleziono {R}"{query}"{err_c.color} w AH Dictionary')
-            return None
-
-        self.manage_terminal_size()
-
-        filter_labels = config['fnolabel']
-        if config['fsubdefs'] or ('f' in flags or 'fsubdefs' in flags):
-            filter_subdefs = True
-        else:
-            filter_subdefs = False
-
-        subindex = 0
-        # whether 'results for (phrase)' was printed
-        results_for_printed = False
-
-        tds = soup.find_all('td')
-        if flags or filter_labels:
-            flags = prepare_flags(flags)
-
-            for td in tds:
-                labeled_blocks = td.find_all('div', class_='pseg', recursive=False)
-                if not skip_this_td():
-                    break
-            else:
-                flags = ()  # display all definitions
-
-        for td in tds:
-            # also used when printing definitions
-            labeled_blocks = td.find_all('div', class_='pseg', recursive=False)
-
-            if flags or filter_labels:
-                if skip_this_td():
-                    continue
-
-            # Gather audio urls
-            audio_url = td.find('a', {'target': '_blank'})
-            if audio_url is None:
-                self.audio_urls.append('')
-            else:
-                self.audio_urls.append(audio_url.get('href').strip())
-
-            # example header: bat·ter 1  (băt′ər)
-            # example person header: Monk  (mŭngk), (James) Arthur  Known as  "Art."  Born 1957.
-            header = td.find('div', class_='rtseg', recursive=False)
-            # AHD uses italicized "th" to represent 'ð' and normal "th" to represent 'θ'
-            th = 'ð' if header.find('i') else 'θ'
-            header = (header.text.split('\n', 1)[0]).split()
-            _phrase, phon_spell = get_phrase_and_phonetic_spelling(header)
-
-            _phrase = ' '.join(_phrase)
-            no_accents_phrase = _phrase.replace('·', '')
-
-            phon_spell = ' '.join(phon_spell)
-            phon_spell = phon_spell.rstrip(',')
-            if config['toipa']:
-                phon_spell = ahd_to_ipa_translation(phon_spell, th)
-            else:
-                phon_spell = phon_spell.replace('-', 'ˈ') \
-                    .replace('′', '-').replace('', 'ˌ') \
-                    .replace('', 'ōō').replace('', 'ōō')
-
-            if results_for_printed:
-                self.print(f'{delimit_c.color}{self.textwidth * self.HORIZONTAL_BAR}')
-            else:
-                ahd = 'AH Dictionary (filtered)' if filter_subdefs else 'AH Dictionary'
-                self.print_title(ahd)
-
-                if no_accents_phrase.lower() != query.lower():
-                    self.print(f' {BOLD}Wyniki dla {phrase_c.color}{no_accents_phrase}{END}')
-                results_for_printed = True
-
-            br = '\n' if len(_phrase) + len(phon_spell) + 2 > self.textwidth else ' '
-            self.print(f' {phrase_c.color}{_phrase}{br}{phon_c.color}{phon_spell}')
-
-            for block in labeled_blocks:
-                # Gather part of speech labels
-                pos_labels = block.find_all('i', recursive=False)
-                pos_labels = {x.text.strip() for x in pos_labels if x.text.strip()}
-                pos_labels.discard('th')
-
-                if not pos_labels and filter_labels:
-                    continue
-
-                # part of speech labels from a single block
-                skip_current_block = evaluate_skip(pos_labels, flags)
-                if skip_current_block:
-                    continue
-
-                # Gather phrase tenses
-                phrase_tenses = get_phrase_tenses(block.contents[1:])
-                phrase_tenses_tp = phrase_tenses_to_print(phrase_tenses)
-
-                if pos_labels:
-                    self.print()
-                pos_label = ' '.join(pos_labels)
-                self.print(f' {poslabel_c.color}{pos_label}', end='')
-
-                br = '\n' if len(pos_label) + len(phrase_tenses_tp) + 3 > self.textwidth else ' '
-                self.print(f'{br} {inflection_c.color}{phrase_tenses_tp}')
-
-                # Add definitions and their corresponding elements
-                definitions = block.find_all('div', class_=('ds-list', 'ds-single'), recursive=False)
-                for root_definition in definitions:
-                    root_definition = definition_cleanup(root_definition.text)
-
-                    subdefinitions = root_definition.split('*')
-                    for i, subdefinition in enumerate(subdefinitions):
-                        subindex += 1
-                        # strip an occasional leftover octothorpe
-                        subdefinition = subdefinition.strip('# ')
-
-                        subdef_to_print = wrap_lines(
-                            subdefinition, self.textwidth, len(str(subindex)), self.indent, 2
-                        )
-                        if config['showexsen']:
-                            subdef_to_print = subdef_to_print.replace(':', f':{exsen_c.color}', 1)
-                        else:
-                            subdef_to_print = subdef_to_print.split(':', 1)[0].strip(' .') + '.'
-
-                        sign = '>' if i == 0 else ' '
-                        def_c = def1_c if subindex % 2 else def2_c
-                        self.print(f'{defsign_c.color}{sign}{index_c.color}{subindex} {def_c.color}{subdef_to_print}')
-
-                        subdef_exsen = subdefinition.split(':', 1)
-
-                        self.definitions.append(subdef_exsen[0].strip(' .') + '.')
-                        if len(subdef_exsen) == 2:
-                            self.example_sentences.append(subdef_exsen[1].strip())
-                        else:
-                            self.example_sentences.append('')
-
-                        if filter_subdefs:
-                            break
-
-            # Add parts of speech
-            parts_of_speech = td.find_all('div', class_='runseg', recursive=False)
-            if parts_of_speech:
-                self.print()
-
-            td_pos = []
-            for pos in parts_of_speech:
-                # removing ',' makes parts of speech with multiple spelling variants get
-                # their phonetic spelling correctly detected
-                postring = pos.text.replace(',', '').split()
-                postring, phon_spell = get_phrase_and_phonetic_spelling(postring)
-
-                # accentuation and hyphenation
-                postring = ', '.join(postring).replace('·', 'ˈ').replace('′', '-').replace('', 'ˌ')
-                phon_spell = ' '.join(phon_spell).rstrip(',')
-
-                if config['toipa']:
-                    # this is very general, I have no idea how to differentiate these correctly
-                    th = 'ð' if postring.startswith('th') else 'θ'
-                    phon_spell = ahd_to_ipa_translation(phon_spell, th)
-                else:
-                    phon_spell = phon_spell.replace('-', 'ˈ') \
-                        .replace('′', '-').replace('', 'ˌ') \
-                        .replace('', 'ōō').replace('', 'ōō')
-
-                self.print(f' {pos_c.color}{postring}  {phon_c.color}{phon_spell}')
-                td_pos.append(postring)
-            self.parts_of_speech.append(' | '.join(td_pos))
-
-            # Add etymologies
-            etymology = td.find('div', class_='etyseg', recursive=False)
-            if etymology is not None:
-                etym_to_print = wrap_lines(etymology.text, self.textwidth, 0, 1, 1)
-                self.print(f'\n {etym_c.color}{etym_to_print}')
-                self.etymologies.append(etymology.text)
-            else:
-                self.etymologies.append('')
-
-            self.last_definition_indexes.append(subindex)
-            self.phrases.append(no_accents_phrase)
-
-        if config['top']:
-            print('\n' * (self.usable_height - 2))
-        else:
-            print()
-        return self
-
-    def choose_audio_url(self, choice):
+    def _choose_audio_url(self, choice):
         audio_url: str = self.audio_urls[choice]
         if audio_url:
             return 'https://www.ahdictionary.com' + audio_url
@@ -357,7 +155,7 @@ class AHDictionary(Dictionary):
         mapped_choices = def_field.get_choices(self.last_definition_indexes)
         fc = mapped_choices.first_choice_or_zero
         self.chosen_phrase = self.phrases[fc]
-        self.chosen_audio_url = self.choose_audio_url(fc)
+        self.chosen_audio_url = self._choose_audio_url(fc)
 
         if config['udef'] and chosen_defs:
             chosen_defs.hide(self.chosen_phrase)
@@ -385,3 +183,207 @@ class AHDictionary(Dictionary):
             'czesci_mowy': chosen_pos.content,
             'etymologia': chosen_etyms.content
         }
+
+
+def ask_ahdictionary(query, flags=''):
+    def skip_this_td():
+        skip_set = set()
+        for lblock in labeled_blocks:
+            lbls = lblock.find_all('i', recursive=False)
+            lbls = {x.text.strip() for x in lbls}
+            if filter_labels and not lbls:
+                return True
+
+            skip = evaluate_skip(lbls, flags)
+            skip_set.add(skip)
+
+        if False in skip_set:
+            return False
+        return True
+
+    soup = request_soup('https://www.ahdictionary.com/word/search.html?q=' + query)
+    if soup is None:
+        return None
+
+    if soup.find('div', {'id': 'results'}).text == 'No word definition found':
+        print(f'{err_c.color}Nie znaleziono {R}"{query}"{err_c.color} w AH Dictionary')
+        return None
+
+    ahd = AHDictionary()
+    ahd.manage_terminal_size()
+
+    filter_labels = config['fnolabel']
+    if config['fsubdefs'] or ('f' in flags or 'fsubdefs' in flags):
+        filter_subdefs = True
+    else:
+        filter_subdefs = False
+
+    subindex = 0
+    # whether 'results for (phrase)' was printed
+    results_for_printed = False
+
+    tds = soup.find_all('td')
+    if flags or filter_labels:
+        flags = prepare_flags(flags)
+
+        for td in tds:
+            labeled_blocks = td.find_all('div', class_='pseg', recursive=False)
+            if not skip_this_td():
+                break
+        else:
+            flags = ()  # display all definitions
+
+    for td in tds:
+        # also used when printing definitions
+        labeled_blocks = td.find_all('div', class_='pseg', recursive=False)
+
+        if flags or filter_labels:
+            if skip_this_td():
+                continue
+
+        # Gather audio urls
+        audio_url = td.find('a', {'target': '_blank'})
+        if audio_url is None:
+            ahd.audio_urls.append('')
+        else:
+            ahd.audio_urls.append(audio_url.get('href').strip())
+
+        # example header: bat·ter 1  (băt′ər)
+        # example person header: Monk  (mŭngk), (James) Arthur  Known as  "Art."  Born 1957.
+        header = td.find('div', class_='rtseg', recursive=False)
+        # AHD uses italicized "th" to represent 'ð' and normal "th" to represent 'θ'
+        th = 'ð' if header.find('i') else 'θ'
+        header = (header.text.split('\n', 1)[0]).split()
+        _phrase, phon_spell = get_phrase_and_phonetic_spelling(header)
+
+        _phrase = ' '.join(_phrase)
+        no_accents_phrase = _phrase.replace('·', '')
+
+        phon_spell = ' '.join(phon_spell)
+        phon_spell = phon_spell.rstrip(',')
+        if config['toipa']:
+            phon_spell = ahd_to_ipa_translation(phon_spell, th)
+        else:
+            phon_spell = phon_spell.replace('-', 'ˈ') \
+                .replace('′', '-').replace('', 'ˌ') \
+                .replace('', 'ōō').replace('', 'ōō')
+
+        if results_for_printed:
+            ahd.print(f'{delimit_c.color}{ahd.textwidth * ahd.HORIZONTAL_BAR}')
+        else:
+            title = 'AH Dictionary (filtered)' if filter_subdefs else 'AH Dictionary'
+            ahd.print_title(title)
+
+            if no_accents_phrase.lower() != query.lower():
+                ahd.print(f' {BOLD}Wyniki dla {phrase_c.color}{no_accents_phrase}{END}')
+            results_for_printed = True
+
+        br = '\n' if len(_phrase) + len(phon_spell) + 2 > ahd.textwidth else ' '
+        ahd.print(f' {phrase_c.color}{_phrase}{br}{phon_c.color}{phon_spell}')
+
+        for block in labeled_blocks:
+            # Gather part of speech labels
+            pos_labels = block.find_all('i', recursive=False)
+            pos_labels = {x.text.strip() for x in pos_labels if x.text.strip()}
+            pos_labels.discard('th')
+
+            if not pos_labels and filter_labels:
+                continue
+
+            # part of speech labels from a single block
+            skip_current_block = evaluate_skip(pos_labels, flags)
+            if skip_current_block:
+                continue
+
+            # Gather phrase tenses
+            phrase_tenses = get_phrase_tenses(block.contents[1:])
+            phrase_tenses_tp = phrase_tenses_to_print(phrase_tenses)
+
+            if pos_labels:
+                ahd.print()
+            pos_label = ' '.join(pos_labels)
+            ahd.print(f' {poslabel_c.color}{pos_label}', end='')
+
+            br = '\n' if len(pos_label) + len(phrase_tenses_tp) + 3 > ahd.textwidth else ' '
+            ahd.print(f'{br} {inflection_c.color}{phrase_tenses_tp}')
+
+            # Add definitions and their corresponding elements
+            definitions = block.find_all('div', class_=('ds-list', 'ds-single'), recursive=False)
+            for root_definition in definitions:
+                root_definition = definition_cleanup(root_definition.text)
+
+                subdefinitions = root_definition.split('*')
+                for i, subdefinition in enumerate(subdefinitions):
+                    subindex += 1
+                    # strip an occasional leftover octothorpe
+                    subdefinition = subdefinition.strip('# ')
+
+                    subdef_to_print = wrap_lines(
+                        subdefinition, ahd.textwidth, len(str(subindex)), ahd.indent, 2
+                    )
+                    if config['showexsen']:
+                        subdef_to_print = subdef_to_print.replace(':', f':{exsen_c.color}', 1)
+                    else:
+                        subdef_to_print = subdef_to_print.split(':', 1)[0].strip(' .') + '.'
+
+                    sign = '>' if i == 0 else ' '
+                    def_c = def1_c if subindex % 2 else def2_c
+                    ahd.print(f'{defsign_c.color}{sign}{index_c.color}{subindex} {def_c.color}{subdef_to_print}')
+
+                    subdef_exsen = subdefinition.split(':', 1)
+
+                    ahd.definitions.append(subdef_exsen[0].strip(' .') + '.')
+                    if len(subdef_exsen) == 2:
+                        ahd.example_sentences.append(subdef_exsen[1].strip())
+                    else:
+                        ahd.example_sentences.append('')
+
+                    if filter_subdefs:
+                        break
+
+        # Add parts of speech
+        parts_of_speech = td.find_all('div', class_='runseg', recursive=False)
+        if parts_of_speech:
+            ahd.print()
+
+        td_pos = []
+        for pos in parts_of_speech:
+            # removing ',' makes parts of speech with multiple spelling variants get
+            # their phonetic spelling correctly detected
+            postring = pos.text.replace(',', '').split()
+            postring, phon_spell = get_phrase_and_phonetic_spelling(postring)
+
+            # accentuation and hyphenation
+            postring = ', '.join(postring).replace('·', 'ˈ').replace('′', '-').replace('', 'ˌ')
+            phon_spell = ' '.join(phon_spell).rstrip(',')
+
+            if config['toipa']:
+                # this is very general, I have no idea how to differentiate these correctly
+                th = 'ð' if postring.startswith('th') else 'θ'
+                phon_spell = ahd_to_ipa_translation(phon_spell, th)
+            else:
+                phon_spell = phon_spell.replace('-', 'ˈ') \
+                    .replace('′', '-').replace('', 'ˌ') \
+                    .replace('', 'ōō').replace('', 'ōō')
+
+            ahd.print(f' {pos_c.color}{postring}  {phon_c.color}{phon_spell}')
+            td_pos.append(postring)
+        ahd.parts_of_speech.append(' | '.join(td_pos))
+
+        # Add etymologies
+        etymology = td.find('div', class_='etyseg', recursive=False)
+        if etymology is not None:
+            etym_to_print = wrap_lines(etymology.text, ahd.textwidth, 0, 1, 1)
+            ahd.print(f'\n {etym_c.color}{etym_to_print}')
+            ahd.etymologies.append(etymology.text)
+        else:
+            ahd.etymologies.append('')
+
+        ahd.last_definition_indexes.append(subindex)
+        ahd.phrases.append(no_accents_phrase)
+
+    if config['top']:
+        print('\n' * (ahd.usable_height - 2))
+    else:
+        print()
+    return ahd

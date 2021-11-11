@@ -54,42 +54,16 @@ def show_available_notes():
     print()
 
 
-def add_note_to_anki(*args, **kwargs) -> str:
-    arg = args[1].lower()
-    note_name = number_to_note_dict.get(arg, arg)
-
-    try:
-        with open(os.path.join(ROOT_DIR, f'notes/{note_name}.json'), 'r') as f:
-            note_config = json.load(f)
-    except FileNotFoundError:
-        return f'Notatka {R}"{note_name}"{err_c.color} nie została znaleziona'
-
-    model_name = note_config['modelName']
-    _, err = invoke('createModel',
-                    modelName=model_name,
-                    inOrderFields=note_config['fields'],
-                    css=note_config['css'],
-                    cardTemplates=[{'Name': note_config['cardName'],
-                                    'Front': note_config['front'],
-                                    'Back': note_config['back']}])
-    if err is not None:
-        return f'{err_c.color}Notatka nie została dodana:\n{err}\n'
-
-    print(f'{GEX.color}Notatka dodana pomyślnie')
-    if ask_yes_no(f'Czy chcesz ustawić "{model_name}" jako -note?', default=True):
-        save_command('note', model_name)
-
-
 def ankiconnect_request(action, **params):
     return {'action': action, 'params': params, 'version': 6}
 
 
 def invoke(action, **params):
-    requestjson = json.dumps(ankiconnect_request(action, **params)).encode('utf-8')
+    request_json = json.dumps(ankiconnect_request(action, **params)).encode('utf-8')
 
     try:
         # Using 127.0.0.1 as Windows is very slow to resolve "localhost" for some reason
-        response = json.load(urllib.request.urlopen(urllib.request.Request('http://127.0.0.1:8765', requestjson)))
+        response = json.load(urllib.request.urlopen(urllib.request.Request('http://127.0.0.1:8765', request_json)))
     except URLError:
         return None, '  Nie udało się nawiązać połączenia z Anki:\n' \
                      '    Otwórz Anki i spróbuj ponownie.'
@@ -126,10 +100,45 @@ def invoke(action, **params):
         msg = '  Notatka już znajduje się w bazie notatek.'
     elif err.startswith('collection is not available'):
         msg = '  Sprawdź czy Anki jest w pełni otwarte.'
+    elif err.startswith("'nonetype' object has no attribute"):
+        msg = '  Sprawdź czy Anki jest w pełni otwarte.'
     else:
         raise Exception(response['error'])
 
     return None, msg  # error
+
+
+def gui_browse_cards(query):
+    q = ' '.join(query) if query else 'added:1'
+    _, err = invoke('guiBrowse', query=q)
+    if err is not None:
+        print(f'{err_c.color}Nie udało się otworzyć wyszukiwarki kart:\n{err}\n')
+
+
+def add_note_to_anki(*args, **kwargs) -> str:
+    arg = args[1].lower()
+    note_name = number_to_note_dict.get(arg, arg)
+
+    try:
+        with open(os.path.join(ROOT_DIR, f'notes/{note_name}.json'), 'r') as f:
+            note_config = json.load(f)
+    except FileNotFoundError:
+        return f'Notatka {R}"{note_name}"{err_c.color} nie została znaleziona'
+
+    model_name = note_config['modelName']
+    _, err = invoke('createModel',
+                    modelName=model_name,
+                    inOrderFields=note_config['fields'],
+                    css=note_config['css'],
+                    cardTemplates=[{'Name': note_config['cardName'],
+                                    'Front': note_config['front'],
+                                    'Back': note_config['back']}])
+    if err is not None:
+        return f'{err_c.color}Notatka nie została dodana:\n{err}\n'
+
+    print(f'{GEX.color}Notatka dodana pomyślnie')
+    if ask_yes_no(f'Czy chcesz ustawić "{model_name}" jako -note?', default=True):
+        save_command('note', model_name)
 
 
 def cache_current_note(*, refresh=False):

@@ -1,40 +1,40 @@
 # This file has to be moved to the project's main directory in order to work.
 # I have no idea how to get imports to work without fiddling with the sys.path.
 # AFAIK it's possible to do.
-from src.Dictionaries.ahdictionary import AHDictionary
+from src.Dictionaries.ahdictionary import ask_ahdictionary
 
 # Make sure phonetic spelling is separated from 'phrase' field in these cases:
 # One headword and one phonetic spelling (trivial case)
-AHDictionary().get_dictionary(query='garbage')
+ask_ahdictionary(query='garbage')
 # Headwords with numbers
-AHDictionary().get_dictionary(query='key')
+ask_ahdictionary(query='key')
 # One headword and one phonetic spelling separated by commas
-AHDictionary().get_dictionary(query='foyer')
+ask_ahdictionary(query='foyer')
 # Person headword with pronunciation
-AHDictionary().get_dictionary(query='wolf')
+ask_ahdictionary(query='wolf')
 # Person headword with no pronunciation
-AHDictionary().get_dictionary(query='monk')
+ask_ahdictionary(query='monk')
 # Long person headword with no pronunciation
-AHDictionary().get_dictionary(query='beach')
+ask_ahdictionary(query='beach')
 # Two headwords with 'also' and phonetic spelling separated by commas
-AHDictionary().get_dictionary(query='coconut')
+ask_ahdictionary(query='coconut')
 # Two headwords with 'or' and phonetic spelling separated by commas
-AHDictionary().get_dictionary(query='fjord')
+ask_ahdictionary(query='fjord')
 # Only one space between phonetic spelling and headword
-AHDictionary().get_dictionary(query='incandescent')
+ask_ahdictionary(query='incandescent')
 # No pronunciation phrase
-AHDictionary().get_dictionary(query='vicious circle')
+ask_ahdictionary(query='vicious circle')
 # first headword numbered, second not and one phonetic spelling + Informal label
-AHDictionary().get_dictionary(query='ok')
+ask_ahdictionary(query='ok')
 
 # with "also"
-AHDictionary().get_dictionary(query='mastodon')
+ask_ahdictionary(query='mastodon')
 # first headword numbered, second not and two phonetic spellings
-AHDictionary().get_dictionary(query='like')
+ask_ahdictionary(query='like')
 
 # problematic:
-AHDictionary().get_dictionary(query='a')
-AHDictionary().get_dictionary(query='was')
-AHDictionary().get_dictionary(query='the')
-AHDictionary().get_dictionary(query='but')
-AHDictionary().get_dictionary(query='frazzle')
+ask_ahdictionary(query='a')
+ask_ahdictionary(query='was')
+ask_ahdictionary(query='the')
+ask_ahdictionary(query='but')
+ask_ahdictionary(query='frazzle')

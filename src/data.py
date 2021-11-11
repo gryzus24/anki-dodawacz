@@ -22,10 +22,10 @@ except (FileNotFoundError, JSONDecodeError):
     config_ac = json.loads('{}')
 
 # Creates an ID to NOTE_NAME dictionary from the contents of ../notes:
-#   e.g. {'1': 'gryzus-std', '2': 'gryzus-std-light', '3': 'gryzus-std-dark'}
+#   e.g. {'1': 'gryzus-tsc', '2': 'gryzus-std', ...}
 _notes = os.listdir(os.path.join(ROOT_DIR, 'notes'))
 number_to_note_dict = dict(
-    zip(map(str, range(1, len(_notes) + 1)), map(lambda x: x[:-5], sorted(_notes, reverse=True)))
+    zip(map(str, range(1, len(_notes) + 1)), [x[:-5] for x in sorted(_notes, reverse=True)])
 )
 
 command_to_help_dict = {
@@ -94,6 +94,13 @@ command_to_help_dict = {
     '-ap': (
         'Ścieżka zapisu audio',
         '{ścieżka|auto}'),
+    '-tsc': ('Priorytet tworzenia Targeted Sentence Cards',
+             '{\n'
+             '  Brak przykładowego zdania zastąp:\n'
+             '    -      : niczym\n'
+             '    std    : przykładami\n'
+             '    strict : przykładami lub frazą\n'
+             '}'),
     '-dict': (
         'Słownik pytany jako pierwszy',
         '{ahd|lexico|idioms}'),
@@ -146,6 +153,7 @@ command_to_help_dict = {
         'Zmiana domyślnych wartości',
         '{element} {wartość}'),
 }
+assert len(command_to_help_dict) == 49, 'make sure to update boolean commands in search'
 
 field_config = {
     'definitions': (
@@ -174,7 +182,7 @@ DEFAULT_FIELD_ORDER = {
     '6': 'czesci_mowy',
     '7': 'etymologia',
     '8': 'audio',
-    '9': 'sentence_audio'
+    '9': 'recording'
 }
 
 # fields used for Anki note recognition
@@ -190,7 +198,7 @@ AC_BASE_FIELDS = (
     ('części',      'czesci_mowy'),
     ('etym',        'etymologia'),
     ('audio',       'audio'),
-    ('nagr',        'sentence_audio'),
+    ('nagr',        'recording'),
 
     # Others
     ('gloss', 'definicja'),
@@ -229,11 +237,11 @@ AC_BASE_FIELDS = (
     ('sound',  'audio'),
     ('media',  'audio'),
 
-    ('recor',         'sentence_audio'),
-    ('sentence_a',    'sentence_audio'),
-    ('sentenceaudio', 'sentence_audio'),
-    ('sentence_r',    'sentence_audio'),
-    ('sentencerec',   'sentence_audio'),
+    ('recor',         'recording'),
+    ('sentence_a',    'recording'),
+    ('sentenceaudio', 'recording'),
+    ('sentence_r',    'recording'),
+    ('sentencerec',   'recording'),
 )
 
 labels = {
@@ -318,28 +326,33 @@ USER_AGENT = {
     'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; rv:78.0) Gecko/20100101 Firefox/78.0'
 }
 
-config_columns = (
-    ('-pz',                '-top',                       'def_bulk'),
-    ('-def',               '-displaycard',             'exsen_bulk'),
-    ('-exsen',             '-showadded',                 'pos_bulk'),
-    ('-pos',               '-showexsen',                'etym_bulk'),
-    ('-etym',              '-textwrap',                  'syn_bulk'),
-    ('-syn',               '-textwidth',                         ''),
-    ('',                   '-indent',             '[config źródeł]'),
-    ('-formatdefs',        '',                              '-dict'),
-    ('-savecards',         '[config filtrowania]',         '-dict2'),
-    ('-createcards',       '-fsubdefs',                     '-thes'),
-    ('',                   '-fnolabel',                    '-audio'),
-    ('[config ukrywania]', '-toipa',                     '-recqual'),
-    ('-upz',               '',                                   ''),
-    ('-udef',              '[config ankiconnect]',               ''),
-    ('-uexsen',            '-ankiconnect',                       ''),
-    ('-usyn',              '-duplicates',                        ''),
-    ('-upreps',            '-dupescope',                         ''),
-    ('-keependings',       '-note',                              ''),
-    ('-hideas',            '-deck',                              ''),
-    ('',                   '-tags',                              ''),
+config_column_1 = (
+    '-pz', '-def', '-exsen', '-pos', '-etym', '-syn',
+    '',
+    '-tsc', '-formatdefs', '-savecards', '-createcards',
+    '',
+    '[config ukrywania]',
+    '-upz', '-udef', '-uexsen', '-usyn', '-upreps', '-keependings', '-hideas',
 )
+config_column_2 = (
+    '-top', '-displaycard', '-showadded', '-showexsen', '-textwrap', '-textwidth', '-indent',
+    '',
+    '[config filtrowania]',
+    '-fsubdefs', '-fnolabel', '-toipa',
+    '',
+    '[config ankiconnect]',
+    '-ankiconnect', '-duplicates', '-dupescope', '-note', '-deck', '-tags',
+)
+config_column_3 = (
+    'def_bulk', 'exsen_bulk', 'pos_bulk', 'etym_bulk', 'syn_bulk',
+    '',
+    '[config źródeł]',
+    '-dict', '-dict2', '-thes', '-audio', '-recqual',
+    '', '', '', '', '', '', '', '',
+)
+assert len(config_column_1) == len(config_column_2) == len(config_column_3), 'config columns not equal'
+
+config_columns = tuple(zip(config_column_1, config_column_2, config_column_3))
 
 str_colors_to_color = {
     'black': Fore.BLACK,
@@ -379,8 +392,6 @@ color_elements_to_msg = {
     'attention': 'Kolor zwracający uwagę',
     'success': 'Kolor udanej operacji',
     'delimit': 'Kolor odkreśleń',
-    'input': 'Kolor pól na input',
-    'inputtext': 'Kolor wpisywanego tekstu',
 }
 
 bool_values_dict = {

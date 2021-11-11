@@ -8,8 +8,8 @@ from src.data import str_colors_to_color, config
 colorama.init(autoreset=True)
 
 if sys.platform.startswith('linux'):
-    # cmd on Windows or even whole Windows can't display proper bold font
-    # mac can be problematic too. Input_c and inputtext_c same story
+    # cmd on Windows or even whole Windows can't display proper bold font in terminal
+    # mac can be problematic too.
     BOLD = '\033[1m'
     END = '\033[0m'
 else:
@@ -19,17 +19,11 @@ else:
 
 class Color:
     def __init__(self, color_name):
-        if not sys.platform.startswith('linux') and color_name in ('input_c', 'inputtext_c'):
-            self.color_name = ''
-        else:
-            self.color_name = color_name
+        self.color_name = color_name
 
     @property
     def color(self):
-        try:
-            return str_colors_to_color[config[self.color_name]]
-        except KeyError:
-            return ''
+        return str_colors_to_color[config[self.color_name]]
 
     # not sure whether I should use __repr__ or @property to update colors
     # The best would be a single class that holds colors, but I'm not sure
@@ -55,5 +49,3 @@ etym_c = Color('etym_c')
 syngloss_c = Color('syngloss_c')
 err_c = Color('error_c')
 delimit_c = Color('delimit_c')
-inputtext_c = Color('inputtext_c')
-input_c = Color('input_c')

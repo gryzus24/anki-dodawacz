@@ -105,7 +105,7 @@ class Dictionary:
         color_of = {
             'definicja': def1_c.color, 'synonimy': syn_c.color, 'przyklady': exsen_c.color,
             'phrase': phrase_c.color, 'zdanie': '', 'czesci_mowy': pos_c.color,
-            'etymologia': etym_c.color, 'audio': '', 'sentence_audio': ''
+            'etymologia': etym_c.color, 'audio': '', 'recording': ''
         }
         self.manage_terminal_size()
         print(f'\n{delimit_c.color}{self.textwidth * self.HORIZONTAL_BAR}')

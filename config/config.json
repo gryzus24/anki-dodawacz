@@ -33,7 +33,7 @@
 "6": "czesci_mowy",
 "7": "etymologia",
 "8": "audio",
-"9": "sentence_audio"
+"9": "recording"
 },
 "fieldorder_d": "3",
 "fnolabel": false,
@@ -45,8 +45,6 @@
 ],
 "index_c": "lightgreen",
 "inflection_c": "lightblack",
-"input_c": "reset",
-"inputtext_c": "reset",
 "keependings": true,
 "note": "-",
 "phon_c": "lightblack",
@@ -79,5 +77,6 @@
 "upreps": false,
 "upz": false,
 "usyn": true,
-"formatdefs": false
+"formatdefs": true,
+"tsc": "std"
 }

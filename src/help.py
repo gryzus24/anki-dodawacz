@@ -108,7 +108,7 @@ Wpisanie komendy wyświetli informacje o jej użyciu.
 
 def commands_help():
     print(f"""\
-{R}{BOLD}{'[ Komendy dodawania ]'.center(79,  '─')}{END}
+{R}{BOLD}{'[ Komendy dodawania ]'.center(79, '─')}{END}
 Wpisanie komendy wyświetli informacje o jej użyciu.
 
 {BOLD}[Komenda]      [włącza|wyłącza]{END}
@@ -119,6 +119,12 @@ Wpisanie komendy wyświetli informacje o jej użyciu.
 -etym          pole etymologii
 -syn           pole synonimów
 -all           zmienia wartości powyższych komend
+
+-tsc           priorytet tworzenia Targeted Sentence Cards
+               brak przykładowego zdania zastąp:
+                 -      : niczym
+                 std    : przykładami
+                 strict : przykładami lub frazą
 
 -formatdefs    formatowanie definicji:
                  każda definicja jest indeksowana
@@ -137,7 +143,7 @@ Wpisanie komendy wyświetli informacje o jej użyciu.
   "C:\\{{Users}}\\{{Użytkownik}}\\AppData\\Roaming\\Anki2\\{{Użytkownik Anki}}\\collection.media"
    (%appdata%)
 
-{BOLD}{'[ Komendy wyświetlania ]'.center(79,  '─')}{END}
+{BOLD}{'[ Komendy wyświetlania ]'.center(79, '─')}{END}
 Komendy wpływające na sposób wyświetlania informacji.
 
 -top                             wyrównywanie słowników do górnej krawędzi okna
@@ -149,7 +155,7 @@ Komendy wpływające na sposób wyświetlania informacji.
 -textwidth {{liczba >= 0|auto}}    szerokość tekstu do momentu zawinięcia
 -indent    {{liczba >= 0}}         szerokość wcięć
 
-{BOLD}{'[ Komendy ukrywania i filtrowania ]'.center(79,  '─')}{END}
+{BOLD}{'[ Komendy ukrywania i filtrowania ]'.center(79, '─')}{END}
 Ukrywanie hasła to zamiana wyszukiwanego słowa na "..." (domyślnie)
 Filtrowanie to usunięcie elementów spełniających określone warunki
 
@@ -166,7 +172,7 @@ Filtrowanie to usunięcie elementów spełniających określone warunki
 
 -toipa          tłumaczenie zapisu fonetycznego używanego w AHD do IPA
 
-{BOLD}{'[ Komendy źródeł i nagrywania ]'.center(79,  '─')}{END}
+{BOLD}{'[ Komendy źródeł i nagrywania ]'.center(79, '─')}{END}
 -dict  {{ahd|lexico|idioms}}        słownik pytany jako pierwszy
 -dict2 {{ahd|lexico|idioms|-}}      słownik pytany jako drugi
 -thes  {{wordnet|-}}                słownik synonimów
@@ -182,11 +188,11 @@ Filtrowanie to usunięcie elementów spełniających określone warunki
                           wyszukuje [hasło] i dodaje nagranie na kartę
 
 -recqual {{0-9}}            jakość nagrywania:
-                            0 - najlepsza
-                            9 - najgorsza
-                            4 - rekomendowana
+                            0 : najlepsza
+                            9 : najgorsza
+                            4 : rekomendowana
 
-{BOLD}{'[ Komendy AnkiConnect ]'.center(79,  '─')}{END}
+{BOLD}{'[ Komendy AnkiConnect ]'.center(79, '─')}{END}
 -ankiconnect           bezpośrednie dodawanie kart do Anki poprzez AnkiConnect
 -duplicates            zezwolenie na dodawanie duplikatów
 -dupescope             określa zasięg sprawdzania duplikatów:
@@ -202,7 +208,7 @@ Filtrowanie to usunięcie elementów spełniających określone warunki
 -refresh               odświeża informacje o aktualnej notatce
                        (użyć jeżeli pola notatki zostały zmienione w Anki)
 
-{BOLD}{'[ Pozostałe komendy ]'.center(79,  '─')}{END}
+{BOLD}{'[ Pozostałe komendy ]'.center(79, '─')}{END}
 --delete-last,
 --delete-recent      usuwa ostatnio dodawane karty z pliku karty.txt
 
@@ -215,7 +221,7 @@ Filtrowanie to usunięcie elementów spełniających określone warunki
 --help-commands      wyświetla informacje o komendach
 --help-recording     wyświetla informacje o nagrywaniu
 
-{BOLD}{'[ Flagi ]'.center(79,  '─')}{END}
+{BOLD}{'[ Flagi ]'.center(79, '─')}{END}
 Flagi pozwalają na włączenie/wyłączenie komendy lub opcji tylko na czas
 jednego cyklu tworzenia karty.
 

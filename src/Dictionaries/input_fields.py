@@ -1,12 +1,10 @@
-from src.colors import \
-    R, YEX, GEX, \
-    input_c, inputtext_c
+from src.colors import R, YEX, GEX
 from src.data import config, bool_values_dict, PREPOSITIONS
 
 
 def ask_yes_no(prompt, *, default):
     d = 'T/n' if default else 't/N'
-    i = input(f'{input_c.color}{prompt} [{d}]:{inputtext_c.color} ').strip().lower()
+    i = input(f'{prompt} [{d}]: ').strip().lower()
     return bool_values_dict.get(i, default)
 
 
@@ -124,7 +122,7 @@ class InputField:
         if not config[self.field_name]:
             return default_value
 
-        input_choice = input(f'{input_c.color}{self.prompt} [{default_value}]:{inputtext_c.color} ')
+        input_choice = input(f'{self.prompt} [{default_value}]: ')
         if not input_choice.strip():
             return default_value
         return input_choice
@@ -149,10 +147,10 @@ class InputField:
         elif input_choice.isnumeric() and int(input_choice) > content_length:
             input_choice = '0'
         else:
-            input_choice = input_choice\
-                .replace('-all', f'{content_length}:1')\
-                .replace('all', f'1:{content_length}')\
-                .replace('-1', f'1:{content_length}')\
+            input_choice = input_choice \
+                .replace('-all', f'{content_length}:1') \
+                .replace('all', f'1:{content_length}') \
+                .replace('-1', f'1:{content_length}') \
                 .replace('auto', auto_choice.replace(' ', '').lower())
 
         parsed_inputs = parse_inputs(input_choice.split(','), content_length)
@@ -223,7 +221,7 @@ def sentence_input():
     if not config['pz']:
         return ChosenElement()
 
-    sentence = input(f'{input_c.color}Dodaj przykładowe zdanie:{inputtext_c.color} ')
+    sentence = input('Dodaj przykładowe zdanie: ')
     if sentence.lower() == '-sc':
         print(f'{GEX.color}Pominięto dodawanie karty')
         return None

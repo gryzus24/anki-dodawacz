@@ -22,7 +22,7 @@ import src.data as data
 from src.colors import R, BOLD, END, YEX, GEX, \
     def1_c, def2_c, defsign_c, pos_c, etym_c, syn_c, exsen_c, \
     syngloss_c, index_c, phrase_c, \
-    phon_c, poslabel_c, inflection_c, err_c, delimit_c, input_c, inputtext_c
+    phon_c, poslabel_c, inflection_c, err_c, delimit_c
 from src.data import ROOT_DIR, DEFAULT_FIELD_ORDER, config, bool_colors_dict
 
 
@@ -142,10 +142,9 @@ def print_config_representation() -> None:
         color_c = bool_colors_dict.get(state_c, '')
         if color_c: state_c = 10*'\b'+'watch?v=LDl544TI_mU'
 
-        level_a = '\b\b\b\b\b' if '[' in a else ''
         level_b = '\b\b\b\b\b' if '[' in b else ''
 
-        print(f'{a:13s}{color_a}{state_a:10s}{level_a}{R}'
+        print(f'{a:13s}{color_a}{state_a:10s}{R}'
               f'{b:15s}{color_b}{state_b:11s}{level_b}{R}'
               f'{c:10s}{color_c}{state_c}{R}')
 
@@ -199,7 +198,7 @@ def display_field_order():
         print(f' {bold}{line_color}{field_number}: {actual_field:17s}{END}{R}{default}')
 
         if field_number == config['fieldorder_d']:
-            print(f' {delimit_c.color}D: ──────────────{R}')
+            print(f' {delimit_c.color}D: ───────────{R}')
 
 
 def change_field_order(*args, **kwargs):
@@ -269,7 +268,7 @@ def set_audio_path(*args, message):
 
         print(f'\n{YEX.color}Wybierz ścieżkę')
         try:
-            path_choice = int(input(f'{input_c.color}[0-Anuluj]: '))
+            path_choice = int(input('[0-Anuluj]: '))
             if path_choice < 1 or path_choice > len(collections):
                 raise ValueError
         except ValueError:
@@ -302,6 +301,7 @@ def set_text_value_commands(*args, message):
     cmd, value = args[0], args[1]
 
     values_dict = {
+        '-tsc':       ('-', 'std', 'strict'),
         '-dupescope': ('deck', 'collection'),
         '-recqual':   ('0', '1', '2', '3', '4', '5', '6', '7', '8', '9'),
         '-textwrap':  ('justify', 'regular', '-'),
@@ -392,10 +392,5 @@ inflection    {inflection_c.color}odmian hasła{R}
 error         {err_c.color}błędów{R}
 attention     {YEX.color}zwracającego uwagę{R}
 success       {GEX.color}udanej operacji{R}
-delimit       {delimit_c.color}odkreśleń{R}""")
-
-    if sys.platform.startswith('linux'):
-        print(f"input         {input_c.color}pól na input\n{R}"
-              f"inputtext     {inputtext_c.color}wpisywanego tekstu{R}")
-    print()
+delimit       {delimit_c.color}odkreśleń{R}\n""")
     show_available_colors()

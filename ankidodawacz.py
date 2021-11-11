@@ -22,15 +22,14 @@ import src.commands as c
 import src.data as data
 import src.ffmpeg_interface as ffmpeg
 import src.help as h
-from src.Dictionaries.ahdictionary import AHDictionary
+from src.Dictionaries.ahdictionary import ask_ahdictionary
 from src.Dictionaries.audio_dictionaries import ahd_audio, lexico_audio, diki_audio, save_audio
-from src.Dictionaries.farlex import FarlexIdioms
+from src.Dictionaries.farlex import ask_farlex
 from src.Dictionaries.input_fields import sentence_input, ChosenElement
-from src.Dictionaries.lexico import Lexico
-from src.Dictionaries.wordnet import WordNet
+from src.Dictionaries.lexico import ask_lexico
+from src.Dictionaries.wordnet import ask_wordnet
 from src.colors import \
-    R, BOLD, END, YEX, GEX, \
-    err_c, input_c, inputtext_c
+    R, BOLD, END, YEX, GEX, err_c
 from src.data import config
 
 if sys.platform.startswith('linux'):
@@ -38,9 +37,9 @@ if sys.platform.startswith('linux'):
     import readline
     readline.read_init_file()
 
-__version__ = 'v1.1.0-1'
+__version__ = 'v1.1.1-1'
 
-commands = {
+required_arg_commands = {
     # commands that take arguments
     '--delete-last': c.delete_cards, '--delete-recent': c.delete_cards,
     '-textwrap': c.set_text_value_commands,
@@ -51,6 +50,7 @@ commands = {
     '-tags': c.set_free_value_commands,
     '-hideas': c.set_free_value_commands,
     '--audio-path': c.set_audio_path, '-ap': c.set_audio_path,
+    '-tsc': c.set_text_value_commands,
     '-dict': c.set_text_value_commands,
     '-dict2': c.set_text_value_commands,
     '-thes': c.set_text_value_commands,
@@ -62,7 +62,7 @@ commands = {
     '-color': c.set_colors, '-c': c.set_colors,
     '-cd': c.config_defaults,
 }
-no_arguments_commands = {
+no_arg_commands = {
     '--audio-device': ffmpeg.set_audio_device,
     '-refresh': anki.refresh_cached_notes,
     '--help': h.quick_help, '-help': h.quick_help, '-h': h.quick_help,
@@ -75,14 +75,14 @@ no_arguments_commands = {
 
 def search_interface() -> str:
     while True:
-        word = input(f'{input_c.color}Szukaj ${inputtext_c.color} ').strip()
+        word = input('Szukaj $ ').strip()
         if not word:
             continue
 
         args = word.split()
         cmd = args[0]
-        if cmd in no_arguments_commands:
-            err = no_arguments_commands[cmd]()
+        if cmd in no_arg_commands:
+            err = no_arg_commands[cmd]()
             if err is not None:
                 print(f'{err_c.color}{err}')
             continue
@@ -90,9 +90,12 @@ def search_interface() -> str:
         if cmd in tuple(data.command_to_help_dict)[:25]:
             method = c.boolean_commands
             message, usage = data.command_to_help_dict[cmd], '{on|off}'
-        elif cmd in commands:
-            method = commands[cmd]
+        elif cmd in required_arg_commands:
+            method = required_arg_commands[cmd]
             message, usage = data.command_to_help_dict[cmd]
+        elif cmd in ('-b', '--browse'):
+            anki.gui_browse_cards(query=args[1:])
+            continue
         else:
             return word
 
@@ -123,11 +126,10 @@ def search_interface() -> str:
 
 
 def diki_flags(flags):
-    try:
-        return [x for x in flags
-                if x in ('n', 'v', 'adj', 'noun', 'verb', 'adjective')][0]
-    except IndexError:
-        return ''
+    for flag in flags:
+        if flag in ('n', 'v', 'adj', 'noun', 'verb', 'adjective'):
+            return flag
+    return ''
 
 
 def manage_audio(dictionary, flags):
@@ -152,16 +154,16 @@ def manage_audio(dictionary, flags):
 
 def save_card_to_file(field_values):
     try:
-        with open('karty.txt', 'a', encoding='utf-8') as twor:
-            twor.write(f'{field_values[config["fieldorder"]["1"]]}\t'
-                       f'{field_values[config["fieldorder"]["2"]]}\t'
-                       f'{field_values[config["fieldorder"]["3"]]}\t'
-                       f'{field_values[config["fieldorder"]["4"]]}\t'
-                       f'{field_values[config["fieldorder"]["5"]]}\t'
-                       f'{field_values[config["fieldorder"]["6"]]}\t'
-                       f'{field_values[config["fieldorder"]["7"]]}\t'
-                       f'{field_values[config["fieldorder"]["8"]]}\t'
-                       f'{field_values[config["fieldorder"]["9"]]}\n')
+        with open('karty.txt', 'a', encoding='utf-8') as f:
+            f.write(f'{field_values[config["fieldorder"]["1"]]}\t'
+                    f'{field_values[config["fieldorder"]["2"]]}\t'
+                    f'{field_values[config["fieldorder"]["3"]]}\t'
+                    f'{field_values[config["fieldorder"]["4"]]}\t'
+                    f'{field_values[config["fieldorder"]["5"]]}\t'
+                    f'{field_values[config["fieldorder"]["6"]]}\t'
+                    f'{field_values[config["fieldorder"]["7"]]}\t'
+                    f'{field_values[config["fieldorder"]["8"]]}\t'
+                    f'{field_values[config["fieldorder"]["9"]]}\n')
     except (NameError, KeyError):
         print(f'{err_c.color}Dodawanie karty do pliku nie powiodło się\n'
               f'Spróbuj przywrócić domyślne ustawienia pól wpisując {R}-fo default\n')
@@ -171,9 +173,9 @@ def save_card_to_file(field_values):
 
 def manage_dictionaries(_phrase, flags):
     first_dicts = {
-        'ahd': AHDictionary,
-        'lexico': Lexico, 'l': Lexico,
-        'idioms': FarlexIdioms, 'idiom': FarlexIdioms, 'i': FarlexIdioms
+        'ahd': ask_ahdictionary,
+        'lexico': ask_lexico, 'l': ask_lexico,
+        'idioms': ask_farlex, 'idiom': ask_farlex, 'i': ask_farlex
     }
 
     dictionary = None
@@ -186,29 +188,29 @@ def manage_dictionaries(_phrase, flags):
             else:
                 # If we don't break out of the for loop, we can query multiple
                 # dictionaries by specifying more than one dictionary flag
-                dictionary = dict_to_call().get_dictionary(_phrase, flags=flags)
+                dictionary = dict_to_call(_phrase, flags=flags)
                 if dictionary is None:
                     return None
 
     if dictionary is None:
-        dictionary = first_dicts[config['dict']]().get_dictionary(_phrase, flags=flags)
+        dictionary = first_dicts[config['dict']](_phrase, flags=flags)
 
     if dictionary is not None:
         return dictionary
 
     second_dicts = {
-        'ahd': AHDictionary,
-        'lexico': Lexico,
-        'idioms': FarlexIdioms,
+        'ahd': ask_ahdictionary,
+        'lexico': ask_lexico,
+        'idioms': ask_farlex,
         '-': None
     }
     dict_to_call = second_dicts[config['dict2']]
     if dict_to_call is not None:
         print(f'{YEX.color}Szukam w drugim słowniku...')
-        return dict_to_call().get_dictionary(_phrase, flags=flags)
+        return dict_to_call(_phrase, flags=flags)
 
 
-def format_definitions(field_dict) -> dict:
+def format_definitions(definitions):
     styles = (
         ('<span style="opacity: 1;">', '</span>'),
         ('<span style="opacity: .6;">', '</span>'),
@@ -216,26 +218,15 @@ def format_definitions(field_dict) -> dict:
         ('<small style="opacity: .2;"><sub>', '</sub></small>')
     )
     formatted = []
-    ls = len(styles)
-    for i, item in enumerate(field_dict['definicja'].split('<br>'), start=1):
-        style_i = ls - 1 if i > ls else i - 1
+    style_no = len(styles)
+    for i, item in enumerate(definitions.split('<br>'), start=1):
+        style_i = style_no - 1 if i > style_no else i - 1
         prefix, suffix = styles[style_i]
 
         prefix += f'<small style="color: #4EAA72;">{i}.</small>  '
         formatted.append(prefix + item + suffix)
 
-    field_dict['definicja'] = '<br>'.join(formatted)
-    return field_dict
-
-
-def get_elements_from_search(query):
-    if '<' in query and '>' in query:
-        temp_phrase = query.split('<', 1)[-1].rsplit('>', 1)[0]
-        if not temp_phrase:
-            return None
-        return temp_phrase, ChosenElement(query.replace(f'<{temp_phrase}>', temp_phrase))
-    else:
-        return query, ChosenElement()
+    return '<br>'.join(formatted)
 
 
 def main():
@@ -255,26 +246,29 @@ def main():
             'czesci_mowy': '',
             'etymologia': '',
             'audio': '',
-            'sentence_audio': ''
+            'recording': ''
         }
 
         link_word = search_interface()
-        phrase, *flags = link_word.split(' -')
+        search_query, *flags = link_word.split(' -')
         flags = [x.strip('-') for x in flags]
 
-        if phrase in ('-rec', '--record'):
+        if search_query in ('-rec', '--record'):
             ffmpeg.capture_audio()
             continue
 
-        phrase_zdanie = get_elements_from_search(phrase)
-        if phrase_zdanie is None:
-            continue
-        phrase, zdanie = phrase_zdanie
+        if '<' in search_query and '>' in search_query:
+            phrase = search_query.split('<', 1)[-1].rsplit('>', 1)[0]
+            if not phrase:
+                continue
+            zdanie = ChosenElement(search_query)
+        else:
+            phrase, zdanie = search_query, ChosenElement()
 
         if 'rec' in flags or 'record' in flags:
-            sentence_audio = ffmpeg.capture_audio(phrase)
+            recording = ffmpeg.capture_audio(phrase)
         else:
-            sentence_audio = ''
+            recording = ''
 
         dictionary = manage_dictionaries(phrase, flags)
         if dictionary is None:
@@ -284,10 +278,10 @@ def main():
         phrase = dictionary.phrases[0]
 
         if not config['createcards']:
-            WordNet().get_thesaurus(phrase)
+            ask_wordnet(phrase)
             continue
 
-        if not zdanie:
+        if not zdanie:  # If the phrase wasn't passed with the sentence
             zdanie = sentence_input()
             if zdanie is None:
                 continue
@@ -305,29 +299,44 @@ def main():
 
         thesaurus_contents = {'synonimy': ''}
         if dictionary.allow_thesaurus:
-            thesaurus = WordNet().get_thesaurus(phrase)
+            thesaurus = ask_wordnet(phrase)
             if thesaurus is not None:
                 thesaurus_contents = thesaurus.input_cycle()
                 if thesaurus_contents is None:
                     continue
 
+        # populate fields
         field_values = {
-            **field_values, **thesaurus_contents, **dictionary_contents, 'phrase': phrase,
-            'zdanie': zdanie, 'audio': audio, 'sentence_audio': sentence_audio
+            **field_values, **thesaurus_contents, **dictionary_contents,
+            'phrase': phrase, 'audio': audio, 'recording': recording
         }
+        if zdanie:
+            field_values['zdanie'] = zdanie
+        else:
+            if config['tsc'] != '-':
+                if field_values['przyklady']:
+                    field_values['zdanie'] = field_values['przyklady']
+                    field_values['przyklady'] = ''
+                else:
+                    if config['tsc'] == 'strict':
+                        field_values['zdanie'] = phrase
+                        field_values['phrase'] = ''
 
         if config['displaycard']:
             if dictionary.display_card(field_values) == 1:
                 continue
         print()
 
-        # replace sensitive characters with hard coded html escapes
-        field_values = {
-            key: val.replace("'", "&#39;").replace('"', '&quot;')
-            for key, val in field_values.items()
-        }
-        if config['formatdefs'] and field_values['definicja']:
-            field_values = format_definitions(field_values)
+        # format card content
+        for key, val in field_values.items():
+            field_values[key] = val.replace("'", "&#39;").replace('"', '&quot;')
+
+        if config['formatdefs']:
+            field_values['definicja'] = format_definitions(field_values['definicja'])
+        if '<br>' not in field_values['zdanie']:
+            field_values['zdanie'] = field_values['zdanie']\
+                .replace('>', '</b>').replace('<', '<b style="color: #91cb7d;">', 1)
+
         if config['ankiconnect']:
             anki.add_card_to_anki(field_values)
         if config['savecards']:
@@ -338,5 +347,4 @@ if __name__ == '__main__':
     try:
         raise SystemExit(main())
     except (KeyboardInterrupt, EOFError):
-        # R so that color from "inputtext" isn't displayed
-        print(f'{R}\nUnicestwiony')
+        raise SystemExit(print('\nUnicestwiony'))
