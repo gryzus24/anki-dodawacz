@@ -103,25 +103,28 @@ class Dictionary:
     def display_card(self, field_values):
         # field coloring
         color_of = {
-            'definicja': def1_c.color, 'synonimy': syn_c.color, 'przyklady': exsen_c.color,
-            'phrase': phrase_c.color, 'zdanie': '', 'czesci_mowy': pos_c.color,
-            'etymologia': etym_c.color, 'audio': '', 'recording': ''
+            'def': def1_c.color, 'syn': syn_c.color, 'exsen': exsen_c.color,
+            'phrase': phrase_c.color, 'pz': '', 'pos': pos_c.color,
+            'etym': etym_c.color, 'audio': '', 'recording': '',
         }
         self.manage_terminal_size()
-        print(f'\n{delimit_c.color}{self.textwidth * self.HORIZONTAL_BAR}')
+        delimit = self.textwidth * self.HORIZONTAL_BAR
 
+        print(f'\n{delimit_c.color}{delimit}')
         try:
             for field_number, field in config['fieldorder'].items():
-                formatted_lines = field_values[field].split('<br>')
-                for line in formatted_lines:
+                if field == '-':
+                    continue
+
+                for line in field_values[field].split('<br>'):
                     sublines = wrap_lines(line, self.textwidth - 1).split('\n')
                     for subline in sublines:
-                        print(f'{color_of[field]}{subline.center(self.textwidth)}')
+                        print(f'{color_of[field]}{subline.center(self.textwidth - 1)}')
 
                 if field_number == config['fieldorder_d']:  # d = delimitation
-                    print(f'{delimit_c.color}{self.textwidth * self.HORIZONTAL_BAR}')
+                    print(f'{delimit_c.color}{delimit}')
 
-            print(f'{delimit_c.color}{self.textwidth * self.HORIZONTAL_BAR}')
+            print(f'{delimit_c.color}{delimit}')
         except (NameError, KeyError):
             print(f'{err_c.color}\nDodawanie karty do pliku nie powiodło się\n'
                   f'Spróbuj przywrócić domyślne ustawienia pól wpisując {R}-fo default\n')

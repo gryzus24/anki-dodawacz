@@ -19,7 +19,7 @@ from requests.exceptions import ConnectionError as RqConnectionError
 from requests.exceptions import Timeout
 
 from src.colors import err_c
-from src.data import config, USER_AGENT
+from src.data import config, USER_AGENT, PREPOSITIONS
 
 request_session = requests.Session()
 request_session.headers.update(USER_AGENT)
@@ -47,6 +47,51 @@ def request_soup(url):
     reqs = request_session.get(url, timeout=10)
     reqs.encoding = 'UTF-8'
     return BeautifulSoup(reqs.text, 'lxml')
+
+
+def hide(content, phrase):
+    def case_replace(a, b):
+        nonlocal content
+        content = content.replace(a, b).replace(a.capitalize(), b).replace(a.upper(), b.upper())
+
+    three_dots = config['hideas']
+    nonoes = (
+        'the', 'and', 'a', 'is', 'an', 'it',
+        'or', 'be', 'do', 'does', 'not', 'if', 'he'
+    )
+
+    words_in_phrase = phrase.lower().split()
+    for word in words_in_phrase:
+        if word in nonoes:
+            continue
+
+        if not config['upreps']:
+            if word in PREPOSITIONS:
+                continue
+
+        # "Ω" is a placeholder
+        case_replace(word, f"{three_dots}Ω")
+        if word.endswith('e'):
+            case_replace(word[:-1] + 'ing', f'{three_dots}Ωing')
+            if word.endswith('ie'):
+                case_replace(word[:-2] + 'ying', f'{three_dots}Ωying')
+        elif word.endswith('y'):
+            case_replace(word[:-1] + 'ies', f'{three_dots}Ωies')
+            case_replace(word[:-1] + 'ied', f'{three_dots}Ωied')
+
+    if config['keependings']:
+        return content.replace('Ω', '')
+    else:
+        # e.g. from "We weren't ...Ωed for this." -> "We weren't ... for this."
+        split_content = content.split('Ω')
+        temp = [split_content[0].strip()]
+        for elem in split_content[1:]:
+            for letter in elem:
+                if letter in (' ', '.', ':'):
+                    break
+                elem = elem.replace(letter, '', 1)
+            temp.append(elem.strip())
+        return ' '.join(temp)
 
 
 def wrap_lines(string: str, term_width=79, index_width=0, indent=0, gap=0):

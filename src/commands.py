@@ -23,7 +23,7 @@ from src.colors import R, BOLD, END, YEX, GEX, \
     def1_c, def2_c, defsign_c, pos_c, etym_c, syn_c, exsen_c, \
     syngloss_c, index_c, phrase_c, \
     phon_c, poslabel_c, inflection_c, err_c, delimit_c
-from src.data import ROOT_DIR, DEFAULT_FIELD_ORDER, config, bool_colors_dict
+from src.data import ROOT_DIR, STD_FIELD_ORDER, TSC_FIELD_ORDER, config, bool_colors_dict
 
 
 def save_config(c):
@@ -181,40 +181,33 @@ def set_width_settings(*args, message):
 
 
 def display_field_order():
-    for field_number, default_field_name in DEFAULT_FIELD_ORDER.items():
-        actual_field = config['fieldorder'][field_number]
+    for field_number in STD_FIELD_ORDER:  # 1 to 9
+        field_name = config['fieldorder'][field_number]
 
-        bold = BOLD if field_number == '1' else ''
-        if actual_field != default_field_name:
-            # change to yellow to indicate changes
-            line_color = YEX.color
-            default = f'# {default_field_name}'
-        else:
-            line_color = R
-            default = ''
-
-        # END cause if field_number == '1' we want bold to reset before
-        # printing defaults and R doesn't do that
-        print(f' {bold}{line_color}{field_number}: {actual_field:17s}{END}{R}{default}')
+        b = BOLD if field_number == '1' else ''
+        print(f' {b}{field_number}: {field_name}{END}')
 
         if field_number == config['fieldorder_d']:
-            print(f' {delimit_c.color}D: ───────────{R}')
+            print(f' {delimit_c.color}D: ─────────{R}')
 
 
 def change_field_order(*args, **kwargs):
-    first_arg = args[1]
-
-    if first_arg == 'default':
-        print(f'{GEX.color}Przywrócono domyślną kolejność pól:')
-        # I'm not sure what causes config's field_order to change DEFAULT_FIELD_ORDER
-        # .copy() somehow works
-        config['fieldorder'] = DEFAULT_FIELD_ORDER.copy()
-        config['fieldorder_d'] = '3'
+    def set_field_order(msg, order, delimit):
+        print(f'{GEX.color}{msg}')
+        # I'm not sure what causes the change of 'order' after the manual change
+        # .copy() somehow resolves the issue
+        config['fieldorder'] = order.copy()
+        config['fieldorder_d'] = delimit
         save_config(config)
         display_field_order()
-        return None
 
-    if first_arg not in ('1', '2', '3', '4', '5', '6', '7', '8', '9', 'd'):
+    first_arg = args[1].lower()
+    if first_arg == 'std':
+        return set_field_order('Ustawiono domyślną kolejność pól:', STD_FIELD_ORDER, '3')
+    elif first_arg == 'tsc':
+        return set_field_order('Ustawiono kolejność pól dla TSC:', TSC_FIELD_ORDER, '1')
+
+    if first_arg not in ('1', '2', '3', '4', '5', '6', '7', '8', '9', 'd', '-'):
         cmd = args[0]
         return f'Nieprawidłowy argument: {R}{first_arg}\n' \
                f'{cmd} {data.command_to_help_dict[cmd][1]}'
@@ -227,16 +220,18 @@ def change_field_order(*args, **kwargs):
         return 'Brakuje nazwy pola'
 
     # two arguments commands
-    if first_arg in DEFAULT_FIELD_ORDER:
-        if field_name not in DEFAULT_FIELD_ORDER.values():
+    if first_arg in STD_FIELD_ORDER:  # 1 to 9
+        if field_name in STD_FIELD_ORDER.values() or field_name == '-':
+            field_order = config['fieldorder']
+            field_order[first_arg] = field_name
+            save_command('fieldorder', field_order)
+        else:
             return 'Podano nieprawidłową nazwę pola'
-        field_order = config['fieldorder']
-        field_order[first_arg] = field_name
-        save_command('fieldorder', field_order)
     elif first_arg == 'd':
-        if field_name not in DEFAULT_FIELD_ORDER:
+        if field_name in STD_FIELD_ORDER:
+            save_command('fieldorder_d', field_name)
+        else:
             return 'Podano nieprawidłowy numer pola'
-        save_command('fieldorder_d', field_name)
 
     display_field_order()
 

@@ -137,9 +137,6 @@ class Lexico(Dictionary):
         fc = block_mapped_choices.first_choice_or_zero
         self.chosen_phrase = self.phrases[fc]
 
-        if config['udef'] and chosen_defs:
-            chosen_defs.hide(self.chosen_phrase)
-
         gramb_mapped_choices = def_field.get_choices(self.last_definition_indexes_in_gramb)
         fc = gramb_mapped_choices.first_choice_or_zero
         self.chosen_audio_url = self._choose_audio_url(fc)
@@ -149,18 +146,15 @@ class Lexico(Dictionary):
         if chosen_exsen is None:
             return None
 
-        if config['uexsen'] and chosen_exsen:
-            chosen_exsen.hide(self.chosen_phrase)
-
         etym_auto_choice = block_mapped_choices.as_auto_choice
         chosen_etyms = etym_field.get_element(self.etymologies, etym_auto_choice)
         if chosen_etyms is None:
             return None
 
         return {
-            'definicja': chosen_defs.content,
-            'przyklady': chosen_exsen.content,
-            'etymologia': chosen_etyms.content
+            'def': chosen_defs,
+            'exsen': chosen_exsen,
+            'etym': chosen_etyms
         }
 
 

@@ -132,14 +132,16 @@ command_to_help_dict = {
     '-fo': (
         'Zmiana kolejności zapisywania i wyświetlania pól',
         '{\n'
-        '  default      : przywraca domyślną kolejność pól\n'
+        '  std : ustawia domyślną kolejność pól\n'
+        '  tsc : ustawia kolejność pól dla TSC\n'
         '  {1-9} {pole} : zmienia pole pod podanym numerem na {pole}\n'
         '  d {1-9}      : przesuwa odkreślenie pod {1-9}\n'
         '}'),
     '--field-order': (
         'Zmiana kolejności zapisywania i wyświetlania pól',
         '{\n'
-        '  default      : przywraca domyślną kolejność pól\n'
+        '  std : ustawia domyślną kolejność pól\n'
+        '  tsc : ustawia kolejność pól dla TSC\n'
         '  {1-9} {pole} : zmienia pole pod podanym numerem na {pole}\n'
         '  d {1-9}      : przesuwa odkreślenie pod {1-9}\n'
         '}'),
@@ -173,46 +175,58 @@ field_config = {
     ),
 }
 
-DEFAULT_FIELD_ORDER = {
-    '1': 'definicja',
-    '2': 'synonimy',
-    '3': 'przyklady',
+STD_FIELD_ORDER = {
+    '1': 'def',
+    '2': 'syn',
+    '3': 'exsen',
     '4': 'phrase',
-    '5': 'zdanie',
-    '6': 'czesci_mowy',
-    '7': 'etymologia',
+    '5': 'pz',
+    '6': 'pos',
+    '7': 'etym',
     '8': 'audio',
     '9': 'recording'
+}
+
+TSC_FIELD_ORDER = {
+    '1': 'pz',
+    '2': 'def',
+    '3': 'syn',
+    '4': 'exsen',
+    '5': 'pos',
+    '6': 'etym',
+    '7': 'audio',
+    '8': 'recording',
+    '9': '-',
 }
 
 # fields used for Anki note recognition
 AC_BASE_FIELDS = (
     # The most common field name schemes
-    ('def',         'definicja'),
-    ('syn',         'synonimy'),
-    ('disamb',      'synonimy'),
-    ('przykłady',   'przyklady'),
+    ('def',         'def'),
+    ('syn',         'syn'),
+    ('disamb',      'syb'),
+    ('przykłady',   'exsen'),
     ('słowo',       'phrase'),
-    ('zdanie',      'zdanie'),
-    ('przykładowe', 'zdanie'),
-    ('części',      'czesci_mowy'),
-    ('etym',        'etymologia'),
+    ('zdanie',      'pz'),
+    ('przykładowe', 'pz'),
+    ('części',      'pos'),
+    ('etym',        'etym'),
     ('audio',       'audio'),
     ('nagr',        'recording'),
 
     # Others
-    ('gloss', 'definicja'),
-    ('wyjaś', 'definicja'),
-    ('wyjas', 'definicja'),
+    ('gloss', 'def'),
+    ('wyjaś', 'def'),
+    ('wyjas', 'def'),
 
-    ('usunięcie', 'synonimy'),
-    ('usuniecie', 'synonimy'),
-    ('ujedn',     'synonimy'),
+    ('usunięcie', 'syn'),
+    ('usuniecie', 'syn'),
+    ('ujedn',     'syn'),
 
-    ('przyklady', 'przyklady'),
-    ('illust',    'przyklady'),
-    ('examples',  'przyklady'),
-    ('exsen',     'przyklady'),
+    ('przyklady', 'exsen'),
+    ('illust',    'exsen'),
+    ('examples',  'exsen'),
+    ('exsen',     'exsen'),
 
     ('slowo', 'phrase'),
     ('fraz',  'phrase'),
@@ -221,14 +235,14 @@ AC_BASE_FIELDS = (
     ('vocab', 'phrase'),
     ('idiom', 'phrase'),
 
-    ('przykladowe', 'zdanie'),
-    ('sentence',    'zdanie'),
-    ('pz',          'zdanie'),
+    ('przykladowe', 'pz'),
+    ('sentence',    'pz'),
+    ('pz',          'pz'),
 
-    ('czesci', 'czesci_mowy'),
-    ('parts',  'czesci_mowy'),
-    ('part',   'czesci_mowy'),
-    ('pos',    'czesci_mowy'),
+    ('czesci', 'pos'),
+    ('parts',  'pos'),
+    ('part',   'pos'),
+    ('pos',    'pos'),
 
     ('wymowa', 'audio'),
     ('pron',   'audio'),

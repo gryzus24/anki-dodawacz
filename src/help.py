@@ -193,20 +193,23 @@ Filtrowanie to usunięcie elementów spełniających określone warunki
                             4 : rekomendowana
 
 {BOLD}{'[ Komendy AnkiConnect ]'.center(79, '─')}{END}
--ankiconnect           bezpośrednie dodawanie kart do Anki poprzez AnkiConnect
--duplicates            zezwolenie na dodawanie duplikatów
--dupescope             określa zasięg sprawdzania duplikatów:
-          deck          w obrębie talii
-          collection    w obrębie całej kolekcji (wszystkich talii)
+-ankiconnect            bezpośrednie dodawanie kart do Anki poprzez AnkiConnect
+-duplicates             zezwolenie na dodawanie duplikatów
+-dupescope              określa zasięg sprawdzania duplikatów:
+           deck          w obrębie talii
+           collection    w obrębie całej kolekcji (wszystkich talii)
 
--note {{notatka}}        notatka używana do dodawania kart
--deck {{talia}}          talia do której trafiają karty
--tags {{tagi|-}}         tagi dodawane wraz z kartą
-                       (aby dodać więcej tagów oddziel je przecinkiem)
+-note {{notatka}}         notatka używana do dodawania kart
+-deck {{talia}}           talia do której trafiają karty
+-tags {{tagi|-}}          tagi dodawane wraz z kartą
+                        (aby dodać więcej tagów oddziel je przecinkiem)
 
---add-note {{notatka}}   dodaje notatkę do kolekcji zalogowanego użytkownika
--refresh               odświeża informacje o aktualnej notatce
-                       (użyć jeżeli pola notatki zostały zmienione w Anki)
+--add-note {{notatka}}    dodaje notatkę do kolekcji zalogowanego użytkownika
+-refresh                odświeża informacje o aktualnej notatce
+                        (użyć jeżeli pola notatki zostały zmienione w Anki)
+
+-b, --browse [komenda]  otwiera wyszukiwarkę kart w Anki z komendą 'added:1'
+                        pokazując ostatnio dodawane karty
 
 {BOLD}{'[ Pozostałe komendy ]'.center(79, '─')}{END}
 --delete-last,

@@ -157,16 +157,10 @@ class AHDictionary(Dictionary):
         self.chosen_phrase = self.phrases[fc]
         self.chosen_audio_url = self._choose_audio_url(fc)
 
-        if config['udef'] and chosen_defs:
-            chosen_defs.hide(self.chosen_phrase)
-
         auto_choice = def_field.get_choices().as_exsen_auto_choice(self.example_sentences)
         chosen_exsen = exsen_field.get_element(self.example_sentences, auto_choice)
         if chosen_exsen is None:
             return None
-
-        if config['uexsen'] and chosen_exsen:
-            chosen_exsen.hide(self.chosen_phrase)
 
         auto_choice = mapped_choices.as_auto_choice
         chosen_pos = pos_field.get_element(self.parts_of_speech, auto_choice)
@@ -178,10 +172,10 @@ class AHDictionary(Dictionary):
             return None
 
         return {
-            'definicja': chosen_defs.content,
-            'przyklady': chosen_exsen.content,
-            'czesci_mowy': chosen_pos.content,
-            'etymologia': chosen_etyms.content
+            'def': chosen_defs,
+            'exsen': chosen_exsen,
+            'pos': chosen_pos,
+            'etym': chosen_etyms
         }
 
 

@@ -39,11 +39,7 @@ class WordNet(Dictionary):
         chosen_synonyms = syn_field.get_element(self.synonyms, auto_choice='0')
         if chosen_synonyms is None:
             return None
-
-        if config['usyn'] and chosen_synonyms:
-            chosen_synonyms.hide(self.chosen_phrase)
-
-        return {'synonimy': chosen_synonyms.content}
+        return {'syn': chosen_synonyms}
 
 
 def ask_wordnet(query):

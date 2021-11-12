@@ -1,63 +1,11 @@
 from src.colors import R, YEX, GEX
-from src.data import config, bool_values_dict, PREPOSITIONS
+from src.data import config, bool_values_dict
 
 
 def ask_yes_no(prompt, *, default):
     d = 'T/n' if default else 't/N'
     i = input(f'{prompt} [{d}]: ').strip().lower()
     return bool_values_dict.get(i, default)
-
-
-class ChosenElement:
-    def __init__(self, content=''):
-        self.content = content
-
-    def __bool__(self):
-        if self.content:
-            return True
-        return False
-
-    def hide(self, phrase):
-        def case_replace(a: str, b: str) -> None:
-            self.content = self.content.replace(a, b).replace(a.capitalize(), b).replace(a.upper(), b.upper())
-
-        three_dots = config['hideas']
-        nonoes = (
-            'the', 'and', 'a', 'is', 'an', 'it',
-            'or', 'be', 'do', 'does', 'not', 'if', 'he'
-        )
-
-        words_in_phrase = phrase.lower().split()
-        for word in words_in_phrase:
-            if word in nonoes:
-                continue
-
-            if not config['upreps']:
-                if word in PREPOSITIONS:
-                    continue
-
-            # "Ω" is a placeholder
-            case_replace(word, f"{three_dots}Ω")
-            if word.endswith('e'):
-                case_replace(word[:-1] + 'ing', f'{three_dots}Ωing')
-                if word.endswith('ie'):
-                    case_replace(word[:-2] + 'ying', f'{three_dots}Ωying')
-            elif word.endswith('y'):
-                case_replace(word[:-1] + 'ies', f'{three_dots}Ωies')
-                case_replace(word[:-1] + 'ied', f'{three_dots}Ωied')
-
-        if config['keependings']:
-            self.content = self.content.replace('Ω', '')
-        else:
-            # e.g. from "We weren't ...Ωed for this." -> "We weren't ... for this."
-            split_content = self.content.split('Ω')
-            temp = [split_content[0].strip()]
-            for elem in split_content[1:]:
-                for letter in elem:
-                    if letter == ' ':
-                        break
-                    elem = elem.replace(letter, '', 1)
-                temp.append(elem.strip())
 
 
 class Choices:
@@ -139,11 +87,11 @@ class InputField:
         if input_choice.startswith('/'):
             users_element = input_choice.replace('/', '', 1)
             self.print_added(users_element)
-            return ChosenElement(users_element)
+            return users_element
 
         input_choice = input_choice.replace(' ', '').lower()
         if input_choice in ('0', '-s', '-0'):
-            return ChosenElement()
+            return ''
         elif input_choice.isnumeric() and int(input_choice) > content_length:
             input_choice = '0'
         else:
@@ -166,7 +114,7 @@ class InputField:
                 self.choices = [0]
 
         chosen_content_list = self.add_elements(parsed_inputs, content_list)
-        return ChosenElement(self.connector.join(chosen_content_list))
+        return self.connector.join(chosen_content_list)
 
     def add_elements(self, parsed_inputs, content_list) -> list:
         content = []
@@ -219,7 +167,7 @@ class InputField:
 
 def sentence_input():
     if not config['pz']:
-        return ChosenElement()
+        return ''
 
     sentence = input('Dodaj przykładowe zdanie: ')
     if sentence.lower() == '-sc':
@@ -227,9 +175,9 @@ def sentence_input():
         return None
     elif sentence.lower() == '-s':
         print(f'{GEX.color}Pominięto dodawanie zdania')
-        return ChosenElement()
+        return ''
     else:
-        return ChosenElement(sentence)
+        return sentence
 
 
 def _map_specifiers_to_inputs(range_tuples: list) -> tuple:

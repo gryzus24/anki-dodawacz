@@ -25,11 +25,11 @@ import src.help as h
 from src.Dictionaries.ahdictionary import ask_ahdictionary
 from src.Dictionaries.audio_dictionaries import ahd_audio, lexico_audio, diki_audio, save_audio
 from src.Dictionaries.farlex import ask_farlex
-from src.Dictionaries.input_fields import sentence_input, ChosenElement
+from src.Dictionaries.input_fields import sentence_input
 from src.Dictionaries.lexico import ask_lexico
 from src.Dictionaries.wordnet import ask_wordnet
-from src.colors import \
-    R, BOLD, END, YEX, GEX, err_c
+from src.Dictionaries.utils import hide
+from src.colors import R, BOLD, END, YEX, GEX, err_c
 from src.data import config
 
 if sys.platform.startswith('linux'):
@@ -37,7 +37,7 @@ if sys.platform.startswith('linux'):
     import readline
     readline.read_init_file()
 
-__version__ = 'v1.1.1-1'
+__version__ = 'v1.1.2-1'
 
 required_arg_commands = {
     # commands that take arguments
@@ -212,7 +212,7 @@ def manage_dictionaries(_phrase, flags):
 
 def format_definitions(definitions):
     styles = (
-        ('<span style="opacity: 1;">', '</span>'),
+        ('', ''),
         ('<span style="opacity: .6;">', '</span>'),
         ('<small style="opacity: .4;">', '</small>'),
         ('<small style="opacity: .2;"><sub>', '</sub></small>')
@@ -238,15 +238,16 @@ def main():
 
     while True:
         field_values = {
-            'definicja': '',
-            'synonimy': '',
-            'przyklady': '',
+            'def': '',
+            'syn': '',
+            'exsen': '',
             'phrase': '',
-            'zdanie': '',
-            'czesci_mowy': '',
-            'etymologia': '',
+            'pz': '',
+            'pos': '',
+            'etym': '',
             'audio': '',
-            'recording': ''
+            'recording': '',
+            '-': '',
         }
 
         link_word = search_interface()
@@ -261,14 +262,12 @@ def main():
             phrase = search_query.split('<', 1)[-1].rsplit('>', 1)[0]
             if not phrase:
                 continue
-            zdanie = ChosenElement(search_query)
+            zdanie = search_query
         else:
-            phrase, zdanie = search_query, ChosenElement()
+            phrase, zdanie = search_query, ''
 
         if 'rec' in flags or 'record' in flags:
-            recording = ffmpeg.capture_audio(phrase)
-        else:
-            recording = ''
+            field_values['recording'] = ffmpeg.capture_audio(phrase)
 
         dictionary = manage_dictionaries(phrase, flags)
         if dictionary is None:
@@ -286,41 +285,42 @@ def main():
             if zdanie is None:
                 continue
 
-        if config['upz']:
-            zdanie.hide(phrase)
-        zdanie = zdanie.content
-
         dictionary_contents = dictionary.input_cycle()
         if dictionary_contents is None:
             continue
+        else:
+            field_values.update(dictionary_contents)
 
         phrase = dictionary.chosen_phrase
-        audio = manage_audio(dictionary, flags)
+        field_values['audio'] = manage_audio(dictionary, flags)
 
-        thesaurus_contents = {'synonimy': ''}
         if dictionary.allow_thesaurus:
             thesaurus = ask_wordnet(phrase)
             if thesaurus is not None:
                 thesaurus_contents = thesaurus.input_cycle()
                 if thesaurus_contents is None:
                     continue
+                else:
+                    field_values.update(thesaurus_contents)
 
-        # populate fields
-        field_values = {
-            **field_values, **thesaurus_contents, **dictionary_contents,
-            'phrase': phrase, 'audio': audio, 'recording': recording
-        }
+        field_values['phrase'] = phrase
         if zdanie:
-            field_values['zdanie'] = zdanie
+            field_values['pz'] = zdanie
         else:
             if config['tsc'] != '-':
-                if field_values['przyklady']:
-                    field_values['zdanie'] = field_values['przyklady']
-                    field_values['przyklady'] = ''
+                if field_values['exsen']:
+                    field_values['pz'] = field_values['exsen']
+                    field_values['exsen'] = ''
                 else:
                     if config['tsc'] == 'strict':
-                        field_values['zdanie'] = phrase
+                        field_values['pz'] = phrase
                         field_values['phrase'] = ''
+
+        # hide phrase in content
+        for elem in ('pz', 'def', 'exsen', 'syn'):
+            content = field_values[elem]
+            if content and config[f'u{elem}']:
+                field_values[elem] = hide(content, phrase)
 
         if config['displaycard']:
             if dictionary.display_card(field_values) == 1:
@@ -332,9 +332,9 @@ def main():
             field_values[key] = val.replace("'", "&#39;").replace('"', '&quot;')
 
         if config['formatdefs']:
-            field_values['definicja'] = format_definitions(field_values['definicja'])
-        if '<br>' not in field_values['zdanie']:
-            field_values['zdanie'] = field_values['zdanie']\
+            field_values['def'] = format_definitions(field_values['def'])
+        if '<br>' not in field_values['pz']:
+            field_values['pz'] = field_values['pz']\
                 .replace('>', '</b>').replace('<', '<b style="color: #91cb7d;">', 1)
 
         if config['ankiconnect']:
@@ -347,4 +347,5 @@ if __name__ == '__main__':
     try:
         raise SystemExit(main())
     except (KeyboardInterrupt, EOFError):
-        raise SystemExit(print('\nUnicestwiony'))
+        print('\nUnicestwiony')
+        raise SystemExit

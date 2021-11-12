@@ -53,20 +53,14 @@ class FarlexIdioms(Dictionary):
         fc = choices.first_choice_or_zero
         self.chosen_phrase = self.phrases[fc]
 
-        if config['udef'] and chosen_defs:
-            chosen_defs.hide(self.chosen_phrase)
-
         auto_choice = choices.as_exsen_auto_choice(self.example_sentences)
         chosen_exsen = exsen_field.get_element(self.example_sentences, auto_choice)
         if chosen_exsen is None:
             return None
 
-        if config['uexsen'] and chosen_exsen:
-            chosen_exsen.hide(self.chosen_phrase)
-
         return {
-            'definicja': chosen_defs.content,
-            'przyklady': chosen_exsen.content
+            'def': chosen_defs,
+            'exsen': chosen_exsen
         }
 
     def get_audio(self):
