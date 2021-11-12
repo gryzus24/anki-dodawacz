@@ -424,4 +424,5 @@ bool_colors_dict = {
     False: Fore.LIGHTRED_EX,
     'True': Fore.LIGHTGREEN_EX,
     'False': Fore.LIGHTRED_EX,
+    '-': Fore.RESET,
 }

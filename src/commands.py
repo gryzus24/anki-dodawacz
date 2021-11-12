@@ -105,6 +105,18 @@ def config_defaults(*args, **kwargs):
         save_command(f'{bulk_elem}_bulk', value)
 
 
+def print_field_table():
+    print(f'{R}{BOLD}╭╴field╶─╴on/off╶─╴show/hide╶─╴default╶╮{END}')
+    p = f'{BOLD}│{END}'
+    for e in ('pz', 'def', 'exsen', 'pos', 'etym', 'syn'):
+        on_off = config[e]
+        show_hide = config.get('u'+e, '-')
+        default = config.get(e+'_bulk', '-')
+        c1, c2 = bool_colors_dict[on_off], bool_colors_dict[show_hide]
+        print(f'{p} -{e:7s}{c1}{str(on_off):9s}{c2}{str(show_hide):12s}{R}{str(default):8s}{p}')
+    print(f'{BOLD}╰──────────────────────────────────────╯{END}')
+
+
 def print_config_representation() -> None:
     print(f'{R}{BOLD}[config dodawania]     [config wyświetlania]     [domyślne wart.]{END}')
     for a, b, c in data.config_columns:
@@ -112,19 +124,10 @@ def print_config_representation() -> None:
         b = b.replace('[', f'{BOLD}[').replace(']', f']{END}')
         c = c.replace('[', f'{BOLD}[').replace(']', f']{END}')
 
-        try:
-            state_a = str(config[a[1:]])
-        except KeyError:
-            state_a = ''
-
-        try:
-            state_b = config[b[1:]]
-            if b in ('-textwidth', '-indent'):
-                state_b = ''.join(map(str, state_b))
-            else:
-                state_b = str(state_b)
-        except KeyError:
-            state_b = ''
+        state_a = config.get(a[1:], '')
+        state_b = config.get(b[1:], '')
+        if b in ('-textwidth', '-indent'):
+            state_b = ''.join(map(str, state_b))
 
         if '_bulk' in c:
             state_c = config[c]
@@ -132,10 +135,7 @@ def print_config_representation() -> None:
                 state_c = '\b' + state_c
             c = c[:-5]
         else:
-            try:
-                state_c = config[c[1:]]
-            except KeyError:
-                state_c = ''
+            state_c = config.get(c[1:], '')
 
         color_a = bool_colors_dict.get(state_a, '')
         color_b = bool_colors_dict.get(state_b, '')
@@ -144,8 +144,8 @@ def print_config_representation() -> None:
 
         level_b = '\b\b\b\b\b' if '[' in b else ''
 
-        print(f'{a:13s}{color_a}{state_a:10s}{R}'
-              f'{b:15s}{color_b}{state_b:11s}{level_b}{R}'
+        print(f'{a:13s}{color_a}{str(state_a):10s}{R}'
+              f'{b:15s}{color_b}{str(state_b):11s}{level_b}{R}'
               f'{c:10s}{color_c}{state_c}{R}')
 
     print(f'\n--audio-path: {config["audio_path"]}\n'
