@@ -80,8 +80,7 @@ Customizacja wyglądu jest w dużej mierze zależna od naszego emulatora termina
 przeźroczystość czy wielkość okna należy kliknąć górny pasek -> właściwości. Tutaj możemy dostosować wygląd okna do
 naszych preferencji.<br>
 Jeżeli opcje oferowane przez cmd są niewystarczające lub nie chcecie się bawić w customizację w niedomagającym
-windowsowym terminalu to wersja portable "Alacritty" oferuje bardzo dobre ustawienia domyślne, a paleta kolorów jest
-łatwiejsza dla oczu.
+windowsowym terminalu to wersja portable "Alacritty" oferuje bardzo dobre ustawienia domyślne z łatwiejszą dla oczu paletą kolorów.
 
 ## Konfiguracja Anki i AnkiConnect
 
