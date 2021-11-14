@@ -189,6 +189,7 @@ def add_card_to_anki(field_values) -> None:
               f'  lub jeżeli nazwy pól aktualnej notatki zostały zmienione, wpisz {R}-refresh\n')
         return None
 
+    tags = config['tags'].lstrip('-')
     _, err = invoke('addNote',
                     note={
                         'deckName': config['deck'],
@@ -198,7 +199,7 @@ def add_card_to_anki(field_values) -> None:
                             'allowDuplicate': config['duplicates'],
                             'duplicateScope': config['dupescope']
                         },
-                        'tags': config['tags'].replace('-', '', 1).split(', ')
+                        'tags': tags.split(', ')
                     })
     if err is not None:
         print(f'{err_c.color}Karta nie została dodana do Anki:\n{err}\n')
@@ -212,4 +213,5 @@ def add_card_to_anki(field_values) -> None:
     for anki_field_name, content in fields_to_add.items():
         if content.strip():
             print(f'- {anki_field_name}')
-    print(f'{YEX.color}Etykiety: {R}{config["tags"]}\n')
+    print(f'{YEX.color}Etykiety: {R}{tags}\n'
+          f'> podgląd: "-b"\n')

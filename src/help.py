@@ -13,11 +13,12 @@ Po wpisaniu hasła zapytany zostanie pierwszy słownik (domyślnie AH Dictionary
 
 Aby bezpośrednio dodać przykładowe zdanie i wyszukać hasło użyjemy:
  >> Szukaj $ Your <beautiful> example sentence goes here.
- Tym sposobem wyszukamy słowo "beautiful" i wraz z nim dodamy resztę zdania.
+ Tym sposobem wyszukamy słowo "beautiful" i wraz z nim dodamy resztę zdania
+ ze słowem pogrubionym i zakolorowanym na zielono.
 
 {BOLD}{'[ Konfiguracja ]'.center(79, '─')}{END}
 Szybka konfiguracja programu, pozwoli na automatyczne dodawanie wymowy i kart
- do Anki.  
+ do Anki.
 
 {BOLD}1.{END} Wpisujemy: "--audio-path auto"
      wybieramy ścieżkę do "collection.media" naszego użytkownika Anki.

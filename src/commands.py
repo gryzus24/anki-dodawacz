@@ -106,8 +106,8 @@ def config_defaults(*args, **kwargs):
 
 
 def print_field_table():
-    print(f'{R}{BOLD}╭╴field╶─╴on/off╶─╴show/hide╶─╴default╶╮{END}')
     p = f'{BOLD}│{END}'
+    print(f'{R}{BOLD}╭╴field╶─╴on/off╶─╴show/hide╶─╴default╶╮{END}')
     for e in ('pz', 'def', 'exsen', 'pos', 'etym', 'syn'):
         on_off = config[e]
         show_hide = config.get('u'+e, '-')

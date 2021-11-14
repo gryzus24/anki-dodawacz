@@ -23,7 +23,7 @@
 "etym_c": "reset",
 "exsen": true,
 "exsen_bulk": "auto",
-"exsen_c": "lightblack",
+"exsen_c": "lightblue",
 "fieldorder": {
 "1": "def",
 "2": "syn",
