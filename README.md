@@ -11,7 +11,7 @@ proces odbywa się w stu procentach za pomocą klawiatury.
 
 ### Windows:
 
-[link do pobrania .zip](https://github.com/gryzus24/anki-dodawacz/archive/refs/tags/v1.1.2-2.zip)
+[link do pobrania .zip](https://github.com/gryzus24/anki-dodawacz/archive/refs/tags/v1.1.2-6.zip)
 :-
 
 Pobieramy .zip i rozpakowujemy.
@@ -39,7 +39,7 @@ błędu, okno zamknie się natychmiastowo.
 
 ### Linux:
 
-[link do pobrania .tar.gz](https://github.com/gryzus24/anki-dodawacz/archive/refs/tags/v1.1.2-2.tar.gz)
+[link do pobrania .tar.gz](https://github.com/gryzus24/anki-dodawacz/archive/refs/tags/v1.1.2-6.tar.gz)
 :-
 
 Pobieramy archiwum tar.gz i rozpakowujemy.
@@ -81,6 +81,13 @@ przeźroczystość czy wielkość okna należy kliknąć górny pasek -> właśc
 naszych preferencji.<br>
 Jeżeli opcje oferowane przez cmd są niewystarczające lub nie chcecie się bawić w customizację w niedomagającym
 windowsowym terminalu to wersja portable "Alacritty" oferuje bardzo dobre ustawienia domyślne z łatwiejszą dla oczu paletą kolorów.
+
+### Aktualizacja do nowszej wersji
+Aby zaktualizować program zachowując swoją konfigurację i zawartość pliku "karty.txt" wystarczy wpisać:<br>
+`python update.py` lub `python3 update.py`<br>
+Nowa wersja zostanie zapisana w folderze z programem jako "anki-dodawacz-{wersja}".
+
+Obecnie `update.py` działa na Linuxie i Windowsie 10.
 
 ## Konfiguracja Anki i AnkiConnect
 
