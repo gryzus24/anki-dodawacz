@@ -113,14 +113,14 @@ def main():
     print(f'\n{GEX.color}Aktualizacja zakończona pomyślnie.\n'
           f'Program zapisany do folderu: {new_dir_path!r}')
 
-    if WINDOWS:
-        import time
-        time.sleep(2)
-
 
 if __name__ == '__main__':
     try:
-        raise SystemExit(main())
+        e = main()
+        if WINDOWS:
+            import time
+            time.sleep(2)
+        raise SystemExit(e)
     except (KeyboardInterrupt, EOFError):
         print('\nUnicestwiony')
         raise SystemExit
