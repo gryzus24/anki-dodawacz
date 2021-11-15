@@ -11,7 +11,7 @@ proces odbywa się w stu procentach za pomocą klawiatury.
 
 ### Windows:
 
-[link do pobrania .zip](https://github.com/gryzus24/anki-dodawacz/archive/refs/tags/v1.1.2-1.zip)
+[link do pobrania .zip](https://github.com/gryzus24/anki-dodawacz/archive/refs/tags/v1.1.2-2.zip)
 :-
 
 Pobieramy .zip i rozpakowujemy.
@@ -39,7 +39,7 @@ błędu, okno zamknie się natychmiastowo.
 
 ### Linux:
 
-[link do pobrania .tar.gz](https://github.com/gryzus24/anki-dodawacz/archive/refs/tags/v1.1.2-1.tar.gz)
+[link do pobrania .tar.gz](https://github.com/gryzus24/anki-dodawacz/archive/refs/tags/v1.1.2-2.tar.gz)
 :-
 
 Pobieramy archiwum tar.gz i rozpakowujemy.
@@ -80,8 +80,7 @@ Customizacja wyglądu jest w dużej mierze zależna od naszego emulatora termina
 przeźroczystość czy wielkość okna należy kliknąć górny pasek -> właściwości. Tutaj możemy dostosować wygląd okna do
 naszych preferencji.<br>
 Jeżeli opcje oferowane przez cmd są niewystarczające lub nie chcecie się bawić w customizację w niedomagającym
-windowsowym terminalu to wersja portable "Alacritty" oferuje bardzo dobre ustawienia domyślne, a paleta kolorów jest
-łatwiejsza dla oczu.
+windowsowym terminalu to wersja portable "Alacritty" oferuje bardzo dobre ustawienia domyślne z łatwiejszą dla oczu paletą kolorów.
 
 ## Konfiguracja Anki i AnkiConnect
 
