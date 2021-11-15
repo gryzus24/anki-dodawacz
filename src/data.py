@@ -178,9 +178,9 @@ field_config = {
 STD_FIELD_ORDER = {
     '1': 'def',
     '2': 'syn',
-    '3': 'exsen',
+    '3': 'pz',
     '4': 'phrase',
-    '5': 'pz',
+    '5': 'exsen',
     '6': 'pos',
     '7': 'etym',
     '8': 'audio',
