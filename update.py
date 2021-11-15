@@ -81,19 +81,29 @@ def main():
     archive = safe_get(new_release_url)
 
     print(f'{GEX.color}:: {R}Rozpakowuję...')
-    with tempfile.NamedTemporaryFile() as tfile:
-        os.mkdir(new_dir_path)
+    tfile = tempfile.NamedTemporaryFile(delete=False)
+    try:
+        # We cannot use the NamedTemporaryFile as a context manager because Windows
+        # is unable to open the temporary file in the subprocess.
         tfile.write(archive.content)
-
-        # Windows 10 ships with bsdtar thankfully
+        tfile.flush()
+        tfile.close()
+        os.mkdir(new_dir_path)
         process = subprocess.run(
             ['tar', '-xvf', tfile.name, '--strip-components=1', '-C', new_dir_path]
         )
-        if process.stderr is not None:
-            raise Exit(f'Błąd podczas rozpakowywania archiwum:\n'
-                       f'{process.stderr}')
+        if process.returncode == 0:
+            try:
+                os.rmdir(new_dir_path)
+            except OSError:
+                # In case tar gets interrupted,
+                # otherwise the directory should be empty.
+                pass
+            raise Exit('Błąd podczas rozpakowywania archiwum')
+    finally:
+        os.remove(tfile.name)
 
-    print(f'{GEX.color}:: {R}Przenoszę konfigurację...')
+    print(f"{GEX.color}:: {R}Przenoszę zawartość 'config.json'...")
     with open(os.path.join(new_dir_path, 'config/config.json'), 'r') as f:
         new_config = json.load(f)
         for key, val in config.items():
@@ -101,11 +111,12 @@ def main():
     with open(os.path.join(new_dir_path, 'config/config.json'), 'w') as f:
         json.dump(new_config, f, indent=0)
 
-    print(f"{GEX.color}:: {R}Przenoszę zawartość 'karty.txt'...")
-    with \
-            open(os.path.join(new_dir_path, 'karty.txt'), 'w') as new_cards, \
-            open('karty.txt', 'r') as cards:
-        new_cards.writelines(cards.readlines())
+    if os.path.exists('karty.txt'):
+        print(f"{GEX.color}:: {R}Przenoszę zawartość 'karty.txt'...")
+        with \
+                open(os.path.join(new_dir_path, 'karty.txt'), 'w') as new_cards, \
+                open('karty.txt', 'r') as cards:
+            new_cards.writelines(cards.readlines())
 
     if os.path.exists('Karty_audio') and config['audio_path'] == 'Karty_audio':
         print(f"{YEX.color}:: {R}Zawartość folderu 'Karty_audio' musi zostać przeniesiona manualnie.")
