@@ -37,7 +37,7 @@ if sys.platform.startswith('linux'):
     import readline
     readline.read_init_file()
 
-__version__ = 'v1.1.2-3'
+__version__ = 'v1.1.2-4'
 
 required_arg_commands = {
     # commands that take arguments
