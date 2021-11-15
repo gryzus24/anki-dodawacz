@@ -92,7 +92,7 @@ def main():
         process = subprocess.run(
             ['tar', '-xvf', tfile.name, '--strip-components=1', '-C', new_dir_path]
         )
-        if process.returncode == 0:
+        if process.returncode != 0:
             try:
                 os.rmdir(new_dir_path)
             except OSError:
