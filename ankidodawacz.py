@@ -15,11 +15,9 @@
 
 import os
 import os.path
-import sys
 
 import src.anki_interface as anki
 import src.commands as c
-import src.data as data
 import src.ffmpeg_interface as ffmpeg
 import src.help as h
 from src.Dictionaries.ahdictionary import ask_ahdictionary
@@ -27,12 +25,12 @@ from src.Dictionaries.audio_dictionaries import ahd_audio, lexico_audio, diki_au
 from src.Dictionaries.farlex import ask_farlex
 from src.Dictionaries.input_fields import sentence_input
 from src.Dictionaries.lexico import ask_lexico
-from src.Dictionaries.wordnet import ask_wordnet
 from src.Dictionaries.utils import hide
+from src.Dictionaries.wordnet import ask_wordnet
 from src.colors import R, BOLD, END, YEX, GEX, err_c
-from src.data import config
+from src.data import config, command_to_help_dict, LINUX
 
-if sys.platform.startswith('linux'):
+if LINUX:
     # For saving command history, this module doesn't work on windows
     import readline
     readline.read_init_file()
@@ -87,12 +85,12 @@ def search_interface() -> str:
                 print(f'{err_c.color}{err}')
             continue
 
-        if cmd in tuple(data.command_to_help_dict)[:25]:
+        if cmd in tuple(command_to_help_dict)[:25]:
             method = c.boolean_commands
-            message, usage = data.command_to_help_dict[cmd], '{on|off}'
+            message, usage = command_to_help_dict[cmd], '{on|off}'
         elif cmd in required_arg_commands:
             method = required_arg_commands[cmd]
-            message, usage = data.command_to_help_dict[cmd]
+            message, usage = command_to_help_dict[cmd]
         elif cmd in ('-b', '--browse'):
             anki.gui_browse_cards(query=args[1:])
             continue

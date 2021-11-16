@@ -1,15 +1,12 @@
-import sys
-
 import colorama
 from colorama import Fore
 
-from src.data import str_colors_to_color, config
+from src.data import str_colors_to_color, config, LINUX, MAC
 
 colorama.init(autoreset=True)
 
-if sys.platform.startswith('linux'):
-    # cmd on Windows or even whole Windows can't display proper bold font in terminal
-    # mac can be problematic too.
+if LINUX or MAC:
+    # I'm pretty sure BOLD is supported by default macos' terminal
     BOLD = '\033[1m'
     END = '\033[0m'
 else:

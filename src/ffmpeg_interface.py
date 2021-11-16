@@ -16,13 +16,12 @@
 import datetime
 import os.path
 import subprocess
-import sys
 
 from src.colors import R, YEX, GEX, index_c, err_c
 from src.commands import save_command
-from src.data import config
+from src.data import config, WINDOWS, LINUX
 
-if sys.platform.startswith('win'):
+if WINDOWS:
     def find_devices() -> list:
         audio_devices = subprocess.run('ffmpeg -hide_banner -list_devices true -f dshow -i dummy',
                                        shell=True, capture_output=True, text=True)
@@ -37,7 +36,7 @@ if sys.platform.startswith('win'):
         audio_devices.insert(0, 'default')
         return audio_devices
 
-elif sys.platform.startswith('linux'):
+elif LINUX:
     def find_devices() -> list:
         audio_devices = subprocess.run('pactl list sources | grep alsa_output',
                                        shell=True, capture_output=True, text=True)
@@ -53,12 +52,12 @@ else:
 
 
 def record(filepath: str):
-    if sys.platform.startswith('linux'):
+    if LINUX:
         ffmpeg_settings = {
             'format': 'pulse',
             'device': config['audio_device']
         }
-    elif sys.platform.startswith('win'):
+    elif WINDOWS:
         ffmpeg_settings = {
             'format': 'dshow',
             'device': f"audio={config['audio_device']}"

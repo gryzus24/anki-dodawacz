@@ -1,5 +1,6 @@
 import json
 import os.path
+import sys
 from json import JSONDecodeError
 
 from colorama import Fore
@@ -20,6 +21,10 @@ except (FileNotFoundError, JSONDecodeError):
     with open(os.path.join(ROOT_DIR, 'config/ankiconnect.json'), 'w') as af:
         af.write('{}')
     config_ac = json.loads('{}')
+
+WINDOWS = sys.platform.startswith('win')
+LINUX = sys.platform.startswith('linux')
+MAC = sys.platform.startswith('darwin')
 
 # Creates an ID to NOTE_NAME dictionary from the contents of ../notes:
 #   e.g. {'1': 'gryzus-tsc', '2': 'gryzus-std', ...}

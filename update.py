@@ -11,9 +11,7 @@ from requests.exceptions import Timeout
 
 from ankidodawacz import __version__
 from ankidodawacz import config, R, GEX, YEX, err_c
-
-WINDOWS = sys.platform.startswith('win')
-LINUX = sys.platform.startswith('linux')
+from src.data import WINDOWS, LINUX
 
 
 class Exit(Exception):

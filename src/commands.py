@@ -23,6 +23,7 @@ from src.colors import R, BOLD, END, YEX, GEX, \
     def1_c, def2_c, defsign_c, pos_c, etym_c, syn_c, exsen_c, \
     syngloss_c, index_c, phrase_c, \
     phon_c, poslabel_c, inflection_c, err_c, delimit_c
+from src.data import LINUX, WINDOWS, MAC
 from src.data import ROOT_DIR, STD_FIELD_ORDER, TSC_FIELD_ORDER, config, bool_colors_dict
 
 
@@ -240,15 +241,15 @@ def set_audio_path(*args, message):
     arg = args[1]
 
     if arg == 'auto':
-        if sys.platform.startswith('win'):
+        if WINDOWS:
             tree = os.path.join(os.getenv('APPDATA'), 'Anki2')
-        elif sys.platform.startswith('linux'):
+        elif LINUX:
             tree = os.path.join(os.getenv('HOME'), '.local/share/Anki2')
-        elif sys.platform.startswith('darwin'):
+        elif MAC:
             tree = os.path.join(os.getenv('HOME'), 'Library/Application Support/Anki2')
         else:
             return f'Lokalizowanie {R}"collection.media"{err_c.color} nie powiodło się:\n' \
-                   f'Nieznana ścieżka dla {R}"collection.media"{err_c.color} na aktualnym systemie operacyjnym'
+                   f'Nieznana ścieżka dla {R}"collection.media"{err_c.color} na \'{sys.platform}\''
 
         # searches the tree
         collections = []
