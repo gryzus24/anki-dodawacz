@@ -115,7 +115,7 @@ def gui_browse_cards(query):
         print(f'{err_c.color}Nie udało się otworzyć wyszukiwarki kart:\n{err}\n')
 
 
-def add_note_to_anki(*args, **kwargs) -> str:
+def add_note_to_anki(*args, **kwargs):
     arg = args[1].lower()
     note_name = number_to_note_dict.get(arg, arg)
 
@@ -166,7 +166,7 @@ def cache_current_note(*, refresh=False):
     save_ac_config(_config_ac)
 
 
-def add_card_to_anki(field_values) -> None:
+def add_card_to_anki(field_values):
     note_name = config['note']
 
     # So that familiar notes aren't reorganized

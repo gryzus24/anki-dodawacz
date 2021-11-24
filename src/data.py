@@ -22,9 +22,10 @@ except (FileNotFoundError, JSONDecodeError):
         af.write('{}')
     config_ac = json.loads('{}')
 
-WINDOWS = sys.platform.startswith('win')
 LINUX = sys.platform.startswith('linux')
 MAC = sys.platform.startswith('darwin')
+POSIX = os.name == 'posix'
+WINDOWS = os.name == 'nt'
 
 # Creates an ID to NOTE_NAME dictionary from the contents of ../notes:
 #   e.g. {'1': 'gryzus-tsc', '2': 'gryzus-std', ...}
@@ -161,24 +162,6 @@ command_to_help_dict = {
         '{element} {wartość}'),
 }
 assert len(command_to_help_dict) == 49, 'make sure to update boolean commands in search'
-
-field_config = {
-    'definitions': (
-        'def', 'Wybierz definicje'
-    ),
-    'example_sentences': (
-        'exsen', 'Wybierz przykłady'
-    ),
-    'parts_of_speech': (
-        'pos', 'Wybierz części mowy'
-    ),
-    'etymologies': (
-        'etym', 'Wybierz etymologie'
-    ),
-    'synonyms': (
-        'syn', 'Wybierz synonimy'
-    ),
-}
 
 STD_FIELD_ORDER = {
     '1': 'def',
@@ -429,5 +412,4 @@ bool_colors_dict = {
     False: Fore.LIGHTRED_EX,
     'True': Fore.LIGHTGREEN_EX,
     'False': Fore.LIGHTRED_EX,
-    '-': Fore.RESET,
 }

@@ -13,16 +13,15 @@
 # You should have received a copy of the GNU General Public License
 # along with this program. If not, see <http://www.gnu.org/licenses/>.
 
-import json
 import os
 import sys
+import json
 from shutil import get_terminal_size
 
 import src.data as data
 from src.colors import R, BOLD, END, YEX, GEX, \
-    def1_c, def2_c, defsign_c, pos_c, etym_c, syn_c, exsen_c, \
-    syngloss_c, index_c, phrase_c, \
-    phon_c, poslabel_c, inflection_c, err_c, delimit_c
+    def1_c, def2_c, defsign_c, pos_c, etym_c, syn_c, exsen_c, syngloss_c,\
+    index_c, phrase_c, phon_c, poslabel_c, inflection_c, err_c, delimit_c
 from src.data import LINUX, WINDOWS, MAC
 from src.data import ROOT_DIR, STD_FIELD_ORDER, TSC_FIELD_ORDER, config, bool_colors_dict
 
@@ -111,14 +110,19 @@ def print_field_table():
     print(f'{R}{BOLD}╭╴field╶─╴on/off╶─╴show/hide╶─╴default╶╮{END}')
     for e in ('pz', 'def', 'exsen', 'pos', 'etym', 'syn'):
         on_off = config[e]
-        show_hide = config.get('u'+e, '-')
-        default = config.get(e+'_bulk', '-')
-        c1, c2 = bool_colors_dict[on_off], bool_colors_dict[show_hide]
+        show_hide = config.get('u'+e, '')
+        default = config.get(e+'_bulk', '')
+        c1, c2 = bool_colors_dict.get(on_off, ''), bool_colors_dict.get(show_hide, '')
         print(f'{p} -{e:7s}{c1}{str(on_off):9s}{c2}{str(show_hide):12s}{R}{str(default):8s}{p}')
     print(f'{BOLD}╰──────────────────────────────────────╯{END}')
 
 
-def print_config_representation() -> None:
+def print_config_representation():
+    if config['textwidth'][1] == '* auto':
+        terminal_width = get_terminal_size().columns
+        if terminal_width != config['textwidth'][0]:
+            save_command('textwidth', [terminal_width, '* auto'])
+
     print(f'{R}{BOLD}[config dodawania]     [config wyświetlania]     [domyślne wart.]{END}')
     for a, b, c in data.config_columns:
         a = a.replace('[', f'{BOLD}[').replace(']', f']{END}')
@@ -249,7 +253,7 @@ def set_audio_path(*args, message):
             tree = os.path.join(os.getenv('HOME'), 'Library/Application Support/Anki2')
         else:
             return f'Lokalizowanie {R}"collection.media"{err_c.color} nie powiodło się:\n' \
-                   f'Nieznana ścieżka dla {R}"collection.media"{err_c.color} na \'{sys.platform}\''
+                   f'Nieznana ścieżka dla {R}"collection.media"{err_c.color} na {sys.platform!r}'
 
         # searches the tree
         collections = []

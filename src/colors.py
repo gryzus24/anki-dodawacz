@@ -1,12 +1,12 @@
 import colorama
 from colorama import Fore
 
-from src.data import str_colors_to_color, config, LINUX, MAC
+from src.data import str_colors_to_color, config, POSIX
 
 colorama.init(autoreset=True)
 
-if LINUX or MAC:
-    # I'm pretty sure BOLD is supported by default macos' terminal
+if POSIX:
+    # I'm pretty sure BOLD font is supported by default macos' terminal
     BOLD = '\033[1m'
     END = '\033[0m'
 else:
@@ -21,10 +21,6 @@ class Color:
     @property
     def color(self):
         return str_colors_to_color[config[self.color_name]]
-
-    # not sure whether I should use __repr__ or @property to update colors
-    # The best would be a single class that holds colors, but I'm not sure
-    # how to dynamically update individual color's state
 
 
 R = Fore.RESET

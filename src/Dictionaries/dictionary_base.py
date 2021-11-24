@@ -13,19 +13,17 @@
 # You should have received a copy of the GNU General Public License
 # along with this program. If not, see <http://www.gnu.org/licenses/>.
 
-from shutil import get_terminal_size
+import sys
+import subprocess
 
-from src.Dictionaries.audio_dictionaries import diki_audio
-from src.Dictionaries.utils import wrap_lines
-from src.colors import R, BOLD, END, YEX, \
-    def1_c, syn_c, exsen_c, pos_c, etym_c, phrase_c, \
-    err_c, delimit_c
-from src.commands import save_command
-from src.data import config, labels, SEARCH_FLAGS
+from src.Dictionaries.utils import wrap_lines, get_textwidth
+from src.colors import R, BOLD, END, def1_c, syn_c, exsen_c, pos_c, etym_c, phrase_c, \
+    err_c, delimit_c, def2_c, defsign_c, index_c, phon_c, poslabel_c, inflection_c
+from src.data import config, labels, SEARCH_FLAGS, WINDOWS, POSIX
 
 
-def expand_labels(label_set: set) -> set:
-    # Expanding these sets offers more leeway when specifying flags
+def expand_labels(label_set):
+    # By expanding these sets we get more leeway when specifying flags
     for item in label_set.copy():
         try:
             label_set.update(labels[item])
@@ -43,7 +41,7 @@ def prepare_flags(flags):
     }
 
 
-def evaluate_skip(labels_: set, flags: set) -> bool:
+def evaluate_skip(labels_, flags):
     if not flags:
         return False
 
@@ -68,37 +66,186 @@ def evaluate_skip(labels_: set, flags: set) -> bool:
 
 class Dictionary:
     HORIZONTAL_BAR = '─'
-    # textwidth has to be a class attribute as it can be changed between dictionary lookups
-    textwidth = config['textwidth'][0]
 
     def __init__(self):
-        self.chosen_phrase = None
-        self.chosen_audio_url = None
-        self.usable_height = 24
-        self.indent = config['indent'][0]
+        self.contents = []
 
-    def get_audio(self):
-        audio_url = self.chosen_audio_url
-        if audio_url is not None:
-            return audio_url, audio_url.rsplit('/')[-1]
+    def __repr__(self):
+        for op, *body in self.contents:
+            print(f'{op:7s}{body}')
 
-        print(f'{err_c.color}Słownik nie posiada audio dla {R}{self.chosen_phrase}\n'
-              f'{YEX.color}Sprawdzam diki...')
-        return diki_audio(self.chosen_phrase, '')
+    def add(self, value):
+        # Value must be a Sequence containing at least 2 fields:
+        # ('OPERATION', 'BODY', ... )
+        try:
+            assert value[0] or value[1], 'no instruction specified'
+        except IndexError:
+            raise ValueError('instruction must contain at least 2 fields')
+        else:
+            self.contents.append(value)
 
-    def print(self, *args, end='\n', **kwargs):
-        self.usable_height -= end.count('\n')
+    @property
+    def phrases(self):
+        return [b[0] for op, *b in self.contents if op == 'PHRASE']
 
-        if args:
-            self.usable_height -= args[0].count('\n')
-        print(*args, end=end, **kwargs)
+    @property
+    def audio_urls(self):
+        return [b[0] for op, *b in self.contents if op == 'AUDIO']
 
-    def print_title(self, title, end='\n'):
+    @property
+    def synonyms(self):
+        return [b[0] for op, *b in self.contents if op == 'SYN']
+
+    @property
+    def definitions(self):
+        return [b[0] for op, *b in self.contents if 'DEF' in op]
+
+    @property
+    def example_sentences(self):
+        return [body[1] if len(body) > 1 else '' for op, *body in self.contents if 'DEF' in op]
+
+    def _by_header(self, type_, method=lambda x: x[0]):
+        # Return a list of (`type_'s` bodies if `type_` is present within
+        # HEADER instructions or empty string if `type_` is not present.)
+        result = []
+        t = ''
+        for op, *body in self.contents:
+            if op == type_:
+                t = method(body)
+            elif op == 'HEADER' and not body[0]:
+                result.append(t)
+                t = ''
+        result.append(t)
+        return result
+
+    @property
+    def parts_of_speech(self):
+        return self._by_header('POS', lambda x: ' | '.join(map(lambda y: y[0], x)))
+
+    @property
+    def etymologies(self):
+        return self._by_header('ETYM')
+
+    def count_ops(self, type_):
+        ntype = 0
+        for op, *_ in self.contents:
+            if type_ in op:
+                ntype += 1
+        return ntype
+
+    def to_auto_choice(self, choices, type_):
+        ntype = self.count_ops(type_)
+        if not ntype:
+            return '0'
+
+        uniq_choices = sorted(set(choices))
+        if ntype > 1 and ntype == len(uniq_choices) and uniq_choices == choices:
+            return '-1'
+        return ','.join(map(str, choices))
+
+    def get_positions_in_sections(self, choices, section_at='HEADER', choices_of='DEF', *, reverse=False):
+        # Returns instruction's positions with respect to `self.contents` split at `section_at`
+        # calculated from `choices` of `choices_of`.
+        # Instruction of `section_at` should come before `choices_of`.
+        # Otherwise, `reverse=True` may help.
+        # If instruction from `section_at` is not present in `self.contents` return [1].
+
+        locations = []
+        section_no = 1 if reverse else 0
+        for op, *_ in self.contents:
+            if section_at in op:
+                section_no += 1
+            elif choices_of in op:
+                locations.append(section_no)
+
+        result = []
+        locations_len = len(locations)
+        for choice in choices:
+            if 0 < choice <= locations_len:
+                index = locations[choice - 1]
+                if index not in result:
+                    result.append(index)
+
+        return result if result and result[0] else [1]
+
+    def format_title(self, title, textwidth):
         title = f'[ {BOLD}{title}{END}{delimit_c.color} ]'
-        magic_len = len(BOLD) + len(END) + len(delimit_c.color)
-        self.print(
-            f'{delimit_c.color}{title.center(self.textwidth + magic_len, self.HORIZONTAL_BAR)}', end=end
-        )
+        esc_seq_len = len(BOLD) + len(END) + len(delimit_c.color)
+        return f'{delimit_c.color}{title.center(textwidth + esc_seq_len, self.HORIZONTAL_BAR)}\n'
+
+    def print_dictionary(self):
+        textwidth = get_textwidth()
+        indent = config['indent'][0]
+        show_exsen = config['showexsen']
+        # buffering might reduce flicker on slow terminal emulators
+        buffer = []
+        communal_index = 0
+        for op, *body in self.contents:
+            # print(f'{op}\n\n{body}'); continue  # DEBUG
+            if 'DEF' in op:
+                communal_index += 1
+                def_c = def1_c if communal_index % 2 else def2_c
+                sign = ' ' if 'SUB' in op else '>'
+                def_index_len = len(str(communal_index))
+                def_tp = wrap_lines(body[0], textwidth, def_index_len, indent, 2)
+                buffer.append(f'{defsign_c.color}{sign}{index_c.color}{communal_index} {def_c.color}{def_tp}\n')
+                if show_exsen and len(body) > 1:
+                    exsen = wrap_lines(body[1], textwidth, def_index_len, indent + 1, 2)
+                    buffer.append(f'{def_index_len * " "}  {exsen_c.color}{exsen}\n')
+            elif op == 'LABEL':
+                label = body[0]
+                if label:
+                    buffer.append(f'\n {poslabel_c.color}{label}  {inflection_c.color}{body[1]}\n')
+                else:
+                    buffer.append('\n')
+            elif op == 'HEADER':
+                title = body[0]
+                if title:
+                    buffer.append(self.format_title(title, textwidth))
+                else:
+                    buffer.append(f'{delimit_c.color}{textwidth * self.HORIZONTAL_BAR}\n')
+            elif op == 'PHRASE':
+                buffer.append(f' {phrase_c.color}{body[0]}  {phon_c.color}{body[1]}\n')
+            elif op == 'POS':
+                if body[0]:
+                    buffer.append('\n')
+                    for pos_phon in body:
+                        buffer.append(f' {pos_c.color}{f"{phon_c.color}  ".join(pos_phon)}\n')
+            elif op == 'ETYM':
+                etym = body[0]
+                if etym:
+                    buffer.append(f'\n {etym_c.color}{wrap_lines(etym, textwidth, 0, 1, 1)}\n')
+            elif op == 'AUDIO':
+                pass
+            elif op == 'NOTE':
+                buffer.append(f'{R}{body[0]}\n')
+            else:
+                assert False, f'unreachable dictionary operation: {op!r}'
+        # colorama does not support `writelines`, so for colors to display
+        # on Windows we have to first join the buffer and use plain `write`.
+        sys.stdout.write(''.join(buffer) + '\n')
+
+    def show(self):
+        if not self.contents:
+            return None
+
+        try:
+            if config['top']:
+                # Clearing the screen also helps reduce flicker from printing everything at once.
+                if WINDOWS:
+                    subprocess.run(['cls'])
+                elif POSIX:
+                    sys.stdout.write('\033[?25l')  # Hide cursor
+                    sys.stdout.flush()
+                    subprocess.run(['clear', '-x'])  # I hope the `-x` option works on macOS.
+                else:
+                    sys.stdout.write(f'{err_c.color}Komenda {R}"-top on"{err_c.color} nieobsługiwana na {sys.platform!r}.\n')
+
+            self.print_dictionary()
+        finally:
+            if POSIX:
+                sys.stdout.write('\033[?25h')  # Show cursor
+                sys.stdout.flush()
 
     def display_card(self, field_values):
         # field coloring
@@ -107,8 +254,8 @@ class Dictionary:
             'phrase': phrase_c.color, 'pz': '', 'pos': pos_c.color,
             'etym': etym_c.color, 'audio': '', 'recording': '',
         }
-        self.manage_terminal_size()
-        delimit = self.textwidth * self.HORIZONTAL_BAR
+        textwidth = get_textwidth()
+        delimit = textwidth * self.HORIZONTAL_BAR
 
         print(f'\n{delimit_c.color}{delimit}')
         try:
@@ -117,9 +264,9 @@ class Dictionary:
                     continue
 
                 for line in field_values[field].split('<br>'):
-                    sublines = wrap_lines(line, self.textwidth - 1).split('\n')
+                    sublines = wrap_lines(line, textwidth).split('\n')
                     for subline in sublines:
-                        print(f'{color_of[field]}{subline.center(self.textwidth - 1)}')
+                        print(f'{color_of[field]}{subline.center(textwidth)}')
 
                 if field_number == config['fieldorder_d']:  # d = delimitation
                     print(f'{delimit_c.color}{delimit}')
@@ -131,15 +278,3 @@ class Dictionary:
             return 1  # skip
         else:
             return 0
-
-    def manage_terminal_size(self):
-        current_term_width, self.usable_height = get_terminal_size()
-
-        if config['textwidth'][1] == '* auto':
-            if __class__.textwidth != current_term_width:
-                save_command('textwidth', [current_term_width, '* auto'])
-                __class__.textwidth = current_term_width
-        else:
-            __class__.textwidth = config['textwidth'][0]
-            if __class__.textwidth > current_term_width:
-                __class__.textwidth = current_term_width

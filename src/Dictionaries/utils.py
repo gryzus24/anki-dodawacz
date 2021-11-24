@@ -13,6 +13,8 @@
 # You should have received a copy of the GNU General Public License
 # along with this program. If not, see <http://www.gnu.org/licenses/>.
 
+from shutil import get_terminal_size
+
 import requests
 from bs4 import BeautifulSoup
 from requests.exceptions import ConnectionError as RqConnectionError
@@ -94,7 +96,16 @@ def hide(content, phrase):
         return ' '.join(temp)
 
 
-def wrap_lines(string: str, term_width=79, index_width=0, indent=0, gap=0):
+def get_textwidth():
+    terminal_width = get_terminal_size().columns
+    config_textwidth, flag = config['textwidth']
+
+    if flag == '* auto' or config_textwidth > terminal_width:
+        return terminal_width
+    return config_textwidth
+
+
+def wrap_lines(string, term_width=79, index_width=0, indent=0, gap=0):
     def no_wrap(string_):
         line = string[:real_width]
         if line.endswith(' '):

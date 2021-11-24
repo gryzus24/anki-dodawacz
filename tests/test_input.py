@@ -1,5 +1,4 @@
 import src.Dictionaries.input_fields as i
-from src.data import field_config
 
 test_list = ['a', 'b', 'c', 'd', '', 'e', '', 'f', 'g']
 
@@ -8,16 +7,16 @@ test_list = ['a', 'b', 'c', 'd', '', 'e', '', 'f', 'g']
 #   -cd all auto
 #   -all on
 
-def get_element_testing(tl=None, ac='1', s='.'):
+def input_field_testing(tl=None, ac='1', s='.'):
     def tested(input_, output_):
-        test_field = i.InputField(*field_config['definitions'], connector=';', spec_split=s)
+        test_field = i.input_field('def', 'Wybierz definicje', connector=';', specifier_split=s)
 
         i.input = lambda _: input_
-        r = test_field.get_element(content_list=tl, auto_choice=ac)
+        result, choices = test_field(content_list=tl, auto_choice=ac)
         if output_ is None:
-            assert r is output_
+            assert result is output_
         else:
-            assert r.content == output_
+            assert result == output_
 
     if tl is None:
         tl = test_list
@@ -26,7 +25,7 @@ def get_element_testing(tl=None, ac='1', s='.'):
 
 def test_basic_functionality():
     # test_list = ['a', 'b', 'c', 'd', '', 'e', '', 'f', 'g']
-    test = get_element_testing(tl=test_list, ac='1')
+    test = input_field_testing(tl=test_list, ac='1')
 
     test('1', 'a')
     test('6', 'e')
@@ -41,7 +40,7 @@ def test_basic_functionality():
     test('--', None)
 
     test('', 'a')
-    get_element_testing(ac='9')('', 'g')
+    input_field_testing(ac='9')('', 'g')
     test('    ', 'a')
 
     test('-s', '')
@@ -76,13 +75,13 @@ def test_basic_functionality():
     test('aa', None)
     test('auto', 'a')
     test('a', None)
-    get_element_testing(ac='2')('   auto ', 'b')
-    get_element_testing(ac='3')('   aut ', None)
+    input_field_testing(ac='2')('   auto ', 'b')
+    input_field_testing(ac='3')('   aut ', None)
 
 
 def test_comma_separated_singles():
     # test_list = ['a', 'b', 'c', 'd', '', 'e', '', 'f', 'g']
-    test = get_element_testing(tl=test_list, ac='1,3,2')
+    test = input_field_testing(tl=test_list, ac='1,3,2')
 
     test('1,2,3', 'a;b;c')
     test('1,', 'a')
@@ -123,7 +122,7 @@ def test_comma_separated_singles():
 
 def test_double_range_inputs():
     # test_list = ['a', 'b', 'c', 'd', '', 'e', '', 'f', 'g']
-    test = get_element_testing(tl=test_list, ac='2:4')
+    test = input_field_testing(tl=test_list, ac='2:4')
 
     test('1:3', 'a;b;c')
     test('3:7', 'c;d;e')
@@ -166,7 +165,7 @@ def test_double_range_inputs():
 
 def test_multi_range_inputs():
     # test_list = ['a', 'b', 'c', 'd', '', 'e', '', 'f', 'g']
-    test = get_element_testing(tl=test_list, ac='1:3:1')
+    test = input_field_testing(tl=test_list, ac='1:3:1')
 
     test('', 'a;b;c;c;b;a')
     test('auto', 'a;b;c;c;b;a')
@@ -193,7 +192,7 @@ def test_multi_range_inputs():
 
 def test_combined_inputs():
     # test_list = ['a', 'b', 'c', 'd', '', 'e', '', 'f', 'g']
-    test = get_element_testing(tl=test_list, ac='1:3:1')
+    test = input_field_testing(tl=test_list, ac='1:3:1')
 
     test('1,  1:2', 'a;a;b')
     test('1:2,2', 'a;b;b')
@@ -214,7 +213,7 @@ def test_combined_inputs():
 
 def test_empty_content_list():
     # test_list = []
-    test = get_element_testing(tl=[], ac='0')
+    test = input_field_testing(tl=[], ac='0')
 
     test('', '')
     test('auto', '')
@@ -231,7 +230,7 @@ def test_empty_content_list():
 
 def test_specifiers():
     test_list = ['[1,2,3.]', 'a,b,c,d.', 'single', '-1,  -2,  -3, ,', 'sen1.,sen2.,sen3...']
-    test = get_element_testing(tl=test_list, ac='1.21, 2.36', s=',')
+    test = input_field_testing(tl=test_list, ac='1.21, 2.36', s=',')
 
     test('1.123', '[1, 2, 3.]')
     test('1.321', '[3, 2, 1.]')
@@ -246,17 +245,17 @@ def test_specifiers():
     test('1.', '[1,2,3.]')
     test('1...', None)
 
-    test('2.1', 'A.')
-    test('2.12', 'A, b.')
-    test('2.543', 'D, c.')
+    test('2.1', 'a.')
+    test('2.12', 'a, b.')
+    test('2.543', 'd, c.')
     test('2.0', 'a,b,c,d.')
     test('2.0000', 'a,b,c,d.')
-    test('2.00001', 'A.')
-    test('2.00012000', 'A, b.')
-    test('2.1000123', 'A, a, b, c.')
-    test('2.100333', 'A, c, c, c.')
-    test('2.1 2 3', 'A, b, c.')
-    test('2.444', 'D, d, d.')
+    test('2.00001', 'a.')
+    test('2.00012000', 'a, b.')
+    test('2.1000123', 'a, a, b, c.')
+    test('2.100333', 'a, c, c, c.')
+    test('2.1 2 3', 'a, b, c.')
+    test('2.444', 'd, d, d.')
 
     test('3.0', 'single')
     test('3.123', 'single')
@@ -270,17 +269,17 @@ def test_specifiers():
     test('4.87654', ', .')
     test('4.185', '-1, .')
 
-    test('5.12', 'Sen1., sen2.')
+    test('5.12', 'sen1., sen2.')
     test('5.0', 'sen1.,sen2.,sen3...')
-    test('5.3', 'Sen3.')
-    test('5.432', 'Sen3, sen2.')
+    test('5.3', 'sen3.')
+    test('5.432', 'sen3, sen2.')
 
-    test('all.1', '[1.];A.;single;-1.;Sen1.')
-    test('-all.21', 'Sen2., sen1.;-2, -1.;single;B, a.;[2, 1.]')
-    test('2,all.1', 'a,b,c,d.;[1.];A.;single;-1.;Sen1.')
+    test('all.1', '[1.];a.;single;-1.;sen1.')
+    test('-all.21', 'sen2., sen1.;-2, -1.;single;b, a.;[2, 1.]')
+    test('2,all.1', 'a,b,c,d.;[1.];a.;single;-1.;sen1.')
 
-    test('', '[2, 1.];C.')
-    test('auto', '[2, 1.];C.')
+    test('', '[2, 1.];c.')
+    test('auto', '[2, 1.];c.')
     test('auto.0', '[2, 1.]')
     test('auto.1', '[2, 1.]')
     test('.', None)
@@ -288,6 +287,14 @@ def test_specifiers():
     test('2.a', None)
     test('all.a', None)
     test('-1-1.-1', None)
+
+
+def test_specifiers_two():
+    test_list = ['[Middle English, from Old English mynet, coin, from Latin monēta; see  MONEY.]',
+                 '[from Latin menta; akin to Greek minthē, mint (both Greek and Latin being of substrate origin).]']
+    test = input_field_testing(tl=test_list, ac='1.21, 2.36', s=',')
+
+    test('1.1', '[Middle English.]')
 
 
 if __name__ == '__main__':

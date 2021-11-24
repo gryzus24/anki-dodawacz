@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 import json
-import os.path
+import os
 import subprocess
 import sys
 import tempfile
@@ -72,7 +72,7 @@ def main():
     if LINUX or WINDOWS:
         new_release_url = latest_tag['tarball_url']
     else:
-        # I'm not sure if it works on macOS.
+        # There are too much os calls in this script. I'm not sure if it works on macOS.
         raise Exit(f'Automatyczna aktualizacja niedostępna na {sys.platform!r}.')
 
     print(f'{GEX.color}:: {R}Pobieram archiwum...')
@@ -93,11 +93,9 @@ def main():
         if process.returncode != 0:
             try:
                 os.rmdir(new_dir_path)
-            except OSError:
-                # In case tar gets interrupted,
-                # otherwise the directory should be empty.
-                pass
-            raise Exit('Błąd podczas rozpakowywania archiwum')
+            except OSError:  # In case tar gets interrupted,
+                pass         # otherwise the directory should be empty.
+            raise Exit('Błąd podczas rozpakowywania archiwum.')
     finally:
         os.remove(tfile.name)
 

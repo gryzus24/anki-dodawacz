@@ -22,7 +22,7 @@ from src.commands import save_command
 from src.data import config, WINDOWS, LINUX
 
 if WINDOWS:
-    def find_devices() -> list:
+    def find_devices():
         audio_devices = subprocess.run('ffmpeg -hide_banner -list_devices true -f dshow -i dummy',
                                        shell=True, capture_output=True, text=True)
         # not sure whether list_devices can come out as stdout, it's always a stderr
@@ -37,7 +37,7 @@ if WINDOWS:
         return audio_devices
 
 elif LINUX:
-    def find_devices() -> list:
+    def find_devices():
         audio_devices = subprocess.run('pactl list sources | grep alsa_output',
                                        shell=True, capture_output=True, text=True)
         audio_devices = audio_devices.stdout.splitlines()[:-1]
@@ -47,11 +47,11 @@ elif LINUX:
         return audio_devices
 
 else:
-    def find_devices() -> None:
+    def find_devices():
         return None
 
 
-def record(filepath: str):
+def record(filepath):
     if LINUX:
         ffmpeg_settings = {
             'format': 'pulse',
@@ -113,7 +113,7 @@ def set_audio_device():
           f'{R}{audio_device}\n')
 
 
-def capture_audio(*args) -> str:
+def capture_audio(*args):
     try:
         arg = args[0].lower()
     except IndexError:  # no arguments

@@ -14,53 +14,57 @@
 # along with this program. If not, see <http://www.gnu.org/licenses/>.
 
 from src.Dictionaries.dictionary_base import Dictionary, prepare_flags, evaluate_skip
-from src.Dictionaries.input_fields import InputField
-from src.Dictionaries.utils import wrap_lines, request_soup
-from src.colors import \
-    R, BOLD, END, \
-    def1_c, def2_c, defsign_c, exsen_c, etym_c, \
-    index_c, phrase_c, \
-    phon_c, poslabel_c, err_c, delimit_c
-from src.data import field_config, config
+from src.Dictionaries.input_fields import input_field
+from src.Dictionaries.utils import request_soup
+from src.colors import R, BOLD, END, phrase_c, err_c
+from src.data import config
 
 
-def get_gram_note(block_) -> str:
-    gram_note_ = block_.find('span', class_='grammatical_note')
-    if gram_note_ is None:
-        return ''
-    return gram_note_.text
+class Lexico(Dictionary):
+    name = 'lexico'
+    allow_thesaurus = True
+
+    def __init__(self):
+        super().__init__()
+
+    def input_cycle(self):
+        def_field = input_field('def', 'Wybierz definicje')
+        chosen_defs, def_choices = def_field(self.definitions, auto_choice='1')
+        if chosen_defs is None:
+            return None
+
+        choices_by_headers = self.get_positions_in_sections(def_choices)
+        phrase = self.phrases[choices_by_headers[0] - 1]
+
+        audio_urls = self.audio_urls
+        if audio_urls:
+            choices_by_labels = self.get_positions_in_sections(def_choices, section_at='AUDIO', reverse=True)
+            audio = audio_urls[choices_by_labels[0] - 1]
+        else:
+            audio = ''
+
+        auto_choice = self.to_auto_choice(def_choices, 'DEF')
+        exsen_field = input_field('exsen', 'Wybierz przykłady')
+        chosen_exsen, _ = exsen_field(self.example_sentences, auto_choice)
+        if chosen_exsen is None:
+            return None
+
+        auto_choice = self.to_auto_choice(choices_by_headers, 'ETYM')
+        etym_field = input_field('etym', 'Wybierz etymologie')
+        chosen_etyms, _ = etym_field(self.etymologies, auto_choice)
+        if chosen_etyms is None:
+            return None
+
+        return {
+            'phrase': phrase,
+            'def': chosen_defs,
+            'exsen': chosen_exsen,
+            'etym': chosen_etyms,
+            'audio': audio,
+        }
 
 
-def get_definitions(block_, *, recursive=True) -> str:
-    def_ = block_.find('span', class_='ind one-click-content', recursive=recursive)
-    if def_ is None:
-        return block_.find('div', class_='crossReference').text
-    return def_.text
-
-
-def get_examples(block_) -> str:
-    def_exg_ = block_.find('div', class_='ex')
-    if def_exg_ is None:
-        return ''
-    return def_exg_.text
-
-
-def get_phonetic_spelling(block_) -> str:
-    pronunciation_block = block_.find('span', class_='phoneticspelling')
-    if pronunciation_block is not None:
-        return pronunciation_block.text.strip()
-
-    pronunciation_block = block_.next_sibling.find('div', class_='pron')
-    if pronunciation_block is None:
-        return ''
-
-    pspelling = pronunciation_block.find_all('span', class_='phoneticspelling', recursive=False)
-    if pspelling:
-        return ' '.join([x.text.strip() for x in pspelling])
-    return ''
-
-
-def create_skip_dict(entry_blocks, flags: set) -> dict:
+def create_skip_dict(entry_blocks, flags):
     # Create a dictionary that tells what labelled block to skip for each phrase block
     flags = prepare_flags(flags)
     skip_dict = {}
@@ -90,100 +94,47 @@ def create_skip_dict(entry_blocks, flags: set) -> dict:
     return all_false_skip_dict
 
 
-class Lexico(Dictionary):
-    name = 'lexico'
-    allow_thesaurus = True
-
-    def __init__(self):
-        super().__init__()
-        self.phrases = []
-        self.definitions = []
-        self.example_sentences = []
-        self.etymologies = []
-        self.audio_urls = []
-        self.last_definition_indexes_in_block_family = []
-        self.last_definition_indexes_in_gramb = [0]
-
-    def __repr__(self):
-        return (f'{__class__}\n'
-                f'{self.phrases=}\n'
-                f'{self.definitions=}\n'
-                f'{self.example_sentences}\n'
-                f'{self.etymologies=}\n'
-                f'{self.audio_urls=}\n'
-                f'{self.last_definition_indexes_in_gramb}\n'
-                f'{self.last_definition_indexes_in_block_family}')
-
-    def _choose_audio_url(self, choice):
-        audio_url = self.audio_urls[choice]
-        if audio_url:
-            return audio_url
-
-        for audio_url in self.audio_urls:
-            if audio_url:
-                return audio_url
-        return None
-
-    def input_cycle(self):
-        def_field = InputField(*field_config['definitions'])
-        exsen_field = InputField(*field_config['example_sentences'])
-        etym_field = InputField(*field_config['etymologies'])
-
-        chosen_defs = def_field.get_element(self.definitions, auto_choice='1')
-        if chosen_defs is None:
-            return None
-
-        block_mapped_choices = def_field.get_choices(self.last_definition_indexes_in_block_family)
-        fc = block_mapped_choices.first_choice_or_zero
-        self.chosen_phrase = self.phrases[fc]
-
-        gramb_mapped_choices = def_field.get_choices(self.last_definition_indexes_in_gramb)
-        fc = gramb_mapped_choices.first_choice_or_zero
-        self.chosen_audio_url = self._choose_audio_url(fc)
-
-        auto_choice = def_field.get_choices().as_exsen_auto_choice(self.example_sentences)
-        chosen_exsen = exsen_field.get_element(self.example_sentences, auto_choice)
-        if chosen_exsen is None:
-            return None
-
-        etym_auto_choice = block_mapped_choices.as_auto_choice
-        chosen_etyms = etym_field.get_element(self.etymologies, etym_auto_choice)
-        if chosen_etyms is None:
-            return None
-
-        return {
-            'def': chosen_defs,
-            'exsen': chosen_exsen,
-            'etym': chosen_etyms
-        }
-
-
 def ask_lexico(query, flags, _previous_query=''):
-    def print_and_append(definition_, example_='', gram_note_='', defsign=' '):
+    def get_phonetic_spelling(block_):
+        pronunciation_block = block_.find('span', class_='phoneticspelling')
+        if pronunciation_block is not None:
+            return pronunciation_block.text.strip()
+
+        pronunciation_block = block_.next_sibling.find('div', class_='pron')
+        if pronunciation_block is None:
+            return ''
+
+        pspelling = pronunciation_block.find_all('span', class_='phoneticspelling', recursive=False)
+        if pspelling:
+            return ' '.join([x.text.strip() for x in pspelling])
+        return ''
+
+    def get_defs(block_, *, recursive=True):
+        d = block_.find('span', class_='ind one-click-content', recursive=recursive)
+        if d is None:
+            return block_.find('div', class_='crossReference').text
+        return d.text
+
+    def get_exsen(block_):
+        e = block_.find('div', class_='ex')
+        return '' if e is None else e.text
+
+    def get_gram_note(block_):
+        gn = block_.find('span', class_='grammatical_note')
+        return '' if gn is None else '[' + gn.text + '] '
+
+    def add_def(definition_, example_='', deftype='DEF'):
         # little cleanup to prevent random newlines inside of examples
         # as is the case with "suspicion"
         example_ = example_.replace('‘', '', 1).replace('’', '', 1).strip()
         if example_:
-            example_ = '‘' + example_ + '’'
-        lexico.example_sentences.append(example_)
-
-        definition_ = definition_.strip()
-        lexico.definitions.append(definition_)
-        if gram_note_:
-            gram_note_ = '[' + gram_note_ + '] '
-
-        len_str_subindex = len(str(subindex))
-
-        def_to_print = wrap_lines(definition_, lexico.textwidth, len_str_subindex, lexico.indent, 2 + len(gram_note_))
-        def_c = def1_c if subindex % 2 else def2_c
-        lexico.print(f'{defsign_c.color}{defsign}{index_c.color}{subindex} '
-                     f'{poslabel_c.color}{gram_note_}{def_c.color}{def_to_print}')
-
-        if config['showexsen'] and example_:
-            exg_to_print = wrap_lines(example_, lexico.textwidth, len_str_subindex, lexico.indent + 1, 2)
-            lexico.print(f'{len_str_subindex * " "}  {exsen_c.color}{exg_to_print}')
-
-    soup = request_soup('https://www.lexico.com/definition/' + query)
+            lexico.add((deftype, definition_.strip(), '‘' + example_ + '’'))
+        else:
+            lexico.add((deftype, definition_.strip()))
+    #
+    # Lexico
+    #
+    soup = request_soup('https://www.lexico.com/definition/' + query.replace(' ', '_'))
     if soup is None:
         return None
 
@@ -199,26 +150,21 @@ def ask_lexico(query, flags, _previous_query=''):
             revive = revive.rsplit('/', 1)[-1]
             return ask_lexico(revive, flags, _previous_query=query)
 
-    lexico = Lexico()
-    lexico.manage_terminal_size()
-
     if config['fsubdefs'] or ('f' in flags or 'fsubdefs' in flags):
         filter_subdefs = True
+        title = 'Lexico (filtered)'
     else:
         filter_subdefs = False
+        title = 'Lexico'
+
+    skip_index = -1
+    skips = []
 
     entry_blocks = page_check.find_next_siblings()
     skip_dict = create_skip_dict(entry_blocks, flags)
 
-    header_printed = False
-    subindex = 0
-    skip_index = -1
-    skips = []
-
-    # Etymologies are bound to more than one block so it's better to search
-    # for them from within a header block and print them at the end
     etym = ''
-
+    lexico = Lexico()
     for block in entry_blocks:
         block_id = block.get('id')
         if block_id is not None:  # header
@@ -229,26 +175,20 @@ def ask_lexico(query, flags, _previous_query=''):
             if all(skips):
                 continue
 
-            if header_printed:
-                lexico.print(f'{delimit_c.color}{lexico.textwidth * lexico.HORIZONTAL_BAR}')
-            else:
-                dname = 'Lexico (filtered)' if filter_subdefs else 'Lexico'
-                lexico.print_title(dname)
-                header_printed = True
-
             # Gather phrases
             phrase_ = block.find('span', class_='hw')
             phrase_ = phrase_.find(recursive=False, text=True)
 
-            if _previous_query and phrase_ != _previous_query:
-                lexico.print(f' {BOLD}Wyniki dla {phrase_c.color}{phrase_}{END}')
-            lexico.phrases.append(phrase_)
+            lexico.add(('HEADER', title))
+            if _previous_query and phrase_ != _previous_query and title:
+                lexico.add(('NOTE', f' {BOLD}Wyniki dla {phrase_c.color}{phrase_}{END}'))
+            title = ''  # title exhausted
 
-            # Gather phonetic spellings
-            phon_spelling = get_phonetic_spelling(block)
-            lexico.print(f' {phrase_c.color}{phrase_} {phon_c.color}{phon_spelling}')
+            lexico.add(('PHRASE', phrase_, get_phonetic_spelling(block)))
 
             # Gather etymologies
+            # Etymologies are bound to more than one block so it's better to search
+            # for them from within a header block and print them at the end
             next_sib = block.next_sibling
             while True:
                 if next_sib is None or next_sib.get('class')[0] == 'entryHead':
@@ -266,9 +206,6 @@ def ask_lexico(query, flags, _previous_query=''):
                     break
                 next_sib = next_sib.next_sibling
 
-            lexico.etymologies.append(etym)
-            lexico.last_definition_indexes_in_block_family.append(subindex)
-
         elif block.get('class')[0] == 'gramb':
             skip_index += 1
             skip = skips[skip_index]
@@ -276,37 +213,33 @@ def ask_lexico(query, flags, _previous_query=''):
                 continue
 
             pos_label = block.find('span', class_='pos').text.strip()
-            trans_note = block.find('span', class_='transitivity').text.strip()
-
-            lexico.print()
             if pos_label:
-                lexico.print(f' {poslabel_c.color}{pos_label} {trans_note}')
+                trans_note = block.find('span', class_='transitivity').text.strip()
+                lexico.add(('LABEL', pos_label, trans_note))
 
             semb = block.find('ul', class_='semb', recursive=False)
             if semb is None:
-                subindex += 1
                 semb = block.find('div', class_='empty_sense', recursive=False)
                 if not semb.text.strip():
-                    def_ = block.find('div', class_='variant', recursive=False).text
-                    print_and_append(def_, defsign='>')
+                    def_ = block.find('div', class_='variant', recursive=False)
+                    add_def(def_.text)
                 else:
                     def_ = semb.find('p', class_='derivative_of', recursive=False)
-                    if def_ is None:
-                        def_ = semb.find('div', class_='crossReference', recursive=False).text
+                    if def_ is not None:
+                        add_def(def_.text, get_exsen(semb))
                     else:
-                        def_ = def_.text
-
-                    def_exg = get_examples(semb)
-                    print_and_append(def_, def_exg, defsign='>')
+                        def_ = semb.find('div', class_='crossReference', recursive=False)
+                        if def_ is not None:
+                            add_def(def_.text, get_exsen(semb))
+                        else:  # boot
+                            def_ = semb.find('div', class_='exg', recursive=False)
+                            add_def('Definition is missing! *_*', def_.text)
             else:
                 definition_list = semb.find_all('li', recursive=False)
                 for dlist in definition_list:
-                    subindex += 1
-                    gram_note = get_gram_note(dlist)
-                    def_ = get_definitions(dlist)
-                    def_exg = get_examples(dlist)
-                    print_and_append(def_, def_exg, gram_note, defsign='>')
-
+                    def_ = get_gram_note(dlist) + get_defs(dlist)
+                    exsen = get_exsen(dlist)
+                    add_def(def_, exsen)
                     if filter_subdefs:
                         continue
 
@@ -314,11 +247,9 @@ def ask_lexico(query, flags, _previous_query=''):
                     if subdef_semb is not None:
                         subdefinition_list = subdef_semb.find_all('li', recursive=False)
                         for sdlist in subdefinition_list:
-                            subindex += 1
-                            gram_note = get_gram_note(sdlist)
-                            def_ = get_definitions(sdlist, recursive=False)
-                            def_exg = get_examples(sdlist)
-                            print_and_append(def_, def_exg, gram_note)
+                            def_ = get_gram_note(sdlist) + get_defs(sdlist, recursive=False)
+                            exsen = get_exsen(sdlist)
+                            add_def(def_, exsen, deftype='SUBDEF')
 
             # Gather audio urls
             previous_blocks = block.find_previous_siblings()[:-1]  # without the breadcrumbs
@@ -331,35 +262,18 @@ def ask_lexico(query, flags, _previous_query=''):
 
             header_audio = current_header_block.find('audio')
             if header_audio is not None:
-                audio_url = header_audio.get('src')
+                lexico.add(('AUDIO', header_audio.get('src')))
             else:
                 gramb_audio = semb.next_sibling
                 if gramb_audio is not None:
                     gram_urls = gramb_audio.find_all('audio')
                     if gram_urls:
-                        audio_url = gram_urls[-1].get('src')
-                    else:
-                        audio_url = ''
-                else:
-                    if lexico.audio_urls:
-                        # gets previous url
-                        audio_url = lexico.audio_urls[len(lexico.audio_urls) - 1]
-                    else:
-                        audio_url = ''
-
-            lexico.audio_urls.append(audio_url)
-            lexico.last_definition_indexes_in_gramb.append(subindex)
+                        lexico.add(('AUDIO', gram_urls[-1].get('src')))
 
         elif block.get('class')[0] == 'etymology' and block.h3.text == 'Origin':
             if all(skips):
                 continue
+            if etym:
+                lexico.add(('ETYM', etym))
 
-            etym_to_print = wrap_lines(etym, lexico.textwidth, 0, 1, 1)
-            lexico.print(f'\n {etym_c.color}{etym_to_print}')
-
-    lexico.last_definition_indexes_in_block_family.append(subindex)
-    if config['top']:
-        print('\n' * (lexico.usable_height - 2))
-    else:
-        print()
     return lexico

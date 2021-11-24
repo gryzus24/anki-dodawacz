@@ -13,29 +13,28 @@
 # You should have received a copy of the GNU General Public License
 # along with this program. If not, see <http://www.gnu.org/licenses/>.
 
-import os
 import os.path
 
-import src.anki_interface as anki
-import src.commands as c
-import src.ffmpeg_interface as ffmpeg
 import src.help as h
+import src.commands as c
+import src.anki_interface as anki
+import src.ffmpeg_interface as ffmpeg
 from src.Dictionaries.ahdictionary import ask_ahdictionary
 from src.Dictionaries.audio_dictionaries import ahd_audio, lexico_audio, diki_audio, save_audio
 from src.Dictionaries.farlex import ask_farlex
 from src.Dictionaries.input_fields import sentence_input
 from src.Dictionaries.lexico import ask_lexico
-from src.Dictionaries.utils import hide
+from src.Dictionaries.utils import hide, request_session
 from src.Dictionaries.wordnet import ask_wordnet
 from src.colors import R, BOLD, END, YEX, GEX, err_c
 from src.data import config, command_to_help_dict, LINUX
 
 if LINUX:
-    # For saving command history, this module doesn't work on windows
+    # "Enables command line editing using GNU readline."
     import readline
     readline.read_init_file()
 
-__version__ = 'v1.1.2-7'
+__version__ = 'v1.2.0-1'
 
 required_arg_commands = {
     # commands that take arguments
@@ -71,7 +70,7 @@ no_arg_commands = {
 }
 
 
-def search_interface() -> str:
+def search_interface():
     while True:
         word = input('Szukaj $ ').strip()
         if not word:
@@ -123,31 +122,43 @@ def search_interface() -> str:
                 print(f'{err_c.color}{err}')
 
 
-def diki_flags(flags):
-    for flag in flags:
-        if flag in ('n', 'v', 'adj', 'noun', 'verb', 'adjective'):
-            return flag
-    return ''
+def manage_audio(dictionary_name, audio_url, phrase, flags):
+    def from_diki():
+        flag = ''
+        for f in flags:
+            if f in ('n', 'v', 'adj', 'noun', 'verb', 'adjective'):
+                flag = f
+                break
+        url = diki_audio(phrase, flag)
+        if url:
+            return save_audio(url, url.split('/')[-1])
+        return ''
 
-
-def manage_audio(dictionary, flags):
     server = config['audio']
     if server == '-':
         return ''
 
-    _phrase = dictionary.chosen_phrase
-    if server == 'auto' or dictionary.name == server:
-        audio_url, audiofile_name = dictionary.get_audio()
-    elif server == 'ahd':
-        audio_url, audiofile_name = ahd_audio(_phrase)
-    elif server == 'lexico':
-        audio_url, audiofile_name = lexico_audio(_phrase)
-    else:  # diki
-        audio_url, audiofile_name = diki_audio(_phrase, diki_flags(flags))
+    # Farlex has no audio, so we try to get it from diki.
+    if server == 'diki' or dictionary_name == 'farlex':
+        return from_diki()
 
-    if not audiofile_name:
-        return ''
-    return save_audio(audio_url, audiofile_name)
+    if server == 'auto' or dictionary_name == server:
+        if audio_url:
+            return save_audio(audio_url, audio_url.split('/')[-1])
+        print(f'{err_c.color}Słownik nie posiada audio dla {R}{phrase}\n'
+              f'{YEX.color}Sprawdzam diki...')
+        return from_diki()
+
+    if server == 'ahd':
+        audio_url = ahd_audio(phrase)
+    elif server == 'lexico':
+        audio_url = lexico_audio(phrase)
+    else:
+        assert False, 'unreachable'
+
+    if audio_url:
+        return save_audio(audio_url, audio_url.split('/')[-1])
+    return ''
 
 
 def save_card_to_file(field_values):
@@ -176,36 +187,40 @@ def manage_dictionaries(_phrase, flags):
         'idioms': ask_farlex, 'idiom': ask_farlex, 'i': ask_farlex
     }
 
-    dictionary = None
-    if flags:
-        for f in flags:
-            try:
-                dict_to_call = first_dicts[f]
-            except KeyError:
-                continue
-            else:
-                # If we don't break out of the for loop, we can query multiple
-                # dictionaries by specifying more than one dictionary flag
-                dictionary = dict_to_call(_phrase, flags=flags)
-                if dictionary is None:
-                    return None
+    dict_flags = []
+    for f in flags:
+        if f in first_dicts:
+            dict_flags.append(f)
 
-    if dictionary is None:
-        dictionary = first_dicts[config['dict']](_phrase, flags=flags)
-
-    if dictionary is not None:
+    if dict_flags:
+        dictionary = None
+        for flag in dict_flags:
+            dictionary = first_dicts[flag](_phrase, flags=flags)
+            # If we don't break out of the for loop, we can query multiple
+            # dictionaries by specifying more than one dictionary flag
+            if dictionary is not None:
+                dictionary.show()
         return dictionary
+    else:
+        dictionary = first_dicts[config['dict']](_phrase, flags=flags)
+        if dictionary is not None:
+            dictionary.show()
+            return dictionary
+
+    # fallback dictionary section
+    if config['dict2'] == '-':
+        return None
 
     second_dicts = {
         'ahd': ask_ahdictionary,
         'lexico': ask_lexico,
-        'idioms': ask_farlex,
-        '-': None
+        'idioms': ask_farlex
     }
-    dict_to_call = second_dicts[config['dict2']]
-    if dict_to_call is not None:
-        print(f'{YEX.color}Szukam w drugim słowniku...')
-        return dict_to_call(_phrase, flags=flags)
+    print(f'{YEX.color}Szukam w drugim słowniku...')
+    dictionary = second_dicts[config['dict2']](_phrase, flags=flags)
+    if dictionary is not None:
+        dictionary.show()
+        return dictionary
 
 
 def format_definitions(definitions):
@@ -270,15 +285,16 @@ def main():
         dictionary = manage_dictionaries(phrase, flags)
         if dictionary is None:
             continue
-        # temporarily set phrase to the first element from phrases
-        # to always get the correct query, e.g. preferred -> prefer
-        phrase = dictionary.phrases[0]
 
         if not config['createcards']:
-            ask_wordnet(phrase)
+            # Use the first phrase to always make the correct query.
+            # e.g. preferred -> prefer
+            t = ask_wordnet(dictionary.phrases[0])
+            if t is not None:
+                t.show()
             continue
 
-        if not zdanie:  # If the phrase wasn't passed with the sentence
+        if not zdanie:  # if sentence wasn't passed as a query
             zdanie = sentence_input()
             if zdanie is None:
                 continue
@@ -286,22 +302,21 @@ def main():
         dictionary_contents = dictionary.input_cycle()
         if dictionary_contents is None:
             continue
-        else:
-            field_values.update(dictionary_contents)
+        field_values.update(dictionary_contents)
 
-        phrase = dictionary.chosen_phrase
-        field_values['audio'] = manage_audio(dictionary, flags)
-
+        field_values['audio'] = manage_audio(dictionary.name,
+                                             field_values['audio'],
+                                             field_values['phrase'],
+                                             flags)
         if dictionary.allow_thesaurus:
-            thesaurus = ask_wordnet(phrase)
+            thesaurus = ask_wordnet(field_values['phrase'])
             if thesaurus is not None:
+                thesaurus.show()
                 thesaurus_contents = thesaurus.input_cycle()
                 if thesaurus_contents is None:
                     continue
-                else:
-                    field_values.update(thesaurus_contents)
+                field_values.update(thesaurus_contents)
 
-        field_values['phrase'] = phrase
         if zdanie:
             field_values['pz'] = zdanie
         else:
@@ -346,4 +361,5 @@ if __name__ == '__main__':
         raise SystemExit(main())
     except (KeyboardInterrupt, EOFError):
         print('\nUnicestwiony')
-        raise SystemExit
+    finally:
+        request_session.close()
