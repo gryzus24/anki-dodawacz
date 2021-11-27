@@ -72,9 +72,14 @@ class AHDictionary(Dictionary):
 
 
 def ask_ahdictionary(query, flags=''):
+    def fix_stress_and_remove_private_symbols(string):
+        return string\
+            .replace('-', '.').replace('′', 'ˌ').replace('', 'ˈ')\
+            .replace('', 'o͞o').replace('', 'o͝o')
+
     def translate_ahd_to_ipa(ahd_phonetics, th):
         # AHD has its own phonetic alphabet that can be translated into IPA.
-        # diphthongs
+        # diphthongs and combinations of more than one letter.
         ahd_phonetics = ahd_phonetics.replace('ch', 'tʃ') \
             .replace('sh', 'ʃ').replace('îr', 'ɪəɹ') \
             .replace('ng', 'ŋ').replace('ou', 'aʊ') \
@@ -82,15 +87,11 @@ def ask_ahdictionary(query, flags=''):
             .replace('ûr', 'ɝ').replace('th', th) \
             .replace('âr', 'ɛəɹ').replace('zh', 'ʒ') \
             .replace('l', 'ɫ').replace('n', 'ən') \
-            .replace('r', 'ʊəɹ').replace('ôr', 'ɔəɹ')
-        # consonants and vowels
+            .replace('r', 'ʊəɹ').replace('ôr', 'ɔːr')
+        # consonants, vowels, and single chars.
         ahd_phonetics = ahd_phonetics.translate(AHD_IPA_translation)
-        # accentuation and hyphenation
-        ahd_phonetics = ahd_phonetics.replace('-', 'ˈ').replace('′', '-').replace('', 'ˌ')
-        # AHD uses 'ē' to represent both 'i' and "i:",
-        # IPA uses 'i' at the end of the word most of the time
-        ahd_phonetics = ahd_phonetics.replace('i:/', 'i/')
-        return ahd_phonetics
+        # stress and hyphenation
+        return ahd_phonetics.replace('-', '.').replace('′', 'ˌ').replace('', 'ˈ')
 
     def definition_cleanup(definition):
         rex = definition.lstrip('1234567890.')
@@ -102,28 +103,31 @@ def ask_ahdictionary(query, flags=''):
             rex = rex.replace(f" {letter}. ", " ")
             # when definition has an example with a '?' there's no space in between
             rex = rex.replace(f"?{letter}. ", "? *")
-        # private unicode characters cleanup, example words containing them:
-        # long, all right
-        rex = rex.strip().replace('', 'ˌ').replace('', 'ōō')
+        rex = fix_stress_and_remove_private_symbols(rex.strip())
         return rex.replace('  ', ' # ')
 
     def get_phrase_tenses(contents):
         return [
             x.string.strip(', ') for x in contents
             if x.string is not None and x.string.strip(', ') and
-            ('<b>' in str(x) or x.string.strip(', ') in ('or', 'also'))]
+            ('<b>' in str(x) or x.string.strip(', ') in ('or', 'also'))
+        ]
 
     def parse_phrase_tenses(pt):
         skip_next = False
         result = []
         for i, elem in enumerate(pt):
-            if elem == 'or':
+            if elem == 'or' and result:  # `and result` because of "gift-wrap"
                 result.pop()
                 result.append(' '.join((pt[i-1], pt[i], pt[i+1])))
                 skip_next = True
             elif elem == 'also':
-                result.append(' '.join((pt[i], pt[i+1])))
-                skip_next = True
+                try:
+                    result.append(' '.join((pt[i], pt[i+1])))
+                except IndexError:  # "decerebrate"
+                    pass
+                else:
+                    skip_next = True
             else:
                 if skip_next:
                     skip_next = False
@@ -131,23 +135,39 @@ def ask_ahdictionary(query, flags=''):
                 result.append(elem)
         return ' * '.join(result)
 
-    def extract_phrase_and_phonetic_spelling(headword_elements):
-        phrase_elements = []
-        phonetics = []
-        for elem in headword_elements:
-            if elem.isnumeric():
-                continue
-            elif elem.istitle():
-                phrase_elements.append(elem)
+    def extract_phrase_and_phonetic_spelling(string):
+        _phrase = []
+        _phon_spell = []
+
+        _in = False
+        string = string.strip()
+        for elem in string.split():
+            e = elem.strip(',').replace('·', '')
+            if not e or e.isnumeric():
                 continue
 
-            for char in '(,)':
-                if char in elem:
-                    phonetics.append(elem)
-                    break
+            if _in:
+                _phon_spell.append(elem)
+                if e.endswith(')'):
+                    _in = False
+                continue
+
+            if e.isascii():
+                # Not every phonetic spelling contains non-ascii characters, e.g. "crowd".
+                # So we have to make an educated guess.
+                if e.startswith('(') and string.endswith(')'):
+                    _phon_spell.append(elem)
+                    _in = True
+                else:
+                    _phrase.append(elem)
             else:
-                phrase_elements.append(elem)
-        return phrase_elements, phonetics
+                if e.startswith('('):
+                    _phon_spell.append(elem)
+                    if not e.endswith(')'):
+                        _in = True
+                else:
+                    _phrase.append(elem)
+        return _phrase, _phon_spell
 
     def skip_this_td():
         skip_set = set()
@@ -166,7 +186,7 @@ def ask_ahdictionary(query, flags=''):
     #
     #  American Heritage Dictionary
     #
-    soup = request_soup('https://www.ahdictionary.com/word/search.html?q=' + query)
+    soup = request_soup('https://www.ahdictionary.com/word/search.html?q=' + query.lstrip('&'))
     if soup is None:
         return None
 
@@ -197,40 +217,38 @@ def ask_ahdictionary(query, flags=''):
     for td in tds:
         # also used when printing definitions
         labeled_blocks = td.find_all('div', class_='pseg', recursive=False)
-
         if flags or filter_labels:
             if skip_this_td():
                 continue
 
-        # example header: bat·ter 1  (băt′ər)
-        # example person header: Monk  (mŭngk), (James) Arthur  Known as  "Art."  Born 1957.
-        header = td.find('div', class_='rtseg', recursive=False)
-        # AHD uses italicized "th" to represent 'ð' and normal "th" to represent 'θ'
-        th = 'ð' if header.find('i') else 'θ'
-        header = (header.text.split('\n', 1)[0]).split()
-        _phrase, phon_spell = extract_phrase_and_phonetic_spelling(header)
-
-        no_accents_phrase = ' '.join(_phrase).replace('·', '')
-        phon_spell = ' '.join(phon_spell).rstrip(',')
-        if config['toipa']:
-            phon_spell = translate_ahd_to_ipa(phon_spell, th)
-        else:
-            phon_spell = phon_spell.replace('-', 'ˈ') \
-                .replace('′', '-').replace('', 'ˌ') \
-                .replace('', 'ōō').replace('', 'ōō')
-
-        ahd.add(('HEADER', title))
-        if no_accents_phrase.lower() != query.lower() and title:
-            ahd.add(('NOTE', f' {BOLD}Wyniki dla {phrase_c.color}{no_accents_phrase}{END}'))
-        title = ''  # title exhausted
-
-        ahd.add(('PHRASE', no_accents_phrase, phon_spell))
-
         # Gather audio urls
         audio_url = td.find('a', {'target': '_blank'})
         if audio_url is not None:
-            audio_url = 'https://www.ahdictionary.com' + audio_url.get('href').strip()
-            ahd.add(('AUDIO', audio_url))
+            ahd.add(('AUDIO', 'https://www.ahdictionary.com' + audio_url.get('href').strip()))
+
+        header = td.find('div', class_='rtseg', recursive=False)
+        if header is None:  # if there are more tables present, e.g. Bible
+            continue
+
+        # AHD uses italicized "th" to represent 'ð' and normal "th" to represent 'θ',
+        # distinction is important if we want to translate AHD to IPA somewhat accurately.
+        th = 'ð' if header.find('i') else 'θ'
+        header = header.text.split('\n', 1)[0].replace('(', ' (').replace(')', ') ')
+        phrase, phon_spell = extract_phrase_and_phonetic_spelling(header)
+
+        phrase = ' '.join(phrase).replace('·', '').replace('•', '')
+        phon_spell = ' '.join(phon_spell).strip(' ,')
+        if config['toipa']:
+            phon_spell = translate_ahd_to_ipa(phon_spell, th)
+        else:
+            phon_spell = fix_stress_and_remove_private_symbols(phon_spell)
+
+        ahd.add(('HEADER', title))
+        if phrase.lower() != query.lower() and title:
+            ahd.add(('NOTE', f' {BOLD}Wyniki dla {phrase_c.color}{phrase}{END}'))
+        title = ''  # title exhausted
+
+        ahd.add(('PHRASE', phrase, phon_spell))
 
         for block in labeled_blocks:
             # Gather part of speech labels
@@ -280,11 +298,11 @@ def ask_ahdictionary(query, flags=''):
         for pos in td.find_all('div', class_='runseg', recursive=False):
             # removing ',' makes parts of speech with multiple spelling variants get
             # their phonetic spelling correctly detected
-            postring = pos.text.replace(',', '').split()
+            postring = pos.text.replace('(', ' (').replace(')', ') ')
             postring, phon_spell = extract_phrase_and_phonetic_spelling(postring)
 
             # accentuation and hyphenation
-            postring = ', '.join(postring).replace('·', 'ˈ').replace('′', '-').replace('', 'ˌ')
+            postring = fix_stress_and_remove_private_symbols(', '.join(postring))
             phon_spell = ' '.join(phon_spell).rstrip(',')
 
             if config['toipa']:
@@ -292,9 +310,8 @@ def ask_ahdictionary(query, flags=''):
                 th = 'ð' if postring.startswith('th') else 'θ'
                 phon_spell = translate_ahd_to_ipa(phon_spell, th)
             else:
-                phon_spell = phon_spell.replace('-', 'ˈ') \
-                    .replace('′', '-').replace('', 'ˌ') \
-                    .replace('', 'ōō').replace('', 'ōō')
+                phon_spell = fix_stress_and_remove_private_symbols(phon_spell)
+
             td_pos.append((postring, phon_spell))
         if len(td_pos) > 1:
             ahd.add(td_pos)

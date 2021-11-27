@@ -294,11 +294,11 @@ labels = {
 }
 
 AHD_IPA_translation = str.maketrans({
-    'ă': 'æ',   'ā': 'eɪ',  'ä': 'ɑ',
-    'â': 'eə',  'ĕ': 'ɛ',   'ē': 'i:',  # there are some private symbols here
+    'ă': 'æ',   'ā': 'eɪ',  'ä': 'ɑː',
+    'â': 'eə',  'ĕ': 'ɛ',   'ē': 'iː',  # there are some private symbols here
     'ĭ': 'ɪ',   'î': 'ɪ',   'ī': 'aɪ',  # that AHD claims to have used, but
-    'i': 'aɪ',  'ŏ': 'ɑ',   'ō': 'oʊ',  # I haven't found any usages yet
-    'ô': 'ɔ',   '': 'ʊ',   '': 'ʊ',
+    'i': 'aɪ',  'ŏ': 'ɒ',   'ō': 'oʊ',  # I haven't found any usages yet
+    'ô': 'ɔː',   '': 'ʊ',   '': 'ʊ',
     '': 'u',   '': 'u:', '': 'ð',
     'ŭ': 'ʌ',   'û': 'ɔ:',  'y': 'j',
     'j': 'dʒ',  'ü': 'y',   '': 'ç',
