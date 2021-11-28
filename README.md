@@ -11,7 +11,7 @@ proces odbywa się w stu procentach za pomocą klawiatury.
 
 ### Windows:
 
-[link do pobrania .zip](https://github.com/gryzus24/anki-dodawacz/archive/refs/tags/v1.1.2-6.zip)
+[link do pobrania .zip](https://github.com/gryzus24/anki-dodawacz/archive/refs/tags/v1.2.1-2.zip)
 :-
 
 Pobieramy .zip i rozpakowujemy.
@@ -39,7 +39,7 @@ błędu, okno zamknie się natychmiastowo.
 
 ### Linux:
 
-[link do pobrania .tar.gz](https://github.com/gryzus24/anki-dodawacz/archive/refs/tags/v1.1.2-6.tar.gz)
+[link do pobrania .tar.gz](https://github.com/gryzus24/anki-dodawacz/archive/refs/tags/v1.2.1-2.tar.gz)
 :-
 
 Pobieramy archiwum tar.gz i rozpakowujemy.
