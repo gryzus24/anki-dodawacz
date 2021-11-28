@@ -34,7 +34,7 @@ if LINUX:
     import readline
     readline.read_init_file()
 
-__version__ = 'v1.2.1-1'
+__version__ = 'v1.2.1-2'
 
 required_arg_commands = {
     # commands that take arguments
