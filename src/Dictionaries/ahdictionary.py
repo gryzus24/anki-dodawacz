@@ -73,8 +73,7 @@ class AHDictionary(Dictionary):
 
 def ask_ahdictionary(query, flags=''):
     def fix_stress_and_remove_private_symbols(string):
-        return string\
-            .replace('-', '.').replace('′', 'ˌ').replace('', 'ˈ')\
+        return string.replace('′', 'ˌ').replace('', 'ˈ')\
             .replace('', 'o͞o').replace('', 'o͝o')
 
     def translate_ahd_to_ipa(ahd_phonetics, th):
@@ -278,8 +277,8 @@ def ask_ahdictionary(query, flags=''):
                 def_root = definition_cleanup(def_root.text)
                 for i, subdefinition in enumerate(def_root.split('*')):
                     # strip an occasional leftover octothorpe
-                    def_type = 'DEF' if not i else 'SUBDEF'
                     subdef_exsen = subdefinition.strip('# ').split(':', 1)
+                    def_type = 'DEF' if not i else 'SUBDEF'
                     subdef = subdef_exsen[0].strip(' .') + '.'
                     if len(subdef_exsen) == 2:
                         exsen = subdef_exsen[1].strip()

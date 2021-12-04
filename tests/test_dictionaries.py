@@ -3,6 +3,7 @@ import sys
 from random import sample
 
 from src.Dictionaries.ahdictionary import ask_ahdictionary
+from src.Dictionaries.lexico import ask_lexico
 from src.colors import R, GEX, err_c
 from src.data import config
 
@@ -15,7 +16,7 @@ from src.data import config
 #   `rm test_dictionaries.py && cp tests/test_dictionaries.py . && pytest -sv --full-trace test_dictionaries.py`
 
 WORDS_FILE_PATH = None
-SAMPLE_SIZE = 100
+SAMPLE_SIZE = 80
 
 # 'ALL', 'INFO', 'ERROR'
 LOG_LEVEL = 'ALL'
@@ -48,7 +49,7 @@ def load_words(filepath=None):
             return {x.strip() for x in json.load(f) if x.strip()}
     elif filepath.endswith('.txt'):
         with open(filepath) as f:
-            return {x.strip() for x in f.readlines() if x.strip()}
+            return {x.strip() for x in f if x.strip()}
     else:
         return test_words
 
@@ -127,33 +128,21 @@ def is_funny(string):
 #   shortness, desiccate, redress
 
 
-def ahdictionary_test(word, longest_word_len=30):
-    left_paren, right_paren = ('/', '/') if config['toipa'] else ('(', ')')
+def dictionary_content_check(dictionary):
     log_buffer = []
 
-    def log(msg, err=False):
-        ops = f'[{op}]'
-        log_buffer.append(f'AHD::{ops}::{phrase_index}::{msg}')
+    dictionary_name = dictionary.name.upper()[:3]
+    if dictionary_name == 'AHD' and not config['toipa']:
+        right_paren, left_paren = '(', ')'
+    else:
+        right_paren, left_paren = '/', '/'
 
-        if msg.startswith('OK'):
-            if LOG_LEVEL != 'ALL':
-                return None
-            c = GEX.color
-        elif err or msg.startswith('!!'):
-            c = err_c.color
-        else:
-            if LOG_LEVEL == 'ERROR':
-                return None
-            c = R
-        sys.stdout.write(f'AHD: {ops:8s} {phrase_index:2d} {word:{longest_word_len + 1}s}{c}: {msg}\n')
-
-    ahd = ask_ahdictionary(word)
-    if ahd is None:
-        return ['Word not found in AHD']
+    def log(msg):
+        log_buffer.append((dictionary_name, '['+op+']', phrase_index, msg))
 
     phrase_index = 0
     def_index = 0
-    for op, *body in ahd.contents:
+    for op, *body in dictionary.contents:
         if op == 'HEADER':
             phrase_index += 1
 
@@ -163,22 +152,22 @@ def ahdictionary_test(word, longest_word_len=30):
                 log(f'?? | potential funny characters in definitions ({def_index})')
             if len(body) == 2:
                 if not (exsen := body[1]):
-                    log(f'!! | empty example sentence ({def_index})', err=True)
+                    log(f'!! | empty example sentence ({def_index})')
                 if is_funny(exsen):
                     log(f'?? | potential funny characters in example sentences ({def_index})')
 
         elif op == 'PHRASE':
             if len(body) != 2:
-                log('!! | len(body) != 2', err=True)
+                log('!! | len(body) != 2')
                 continue
 
             if not (phrase := body[0]):
-                log('!! | empty phrase', err=True)
+                log('!! | empty phrase')
             elif not phrase.isascii():
                 if is_funny(phrase):
-                    log(f'!! | potential funny characters in phrase: {phrase}', err=True)
+                    log(f'!! | potential funny characters in phrase: {phrase}')
                 if '(' in phrase or ')' in phrase or '/' in phrase:
-                    log(f'!! | potential phonetic spelling in phrase: {phrase}', err=True)
+                    log(f'!! | potential phonetic spelling in phrase: {phrase}')
                 else:
                     log(f'?? | non-ASCII phrase: {phrase}')
 
@@ -198,42 +187,75 @@ def ahdictionary_test(word, longest_word_len=30):
                     log_msg += ': ' + phon
                     log(log_msg)
                 else:
-                    log(f'!! | garbage in phonetic spelling: {phon}', err=True)
+                    log(f'!! | garbage in phonetic spelling: {phon}')
 
         elif op == 'POS':
             if not body[0]:
-                log('!! | empty instruction', err=True)
+                log('!! | empty instruction')
             else:
                 for pos, phon in body:
                     if '(' in pos or ')' in pos or '/' in pos:
-                        log(f'!! | potential phonetic spelling in pos: {pos}', err=True)
+                        log(f'!! | potential phonetic spelling in pos: {pos}')
                     if is_funny(pos):
-                        log(f'!! | potential funny characters in pos: {pos}', err=True)
+                        log(f'!! | potential funny characters in pos: {pos}')
                     if phon:
                         if is_funny(phon):
                             log(f'?? | potential funny characters in phonetic spelling: {phon}')
                         if phon.startswith(left_paren) and phon.endswith(right_paren):
                             log(f'OK: {phon}')
                         else:
-                            log(f'!! | garbage in phonetic spelling: {phon}', err=True)
+                            log(f'!! | garbage in phonetic spelling: {phon}')
 
         elif op == 'LABEL':
             label_split = body[0].split()
             if 'also' in label_split or \
-                ('or' in label_split and 'with' not in label_split) \
+                    ('or' in label_split and 'with' not in label_split) \
                     or not body[0].isascii():
-                log(f'!! | potential garbage in labels: {body[0]}', err=True)
-
+                log(f'!! | potential garbage in labels: {body[0]}')
     return log_buffer
+
+
+def ahdictionary_test(word):
+    ahd = ask_ahdictionary(word)
+    if ahd is None:
+        return [('AHD', '', 0, 'Word not found')]
+    return dictionary_content_check(ahd)
+
+
+def lexico_test(word):
+    lexico = ask_lexico(word)
+    if lexico is None:
+        return [('LEX', '', 0, 'Word not found')]
+    return dictionary_content_check(lexico)
+
+
+def print_logs(logs, word, col_width):
+    for dname, op, index, msg in logs:
+        if msg.startswith('OK'):
+            if LOG_LEVEL != 'ALL':
+                return None
+            c = GEX.color
+        elif msg.startswith('!!'):
+            c = err_c.color
+        else:
+            if LOG_LEVEL == 'ERROR':
+                return None
+            c = R
+        sys.stdout.write(f'{dname}: {op:8s} {index:2d} {word:{col_width + 1}s}{c}: {msg}\n')
 
 
 def test_main():
     with Setup() as test:
-        lwl = test.longest_word_len
+        longest_word_len = test.longest_word_len
         for word in test.words:
-            ahd_logs = ahdictionary_test(word, lwl)
+            ahd_logs = ahdictionary_test(word)
+            lex_logs = lexico_test(word)
+
+            logs = ahd_logs + lex_logs
+            print_logs(logs, word, longest_word_len)
+
             if SAVE_TESTED_WORDS_TO_FILE:
-                test.update_buffer(word, ahd_logs)
+                test.update_buffer(word, logs)
 
 
 if __name__ == '__main__':

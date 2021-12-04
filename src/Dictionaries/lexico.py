@@ -94,7 +94,7 @@ def create_skip_dict(entry_blocks, flags):
     return all_false_skip_dict
 
 
-def ask_lexico(query, flags, _previous_query=''):
+def ask_lexico(query, flags='', _previous_query=''):
     def get_phonetic_spelling(block_):
         pronunciation_block = block_.find('span', class_='phoneticspelling')
         if pronunciation_block is not None:
@@ -139,6 +139,13 @@ def ask_lexico(query, flags, _previous_query=''):
         return None
 
     main_div = soup.find('div', class_='entryWrapper')
+    if main_div is None:  # lexico denied access
+        import time
+        print(f'{err_c.color}Lexico doświadczyła zbyt wielu zapytań na raz...\n'
+              f'Spróbuj ponownie za 1-5 min.')
+        time.sleep(2.5)
+        raise SystemExit(1)
+
     page_check = main_div.find('div', class_='breadcrumbs layout', recursive=False)
     if page_check.get_text(strip=True) == 'HomeEnglish':
         revive = main_div.find('a', class_='no-transition')

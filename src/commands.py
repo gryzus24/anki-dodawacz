@@ -13,14 +13,14 @@
 # You should have received a copy of the GNU General Public License
 # along with this program. If not, see <http://www.gnu.org/licenses/>.
 
+import json
 import os
 import sys
-import json
 from shutil import get_terminal_size
 
 import src.data as data
 from src.colors import R, BOLD, END, YEX, GEX, \
-    def1_c, def2_c, defsign_c, pos_c, etym_c, syn_c, exsen_c, syngloss_c,\
+    def1_c, def2_c, defsign_c, pos_c, etym_c, syn_c, exsen_c, syngloss_c, \
     index_c, phrase_c, phon_c, poslabel_c, inflection_c, err_c, delimit_c
 from src.data import LINUX, WINDOWS, MAC
 from src.data import ROOT_DIR, STD_FIELD_ORDER, TSC_FIELD_ORDER, config, bool_colors_dict

@@ -15,10 +15,10 @@
 
 import os.path
 
-import src.help as h
-import src.commands as c
 import src.anki_interface as anki
+import src.commands as c
 import src.ffmpeg_interface as ffmpeg
+import src.help as h
 from src.Dictionaries.ahdictionary import ask_ahdictionary
 from src.Dictionaries.audio_dictionaries import ahd_audio, lexico_audio, diki_audio, save_audio
 from src.Dictionaries.farlex import ask_farlex
@@ -34,7 +34,7 @@ if LINUX:
     import readline
     readline.read_init_file()
 
-__version__ = 'v1.2.1-2'
+__version__ = 'v1.2.1-3'
 
 required_arg_commands = {
     # commands that take arguments
