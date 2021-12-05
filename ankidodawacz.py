@@ -34,7 +34,7 @@ if LINUX:
     import readline
     readline.read_init_file()
 
-__version__ = 'v1.2.1-3'
+__version__ = 'v1.2.2-1'
 
 required_arg_commands = {
     # commands that take arguments
@@ -221,6 +221,8 @@ def manage_dictionaries(_phrase, flags):
     if dictionary is not None:
         dictionary.show()
         return dictionary
+    if config['dict'] != 'idioms' and config['dict2'] != 'idioms':
+        print(f"{YEX.color}Aby zapytać słownik idiomów wpisz: {R}'{_phrase} -i'")
 
 
 def format_definitions(definitions):
@@ -272,17 +274,17 @@ def main():
             continue
 
         if '<' in search_query and '>' in search_query:
-            phrase = search_query.split('<', 1)[-1].rsplit('>', 1)[0]
-            if not phrase:
+            searched_phrase = search_query.split('<', 1)[-1].rsplit('>', 1)[0]
+            if not searched_phrase:
                 continue
             zdanie = search_query
         else:
-            phrase, zdanie = search_query, ''
+            searched_phrase, zdanie = search_query, ''
 
         if 'rec' in flags or 'record' in flags:
-            field_values['recording'] = ffmpeg.capture_audio(phrase)
+            field_values['recording'] = ffmpeg.capture_audio(searched_phrase)
 
-        dictionary = manage_dictionaries(phrase, flags)
+        dictionary = manage_dictionaries(searched_phrase, flags)
         if dictionary is None:
             continue
 
@@ -304,12 +306,15 @@ def main():
             continue
         field_values.update(dictionary_contents)
 
+        phrase = field_values['phrase']
         field_values['audio'] = manage_audio(dictionary.name,
                                              field_values['audio'],
-                                             field_values['phrase'],
+                                             phrase,
                                              flags)
         if dictionary.allow_thesaurus:
-            thesaurus = ask_wordnet(field_values['phrase'])
+            thesaurus = ask_wordnet(
+                phrase.split()[0] if 'also' in phrase.split() else phrase
+            )
             if thesaurus is not None:
                 thesaurus.show()
                 thesaurus_contents = thesaurus.input_cycle()
