@@ -1,9 +1,11 @@
 # Ankidodawacz
 
-Otwarty na konfigurację program do szybkiego tworzenia monojęzycznych kart do Anki.<br>
-Obsługuje American Heritage Dictionary, Lexico, Farlex Idioms i WordNet 3.1.<br>
-
-Celem programu jest ułatwienie żmudnego procesu dodawania kart oraz przyspieszenie wyszukiwania definicji.
+Otwarty na konfigurację program do szybkiego tworzenia i dodawania monojęzycznych kart do Anki.<br>
+Obecnie obsługiwane słowniki:
+- American Heritage Dictionary
+- Lexico
+- Farlex Dictionary of Idioms
+- WordNet 3.1
 
 ## Instalacja:
 
