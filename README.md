@@ -1,11 +1,9 @@
 # Ankidodawacz
 
-Prosty i otwarty na konfigurację program do szybkiego tworzenia monojęzycznych kart do Anki.<br>
-Pozyskuje informacje z American Heritage Dictionary, Lexico, Farlex Dictionary of Idioms i WordNet 3.1.<br>
+Otwarty na konfigurację program do szybkiego tworzenia monojęzycznych kart do Anki.<br>
+Obsługuje American Heritage Dictionary, Lexico, Farlex Idioms i WordNet 3.1.<br>
 
-Celem programu jest ułatwienie i uprzyjemnienie żmudnego i zniechęcającego procesu dodawania kart, który konwencjonalnie
-odbywa się za pomocą powtarzalnych ruchów myszki i przekopiowywania informacji do edytora kart.<br>Z Ankidodawaczem ten
-proces odbywa się w stu procentach za pomocą klawiatury.
+Celem programu jest ułatwienie żmudnego procesu dodawania kart oraz przyspieszenie wyszukiwania definicji.
 
 ## Instalacja:
 
@@ -25,14 +23,14 @@ Przy instalacji zaznaczamy "Add python to PATH"
 ##### Po zainstalowaniu Pythona:<br>
 
 Otwieramy terminal (cmd na windowsie) i pobieramy wymagane biblioteki wpisując:<br>
-`pip install BeautifulSoup4 colorama requests lxml`<br>
+`pip install beautifulsoup4 colorama lxml requests`<br>
 
 Następnie wpisujemy:<br>
 `cd <ścieżka do folderu z programem>`<br>
 np. `cd Pobrane`
 
 Gdy jesteśmy w folderze z programem, aby uruchomić Ankidodawacza wpisujemy:<br>
-`python ankidodawacz.py` lub `python3 ankidodawacz.py`<br>
+`python ankidodawacz.py`<br>
 
 Na Windowsie kliknięcie w ikonkę też powinno otworzyć program, jednak przy wystąpieniu jakiegokolwiek nieoczekiwanego
 błędu, okno zamknie się natychmiastowo.
@@ -50,10 +48,10 @@ Możemy użyć komendy:<br>
 Na większości dystrybucji odpowiednia wersja Pythona powinna być już zainstalowana.
 
 Instalujemy wymagane biblioteki:<br>
-`pip install BeautifulSoup4 colorama requests lxml`
+`pip install beautifulsoup4 colorama lxml requests`
 
 Otwieramy za pomocą Pythona:<br>
-`python ankidodawacz.py` lub `python3 ankidodawacz.py`
+`python ankidodawacz.py`
 
 ## Konfiguracja i działanie programu
 
@@ -198,6 +196,6 @@ Więc jedyne co musimy zrobić to:<br>
 Jestem początkujący, jeżeli chodzi o programowanie. Jest to mój pierwszy projekt i jakość kodu z pewnością pozostawia
 wiele do życzenia.
 
-Jestem otwarty na sugestie i krytykę. Mam nadzieję, że narzędzie okaże się pomocne.
+Jestem otwarty na wszelkie sugestie i uwagi. Mam nadzieję, że narzędzie okaże się pomocne.
 
-Użyte biblioteki: BeautifulSoup4, requests, colorama, lxml
+Użyte biblioteki: BeautifulSoup4, colorama, lxml, requests
