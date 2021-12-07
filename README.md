@@ -1,17 +1,17 @@
 # Ankidodawacz
 
-Prosty i otwarty na konfigurację program do szybkiego tworzenia monojęzycznych kart do Anki.<br>
-Pozyskuje informacje z American Heritage Dictionary, Lexico, Farlex Dictionary of Idioms i WordNet 3.1.<br>
-
-Celem programu jest ułatwienie i uprzyjemnienie żmudnego i zniechęcającego procesu dodawania kart, który konwencjonalnie
-odbywa się za pomocą powtarzalnych ruchów myszki i przekopiowywania informacji do edytora kart.<br>Z Ankidodawaczem ten
-proces odbywa się w stu procentach za pomocą klawiatury.
+Otwarty na konfigurację program do szybkiego tworzenia i dodawania monojęzycznych kart do Anki.<br>
+Obecnie obsługiwane słowniki:
+- American Heritage Dictionary
+- Lexico
+- Farlex Dictionary of Idioms
+- WordNet 3.1
 
 ## Instalacja:
 
 ### Windows:
 
-[link do pobrania .zip](https://github.com/gryzus24/anki-dodawacz/archive/refs/tags/v1.2.1-3.zip)
+[link do pobrania .zip](https://github.com/gryzus24/anki-dodawacz/archive/refs/tags/v1.2.2-1.zip)
 :-
 
 Pobieramy .zip i rozpakowujemy.
@@ -25,21 +25,21 @@ Przy instalacji zaznaczamy "Add python to PATH"
 ##### Po zainstalowaniu Pythona:<br>
 
 Otwieramy terminal (cmd na windowsie) i pobieramy wymagane biblioteki wpisując:<br>
-`pip install BeautifulSoup4 colorama requests lxml`<br>
+`pip install beautifulsoup4 colorama lxml requests`<br>
 
 Następnie wpisujemy:<br>
 `cd <ścieżka do folderu z programem>`<br>
 np. `cd Pobrane`
 
 Gdy jesteśmy w folderze z programem, aby uruchomić Ankidodawacza wpisujemy:<br>
-`python ankidodawacz.py` lub `python3 ankidodawacz.py`<br>
+`python ankidodawacz.py`<br>
 
 Na Windowsie kliknięcie w ikonkę też powinno otworzyć program, jednak przy wystąpieniu jakiegokolwiek nieoczekiwanego
 błędu, okno zamknie się natychmiastowo.
 
 ### Linux:
 
-[link do pobrania .tar.gz](https://github.com/gryzus24/anki-dodawacz/archive/refs/tags/v1.2.1-3.tar.gz)
+[link do pobrania .tar.gz](https://github.com/gryzus24/anki-dodawacz/archive/refs/tags/v1.2.2-1.tar.gz)
 :-
 
 Pobieramy archiwum tar.gz i rozpakowujemy.
@@ -50,10 +50,10 @@ Możemy użyć komendy:<br>
 Na większości dystrybucji odpowiednia wersja Pythona powinna być już zainstalowana.
 
 Instalujemy wymagane biblioteki:<br>
-`pip install BeautifulSoup4 colorama requests lxml`
+`pip install beautifulsoup4 colorama lxml requests`
 
 Otwieramy za pomocą Pythona:<br>
-`python ankidodawacz.py` lub `python3 ankidodawacz.py`
+`python ankidodawacz.py`
 
 ## Konfiguracja i działanie programu
 
@@ -198,6 +198,6 @@ Więc jedyne co musimy zrobić to:<br>
 Jestem początkujący, jeżeli chodzi o programowanie. Jest to mój pierwszy projekt i jakość kodu z pewnością pozostawia
 wiele do życzenia.
 
-Jestem otwarty na sugestie i krytykę. Mam nadzieję, że narzędzie okaże się pomocne.
+Jestem otwarty na wszelkie sugestie i uwagi. Mam nadzieję, że narzędzie okaże się pomocne.
 
-Użyte biblioteki: BeautifulSoup4, requests, colorama, lxml
+Użyte biblioteki: BeautifulSoup4, colorama, lxml, requests
