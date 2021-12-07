@@ -233,7 +233,7 @@ class Dictionary:
             if config['top']:
                 # Clearing the screen also helps reduce flicker from printing everything at once.
                 if WINDOWS:
-                    subprocess.run(['cls'])
+                    subprocess.run(['cmd', '/c', 'cls'])
                 elif POSIX:
                     sys.stdout.write('\033[?25l')  # Hide cursor
                     sys.stdout.flush()
