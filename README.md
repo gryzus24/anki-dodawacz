@@ -11,7 +11,7 @@ Obecnie obsługiwane słowniki:
 
 ### Windows:
 
-[link do pobrania .zip](https://github.com/gryzus24/anki-dodawacz/archive/refs/tags/v1.2.2-1.zip)
+[link do pobrania .zip](https://github.com/gryzus24/anki-dodawacz/archive/refs/tags/v1.2.2-2.zip)
 :-
 
 Pobieramy .zip i rozpakowujemy.
@@ -39,7 +39,7 @@ błędu, okno zamknie się natychmiastowo.
 
 ### Linux:
 
-[link do pobrania .tar.gz](https://github.com/gryzus24/anki-dodawacz/archive/refs/tags/v1.2.2-1.tar.gz)
+[link do pobrania .tar.gz](https://github.com/gryzus24/anki-dodawacz/archive/refs/tags/v1.2.2-2.tar.gz)
 :-
 
 Pobieramy archiwum tar.gz i rozpakowujemy.
@@ -84,7 +84,7 @@ windowsowym terminalu to wersja portable "Alacritty" oferuje bardzo dobre ustawi
 
 ### Aktualizacja do nowszej wersji
 Aby zaktualizować program zachowując swoją konfigurację i zawartość pliku "karty.txt" wystarczy wpisać:<br>
-`python update.py` lub `python3 update.py`<br>
+`python update.py`<br>
 Nowa wersja zostanie zapisana w folderze z programem jako "anki-dodawacz-{wersja}".
 
 Obecnie `update.py` działa na Linuxie i Windowsie 10.
