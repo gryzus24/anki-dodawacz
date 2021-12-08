@@ -15,6 +15,7 @@
 
 import subprocess
 import sys
+from shutil import get_terminal_size
 
 from src.Dictionaries.utils import wrap_lines, get_textwidth
 from src.colors import R, BOLD, END, def1_c, syn_c, exsen_c, pos_c, etym_c, phrase_c, \
@@ -233,7 +234,10 @@ class Dictionary:
             if config['top']:
                 # Clearing the screen also helps reduce flicker from printing everything at once.
                 if WINDOWS:
-                    subprocess.run(['cmd', '/c', 'cls'])
+                    # This is roughly equivalent to `clear -x`.
+                    h = get_terminal_size().lines
+                    sys.stdout.write(f'\033[{h}B\033[{h}A')
+                    sys.stdout.flush()
                 elif POSIX:
                     sys.stdout.write('\033[?25l')  # Hide cursor
                     sys.stdout.flush()

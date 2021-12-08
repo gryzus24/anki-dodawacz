@@ -27,14 +27,14 @@ from src.Dictionaries.lexico import ask_lexico
 from src.Dictionaries.utils import hide, request_session
 from src.Dictionaries.wordnet import ask_wordnet
 from src.colors import R, BOLD, END, YEX, GEX, err_c
-from src.data import config, command_to_help_dict, LINUX
+from src.data import config, command_to_help_dict, ROOT_DIR, LINUX
 
 if LINUX:
     # "Enables command line editing using GNU readline."
     import readline
     readline.read_init_file()
 
-__version__ = 'v1.2.2-2'
+__version__ = 'v1.2.3-1'
 
 required_arg_commands = {
     # commands that take arguments
@@ -245,8 +245,11 @@ def format_definitions(definitions):
 
 
 def main():
-    if not os.path.exists('Karty_audio') and config['audio_path'] == 'Karty_audio':
-        os.mkdir('Karty_audio')
+    if config['audio_path'] == 'Karty_audio':
+        # Providing an explicit path solves an occasional PermissionError on Windows.
+        t = os.path.join(ROOT_DIR, 'Karty_audio')
+        if not os.path.exists(t):
+            os.mkdir(t)
 
     print(f'{BOLD}- Dodawacz kart do Anki {__version__} -{END}\n'
           'Wpisz "--help", aby wyświetlić pomoc\n\n')
