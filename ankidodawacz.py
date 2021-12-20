@@ -34,13 +34,15 @@ if LINUX:
     import readline
     readline.read_init_file()
 
-__version__ = 'v1.2.3-2'
+__version__ = 'v1.3.0-1'
 
 required_arg_commands = {
     # commands that take arguments
     '--delete-last': c.delete_cards, '--delete-recent': c.delete_cards,
     '-textwrap': c.set_text_value_commands,
     '-textwidth': c.set_width_settings,
+    '-colviewat': c.set_width_settings,
+    '-columns': c.set_width_settings,
     '-indent': c.set_width_settings,
     '-note': c.set_free_value_commands,
     '-deck': c.set_free_value_commands,

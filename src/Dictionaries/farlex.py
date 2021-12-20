@@ -13,13 +13,11 @@
 # You should have received a copy of the GNU General Public License
 # along with this program. If not, see <http://www.gnu.org/licenses/>.
 
-import sys
-
 from src.Dictionaries.dictionary_base import Dictionary
 from src.Dictionaries.input_fields import input_field
-from src.Dictionaries.utils import request_soup, wrap_lines, get_textwidth
+from src.Dictionaries.utils import request_soup, wrap_lines
 from src.colors import R, def1_c, def2_c, index_c, \
-    exsen_c, defsign_c, phrase_c, phon_c, err_c
+    exsen_c, phrase_c, err_c
 from src.data import config
 
 
@@ -31,9 +29,11 @@ class FarlexIdioms(Dictionary):
         super().__init__()
 
     def print_dictionary(self):
-        textwidth = get_textwidth()
+        textwidth, ncols, last_col_fill = self._get_term_parameters()
+
         indent = config['indent'][0]
         show_exsen = config['showexsen']
+
         buffer = []
         communal_index = 0
         for op, *body in self.contents:
@@ -41,19 +41,34 @@ class FarlexIdioms(Dictionary):
                 communal_index += 1
                 def_c = def1_c if communal_index % 2 else def2_c
                 def_index_len = len(str(communal_index))
-                def_tp = wrap_lines(body[0], textwidth, def_index_len, indent, 1)
-                buffer.append(f'{defsign_c.color}{index_c.color}{communal_index} {def_c.color}{def_tp}\n')
+
+                wrapped_def = wrap_lines(body[0], textwidth, def_index_len, indent - 1, 1)
+                padding = (textwidth - len(wrapped_def[0]) - def_index_len - 1) * ' '
+                buffer.append(f'{index_c.color}{communal_index} {def_c.color}{wrapped_def[0]}{padding}')
+                for def_tp in wrapped_def[1:]:
+                    padding = (textwidth - len(def_tp)) * ' '
+                    buffer.append(f'${def_c.color}{def_tp}{padding}')
+
                 if show_exsen and len(body) > 1:
                     for exsen in body[1].split('<br>'):
-                        exsen = wrap_lines(exsen, textwidth, def_index_len, indent, 1)
-                        buffer.append(f'{def_index_len * " "} {exsen_c.color}{exsen}\n')
+                        wrapped_exsen = wrap_lines(exsen, textwidth, def_index_len, 2, 1)
+                        padding = (textwidth - len(wrapped_exsen[0]) - def_index_len - 1) * ' '
+                        buffer.append(f'${def_index_len * " "} {exsen_c.color}{wrapped_exsen[0]}{padding}')
+                        for wrapped_line in wrapped_exsen[1:]:
+                            padding = (textwidth - len(wrapped_line)) * ' '
+                            buffer.append(f'${exsen_c.color}{wrapped_line}{padding}')
             elif op == 'PHRASE':
-                buffer.append(f'\n {phrase_c.color}{body[0]}  {phon_c.color}{body[1]}\n')
+                phrase = body[0]
+                wrapped_phrase = wrap_lines(phrase, textwidth, 0, 0, 1)
+                for phrase_chunk in wrapped_phrase:
+                    padding = (textwidth - len(phrase_chunk) - 1) * ' '
+                    buffer.append(f'! {phrase_c.color}{phrase_chunk}{padding}')
             elif op == 'HEADER':
-                buffer.append(self.format_title(body[0], textwidth))
+                buffer.append(textwidth * body[0])
             else:
                 assert False, f'unreachable farlex idioms operation: {op!r}'
-        sys.stdout.write(''.join(buffer) + '\n')
+
+        self._format_and_print_dictionary(buffer, textwidth, ncols, last_col_fill)
 
     def input_cycle(self):
         def_field = input_field('def', 'Wybierz definicje')
@@ -61,7 +76,7 @@ class FarlexIdioms(Dictionary):
         if chosen_defs is None:
             return None
 
-        phrase_choice = self.get_positions_in_sections(def_choices, section_at='PHRASE')[0]
+        phrase_choice = self.get_positions_in_sections(def_choices, from_within='PHRASE')[0]
         phrase = self.phrases[phrase_choice - 1]
 
         auto_choice = self.to_auto_choice(def_choices, 'DEF')
@@ -88,7 +103,7 @@ def ask_farlex(query, **ignore):
         return None
 
     farlex = FarlexIdioms()
-    farlex.add(('HEADER', 'Farlex Idioms'))
+    farlex.title = 'Farlex Idioms'
 
     last_phrase = ''
     content_blocks = relevant_content.find_all('div', class_=('ds-single', 'ds-list'), recursive=False)
@@ -112,5 +127,6 @@ def ask_farlex(query, **ignore):
         exsen = ['‘' + illust.text.strip() + '’' for illust in illustrations]
 
         farlex.add(('DEF', definition, '<br>'.join(exsen)))
+        farlex.add(('HEADER', ' '))
 
     return farlex

@@ -16,11 +16,12 @@
 from src.Dictionaries.dictionary_base import Dictionary, prepare_flags, evaluate_skip
 from src.Dictionaries.input_fields import input_field
 from src.Dictionaries.utils import request_soup
-from src.colors import R, BOLD, END, phrase_c, err_c
-from src.data import config, AHD_IPA_translation
+from src.colors import R, phrase_c, err_c
+from src.data import config, AHD_IPA_translation, HORIZONTAL_BAR
 
 
 class AHDictionary(Dictionary):
+    title = 'AH Dictionary'
     name = 'ahd'
     allow_thesaurus = True
 
@@ -33,12 +34,12 @@ class AHDictionary(Dictionary):
         if chosen_defs is None:
             return None
 
-        choices_by_header = self.get_positions_in_sections(def_choices)
+        choices_by_header = self.get_positions_in_sections(def_choices, expect_choice_first=True)
         phrase = self.phrases[choices_by_header[0] - 1]
 
         audio_urls = self.audio_urls
         if audio_urls:
-            choices_by_labels = self.get_positions_in_sections(def_choices, section_at='AUDIO')
+            choices_by_labels = self.get_positions_in_sections(def_choices, from_within='AUDIO')
             audio = audio_urls[choices_by_labels[0] - 1]
         else:
             audio = ''
@@ -93,13 +94,13 @@ def ask_ahdictionary(query, flags=''):
         return ahd_phonetics.replace('-', '.').replace('′', 'ˌ').replace('', 'ˈ')
 
     def definition_cleanup(definition):
-        rex = definition.lstrip('1234567890.')
+        rex = definition.lstrip('1234567890. a')
         rex = rex.split(' See Usage Note at')[0]
         rex = rex.split(' See Synonyms at')[0]
-        for letter in 'abcdefghijklmn':
+        for letter in 'bcdefghijklmn':
             rex = rex.replace(f":{letter}. ", ": *")
             rex = rex.replace(f".{letter}. ", ". *")
-            rex = rex.replace(f" {letter}. ", " ")
+            rex = rex.replace(f". {letter}. ", ".* ")
             # when definition has an example with a '?' there's no space in between
             rex = rex.replace(f"?{letter}. ", "? *")
         rex = fix_stress_and_remove_private_symbols(rex.strip())
@@ -193,13 +194,14 @@ def ask_ahdictionary(query, flags=''):
         print(f'{err_c.color}Nie znaleziono {R}"{query}"{err_c.color} w AH Dictionary')
         return None
 
+    ahd = AHDictionary()
     filter_labels = config['fnolabel']
     if config['fsubdefs'] or ('f' in flags or 'fsubdefs' in flags):
         filter_subdefs = True
-        title = 'AH Dictionary (filtered)'
+        ahd.title = 'AH Dictionary (filtered)'
     else:
         filter_subdefs = False
-        title = 'AH Dictionary'
+        ahd.title = 'AH Dictionary'
 
     tds = soup.find_all('td')
     if flags or filter_labels:
@@ -212,7 +214,7 @@ def ask_ahdictionary(query, flags=''):
         else:
             flags = ()  # display all definitions
 
-    ahd = AHDictionary()
+    before_phrase = True
     for td in tds:
         # also used when printing definitions
         labeled_blocks = td.find_all('div', class_='pseg', recursive=False)
@@ -242,10 +244,12 @@ def ask_ahdictionary(query, flags=''):
         else:
             phon_spell = fix_stress_and_remove_private_symbols(phon_spell)
 
-        ahd.add(('HEADER', title))
-        if phrase.lower() != query.lower() and title:
-            ahd.add(('NOTE', f' {BOLD}Wyniki dla {phrase_c.color}{phrase}{END}'))
-        title = ''  # title exhausted
+        if before_phrase:
+            before_phrase = False
+            if phrase.lower() != query.lower():
+                ahd.add(('NOTE', f' Wyniki dla {phrase_c.color}{phrase}'))
+        else:
+            ahd.add(('HEADER', HORIZONTAL_BAR))
 
         ahd.add(('PHRASE', phrase, phon_spell))
 
@@ -270,7 +274,7 @@ def ask_ahdictionary(query, flags=''):
             if pos_label or phrase_tenses:
                 ahd.add(('LABEL', pos_label, phrase_tenses))
             else:
-                ahd.add(('LABEL', ''))
+                ahd.add(('LABEL', '', ''))
 
             # Add definitions and their corresponding elements
             for def_root in block.find_all('div', class_=('ds-list', 'ds-single'), recursive=False):

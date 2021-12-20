@@ -1,6 +1,7 @@
 import json
 import os.path
 import sys
+from itertools import zip_longest
 from json import JSONDecodeError
 
 from colorama import Fore
@@ -27,11 +28,13 @@ MAC = sys.platform.startswith('darwin')
 POSIX = os.name == 'posix'
 WINDOWS = os.name == 'nt'
 
+HORIZONTAL_BAR = '─'
+
 # Creates an ID to NOTE_NAME dictionary from the contents of ../notes:
 #   e.g. {'1': 'gryzus-tsc', '2': 'gryzus-std', ...}
 _notes = os.listdir(os.path.join(ROOT_DIR, 'notes'))
 number_to_note_dict = dict(
-    zip(map(str, range(1, len(_notes) + 1)), [x[:-5] for x in sorted(_notes, reverse=True)])
+    zip(map(str, range(1, len(_notes) + 1)), map(lambda x: x[:-5], sorted(_notes, reverse=True)))
 )
 
 command_to_help_dict = {
@@ -90,7 +93,13 @@ command_to_help_dict = {
         '{tagi oddzielone przecinkiem|-}'),
     '-textwidth': (
         'Szerokość tekstu do momentu zawinięcia',
-        '{liczba >= 0|auto}'),
+        '{liczba >= 1|auto}'),
+    '-colviewat': (
+        'Zawijaj słownik w kolumny jeżeli zajmie więcej niż {0 - 100}% ekranu',
+        '{liczba >= 0}'),
+    '-columns': (
+        'Ilość kolumn',
+        '{liczba >= 1|auto}'),
     '-indent': (
         'Szerokość wcięć',
         '{liczba >= 0}'),
@@ -161,7 +170,8 @@ command_to_help_dict = {
         'Zmiana domyślnych wartości',
         '{element} {wartość}'),
 }
-assert len(command_to_help_dict) == 49, 'make sure to update boolean commands in search'
+assert len(command_to_help_dict) == 51, "if you added a boolean command make sure to" \
+                                        " update search_interface's boolean commands slice"
 
 STD_FIELD_ORDER = {
     '1': 'def',
@@ -328,7 +338,7 @@ USER_AGENT = {
     'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; rv:78.0) Gecko/20100101 Firefox/78.0'
 }
 
-config_column_1 = (
+config_column = (
     '-pz', '-def', '-exsen', '-pos', '-etym', '-syn',
     '',
     '-tsc', '-formatdefs', '-savecards', '-createcards',
@@ -336,8 +346,9 @@ config_column_1 = (
     '[config ukrywania]',
     '-upz', '-udef', '-uexsen', '-usyn', '-upreps', '-keependings', '-hideas',
 )
-config_column_2 = (
-    '-top', '-displaycard', '-showadded', '-showexsen', '-textwrap', '-textwidth', '-indent',
+config_column_1 = (
+    '-top', '-displaycard', '-showadded', '-showexsen',
+    '-textwrap', '-textwidth', '-columns', '-colviewat', '-indent',
     '',
     '[config filtrowania]',
     '-fsubdefs', '-fnolabel', '-toipa',
@@ -345,16 +356,14 @@ config_column_2 = (
     '[config ankiconnect]',
     '-ankiconnect', '-duplicates', '-dupescope', '-note', '-deck', '-tags',
 )
-config_column_3 = (
+config_column_2 = (
     'def_bulk', 'exsen_bulk', 'pos_bulk', 'etym_bulk', 'syn_bulk',
     '',
     '[config źródeł]',
     '-dict', '-dict2', '-thes', '-audio', '-recqual',
-    '', '', '', '', '', '', '', '',
 )
-assert len(config_column_1) == len(config_column_2) == len(config_column_3), 'config columns not equal'
 
-config_columns = tuple(zip(config_column_1, config_column_2, config_column_3))
+config_columns = tuple(zip_longest(config_column, config_column_1, config_column_2, fillvalue=''))
 
 str_colors_to_color = {
     'black': Fore.BLACK,

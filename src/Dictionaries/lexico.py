@@ -16,8 +16,8 @@
 from src.Dictionaries.dictionary_base import Dictionary, prepare_flags, evaluate_skip
 from src.Dictionaries.input_fields import input_field
 from src.Dictionaries.utils import request_soup
-from src.colors import R, BOLD, END, phrase_c, err_c
-from src.data import config
+from src.colors import R, phrase_c, err_c
+from src.data import config, HORIZONTAL_BAR
 
 
 class Lexico(Dictionary):
@@ -33,12 +33,12 @@ class Lexico(Dictionary):
         if chosen_defs is None:
             return None
 
-        choices_by_headers = self.get_positions_in_sections(def_choices)
+        choices_by_headers = self.get_positions_in_sections(def_choices, expect_choice_first=True)
         phrase = self.phrases[choices_by_headers[0] - 1]
 
         audio_urls = self.audio_urls
         if audio_urls:
-            choices_by_labels = self.get_positions_in_sections(def_choices, section_at='AUDIO', reverse=True)
+            choices_by_labels = self.get_positions_in_sections(def_choices, from_within='AUDIO', expect_choice_first=True)
             audio = audio_urls[choices_by_labels[0] - 1]
         else:
             audio = ''
@@ -157,12 +157,13 @@ def ask_lexico(query, flags='', _previous_query=''):
             revive = revive.rsplit('/', 1)[-1]
             return ask_lexico(revive, flags, _previous_query=query)
 
+    lexico = Lexico()
     if config['fsubdefs'] or ('f' in flags or 'fsubdefs' in flags):
         filter_subdefs = True
-        title = 'Lexico (filtered)'
+        lexico.title = 'Lexico (filtered)'
     else:
         filter_subdefs = False
-        title = 'Lexico'
+        lexico.title = 'Lexico'
 
     skip_index = -1
     skips = []
@@ -171,7 +172,7 @@ def ask_lexico(query, flags='', _previous_query=''):
     skip_dict = create_skip_dict(entry_blocks, flags)
 
     etym = ''
-    lexico = Lexico()
+    before_phrase = True
     for block in entry_blocks:
         block_id = block.get('id')
         if block_id is not None:  # header
@@ -186,10 +187,12 @@ def ask_lexico(query, flags='', _previous_query=''):
             phrase_ = block.find('span', class_='hw')
             phrase_ = phrase_.find(recursive=False, text=True)
 
-            lexico.add(('HEADER', title))
-            if _previous_query and phrase_ != _previous_query and title:
-                lexico.add(('NOTE', f' {BOLD}Wyniki dla {phrase_c.color}{phrase_}{END}'))
-            title = ''  # title exhausted
+            if before_phrase:
+                before_phrase = False
+                if _previous_query and phrase_ != _previous_query:
+                    lexico.add(('NOTE', f' Wyniki dla {phrase_c.color}{phrase_}'))
+            else:
+                lexico.add(('HEADER', HORIZONTAL_BAR))
 
             lexico.add(('PHRASE', phrase_, get_phonetic_spelling(block)))
 

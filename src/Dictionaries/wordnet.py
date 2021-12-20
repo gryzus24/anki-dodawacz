@@ -13,11 +13,9 @@
 # You should have received a copy of the GNU General Public License
 # along with this program. If not, see <http://www.gnu.org/licenses/>.
 
-import sys
-
 from src.Dictionaries.dictionary_base import Dictionary
 from src.Dictionaries.input_fields import input_field
-from src.Dictionaries.utils import request_soup, wrap_lines, get_textwidth
+from src.Dictionaries.utils import request_soup, wrap_lines
 from src.colors import R, index_c, syn_c, syngloss_c, poslabel_c, err_c
 from src.data import config
 
@@ -29,24 +27,39 @@ class WordNet(Dictionary):
         super().__init__()
 
     def print_dictionary(self):
-        textwidth = get_textwidth()
+        # Available instructions:
+        #   (SYN, synonyms, glosses, pos_label)
+
+        textwidth, ncols, last_col_fill = self._get_term_parameters()
+
         buffer = []
         communal_index = 0
         for op, *body in self.contents:
             if op == 'SYN':
                 communal_index += 1
                 index_len = len(str(communal_index))
+
                 pos = body[2]
                 pos_len = len(pos)
-                synonyms = wrap_lines(body[0], textwidth, index_len, 2 + pos_len, 2 + pos_len)
-                gloss = wrap_lines(body[1], textwidth, index_len, 1, 1)
-                buffer.append(f'{index_c.color}{communal_index} {poslabel_c.color}{pos} {syn_c.color}{synonyms}\n')
-                buffer.append(f'{index_len * " "} {syngloss_c.color}{gloss}\n\n')
-            elif op == 'HEADER':
-                buffer.append(self.format_title(body[0], textwidth))
+                wrapped_synonyms = wrap_lines(body[0], textwidth, index_len, pos_len + 2, pos_len + 2)
+                padding = (textwidth - len(wrapped_synonyms[0]) - index_len - pos_len - 2) * ' '
+                buffer.append(
+                    f'{index_c.color}{communal_index} {poslabel_c.color}{pos} {syn_c.color}{wrapped_synonyms[0]}{padding}'
+                )
+                for subsyn in wrapped_synonyms[1:]:
+                    padding = (textwidth - len(subsyn)) * ' '
+                    buffer.append(f'{syn_c.color}{subsyn}{padding}')
+
+                wrapped_glosses = wrap_lines(body[1], textwidth, index_len, 1, 1)
+                padding = (textwidth - len(wrapped_glosses[0]) - index_len - 1) * ' '
+                buffer.append(f'{index_len * " "} {syngloss_c.color}{wrapped_glosses[0]}{padding}')
+                for rest in wrapped_glosses[1:]:
+                    padding = (textwidth - len(rest)) * ' '
+                    buffer.append(f'{syngloss_c.color}{rest}{padding}')
             else:
                 assert False, f'unreachable wordnet operation: {op!r}'
-        sys.stdout.write(''.join(buffer))
+
+        self._format_and_print_dictionary(buffer, textwidth, ncols, last_col_fill)
 
     def input_cycle(self):
         syn_field = input_field('syn', 'Wybierz synonimy', connector=' | ')
@@ -71,7 +84,7 @@ def ask_wordnet(query):
         print(f'{err_c.color}Nie znaleziono {R}"{query}"{err_c.color} na WordNecie')
         return None
 
-    wordnet.add(('HEADER', 'WordNet'))
+    wordnet.title = 'WordNet'
     for elem in soup.find_all('li'):
         elem = elem.text.replace('S:', '', 1).strip()
         temp = elem.split(')', 1)

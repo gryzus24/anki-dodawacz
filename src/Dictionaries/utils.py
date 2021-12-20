@@ -96,16 +96,21 @@ def hide(content, phrase):
         return ' '.join(temp)
 
 
-def get_textwidth():
-    terminal_width = get_terminal_size().columns
-    config_textwidth, flag = config['textwidth']
+def get_term_size():
+    term_width, term_height = get_terminal_size()
+    config_width, flag = config['textwidth']
 
-    if flag == '* auto' or config_textwidth > terminal_width:
-        return terminal_width
-    return config_textwidth
+    if flag == '* auto' or config_width > term_width:
+        return term_width, term_height
+    return config_width, term_height
 
 
 def wrap_lines(string, term_width=79, index_width=0, indent=0, gap=0):
+    def _indent_and_connect(_lines):
+        for i in range(1, len(_lines)):
+            _lines[i] = (indent + index_width) * ' ' + _lines[i]
+        return _lines
+
     def no_wrap(string_):
         line = string[:real_width]
         if line.endswith(' '):
@@ -114,85 +119,71 @@ def wrap_lines(string, term_width=79, index_width=0, indent=0, gap=0):
         lines = [line.strip()]
         string_ = string_[real_width:].strip()
         while string_:
-            llen = term_width - indent_plus_index_width
+            llen = term_width - indent - index_width
             line = string_[:llen]
             if line.endswith(' '):
                 line = line.replace(' ', '  ', 1)
 
             lines.append(line.strip())
             string_ = string_[llen:].strip()
-
-        connector = '\n' + indent_plus_index_width * ' '
-        return connector.join(lines)
+        return _indent_and_connect(lines)
 
     def trivial_wrap():
         lines = []
+        line = []
         current_llen = 0
-        line = ''
-        for word in string_divided:
+        for word in string.split():
             # >= for one character right-side padding
             word_len = len(word)
             if current_llen + word_len >= real_width:
-                lines.append(line.strip())
+                lines.append(' '.join(line))
                 current_llen = indent - gap
-                line = ''
+                line = []
 
-            line += word + ' '
+            line.append(word)
             current_llen += word_len + 1
 
-        lines.append(line)
-        connector = '\n' + indent_plus_index_width * ' '
-        return connector.join(lines)
+        lines.append(' '.join(line))
+        return _indent_and_connect(lines)
 
     def justification_wrap():
-        # I feel like this implementation is horrible
         lines = []
-        line = ''
-        # -1 because last space before wrapping is ignored in justification
-        spaces_between_words = -1
+        line = []
         current_llen = 0
-        for word in string_divided:
-            if current_llen + len(word) >= real_width:
-                line = line.rstrip()
-                filling = real_width - current_llen
-                if spaces_between_words > 0:
-                    set_spaces = ' '
+        for word in string.split():
+            word_len = len(word)
+            if current_llen + word_len >= real_width:
+                nwords = len(line)
+                if nwords > 1:
+                    i = 0
+                    filling = real_width - current_llen
+                    # filling shouldn't be negative but just in case.
                     while filling > 0:
-                        if filling <= spaces_between_words:
-                            line = line.replace(set_spaces, set_spaces + ' ', filling)
-                            break
+                        if i > nwords - 2:
+                            # go back to the first word
+                            i = 0
+                        line[i] += ' '
+                        filling -= 1
+                        i += 1
 
-                        line = line.replace(set_spaces, set_spaces + ' ', spaces_between_words)
-                        filling -= spaces_between_words
-                        set_spaces += ' '
-
-                lines.append(line.strip())
-                line = ''
-                spaces_between_words = -1
+                lines.append(' '.join(line))
+                line = []
                 current_llen = indent - gap
 
-            spaces_between_words += 1
-            line += word + ' '
-            current_llen += len(word) + 1
+            line.append(word)
+            current_llen += word_len + 1
 
-        lines.append(line.strip())
-        connector = '\n' + indent_plus_index_width * ' '
-        return connector.join(lines)
+        lines.append(' '.join(line))
+        return _indent_and_connect(lines)
 
     # Gap is the gap between indexes and strings
     real_width = term_width - index_width - gap
     if len(string) <= real_width:
-        return string
+        return [string]
 
-    indent_plus_index_width = indent + index_width
-    if config['textwrap'] == '-':
-        return no_wrap(string)
-
-    if term_width < 67:
-        # mitigate the one character right-side padding
-        real_width += 1
-
-    string_divided = string.split()
     if config['textwrap'] == 'regular':
+        real_width += 1
         return trivial_wrap()
-    return justification_wrap()
+    elif config['textwrap'] == 'justify':
+        return justification_wrap()
+    return no_wrap(string)

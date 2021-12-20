@@ -122,8 +122,13 @@ def print_config_representation():
         terminal_width = get_terminal_size().columns
         if terminal_width != config['textwidth'][0]:
             save_command('textwidth', [terminal_width, '* auto'])
+    if config['columns'][1] == '* auto':
+        t = config['textwidth'][0] // 39
+        if not t:
+            t = 1
+        save_command('columns', [t, '* auto'])
 
-    print(f'{R}{BOLD}[config dodawania]     [config wyświetlania]     [domyślne wart.]{END}')
+    sys.stdout.write(f'{R}{BOLD}[config dodawania]     [config wyświetlania]     [domyślne wart.]{END}\n')
     for a, b, c in data.config_columns:
         a = a.replace('[', f'{BOLD}[').replace(']', f']{END}')
         b = b.replace('[', f'{BOLD}[').replace(']', f']{END}')
@@ -131,8 +136,10 @@ def print_config_representation():
 
         state_a = config.get(a[1:], '')
         state_b = config.get(b[1:], '')
-        if b in ('-textwidth', '-indent'):
+        if isinstance(state_b, list):
             state_b = ''.join(map(str, state_b))
+            if b == '-colviewat':
+                state_b += '%'
 
         if '_bulk' in c:
             state_c = config[c]
@@ -147,35 +154,33 @@ def print_config_representation():
         color_c = bool_colors_dict.get(state_c, '')
         if color_c: state_c = 10*'\b'+'watch?v=LDl544TI_mU'
 
+        level_a = '\b\b\b\b\b' if '[' in a else ''
         level_b = '\b\b\b\b\b' if '[' in b else ''
 
-        print(f'{a:13s}{color_a}{str(state_a):10s}{R}'
-              f'{b:15s}{color_b}{str(state_b):11s}{level_b}{R}'
-              f'{c:10s}{color_c}{state_c}{R}')
+        sys.stdout.write(f'{a:13s}{color_a}{str(state_a):10s}{level_a}{R}'
+                         f'{b:15s}{color_b}{str(state_b):11s}{level_b}{R}'
+                         f'{c:10s}{color_c}{state_c}{R}\n')
 
-    print(f'\n--audio-path: {config["audio_path"]}\n'
-          f'--audio-device: {config["audio_device"]}\n\n'
-          'konfiguracja domyślnych wartości: "-cd"\n'
-          'konfiguracja kolorów: "-c"\n'
-          'konfiguracja pól: "-fo"\n')
+    sys.stdout.write(f'\n--audio-path: {config["audio_path"]}\n'
+                     f'--audio-device: {config["audio_device"]}\n\n'
+                     'konfiguracja domyślnych wartości: "-cd"\n'
+                     'konfiguracja kolorów: "-c"\n'
+                     'konfiguracja pól: "-fo"\n\n')
 
 
 def set_width_settings(*args, message):
     cmd, value = args[0], args[1]
-
-    if value == 'auto':
-        if cmd == '-indent':
-            print(f'{R}{message}: {GEX.color}2')
-            save_command(cmd, [2, ''])
-            return None
-
-        term_width = get_terminal_size().columns
-        print(f'{R}{message}: {GEX.color}{term_width}* {value}')
-        save_command(cmd, [term_width, '* auto'])
+    if cmd in ('-textwidth', '-columns'):
+        lower = 1
+    elif cmd in ('-colviewat', '-indent'):
+        lower = 0
     else:
+        assert False, 'unreachable in `set_width_settings`'
+
+    if value != 'auto':
         try:
             val = int(value)
-            if val < 0:
+            if val < lower:
                 raise ValueError
         except ValueError:
             return f'Nieprawidłowa wartość: {R}{value}\n' \
@@ -183,6 +188,24 @@ def set_width_settings(*args, message):
         else:
             print(f'{R}{message}: {GEX.color}{value}')
             save_command(cmd, [val, ''])
+            return None
+
+    if cmd == '-textwidth':
+        v = [get_terminal_size().columns, '* auto']
+    elif cmd == '-colviewat':
+        v = [67, '']
+    elif cmd == '-columns':
+        t = config['textwidth'][0] // 39
+        if not t:
+            t = 1
+        v = [t, '* auto']
+    elif cmd == '-indent':
+        v = [2, '']
+    else:
+        assert False, 'unreachable in `set_width_settings`'
+
+    print(f'{R}{message}: {GEX.color}{"".join(map(str, v))}')
+    save_command(cmd, v)
 
 
 def display_field_order():

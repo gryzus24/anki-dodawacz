@@ -1,20 +1,19 @@
 from src.Dictionaries.lexico import Lexico
 
 
-def ic_test_encl(test_dict, split_at='HEADER', choices_of='DEF', reverse=False):
-    def ic_test(choi, sa=split_at, cf=choices_of, rev=reverse):
+def ic_test_encl(test_dict, split_at='HEADER', choices_of='DEF', expect_choice_first=False):
+    def ic_test(choi, sa=split_at, cf=choices_of, ecf=expect_choice_first):
         lexico = Lexico()
         for instr in test_dict:
             lexico.add(instr)
 
-        return lexico.get_positions_in_sections(choi, sa, cf, reverse=rev)
+        return lexico.get_positions_in_sections(choi, sa, cf, expect_choice_first=ecf)
 
     return ic_test
 
 
 def test_input_cycle():
     td = [
-        ('HEADER', 'Lexico'),
         ('PHRASE', 'phrase_1', '/ˈɪnvəlɪd/'),
 
         ('LABEL', 'noun', ''),
@@ -27,7 +26,7 @@ def test_input_cycle():
         ('AUDIO', 'audio_2'),
         ('ETYM', 'etym_1'),
 
-        ('HEADER', ''),
+        ('HEADER', ' '),
         ('PHRASE', 'phrase_2', '/ɪnˈvalɪd/'),
 
         ('LABEL', 'adjective', ''),
@@ -38,7 +37,7 @@ def test_input_cycle():
         ('ETYM', 'etym_2'),
     ]
 
-    t = ic_test_encl(td)
+    t = ic_test_encl(td, expect_choice_first=True)
     assert t([1]) == [1]
     assert t([1, 2]) == [1]
     assert t([3]) == [1]
@@ -60,7 +59,7 @@ def test_input_cycle():
     assert t([0]) == [1]
     assert t([1, 2, 3, 4, 5, 6]) == [1, 2, 3]
 
-    t = ic_test_encl(td, split_at='AUDIO', reverse=True)
+    t = ic_test_encl(td, split_at='AUDIO', expect_choice_first=True)
     assert t([1]) == [1]
     assert t([1, 2]) == [1, 2]
     assert t([3]) == [2]
@@ -72,7 +71,6 @@ def test_input_cycle():
     assert t([1, 2, 3, 4, 5, 6]) == [1, 2, 3]
 
     td = [
-        ('HEADER', 'Lexico'),
         ('PHRASE', 'phrase_1', '/ˈɪnvəlɪd/'),
 
         ('LABEL', 'noun', ''),
@@ -83,7 +81,7 @@ def test_input_cycle():
         ('SUBDEF', 'def_3', 'exsen_3'),  # 3
         ('ETYM', 'etym_1'),
 
-        ('HEADER', ''),
+        ('HEADER', ' '),
         ('PHRASE', 'phrase_2', '/ɪnˈvalɪd/'),
 
         ('LABEL', 'adjective', ''),
@@ -94,7 +92,7 @@ def test_input_cycle():
         ('ETYM', 'etym_2'),
     ]
 
-    t = ic_test_encl(td, split_at='AUDIO', reverse=True)
+    t = ic_test_encl(td, split_at='AUDIO', expect_choice_first=True)
     assert t([1]) == [1]
     assert t([1, 2]) == [1]
     assert t([3]) == [1]
@@ -106,7 +104,6 @@ def test_input_cycle():
     assert t([1, 2, 3, 4, 5, 6]) == [1]
 
     td = [
-        ('HEADER', 'Lexico'),
         ('PHRASE', 'phrase_1', '/ˈɪnvəlɪd/'),
         ('AUDIO', 'audio_1'),
         ('LABEL', 'noun', ''),
@@ -117,7 +114,7 @@ def test_input_cycle():
         ('SUBDEF', 'def_3', 'exsen_3'),  # 3
         ('ETYM', 'etym_1'),
 
-        ('HEADER', ''),
+        ('HEADER', ' '),
         ('PHRASE', 'phrase_2', '/ɪnˈvalɪd/'),
 
         ('LABEL', 'adjective', ''),

@@ -65,8 +65,8 @@
 "syngloss_c": "reset",
 "tags": "dodawacz",
 "textwidth": [
-79,
-""
+191,
+"* auto"
 ],
 "textwrap": "regular",
 "thes": "wordnet",
@@ -78,5 +78,13 @@
 "upz": false,
 "usyn": true,
 "formatdefs": true,
-"tsc": "std"
+"tsc": "std",
+"columns": [
+4,
+"* auto"
+],
+"colviewat": [
+67,
+""
+]
 }

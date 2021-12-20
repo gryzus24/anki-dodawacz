@@ -9,12 +9,56 @@ UŻYCIE:
 
 Po wpisaniu hasła zapytany zostanie pierwszy słownik (domyślnie AH Dictionary)
  i rozpocznie się cykl dodawania karty, jeżeli hasło nie zostanie znalezione
- zapytany będzie następny słownik (domyślnie Farlex Idioms).
+ zapytany będzie następny słownik (domyślnie Lexico).
 
 Aby bezpośrednio dodać przykładowe zdanie i wyszukać hasło użyjemy:
  >> Szukaj $ Your <beautiful> example sentence goes here.
  Tym sposobem wyszukamy słowo "beautiful" i wraz z nim dodamy resztę zdania
  ze słowem pogrubionym i zakolorowanym na zielono.
+
+{BOLD}{'[ Pola dodawania elementów ]'.center(79, '─')}{END}
+-s     pomija dodawanie zdania
+-sc    pomija dodawanie karty
+
+Znak ">" przy indeksie definicji oznacza, że definicja jest główną definicją,
+wszystkie definicje pod główną definicją są jej poddefinicjami.
+
+Aby wybrać definicję lub poddefinicję wpisz numer jej indeksu.
+Aby wybrać więcej definicji oddziel wybór przecinkiem lub
+użyj przedziałów oddzielając wybrane indeksy dwukropkiem.
+
+np. 3          dodaje trzeci element
+np. 2,5        dodaje drugi i piąty element
+np. 2:5        dodaje drugi, trzeci, czwarty i piąty element
+0 lub -s       pomija dodawanie elementu
+-1, all        dodaje wszystkie elementy
+-all           dodaje wszystkie elementy zaczynając od ostatniego
+
+Możemy także doprecyzować wybór używając '.' po numerze definicji lub
+przedziale. W ten sposób rozdzielamy wybraną definicję na każdym napotkanym
+specyfikatorze.
+
+Specyfikatory dla:
+  definicji:    ','
+  części mowy:  nowa linia
+  etymologii:   ','
+  synonimów:    ','
+
+ Np. "Extremely unreasonable, incongruous, or inappropriate."
+  wpisanie "1.1" doda: "Extremely unreasonable.",
+  a wpisanie "1.2" doda samo: "incongruous."
+
+ Możemy łączyć specyfikatory zaraz po kropce:
+  np. "1.231" doda: "Incongruous, extremely unreasonable, or inappropriate."
+
+ Oraz mapować je na przedziały:
+  np. "1:8.1" doda pierwszą część ośmiu pierwszych definicji.
+  np. "all.2" doda drugą część wszystkich definicji.
+
+ Aby dodać własny tekst w pola definicji wystarczy zacząć wpisywanie od "/"
+  np. "/dwa grzyby 123" spowoduje dodaniem "dwa grzyby 123"
+
+ Wpisanie czegokolwiek niespełniającego zasad pomija dodawanie karty.
 
 {BOLD}{'[ Konfiguracja ]'.center(79, '─')}{END}
 Szybka konfiguracja programu, pozwoli na automatyczne dodawanie wymowy i kart
@@ -36,69 +80,6 @@ Szybka konfiguracja programu, pozwoli na automatyczne dodawanie wymowy i kart
 Aby wyświetlić pełną listę opcji wpisujemy:
  "-conf" lub "-config"
 Wpisanie komendy wyświetli informacje o jej użyciu.
-
-{BOLD}{'[ Pola dodawania elementów ]'.center(79, '─')}{END}
-{BOLD}Pole przykładowego zdania:{END}
- Wpisz swoje przykładowe zdanie.
-  -s     pomija dodawanie zdania
-  -sc    pomija dodawanie karty
-
-{BOLD}Pole definicji:{END}
- Znak ">" przy indeksie definicji oznacza, że definicja jest główną definicją,
- wszystkie definicje pod główną definicją są jej poddefinicjami.
-
- Aby wybrać definicję lub poddefinicję wpisz numer jej indeksu.
- Aby wybrać więcej definicji oddziel wybór przecinkiem lub
- użyj przedziałów oddzielając wybrane indeksy dwukropkiem.
-
-  np. 3          dodaje trzeci element
-  np. 2,5        dodaje drugi i piąty element
-  np. 2:5        dodaje drugi, trzeci, czwarty i piąty element
-  0 lub -s       pomija dodawanie elementu
-  -1, all        dodaje wszystkie elementy
-  -all           dodaje wszystkie elementy zaczynając od ostatniego
-
- Możemy także doprecyzować wybór używając '.' po numerze definicji lub
- przedziale. W ten sposób rozdzielamy wybraną definicję na każdym napotkanym
- specyfikatorze.
-
- Specyfikator dla definicji: ","
-
- Np. "Extremely unreasonable, incongruous, or inappropriate."
-  wpisanie "1.1" doda: "Extremely unreasonable.",
-  a wpisanie "1.2" doda samo: "incongruous."
-
- Możemy łączyć specyfikatory zaraz po kropce:
-  np. "1.231" doda: "Incongruous, extremely unreasonable, or inappropriate."
-
- Oraz mapować je na przedziały:
-  np. "1:8.1" doda pierwszą część ośmiu pierwszych definicji.
-  np. "all.2" doda drugą część wszystkich definicji.
-
- Aby dodać własny tekst w pola definicji wystarczy zacząć wpisywanie od "/"
-  np. "/dwa grzyby 123" spowoduje dodaniem "dwa grzyby 123"
-
- Wpisanie czegokolwiek niespełniającego zasad pomija dodawanie karty.
-
-{BOLD}Pole części mowy:{END}
- Części mowy występują w grupach, wybieramy wpisując numer bloku zawierającego
- grupę części mowy licząc od góry lub doprecyzowując wybór konkretnych części
- mowy z grupy używając notacji z kropką.
-  np. 1        dodaje pierwszą grupę części mowy
-  np. 2.23     dodaje drugą i trzecią część mowy z drugiej grupy
-  auto         dodaje części mowy bazując na wybranych definicjach
-  0 lub -s     pomija dodawanie elementu
-
-{BOLD}Pole etymologii:{END}
- Etymologie nie są indeksowane ani grupowane, wybieramy wpisując numer
- etymologii licząc od góry.
-  auto   dodaje etymologie bazując na wybranych definicjach
-
- Specyfikator dla etymologii: ","
-
-{BOLD}Pole synonimów:{END}
- Wybieranie działa tak jak w definicjach.
- Specyfikator dla synonimów: ","
 
 {BOLD}{79 * '─'}{END}
 -conf, -config     wyświetla pełną listę opcji
@@ -129,7 +110,7 @@ Wpisanie komendy wyświetli informacje o jej użyciu.
 
 -formatdefs    formatowanie definicji:
                  każda definicja jest indeksowana
-                 każda następna dodawana definicja staje się mniej widoczna
+                 każda następna dodana definicja staje się słabiej widoczna
 -savecards     zapisywanie kart do pliku "karty.txt"
 -createcards   tworzenie/dodawanie kart
 
@@ -147,13 +128,17 @@ Wpisanie komendy wyświetli informacje o jej użyciu.
 {BOLD}{'[ Komendy wyświetlania ]'.center(79, '─')}{END}
 Komendy wpływające na sposób wyświetlania informacji.
 
--top                             wyrównywanie słowników do górnej krawędzi okna
+-top                             wyrównywanie słownika do górnej krawędzi okna
 -displaycard                     wyświetlanie podglądu karty
 -showadded                       pokazywanie dodawanych elementów
 -showexsen                       pokazywanie przykładów w słowniku
 
 -textwrap  {{justify|regular|-}}   zawijanie tekstu
--textwidth {{liczba >= 0|auto}}    szerokość tekstu do momentu zawinięcia
+-textwidth {{liczba >= 1|auto}}    szerokość tekstu do momentu zawinięcia
+-columns   {{liczba >= 1|auto}}    ilość kolumn
+-colviewat {{liczba >= 0|-}}       zawijanie słownika w kolumny jeżeli zajmie
+                                   więcej niż x% ekranu, aby wyłączyć widok
+                                   kolumnowy możesz wpisać np. 1000
 -indent    {{liczba >= 0}}         szerokość wcięć
 
 {BOLD}{'[ Komendy ukrywania i filtrowania ]'.center(79, '─')}{END}

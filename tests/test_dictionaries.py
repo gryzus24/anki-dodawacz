@@ -24,19 +24,20 @@ SAVE_TESTED_WORDS_TO_FILE = True
 BUFFER_SIZE = SAMPLE_SIZE // 4
 
 test_words = {
-    'haji', 'bradford', 'washington', 'hamilton', 'bach',
-    'white', 'eliot', 'richards', 'edward', 'tamerlane',
-    'lac', 'arafat', 'ford', 'wells', 'james', 'permit',
-    'wilson', 'whitman', 'stone', 'erastus', 'lawrence',
-    'fitzgerald', 'batches', 'birdwatch', 'tambak', 'or',
-    'sequoya', 'muhammad', 'barrie', 'byrd', 'claudius',
-    'mckinley', 'reg', 'julian', 'burroughs', 'hoover',
-    'victoria', 'griffith', 'mccarthy', 'fuller', 'ret',
-    'simpson', 'hill', 'bourgeois', 'tombacs', 'crwth',
-    'paderewski', 'tombac', 'garbage', 'crowd', 'foyer',
-    'wolf', 'monk', 'beach', 'coconut', 'fjord', 'err',
-    'incandescent', 'vicious circle', 'ok', 'mastodon',
-    'like', 'a', 'was', 'the', 'key', 'but', 'frazzle',
+    'batches', 'beach', 'like', 'tombac', 'tombacs',
+    'birdwatch', 'edward', 'haji', 'monk', 'wilson',
+    'barrie', 'bourgeois', 'fuller', 'reg', 'white',
+    'incandescent', 'mastodon', 'permit', 'whitman',
+    'byrd', 'crowd', 'foyer', 'tambak', 'tamerlane',
+    'a', 'crwth', 'stone', 'victoria', 'washington',
+    'burroughs', 'fjord', 'julian', 'ok', 'sequoya',
+    'hamilton', 'james', 'key', 'mccarthy', 'wells',
+    'bach', 'but', 'garbage', 'mckinley', 'simpson',
+    'err', 'hoover', 'paderewski', 'vicious circle',
+    'bradford', 'griffith', 'muhammad', 'or', 'the',
+    'eliot', 'ford', 'frazzle', 'lac', 'ret', 'was',
+    'claudius', 'erastus', 'fitzgerald', 'richards',
+    'arafat', 'coconut', 'hill', 'lawrence', 'wolf',
 }
 
 
@@ -140,7 +141,7 @@ def dictionary_content_check(dictionary):
     def log(msg):
         log_buffer.append((dictionary_name, '['+op+']', phrase_index, msg))
 
-    phrase_index = 0
+    phrase_index = 1
     def_index = 0
     for op, *body in dictionary.contents:
         if op == 'HEADER':

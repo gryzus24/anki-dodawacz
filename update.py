@@ -65,7 +65,7 @@ def main():
         return 0
 
     out_dir_name = f'anki-dodawacz-{latest_tag["name"]}'
-    out_dir_path = os.path.join(ROOT_DIR, out_dir_name)
+    out_dir_path = os.path.join(os.path.dirname(ROOT_DIR), out_dir_name)
     if os.path.exists(out_dir_path):
         raise Exit(f'Folder o nazwie {out_dir_name!r} już istnieje.\n'
                    f'Przerywam aktualizację...')
@@ -119,7 +119,7 @@ def main():
         print(f"{YEX.color}:: {R}Zawartość folderu 'Karty_audio' musi zostać przeniesiona manualnie.")
 
     print(f'\n{GEX.color}Aktualizacja zakończona pomyślnie.\n'
-          f'Program zapisany do folderu: {out_dir_name!r}')
+          f'Program zapisany w: {out_dir_path!r}')
 
 
 if __name__ == '__main__':
