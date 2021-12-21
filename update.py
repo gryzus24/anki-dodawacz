@@ -16,7 +16,7 @@ from src.data import ROOT_DIR, WINDOWS, LINUX
 
 class Exit(Exception):
     def __init__(self, err_msg):
-        print(f'{err_c.color}{err_msg}')
+        print(f'{err_c}{err_msg}')
         # Sleep to prevent terminal window from closing instantaneously
         # when running the script by double clicking the file on Windows
         if WINDOWS:
@@ -37,7 +37,7 @@ def get_request(session):
             raise Exit('Nie udało się połączyć z serwerem,\n'
                        'sprawdź swoje połączenie i spróbuj ponownie.')
         except Exception:
-            print(f'{err_c.color}Wystąpił nieoczekiwany błąd.')
+            print(f'{err_c}Wystąpił nieoczekiwany błąd.')
             raise
         else:
             if response.status_code != 200:
@@ -61,7 +61,7 @@ def main():
                    'Przerywam aktualizację...')
 
     if latest_tag['name'] == __version__:
-        print(f'{GEX.color}Korzystasz z najnowszej wersji ({__version__}).')
+        print(f'{GEX}Korzystasz z najnowszej wersji ({__version__}).')
         return 0
 
     out_dir_name = f'anki-dodawacz-{latest_tag["name"]}'
@@ -76,10 +76,10 @@ def main():
         # There are too much os calls in this script. I'm not sure if it works on macOS.
         raise Exit(f'Automatyczna aktualizacja niedostępna na {sys.platform!r}.')
 
-    print(f'{GEX.color}:: {R}Pobieram archiwum...')
+    print(f'{GEX}:: {R}Pobieram archiwum...')
     archive = safe_get(new_release_url)
 
-    print(f'{GEX.color}:: {R}Rozpakowuję...')
+    print(f'{GEX}:: {R}Rozpakowuję...')
     tfile = tempfile.NamedTemporaryFile(delete=False)
     try:
         # We cannot use the NamedTemporaryFile as a context manager because Windows
@@ -100,7 +100,7 @@ def main():
     finally:
         os.remove(tfile.name)
 
-    print(f"{GEX.color}:: {R}Przenoszę zawartość 'config.json'...")
+    print(f"{GEX}:: {R}Przenoszę zawartość 'config.json'...")
     with open(os.path.join(out_dir_path, 'config/config.json'), 'r') as f:
         new_config = json.load(f)
         for key, val in config.items():
@@ -109,16 +109,16 @@ def main():
         json.dump(new_config, f, indent=0)
 
     if os.path.exists('karty.txt'):
-        print(f"{GEX.color}:: {R}Przenoszę zawartość 'karty.txt'...")
+        print(f"{GEX}:: {R}Przenoszę zawartość 'karty.txt'...")
         with \
                 open(os.path.join(out_dir_path, 'karty.txt'), 'w') as new_cards, \
                 open('karty.txt', 'r') as cards:
             new_cards.writelines(cards.readlines())
 
     if os.path.exists('Karty_audio') and config['audio_path'] == 'Karty_audio':
-        print(f"{YEX.color}:: {R}Zawartość folderu 'Karty_audio' musi zostać przeniesiona manualnie.")
+        print(f"{YEX}:: {R}Zawartość folderu 'Karty_audio' musi zostać przeniesiona manualnie.")
 
-    print(f'\n{GEX.color}Aktualizacja zakończona pomyślnie.\n'
+    print(f'\n{GEX}Aktualizacja zakończona pomyślnie.\n'
           f'Program zapisany w: {out_dir_path!r}')
 
 

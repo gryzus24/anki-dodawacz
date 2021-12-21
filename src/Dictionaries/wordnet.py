@@ -44,18 +44,18 @@ class WordNet(Dictionary):
                 wrapped_synonyms = wrap_lines(body[0], textwidth, index_len, pos_len + 2, pos_len + 2)
                 padding = (textwidth - len(wrapped_synonyms[0]) - index_len - pos_len - 2) * ' '
                 buffer.append(
-                    f'{index_c.color}{communal_index} {poslabel_c.color}{pos} {syn_c.color}{wrapped_synonyms[0]}{padding}'
+                    f'{index_c}{communal_index} {poslabel_c}{pos} {syn_c}{wrapped_synonyms[0]}{padding}'
                 )
                 for subsyn in wrapped_synonyms[1:]:
                     padding = (textwidth - len(subsyn)) * ' '
-                    buffer.append(f'{syn_c.color}{subsyn}{padding}')
+                    buffer.append(f'{syn_c}{subsyn}{padding}')
 
                 wrapped_glosses = wrap_lines(body[1], textwidth, index_len, 1, 1)
                 padding = (textwidth - len(wrapped_glosses[0]) - index_len - 1) * ' '
-                buffer.append(f'{index_len * " "} {syngloss_c.color}{wrapped_glosses[0]}{padding}')
+                buffer.append(f'{index_len * " "} {syngloss_c}{wrapped_glosses[0]}{padding}')
                 for rest in wrapped_glosses[1:]:
                     padding = (textwidth - len(rest)) * ' '
-                    buffer.append(f'{syngloss_c.color}{rest}{padding}')
+                    buffer.append(f'{syngloss_c}{rest}{padding}')
             else:
                 assert False, f'unreachable wordnet operation: {op!r}'
 
@@ -81,7 +81,7 @@ def ask_wordnet(query):
 
     header = soup.find('h3').text
     if header.startswith('Your') or header.startswith('Sorry'):
-        print(f'{err_c.color}Nie znaleziono {R}"{query}"{err_c.color} na WordNecie')
+        print(f'{err_c}Nie znaleziono {R}"{query}"{err_c} na WordNecie')
         return None
 
     wordnet.title = 'WordNet'

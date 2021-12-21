@@ -58,7 +58,7 @@ def load_words(filepath=None):
 class Setup:
     def __init__(self):
         self.words = load_words(WORDS_FILE_PATH)
-        sys.stdout.write(f'\nTotal words loaded : {GEX.color}{len(self.words)}\n')
+        sys.stdout.write(f'\nTotal words loaded : {GEX}{len(self.words)}\n')
 
         self.tested_words = {}
         if SAVE_TESTED_WORDS_TO_FILE:
@@ -69,7 +69,7 @@ class Setup:
                 with open('_tested_words.json', 'w') as f:
                     f.write('{}')
             else:
-                sys.stdout.write(f'Total words tested : {GEX.color}{len(tested_words)}\n')
+                sys.stdout.write(f'Total words tested : {GEX}{len(tested_words)}\n')
                 self.tested_words = tested_words
 
                 self.words.difference_update(set(tested_words))
@@ -82,12 +82,12 @@ class Setup:
                     sys.stdout.write('Exiting...\n')
                     raise SystemExit
 
-                sys.stdout.write(f'Words left to test : {GEX.color}{len(self.words)}\n')
+                sys.stdout.write(f'Words left to test : {GEX}{len(self.words)}\n')
 
         if SAMPLE_SIZE < len(self.words):
             self.words = sample(tuple(self.words), k=SAMPLE_SIZE)
 
-        sys.stdout.write(f'Testing now        : {GEX.color}{len(self.words)}\n\n')
+        sys.stdout.write(f'Testing now        : {GEX}{len(self.words)}\n\n')
         self.buffer = {}
 
     @property
@@ -235,9 +235,9 @@ def print_logs(logs, word, col_width):
         if msg.startswith('OK'):
             if LOG_LEVEL != 'ALL':
                 return None
-            c = GEX.color
+            c = GEX
         elif msg.startswith('!!'):
-            c = err_c.color
+            c = err_c
         else:
             if LOG_LEVEL == 'ERROR':
                 return None

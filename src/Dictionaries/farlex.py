@@ -44,25 +44,25 @@ class FarlexIdioms(Dictionary):
 
                 wrapped_def = wrap_lines(body[0], textwidth, def_index_len, indent - 1, 1)
                 padding = (textwidth - len(wrapped_def[0]) - def_index_len - 1) * ' '
-                buffer.append(f'{index_c.color}{communal_index} {def_c.color}{wrapped_def[0]}{padding}')
+                buffer.append(f'{index_c}{communal_index} {def_c}{wrapped_def[0]}{padding}')
                 for def_tp in wrapped_def[1:]:
                     padding = (textwidth - len(def_tp)) * ' '
-                    buffer.append(f'${def_c.color}{def_tp}{padding}')
+                    buffer.append(f'${def_c}{def_tp}{padding}')
 
                 if show_exsen and len(body) > 1:
                     for exsen in body[1].split('<br>'):
                         wrapped_exsen = wrap_lines(exsen, textwidth, def_index_len, 2, 1)
                         padding = (textwidth - len(wrapped_exsen[0]) - def_index_len - 1) * ' '
-                        buffer.append(f'${def_index_len * " "} {exsen_c.color}{wrapped_exsen[0]}{padding}')
+                        buffer.append(f'${def_index_len * " "} {exsen_c}{wrapped_exsen[0]}{padding}')
                         for wrapped_line in wrapped_exsen[1:]:
                             padding = (textwidth - len(wrapped_line)) * ' '
-                            buffer.append(f'${exsen_c.color}{wrapped_line}{padding}')
+                            buffer.append(f'${exsen_c}{wrapped_line}{padding}')
             elif op == 'PHRASE':
                 phrase = body[0]
                 wrapped_phrase = wrap_lines(phrase, textwidth, 0, 0, 1)
                 for phrase_chunk in wrapped_phrase:
                     padding = (textwidth - len(phrase_chunk) - 1) * ' '
-                    buffer.append(f'! {phrase_c.color}{phrase_chunk}{padding}')
+                    buffer.append(f'! {phrase_c}{phrase_chunk}{padding}')
             elif op == 'HEADER':
                 buffer.append(textwidth * body[0])
             else:
@@ -99,7 +99,7 @@ def ask_farlex(query, **ignore):
 
     relevant_content = soup.find('section', {'data-src': 'FarlexIdi'})
     if relevant_content is None:
-        print(f'{err_c.color}Nie znaleziono {R}"{query}"{err_c.color} w Farlex Idioms')
+        print(f'{err_c}Nie znaleziono {R}"{query}"{err_c} w Farlex Idioms')
         return None
 
     farlex = FarlexIdioms()

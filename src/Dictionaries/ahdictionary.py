@@ -191,7 +191,7 @@ def ask_ahdictionary(query, flags=''):
         return None
 
     if soup.find('div', {'id': 'results'}).text == 'No word definition found':
-        print(f'{err_c.color}Nie znaleziono {R}"{query}"{err_c.color} w AH Dictionary')
+        print(f'{err_c}Nie znaleziono {R}"{query}"{err_c} w AH Dictionary')
         return None
 
     ahd = AHDictionary()
@@ -247,7 +247,7 @@ def ask_ahdictionary(query, flags=''):
         if before_phrase:
             before_phrase = False
             if phrase.lower() != query.lower():
-                ahd.add(('NOTE', f' Wyniki dla {phrase_c.color}{phrase}'))
+                ahd.add(('NOTE', f' Wyniki dla {phrase_c}{phrase}'))
         else:
             ahd.add(('HEADER', HORIZONTAL_BAR))
 

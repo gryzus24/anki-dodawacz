@@ -43,14 +43,14 @@ def refresh_cached_notes():
         try:
             save_ac_config(_config_ac)
         except FileNotFoundError:
-            return f'Plik {R}"ankiconnect.json"{err_c.color} nie istnieje'
-    print(f'{YEX.color}Notatki przebudowane')
+            return f'Plik {R}"ankiconnect.json"{err_c} nie istnieje'
+    print(f'{YEX}Notatki przebudowane')
 
 
 def show_available_notes():
     print(f'{BOLD}Dostępne notatki:{END}')
     for i, note in number_to_note_dict.items():
-        print(f'{index_c.color}{i} {R}{note}')
+        print(f'{index_c}{i} {R}{note}')
     print()
 
 
@@ -81,20 +81,20 @@ def invoke(action, **params):
 
     err = err.lower()
     if err.startswith('model was not found:'):
-        msg = f'  Nie znaleziono notatki: {R}{config["note"]}{err_c.color}\n' \
+        msg = f'  Nie znaleziono notatki: {R}{config["note"]}{err_c}\n' \
               f'  Aby zmienić notatkę użyj: {R}-note {{nazwa notatki}}'
     elif err.startswith('deck was not found'):
-        msg = f'  Nie znaleziono talii: {R}{config["deck"]}{err_c.color}\n' \
+        msg = f'  Nie znaleziono talii: {R}{config["deck"]}{err_c}\n' \
               f'  Aby zmienić talię użyj: {R}-deck {{nazwa talii}}\n' \
-              f'  {err_c.color}Jeżeli nazwa talii wydaje się być prawidłowa zmień\n' \
+              f'  {err_c}Jeżeli nazwa talii wydaje się być prawidłowa zmień\n' \
               f'  nazwę talii w Anki, aby używała pojedynczych spacji.'
     elif err.startswith('cannot create note because it is empty'):
         msg = f'  Pierwsze pole notatki nie zostało wypełnione.\n' \
-              f'  Sprawdź czy notatka {R}{config["note"]}{err_c.color} zawiera wymagane pola\n' \
+              f'  Sprawdź czy notatka {R}{config["note"]}{err_c} zawiera wymagane pola\n' \
               f'  lub jeżeli nazwy pól notatki były zmieniane, użyj {R}-refresh'
     elif err.startswith('cannot create note because it is a duplicate'):
         msg = f'  Duplikat.\n' \
-              f'  Aby zezwolić na duplikaty użyj: {R}-duplicates {{on|off}}{err_c.color}\n' \
+              f'  Aby zezwolić na duplikaty użyj: {R}-duplicates {{on|off}}{err_c}\n' \
               f'  lub zmień zakres ich sprawdzania: {R}-dupescope {{deck|collection}}'
     elif err.startswith('model name already exists'):
         msg = '  Notatka już znajduje się w bazie notatek.'
@@ -112,7 +112,7 @@ def gui_browse_cards(query):
     q = ' '.join(query) if query else 'added:1'
     _, err = invoke('guiBrowse', query=q)
     if err is not None:
-        print(f'{err_c.color}Nie udało się otworzyć wyszukiwarki kart:\n{err}\n')
+        print(f'{err_c}Nie udało się otworzyć wyszukiwarki kart:\n{err}\n')
 
 
 def add_note_to_anki(*args, **kwargs):
@@ -123,7 +123,7 @@ def add_note_to_anki(*args, **kwargs):
         with open(os.path.join(ROOT_DIR, f'notes/{note_name}.json'), 'r') as f:
             note_config = json.load(f)
     except FileNotFoundError:
-        return f'Notatka {R}"{note_name}"{err_c.color} nie została znaleziona'
+        return f'Notatka {R}"{note_name}"{err_c} nie została znaleziona'
 
     model_name = note_config['modelName']
     _, err = invoke('createModel',
@@ -134,9 +134,9 @@ def add_note_to_anki(*args, **kwargs):
                                     'Front': note_config['front'],
                                     'Back': note_config['back']}])
     if err is not None:
-        return f'{err_c.color}Notatka nie została dodana:\n{err}\n'
+        return f'{err_c}Notatka nie została dodana:\n{err}\n'
 
-    print(f'{GEX.color}Notatka dodana pomyślnie')
+    print(f'{GEX}Notatka dodana pomyślnie')
     if ask_yes_no(f'Czy chcesz ustawić "{model_name}" jako -note?', default=True):
         save_command('note', model_name)
 
@@ -159,7 +159,7 @@ def cache_current_note(*, refresh=False):
     if not organized_fields:
         if refresh:
             return None
-        return f'  Sprawdź czy notatka {R}{model_name}{err_c.color} zawiera wymagane pola\n' \
+        return f'  Sprawdź czy notatka {R}{model_name}{err_c} zawiera wymagane pola\n' \
                f'  lub jeżeli nazwy pól aktualnej notatki zostały zmienione, wpisz {R}-refresh'
 
     _config_ac[model_name] = organized_fields
@@ -173,7 +173,7 @@ def add_card_to_anki(field_values):
     if note_name not in _config_ac:
         err = cache_current_note()
         if err is not None:
-            print(f'{err_c.color}Nie udało się rozpoznać notatki:\n{err}\n')
+            print(f'{err_c}Nie udało się rozpoznać notatki:\n{err}\n')
             return None
 
     # When note is not found return an empty dict so that
@@ -184,8 +184,8 @@ def add_card_to_anki(field_values):
         for anki_field_name, base in note_from_config.items():
             fields_to_add[anki_field_name] = field_values[base]
     except KeyError:  # shouldn't happen if ankiconnect.json isn't tampered with
-        print(f'{err_c.color}Karta nie została dodana:\n'
-              f'  Sprawdź czy notatka {R}{note_name}{err_c.color} zawiera wymagane pola\n'
+        print(f'{err_c}Karta nie została dodana:\n'
+              f'  Sprawdź czy notatka {R}{note_name}{err_c} zawiera wymagane pola\n'
               f'  lub jeżeli nazwy pól aktualnej notatki zostały zmienione, wpisz {R}-refresh\n')
         return None
 
@@ -202,16 +202,16 @@ def add_card_to_anki(field_values):
                         'tags': tags.split(', ')
                     })
     if err is not None:
-        print(f'{err_c.color}Karta nie została dodana do Anki:\n{err}\n')
+        print(f'{err_c}Karta nie została dodana do Anki:\n{err}\n')
         return None
 
-    print(f'{GEX.color}Karta pomyślnie dodana do Anki\n'
-          f'{YEX.color}Talia: {R}{config["deck"]}\n'
-          f'{YEX.color}Notatka: {R}{note_name}\n'
-          f'{YEX.color}Wykorzystane pola:')
+    print(f'{GEX}Karta pomyślnie dodana do Anki\n'
+          f'{YEX}Talia: {R}{config["deck"]}\n'
+          f'{YEX}Notatka: {R}{note_name}\n'
+          f'{YEX}Wykorzystane pola:')
 
     for anki_field_name, content in fields_to_add.items():
         if content.strip():
             print(f'- {anki_field_name}')
-    print(f'{YEX.color}Etykiety: {R}{tags}\n'
+    print(f'{YEX}Etykiety: {R}{tags}\n'
           f'> podgląd: "-b"\n')

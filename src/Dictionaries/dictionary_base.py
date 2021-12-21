@@ -171,9 +171,9 @@ class Dictionary:
         return result if result and result[0] else [1]
 
     def format_title(self, textwidth):
-        t = f'[ {BOLD}{self.title}{END}{delimit_c.color} ]'
-        esc_seq_len = len(BOLD) + len(END) + len(delimit_c.color)
-        return f'{delimit_c.color}{t.center(textwidth + esc_seq_len, HORIZONTAL_BAR)}'
+        t = f'[ {BOLD}{self.title}{END}{delimit_c} ]'
+        esc_seq_len = len(BOLD) + len(END) + len(delimit_c)
+        return f'{delimit_c}{t.center(textwidth + esc_seq_len, HORIZONTAL_BAR)}'
 
     def _get_term_parameters(self):
         # Returns:
@@ -290,68 +290,68 @@ class Dictionary:
 
                 wrapped_def = wrap_lines(body[0], textwidth, def_index_len, indent, 2)
                 padding = (textwidth - len(wrapped_def[0]) - def_index_len - 2) * ' '
-                buffer.append(f'{defsign_c.color}{sign}{index_c.color}{communal_index} {def_c.color}{wrapped_def[0]}{padding}')
+                buffer.append(f'{defsign_c}{sign}{index_c}{communal_index} {def_c}{wrapped_def[0]}{padding}')
                 for def_tp in wrapped_def[1:]:
                     padding = (textwidth - len(def_tp)) * ' '
-                    buffer.append(f'${def_c.color}{def_tp}{padding}')
+                    buffer.append(f'${def_c}{def_tp}{padding}')
 
                 if show_exsen and len(body) > 1:
                     wrapped_exsen = wrap_lines(body[1], textwidth, def_index_len, 3, 2)
                     padding = (textwidth - def_index_len - len(wrapped_exsen[0]) - 2) * ' '
-                    buffer.append(f'${def_index_len * " "}  {exsen_c.color}{wrapped_exsen[0]}{padding}')
+                    buffer.append(f'${def_index_len * " "}  {exsen_c}{wrapped_exsen[0]}{padding}')
                     for exsen in wrapped_exsen[1:]:
                         padding = (textwidth - len(exsen)) * ' '
-                        buffer.append(f'${exsen_c.color}{exsen}{padding}')
+                        buffer.append(f'${exsen_c}{exsen}{padding}')
             elif op == 'LABEL':
                 buffer.append(blank)
                 label, inflections = body
                 if label:
                     padding = (textwidth - len(label) - len(inflections) - 3) * ' '
                     if padding:
-                        buffer.append(f'! {poslabel_c.color}{label}  {inflection_c.color}{inflections}{padding}')
+                        buffer.append(f'! {poslabel_c}{label}  {inflection_c}{inflections}{padding}')
                     else:
                         padding = (textwidth - len(label) - 1) * ' '
-                        buffer.append(f'! {poslabel_c.color}{label}{padding}')
+                        buffer.append(f'! {poslabel_c}{label}{padding}')
                         padding = (textwidth - len(inflections) - 1) * ' '
-                        buffer.append(f'! {inflection_c.color}{inflections}{padding}')
+                        buffer.append(f'! {inflection_c}{inflections}{padding}')
             elif op == 'PHRASE':
                 phrase, phon = body
                 padding = (textwidth - len(phrase) - len(phon) - 3) * ' '
                 if padding:
-                    buffer.append(f'! {phrase_c.color}{phrase}  {phon_c.color}{phon}{padding}')
+                    buffer.append(f'! {phrase_c}{phrase}  {phon_c}{phon}{padding}')
                 else:
                     wrapped_phrase = wrap_lines(phrase, textwidth, 0, 0, 1)
                     padding = (textwidth - len(wrapped_phrase[0]) - 1) * ' '
-                    buffer.append(f'! {phrase_c.color}{wrapped_phrase[0]}{padding}')
+                    buffer.append(f'! {phrase_c}{wrapped_phrase[0]}{padding}')
                     for phrase_line in wrapped_phrase[1:]:
                         padding = (textwidth - len(phrase_line) - 1) * ' '
-                        buffer.append(f'! {phrase_c.color}{phrase_line}{padding}')
+                        buffer.append(f'! {phrase_c}{phrase_line}{padding}')
                     padding = (textwidth - len(phon) - 1) * ' '
                     if phon:
-                        buffer.append(f'! {phon_c.color}{phon}{padding}')
+                        buffer.append(f'! {phon_c}{phon}{padding}')
             elif op == 'HEADER':
-                buffer.append(f'{delimit_c.color}{textwidth * body[0]}')
+                buffer.append(f'{delimit_c}{textwidth * body[0]}')
             elif op == 'ETYM':
                 etym = body[0]
                 if etym:
                     buffer.append(blank)
                     wrapped_etym = wrap_lines(etym, textwidth, 0, 1, 1)
                     padding = (textwidth - len(wrapped_etym[0]) - 1) * ' '
-                    buffer.append(f' {etym_c.color}{wrapped_etym[0]}{padding}')
+                    buffer.append(f' {etym_c}{wrapped_etym[0]}{padding}')
                     for e in wrapped_etym[1:]:
                         padding = (textwidth - len(e)) * ' '
-                        buffer.append(f'${etym_c.color}{e}{padding}')
+                        buffer.append(f'${etym_c}{e}{padding}')
             elif op == 'POS':
                 if body[0]:
                     buffer.append(blank)
                     for pos, phon in body:
                         padding = (textwidth - len(pos) - len(phon) - 3) * ' '
-                        buffer.append(f' {pos_c.color}{pos}  {phon_c.color}{phon}{padding}')
+                        buffer.append(f' {pos_c}{pos}  {phon_c}{phon}{padding}')
             elif op == 'AUDIO':
                 pass
             elif op == 'NOTE':
                 note = body[0]
-                padding = (textwidth + len(phrase_c.color) - len(note)) * ' '
+                padding = (textwidth + len(phrase_c) - len(note)) * ' '
                 buffer.append(f'{R}{BOLD}{note}{END}{padding}')
             else:
                 assert False, f'unreachable dictionary operation: {op!r}'
@@ -385,7 +385,7 @@ class Dictionary:
                     sys.stdout.flush()
                     subprocess.run(['clear', '-x'])  # I hope the `-x` option works on macOS.
                 else:
-                    sys.stdout.write(f'{err_c.color}Komenda {R}"-top on"{err_c.color} nieobsługiwana na {sys.platform!r}.\n')
+                    sys.stdout.write(f'{err_c}Komenda {R}"-top on"{err_c} nieobsługiwana na {sys.platform!r}.\n')
 
             self.print_dictionary()
         finally:
@@ -397,14 +397,14 @@ class Dictionary:
     def display_card(field_values):
         # field coloring
         color_of = {
-            'def': def1_c.color, 'syn': syn_c.color, 'exsen': exsen_c.color,
-            'phrase': phrase_c.color, 'pz': '', 'pos': pos_c.color,
-            'etym': etym_c.color, 'audio': '', 'recording': '',
+            'def': def1_c, 'syn': syn_c, 'exsen': exsen_c,
+            'phrase': phrase_c, 'pz': '', 'pos': pos_c,
+            'etym': etym_c, 'audio': '', 'recording': '',
         }
         textwidth, _ = get_config_terminal_size()
         delimit = textwidth * HORIZONTAL_BAR
 
-        print(f'\n{delimit_c.color}{delimit}')
+        print(f'\n{delimit_c}{delimit}')
         try:
             for field_number, field in config['fieldorder'].items():
                 if field == '-':
@@ -415,11 +415,11 @@ class Dictionary:
                         print(f'{color_of[field]}{subline.center(textwidth)}')
 
                 if field_number == config['fieldorder_d']:  # d = delimitation
-                    print(f'{delimit_c.color}{delimit}')
+                    print(f'{delimit_c}{delimit}')
 
-            print(f'{delimit_c.color}{delimit}')
+            print(f'{delimit_c}{delimit}')
         except (NameError, KeyError):
-            print(f'{err_c.color}\nDodawanie karty do pliku nie powiodło się\n'
+            print(f'{err_c}\nDodawanie karty do pliku nie powiodło się\n'
                   f'Spróbuj przywrócić domyślne ustawienia pól wpisując {R}-fo default\n')
             return 1  # skip
         else:

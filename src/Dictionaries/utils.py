@@ -32,14 +32,14 @@ def handle_connection_exceptions(func):
         try:
             return func(*args, **kwargs)
         except Timeout:
-            print(f'{err_c.color}Słownik nie odpowiada.')
+            print(f'{err_c}Słownik nie odpowiada.')
         except RqConnectionError:
-            print(f'{err_c.color}Połączenie ze słownikiem zostało zerwane.')
+            print(f'{err_c}Połączenie ze słownikiem zostało zerwane.')
         except ConnectionError:
-            print(f'{err_c.color}Nie udało się połączyć ze słownikiem,\n'
+            print(f'{err_c}Nie udało się połączyć ze słownikiem,\n'
                   f'sprawdź swoje połączenie i spróbuj ponownie.')
         except Exception:
-            print(f'{err_c.color}Wystąpił nieoczekiwany błąd w {func.__qualname__}.')
+            print(f'{err_c}Wystąpił nieoczekiwany błąd w {func.__qualname__}.')
             raise
     return wrapper
 

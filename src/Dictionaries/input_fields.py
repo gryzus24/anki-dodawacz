@@ -24,7 +24,7 @@ def input_field(field_name, prompt, connector='<br>', specifier_split=','):
 
     def _print_added(elems='', msg='Dodano'):
         if config['showadded']:
-            print(f'{YEX.color}{msg}: {R}{elems}')
+            print(f'{YEX}{msg}: {R}{elems}')
 
     def _add_elements(parsed_inputs, content_list):
         content = []
@@ -164,7 +164,7 @@ def input_field(field_name, prompt, connector='<br>', specifier_split=','):
 
         parsed_inputs = _parse_inputs(input_choice.split(','), content_length)
         if parsed_inputs is None:
-            print(f'{GEX.color}Pominięto dodawanie karty')
+            print(f'{GEX}Pominięto dodawanie karty')
             return None, None
 
         # if f'1:{content_length}' in input_choice:
@@ -185,10 +185,10 @@ def sentence_input():
 
     sentence = input('Dodaj przykładowe zdanie: ')
     if sentence.lower() == '-sc':
-        print(f'{GEX.color}Pominięto dodawanie karty')
+        print(f'{GEX}Pominięto dodawanie karty')
         return None
     elif sentence.lower() == '-s':
-        print(f'{GEX.color}Pominięto dodawanie zdania')
+        print(f'{GEX}Pominięto dodawanie zdania')
         return ''
     else:
         return sentence
