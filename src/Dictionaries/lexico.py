@@ -141,7 +141,7 @@ def ask_lexico(query, flags='', _previous_query=''):
     main_div = soup.find('div', class_='entryWrapper')
     if main_div is None:  # lexico denied access
         import time
-        print(f'{err_c.color}Lexico doświadczyła zbyt wielu zapytań na raz...\n'
+        print(f'{err_c}Lexico doświadczyła zbyt wielu zapytań na raz...\n'
               f'Spróbuj ponownie za 1-5 min.')
         time.sleep(2.5)
         raise SystemExit(1)
@@ -150,7 +150,7 @@ def ask_lexico(query, flags='', _previous_query=''):
     if page_check.get_text(strip=True) == 'HomeEnglish':
         revive = main_div.find('a', class_='no-transition')
         if revive is None:
-            print(f'{err_c.color}Nie znaleziono {R}"{query}"{err_c.color} w Lexico')
+            print(f'{err_c}Nie znaleziono {R}"{query}"{err_c} w Lexico')
             return None
         else:
             revive = revive.get('href')
@@ -190,7 +190,7 @@ def ask_lexico(query, flags='', _previous_query=''):
             if before_phrase:
                 before_phrase = False
                 if _previous_query and phrase_ != _previous_query:
-                    lexico.add(('NOTE', f' Wyniki dla {phrase_c.color}{phrase_}'))
+                    lexico.add(('NOTE', f' Wyniki dla {phrase_c}{phrase_}'))
             else:
                 lexico.add(('HEADER', HORIZONTAL_BAR))
 

@@ -42,7 +42,7 @@ def delete_cards(*args, **kwargs):
         if no_of_deletions < 1:
             raise ValueError
     except ValueError:
-        print(f'{err_c.color}Liczba kart do usunięcia musi być liczbą {R}>= 1')
+        print(f'{err_c}Liczba kart do usunięcia musi być liczbą {R}>= 1')
         return None
 
     try:
@@ -54,17 +54,17 @@ def delete_cards(*args, **kwargs):
                 w.write('')
             raise IndexError
     except IndexError:
-        print(f'{YEX.color}Plik {R}"karty.txt"{YEX.color} został opróżniony, nie ma co więcej usuwać')
+        print(f'{YEX}Plik {R}"karty.txt"{YEX} został opróżniony, nie ma co więcej usuwać')
     except FileNotFoundError:
-        print(f'{err_c.color}Plik {R}"karty.txt"{err_c.color} nie istnieje, nie ma co usuwać')
+        print(f'{err_c}Plik {R}"karty.txt"{err_c} nie istnieje, nie ma co usuwać')
     except UnicodeDecodeError:  # wolfram caused this
-        print(f'{err_c.color}Usuwanie karty nie powiodło się z powodu nieznanego znaku (prawdopodobnie w etymologii)')
+        print(f'{err_c}Usuwanie karty nie powiodło się z powodu nieznanego znaku (prawdopodobnie w etymologii)')
     except Exception:
-        print(f'{err_c.color}Coś poszło nie tak podczas usuwania kart,\n'
-              f'ale Karty są {GEX.color}bezpieczne{R}')
+        print(f'{err_c}Coś poszło nie tak podczas usuwania kart,\n'
+              f'ale Karty są {GEX}bezpieczne{R}')
         raise
     else:
-        print(f'{YEX.color}Usunięto z pliku {R}"karty.txt"{YEX.color}:{R}')
+        print(f'{YEX}Usunięto z pliku {R}"karty.txt"{YEX}:{R}')
         for i in range(no_of_deletions):
             card_number = len(lines)
             deleted_line = lines.pop()
@@ -88,12 +88,12 @@ def config_defaults(*args, **kwargs):
     try:
         value = args[2]
     except IndexError:
-        return f'{YEX.color}Brakuje wartości\n' \
+        return f'{YEX}Brakuje wartości\n' \
                f'{R}{cmd} {bulk_elem} {{wartość}}'
 
     if bulk_elem == 'all':
         values_to_save = [value] * 5
-        print(f'{GEX.color}Wartości domyślne zapisane dla:')
+        print(f'{GEX}Wartości domyślne zapisane dla:')
         for elem, val in zip(bulk_elements, values_to_save):
             config[f'{elem}_bulk'] = val
             print(f'{R}{elem:6s}: {val}')
@@ -101,7 +101,7 @@ def config_defaults(*args, **kwargs):
         save_config(config)
         print()
     else:
-        print(f"{YEX.color}Domyślna wartość dla {R}{bulk_elem}{YEX.color}: {R}{value}")
+        print(f"{YEX}Domyślna wartość dla {R}{bulk_elem}{YEX}: {R}{value}")
         save_command(f'{bulk_elem}_bulk', value)
 
 
@@ -186,7 +186,7 @@ def set_width_settings(*args, message):
             return f'Nieprawidłowa wartość: {R}{value}\n' \
                    f'{cmd} {data.command_to_help_dict[cmd][1]}'
         else:
-            print(f'{R}{message}: {GEX.color}{value}')
+            print(f'{R}{message}: {GEX}{value}')
             save_command(cmd, [val, ''])
             return None
 
@@ -204,7 +204,7 @@ def set_width_settings(*args, message):
     else:
         assert False, 'unreachable in `set_width_settings`'
 
-    print(f'{R}{message}: {GEX.color}{"".join(map(str, v))}')
+    print(f'{R}{message}: {GEX}{"".join(map(str, v))}')
     save_command(cmd, v)
 
 
@@ -216,12 +216,12 @@ def display_field_order():
         print(f' {b}{field_number}: {field_name}{END}')
 
         if field_number == config['fieldorder_d']:
-            print(f' {delimit_c.color}D: ─────────{R}')
+            print(f' {delimit_c}D: ─────────{R}')
 
 
 def change_field_order(*args, **kwargs):
     def set_field_order(msg, order, delimit):
-        print(f'{GEX.color}{msg}')
+        print(f'{GEX}{msg}')
         # I'm not sure what causes the change of 'order' after the manual change
         # .copy() somehow resolves the issue
         config['fieldorder'] = order.copy()
@@ -275,21 +275,21 @@ def set_audio_path(*args, message):
         elif MAC:
             tree = os.path.join(os.getenv('HOME'), 'Library/Application Support/Anki2')
         else:
-            return f'Lokalizowanie {R}"collection.media"{err_c.color} nie powiodło się:\n' \
-                   f'Nieznana ścieżka dla {R}"collection.media"{err_c.color} na {sys.platform!r}'
+            return f'Lokalizowanie {R}"collection.media"{err_c} nie powiodło się:\n' \
+                   f'Nieznana ścieżka dla {R}"collection.media"{err_c} na {sys.platform!r}'
 
         # searches the tree
         collections = []
         for path, _, _ in os.walk(tree):
             if path.endswith('collection.media'):
                 collections.append(path)
-                print(f'{index_c.color}{len(collections)} {R}{path}')
+                print(f'{index_c}{len(collections)} {R}{path}')
 
         if not collections:
-            return f'Lokalizowanie {R}"collection.media"{err_c.color} nie powiodło się:\n' \
+            return f'Lokalizowanie {R}"collection.media"{err_c} nie powiodło się:\n' \
                    'Brak wyników'
 
-        print(f'\n{YEX.color}Wybierz ścieżkę')
+        print(f'\n{YEX}Wybierz ścieżkę')
         try:
             path_choice = int(input('[0-Anuluj]: '))
             if path_choice < 1 or path_choice > len(collections):
@@ -303,7 +303,7 @@ def set_audio_path(*args, message):
         if path.startswith('~'):
             path = path.replace('~', os.getenv('HOME'), 1)
 
-    print(f'{YEX.color}{message} ustawiona:\n'
+    print(f'{YEX}{message} ustawiona:\n'
           f'{R}"{path}"')
     save_command('audio_path', path)
 
@@ -352,7 +352,7 @@ def set_colors(*args, **kwargs):
     try:
         color = args[2].lower()
     except IndexError:
-        return f'{YEX.color}Brakuje koloru\n' \
+        return f'{YEX}Brakuje koloru\n' \
                f'{R}{cmd} {element} {{kolor}}'
 
     if color not in data.str_colors_to_color:
@@ -372,7 +372,7 @@ def boolean_commands(*args, message):
     try:
         value = data.bool_values_dict[args[1].lower()]
     except KeyError:
-        return f'{err_c.color}Nieprawidłowa wartość, użyj:\n' \
+        return f'{err_c}Nieprawidłowa wartość, użyj:\n' \
                f'{R}{cmd} {{on|off}}'
 
     print(f'{R}{message}: {data.bool_colors_dict[value]}{value}')
@@ -399,21 +399,21 @@ def show_available_colors():
 def color_command():
     print(f"""\
 {R}{BOLD}[Elementy]    [Zmiana koloru]{END}
-def1          {def1_c.color}nieparzystych definicji i definicji idiomów{R}
-def2          {def2_c.color}parzystych definicji{R}
-defsign       {defsign_c.color}znaku głównej definicji (>){R}
-exsen         {exsen_c.color}przykładów pod definicjami{R}
-pos           {pos_c.color}części mowy w słowniku{R}
-etym          {etym_c.color}etymologii w słowniku{R}
-syn           {syn_c.color}synonimów na WordNecie{R}
-syngloss      {syngloss_c.color}definicji przy synonimach{R}
-index         {index_c.color}indeksów w słowniku{R}
-phrase        {phrase_c.color}wyszukanego w słowniku hasła{R}
-phon          {phon_c.color}pisowni fonetycznej{R}
-poslabel      {poslabel_c.color}etykiet części mowy{R}
-inflection    {inflection_c.color}odmian hasła{R}
-error         {err_c.color}błędów{R}
-attention     {YEX.color}zwracającego uwagę{R}
-success       {GEX.color}udanej operacji{R}
-delimit       {delimit_c.color}odkreśleń{R}\n""")
+def1          {def1_c}nieparzystych definicji i definicji idiomów{R}
+def2          {def2_c}parzystych definicji{R}
+defsign       {defsign_c}znaku głównej definicji (>){R}
+exsen         {exsen_c}przykładów pod definicjami{R}
+pos           {pos_c}części mowy w słowniku{R}
+etym          {etym_c}etymologii w słowniku{R}
+syn           {syn_c}synonimów na WordNecie{R}
+syngloss      {syngloss_c}definicji przy synonimach{R}
+index         {index_c}indeksów w słowniku{R}
+phrase        {phrase_c}wyszukanego w słowniku hasła{R}
+phon          {phon_c}pisowni fonetycznej{R}
+poslabel      {poslabel_c}etykiet części mowy{R}
+inflection    {inflection_c}odmian hasła{R}
+error         {err_c}błędów{R}
+attention     {YEX}zwracającego uwagę{R}
+success       {GEX}udanej operacji{R}
+delimit       {delimit_c}odkreśleń{R}\n""")
     show_available_colors()

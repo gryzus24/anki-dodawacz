@@ -49,8 +49,8 @@ def diki_audio(raw_phrase, flag=''):
                 break
         if flag and len(dk.split('_')) == 1 and not aurl:
             pos = {'n': 'noun', 'v': 'verb', 'a': 'adjective'}
-            print(f"{YEX.color}Diki nie posiada wymowy dla: {R}{raw_phrase} "
-                  f"'{pos.get(search_flag, 'Kaczakonina')}'\n{YEX.color}Szukam {R}{raw_phrase}")
+            print(f"{YEX}Diki nie posiada wymowy dla: {R}{raw_phrase} "
+                  f"'{pos.get(search_flag, 'Kaczakonina')}'\n{YEX}Szukam {R}{raw_phrase}")
             return aurls[0] if aurls else aurls
         return aurl
 
@@ -107,7 +107,7 @@ def diki_audio(raw_phrase, flag=''):
         return ''
 
     if not audio_url:
-        print(f'{err_c.color}Diki nie posiada pożądanego audio\n{YEX.color}Spróbuję dodać co łaska...')
+        print(f'{err_c}Diki nie posiada pożądanego audio\n{YEX}Spróbuję dodać co łaska...')
     if not audio_url and search_phrase.startswith('an '):
         diki_phrase, audio_url = get_audio_url(search_phrase.replace('an ', '', 1))
     if not audio_url and 'lots' in search_phrase:
@@ -122,7 +122,7 @@ def diki_audio(raw_phrase, flag=''):
 
     url_end = get_url_end(audio_url)  # e.g. /images-common/en/mp3/confirm.mp3
     if url_end is None:
-        print(f"{err_c.color}Nie udało się pozyskać audio\nKarta zostanie dodana bez audio")
+        print(f"{err_c}Nie udało się pozyskać audio\nKarta zostanie dodana bez audio")
         return ''
     audiofile_name = url_end.split('/')[-1]  # e.g. confirm.mp3
     audiofile_name_no_mp3 = audiofile_name.split('.mp3')[0].replace('-n', '').replace('-v', '').replace('-a', '')
@@ -138,7 +138,7 @@ def diki_audio(raw_phrase, flag=''):
     elif not audiofile_added_in_full and len(audiofile_name_no_mp3) > 4 or audiofile_added_in_full:
         pass
     else:
-        print(f"{err_c.color}Nie udało się pozyskać audio\nKarta zostanie dodana bez audio")
+        print(f"{err_c}Nie udało się pozyskać audio\nKarta zostanie dodana bez audio")
         return ''
     return 'https://www.diki.pl' + url_end
 
@@ -150,12 +150,12 @@ def save_audio(audio_url, filename):
             file.write(response.content)
         return f'[sound:{filename}]'
     except FileNotFoundError:
-        print(f"{err_c.color}Zapisywanie pliku audio {R}{filename}{err_c.color} nie powiodło się\n"
+        print(f"{err_c}Zapisywanie pliku audio {R}{filename}{err_c} nie powiodło się\n"
               f"Aktualna ścieżka zapisu audio: {R}{config['audio_path']}\n"
-              f"{err_c.color}Upewnij się, że taki folder istnieje i spróbuj ponownie\n")
+              f"{err_c}Upewnij się, że taki folder istnieje i spróbuj ponownie\n")
         return ''
     except Exception:
-        print(f'{err_c.color}Wystąpił nieoczekiwany błąd podczas zapisywania audio')
+        print(f'{err_c}Wystąpił nieoczekiwany błąd podczas zapisywania audio')
         raise
 
 
@@ -163,8 +163,8 @@ def ahd_audio(query):
     soup = request_soup('https://www.ahdictionary.com/word/search.html?q=' + query)
     audio_url = soup.find('a', {'target': '_blank'}).get('href')
     if audio_url == 'http://www.hmhco.com':
-        print(f'{err_c.color}AHD nie posiada audio dla {R}{query}\n'
-              f'{YEX.color}Sprawdzam diki...')
+        print(f'{err_c}AHD nie posiada audio dla {R}{query}\n'
+              f'{YEX}Sprawdzam diki...')
         return diki_audio(query)
     return 'https://www.ahdictionary.com' + audio_url
 
@@ -173,7 +173,7 @@ def lexico_audio(query):
     soup = request_soup('https://www.lexico.com/definition/' + query.replace(' ', '_'))
     audio_url = soup.find('audio')
     if audio_url is None:
-        print(f'{err_c.color}Lexico nie posiada audio dla {R}{query}\n'
-              f'{YEX.color}Sprawdzam diki...')
+        print(f'{err_c}Lexico nie posiada audio dla {R}{query}\n'
+              f'{YEX}Sprawdzam diki...')
         return diki_audio(query)
     return audio_url.get('src')

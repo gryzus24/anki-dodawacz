@@ -34,7 +34,7 @@ if LINUX:
     import readline
     readline.read_init_file()
 
-__version__ = 'v1.3.0-3'
+__version__ = 'v1.3.0-4'
 
 required_arg_commands = {
     # commands that take arguments
@@ -83,7 +83,7 @@ def search_interface():
         if cmd in no_arg_commands:
             err = no_arg_commands[cmd]()
             if err is not None:
-                print(f'{err_c.color}{err}')
+                print(f'{err_c}{err}')
             continue
 
         if cmd in tuple(command_to_help_dict)[:25]:
@@ -102,7 +102,7 @@ def search_interface():
             if args[1].strip('-').lower() in ('h', 'help'):
                 raise IndexError
         except IndexError:  # Print help
-            print(f'{YEX.color}{message}\n'
+            print(f'{YEX}{message}\n'
                   f'{R}{cmd} {usage}')
 
             # Print additional information
@@ -121,7 +121,7 @@ def search_interface():
         else:
             err = method(*args, message=message)
             if err is not None:
-                print(f'{err_c.color}{err}')
+                print(f'{err_c}{err}')
 
 
 def manage_audio(dictionary_name, audio_url, phrase, flags):
@@ -147,8 +147,8 @@ def manage_audio(dictionary_name, audio_url, phrase, flags):
     if server == 'auto' or dictionary_name == server:
         if audio_url:
             return save_audio(audio_url, audio_url.split('/')[-1])
-        print(f'{err_c.color}Słownik nie posiada audio dla {R}{phrase}\n'
-              f'{YEX.color}Sprawdzam diki...')
+        print(f'{err_c}Słownik nie posiada audio dla {R}{phrase}\n'
+              f'{YEX}Sprawdzam diki...')
         return from_diki()
 
     if server == 'ahd':
@@ -176,10 +176,10 @@ def save_card_to_file(field_values):
                     f'{field_values[config["fieldorder"]["8"]]}\t'
                     f'{field_values[config["fieldorder"]["9"]]}\n')
     except (NameError, KeyError):
-        print(f'{err_c.color}Dodawanie karty do pliku nie powiodło się\n'
+        print(f'{err_c}Dodawanie karty do pliku nie powiodło się\n'
               f'Spróbuj przywrócić domyślne ustawienia pól wpisując {R}-fo default\n')
     else:
-        print(f'{GEX.color}Karta pomyślnie zapisana do pliku\n')
+        print(f'{GEX}Karta pomyślnie zapisana do pliku\n')
 
 
 def manage_dictionaries(_phrase, flags):
@@ -218,13 +218,13 @@ def manage_dictionaries(_phrase, flags):
         'lexico': ask_lexico,
         'idioms': ask_farlex
     }
-    print(f'{YEX.color}Szukam w drugim słowniku...')
+    print(f'{YEX}Szukam w drugim słowniku...')
     dictionary = second_dicts[config['dict2']](_phrase, flags=flags)
     if dictionary is not None:
         dictionary.show()
         return dictionary
     if config['dict'] != 'idioms' and config['dict2'] != 'idioms':
-        print(f"{YEX.color}Aby zapytać słownik idiomów wpisz: {R}'{_phrase} -i'")
+        print(f"{YEX}Aby zapytać słownik idiomów wpisz: {R}'{_phrase} -i'")
 
 
 def format_definitions(definitions):

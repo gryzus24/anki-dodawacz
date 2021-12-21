@@ -65,7 +65,7 @@ def record(filepath):
     else:
         raise NameError  # os not supported
 
-    print(f'{YEX.color}Rozpoczęto nagrywanie...\n'
+    print(f'{YEX}Rozpoczęto nagrywanie...\n'
           f'{R}wciśnij [q], aby zakończyć i zapisać')
     result = subprocess.run((
         'ffmpeg',
@@ -94,7 +94,7 @@ def set_audio_device():
 
     print('Wybierz urządzenie do przechwytywania audio poprzez ffmpeg:\n')
     for index, a in enumerate(audio_devices, start=1):
-        print(f"{index_c.color}{index} {R}{a}")
+        print(f"{index_c}{index} {R}{a}")
 
     choice = input('Wybierz urządzenie [1]: ').strip()
     if not choice:
@@ -109,7 +109,7 @@ def set_audio_device():
 
     audio_device = audio_devices[choice - 1]
     save_command('audio_device', audio_device)
-    print(f'{GEX.color}Urządzenie przechwytujące audio ustawiono:\n'
+    print(f'{GEX}Urządzenie przechwytujące audio ustawiono:\n'
           f'{R}{audio_device}\n')
 
 
@@ -135,25 +135,25 @@ def capture_audio(*args):
     try:
         result = record(filepath)
     except NameError:  # if os is not linux or win
-        print(f'{err_c.color}Nagrywanie audio niedostępne na obecnym systemie operacyjnym')
+        print(f'{err_c}Nagrywanie audio niedostępne na obecnym systemie operacyjnym')
         return ''
     except FileNotFoundError:
-        print(f'{err_c.color}Ffmpeg nie został odnaleziony\n'
+        print(f'{err_c}Ffmpeg nie został odnaleziony\n'
               f'Umieść ffmpeg w folderze z programem lub $PATH')
         return ''
 
     if 'Output file is empty' in result.stderr:
-        print(f'{err_c.color}Nagrywanie nie powiodło się: pusty plik wyjściowy\n'
+        print(f'{err_c}Nagrywanie nie powiodło się: pusty plik wyjściowy\n'
               f'Spróbuj nagrać dłuższy odcinek')
         subprocess.run(('rm', filepath))
         return ''
     elif 'Queue input is backward in time' in result.stderr:
         pass
     elif result.stderr or result.returncode == 1:
-        print(f'{err_c.color}Nagrywanie nie powiodło się:')
+        print(f'{err_c}Nagrywanie nie powiodło się:')
         print(result.stderr)
         return ''
 
-    print(f'{GEX.color}Nagranie pomyślnie zapisane jako:\n'
+    print(f'{GEX}Nagranie pomyślnie zapisane jako:\n'
           f'{R}{filepath}')
     return f"[sound:{date}_sentence{metadata}{recording_no}.mp3]"

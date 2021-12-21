@@ -15,12 +15,15 @@ else:
 
 
 class Color:
-    def __init__(self, color_name):
-        self.color_name = color_name
+    def __init__(self, color):
+        self.color = color
 
-    @property
-    def color(self):
-        return str_colors_to_color[config[self.color_name]]
+    def __str__(self):
+        return str_colors_to_color[config[self.color]]
+
+    def __len__(self):
+        # For proper formatting
+        return len(str_colors_to_color[config[self.color]])
 
 
 R = Fore.RESET
