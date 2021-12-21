@@ -11,7 +11,7 @@ Obecnie obsługiwane słowniki:
 
 ### Windows:
 
-[link do pobrania .zip](https://github.com/gryzus24/anki-dodawacz/archive/refs/tags/v1.2.3-2.zip)
+[link do pobrania .zip](https://github.com/gryzus24/anki-dodawacz/archive/refs/tags/v1.3.0-1.zip)
 :-
 
 Pobieramy .zip i rozpakowujemy.
@@ -39,7 +39,7 @@ błędu, okno zamknie się natychmiastowo.
 
 ### Linux:
 
-[link do pobrania .tar.gz](https://github.com/gryzus24/anki-dodawacz/archive/refs/tags/v1.2.3-2.tar.gz)
+[link do pobrania .tar.gz](https://github.com/gryzus24/anki-dodawacz/archive/refs/tags/v1.3.0-1.tar.gz)
 :-
 
 Pobieramy archiwum tar.gz i rozpakowujemy.
@@ -76,16 +76,13 @@ Aby sprawdzić działanie i użycie danej komendy wpisujemy jej nazwę.
 
 ![image](https://user-images.githubusercontent.com/82805891/136023117-961a04a5-34c1-4a12-bc7a-c7d9c58f2f10.png)
 
-Customizacja wyglądu jest w dużej mierze zależna od naszego emulatora terminala. Na Windowsie 10, aby zmienić czcionkę,
-przeźroczystość czy wielkość okna należy kliknąć górny pasek -> właściwości. Tutaj możemy dostosować wygląd okna do
-naszych preferencji.<br>
-Jeżeli opcje oferowane przez cmd są niewystarczające lub nie chcecie się bawić w customizację w niedomagającym
-windowsowym terminalu to wersja portable "Alacritty" oferuje bardzo dobre ustawienia domyślne z łatwiejszą dla oczu paletą kolorów.
+Wygląd jest w dużej mierze zależny od naszego emulatora terminala.
+Jeżeli opcje oferowane przez cmd są niewystarczające lub nie chcecie się bawić z tym niedomagającym terminalem polecam zainstalowanie _Windows Terminal_ lub _Alacritty_.
 
 ### Aktualizacja do nowszej wersji
 Aby zaktualizować program zachowując swoją konfigurację i zawartość pliku "karty.txt" wystarczy wpisać:<br>
 `python update.py`<br>
-Nowa wersja zostanie zapisana w folderze z programem jako "anki-dodawacz-{wersja}".
+Nowa wersja zostanie zapisana w folderze wyżej jako "anki-dodawacz-{wersja}".
 
 Obecnie `update.py` działa na Linuxie i Windowsie 10.
 
