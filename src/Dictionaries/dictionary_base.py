@@ -18,7 +18,7 @@ import sys
 from itertools import zip_longest
 from shutil import get_terminal_size
 
-from src.Dictionaries.utils import wrap_lines, get_term_size
+from src.Dictionaries.utils import wrap_lines, get_config_terminal_size
 from src.colors import R, BOLD, END, def1_c, syn_c, exsen_c, pos_c, etym_c, phrase_c, \
     err_c, delimit_c, def2_c, defsign_c, index_c, phon_c, poslabel_c, inflection_c
 from src.data import config, labels, \
@@ -180,7 +180,7 @@ class Dictionary:
         #   column's text width,
         #   number of columns,
         #   division remainder used to fill the last column
-        full_textwidth, height = get_term_size()
+        full_textwidth, height = get_config_terminal_size()
         approx_lines = sum(
             2 if op in ('LABEL', 'ETYM')
             or
@@ -367,13 +367,14 @@ class Dictionary:
                 if WINDOWS:
                     # There has to exist a less hacky way of doing `clear -x` on Windows.
                     # I'm not sure if it works on terminals other than cmd and WT
-                    h = get_terminal_size().lines
+                    height = get_terminal_size().lines
                     if ON_WINDOWS_CMD:
                         # Move cursor up and down
-                        sys.stdout.write(f'\033[{h}B\033[{h}A')
+                        h = height * '\n'
+                        sys.stdout.write(f'{h}\033[{height}A')
                     else:
-                        h = (h - 1) * '\n'
                         # Use Windows ANSI sequence to clear the screen
+                        h = (height - 1) * '\n'
                         sys.stdout.write(f'{h}\033[2J')
 
                     sys.stdout.flush()
@@ -400,7 +401,7 @@ class Dictionary:
             'phrase': phrase_c.color, 'pz': '', 'pos': pos_c.color,
             'etym': etym_c.color, 'audio': '', 'recording': '',
         }
-        textwidth, _ = get_term_size()
+        textwidth, _ = get_config_terminal_size()
         delimit = textwidth * HORIZONTAL_BAR
 
         print(f'\n{delimit_c.color}{delimit}')

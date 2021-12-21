@@ -21,7 +21,7 @@ from requests.exceptions import ConnectionError as RqConnectionError
 from requests.exceptions import Timeout
 
 from src.colors import err_c
-from src.data import config, USER_AGENT, PREPOSITIONS
+from src.data import config, USER_AGENT, PREPOSITIONS, ON_WINDOWS_CMD
 
 request_session = requests.Session()
 request_session.headers.update(USER_AGENT)
@@ -96,11 +96,14 @@ def hide(content, phrase):
         return ' '.join(temp)
 
 
-def get_term_size():
+def get_config_terminal_size():
     term_width, term_height = get_terminal_size()
     config_width, flag = config['textwidth']
 
     if flag == '* auto' or config_width > term_width:
+        # cmd always reports wrong width.
+        if ON_WINDOWS_CMD:
+            term_width -= 1
         return term_width, term_height
     return config_width, term_height
 
