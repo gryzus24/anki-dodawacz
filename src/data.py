@@ -6,7 +6,7 @@ from json import JSONDecodeError
 
 from colorama import Fore
 
-ROOT_DIR = os.path.split(os.path.abspath(os.path.dirname(__file__)))[0]
+ROOT_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
 try:
     with open(os.path.join(ROOT_DIR, 'config/config.json'), 'r') as cf:
@@ -27,6 +27,10 @@ LINUX = sys.platform.startswith('linux')
 MAC = sys.platform.startswith('darwin')
 POSIX = os.name == 'posix'
 WINDOWS = os.name == 'nt'
+if WINDOWS:
+    ON_WINDOWS_CMD = os.getenv('SESSIONNAME') == 'Console'
+else:
+    ON_WINDOWS_CMD = False
 
 HORIZONTAL_BAR = '─'
 
@@ -95,7 +99,7 @@ command_to_help_dict = {
         'Szerokość tekstu do momentu zawinięcia',
         '{liczba >= 1|auto}'),
     '-colviewat': (
-        'Zawijaj słownik w kolumny jeżeli zajmie więcej niż {0 - 100}% ekranu',
+        'Zawijaj słownik w kolumny jeżeli zajmie więcej niż x% ekranu',
         '{liczba >= 0}'),
     '-columns': (
         'Ilość kolumn',

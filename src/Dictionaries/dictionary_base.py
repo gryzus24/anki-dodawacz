@@ -21,7 +21,8 @@ from shutil import get_terminal_size
 from src.Dictionaries.utils import wrap_lines, get_term_size
 from src.colors import R, BOLD, END, def1_c, syn_c, exsen_c, pos_c, etym_c, phrase_c, \
     err_c, delimit_c, def2_c, defsign_c, index_c, phon_c, poslabel_c, inflection_c
-from src.data import config, labels, SEARCH_FLAGS, WINDOWS, POSIX, HORIZONTAL_BAR
+from src.data import config, labels, \
+    SEARCH_FLAGS, WINDOWS, POSIX, HORIZONTAL_BAR, ON_WINDOWS_CMD
 
 
 def expand_labels(label_set):
@@ -364,19 +365,17 @@ class Dictionary:
         try:
             if config['top']:
                 if WINDOWS:
-                    # TODO:
-                    #  Find a reliable way to do `clear -x` on every terminal on Windows.
-                    #
-                    # This is roughly equivalent to `clear -x`.
-                    # This hack works only on cmd.
-                    # Moves cursor down and up.
-                    # >>> h = get_terminal_size().lines
-                    # >>> sys.stdout.write(f'\033[{h}B\033[{h}A')
-                    # >>> sys.stdout.flush()
-                    # And this one works great on Windows Terminal and partially
-                    # on cmd, as it clears the screen but also the buffer.
-                    h = (get_terminal_size().lines - 1) * '\n'
-                    sys.stdout.write(f'{h}\033[2J')
+                    # There has to exist a less hacky way of doing `clear -x` on Windows.
+                    # I'm not sure if it works on terminals other than cmd and WT
+                    h = get_terminal_size().lines
+                    if ON_WINDOWS_CMD:
+                        # Move cursor up and down
+                        sys.stdout.write(f'\033[{h}B\033[{h}A')
+                    else:
+                        h = (h - 1) * '\n'
+                        # Use Windows ANSI sequence to clear the screen
+                        sys.stdout.write(f'{h}\033[2J')
+
                     sys.stdout.flush()
                 elif POSIX:
                     # Even though `clear -x` is slower than using
