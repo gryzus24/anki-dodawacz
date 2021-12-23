@@ -1,5 +1,7 @@
 # Ankidodawacz
 
+![Polish](https://github.com/gryzus24/anki-dodawacz/blob/main/README.pl.md) | ![English](https://github.com/gryzus24/anki-dodawacz/blob/main/README.md)
+
 Otwarty na konfigurację program do szybkiego tworzenia i dodawania monojęzycznych kart do Anki.<br>
 Obecnie obsługiwane słowniki:
 - American Heritage Dictionary
@@ -193,4 +195,4 @@ wiele do życzenia.
 
 Jestem otwarty na wszelkie sugestie i uwagi. Mam nadzieję, że narzędzie okaże się pomocne.
 
-Użyte biblioteki: BeautifulSoup4, colorama, lxml, requests
+Użyte biblioteki: BeautifulSoup4 (MIT), colorama (BSD), lxml (BSD), requests (Apache 2.0)
