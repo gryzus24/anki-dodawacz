@@ -1,200 +1,135 @@
 # Ankidodawacz
 
-Otwarty na konfigurację program do szybkiego tworzenia i dodawania monojęzycznych kart do Anki.<br>
-Obecnie obsługiwane słowniki:
+A command line English dictionaries look-up tool with Anki integration.<br>
+Currently available dictionaries:
 - American Heritage Dictionary
 - Lexico
 - Farlex Dictionary of Idioms
 - WordNet 3.1
 
-## Instalacja:
+## Installation:
+
+Go to Releases (tags) -> Tags
 
 ### Windows:
 
-[link do pobrania .zip](https://github.com/gryzus24/anki-dodawacz/archive/refs/tags/v1.3.0-1.zip)
-:-
+Download and extract the zip archive.
 
-Pobieramy .zip i rozpakowujemy.
+To open the program we need Python 3.7 or newer installed.<br>
+You can download Python from https://www.python.org/downloads/<br>
+During installation tick the "Add Python to PATH" box.
 
-##### Po rozpakowaniu archiwum:
+##### After Python installation:<br>
 
-Aby uruchomić program potrzebujemy Pythona 3.7 lub nowszego.<br>
-Pythona pobieramy z oficjalnej strony: https://www.python.org/downloads/<br>
-Przy instalacji zaznaczamy "Add python to PATH"
-
-##### Po zainstalowaniu Pythona:<br>
-
-Otwieramy terminal (cmd na windowsie) i pobieramy wymagane biblioteki wpisując:<br>
+Win+R and type `cmd`, copy and paste:<br>
 `pip install beautifulsoup4 colorama lxml requests`<br>
+to download required libraries.
 
-Następnie wpisujemy:<br>
-`cd <ścieżka do folderu z programem>`<br>
-np. `cd Pobrane`
+Go to the program's directory:<br>
+`cd <path to extracted archive>`<br>
+e.g. `cd Downloads\anki-dodawacz-v1.3.1-1`
 
-Gdy jesteśmy w folderze z programem, aby uruchomić Ankidodawacza wpisujemy:<br>
+To run the program use:<br>
 `python ankidodawacz.py`<br>
 
-Na Windowsie kliknięcie w ikonkę też powinno otworzyć program, jednak przy wystąpieniu jakiegokolwiek nieoczekiwanego
-błędu, okno zamknie się natychmiastowo.
+You can also create a shortcut and run the program this way, however in case of an unexpected error the program will crash immediately.
 
 ### Linux:
 
-[link do pobrania .tar.gz](https://github.com/gryzus24/anki-dodawacz/archive/refs/tags/v1.3.0-1.tar.gz)
-:-
+Download the .tar.gz archive and extract:
+`tar -xvf <tar.gz file> -C <output path>`
 
-Pobieramy archiwum tar.gz i rozpakowujemy.
+Most GNU/Linux distributions come with Python preinstalled.
 
-Możemy użyć komendy:<br>
-`tar -xvf <pobrany tar.gz> -C <ścieżka gdzie chcemy rozpakować>`
-
-Na większości dystrybucji odpowiednia wersja Pythona powinna być już zainstalowana.
-
-Instalujemy wymagane biblioteki:<br>
+Install required libraries:<br>
 `pip install beautifulsoup4 colorama lxml requests`
 
-Otwieramy za pomocą Pythona:<br>
+Run the program:<br>
 `python ankidodawacz.py`
 
-## Konfiguracja i działanie programu
+## Usage
 
-Cykl dodawanie jest bardzo prosty. Wyszukujemy słowo, przechodzimy przez pola wyboru elementów takich jak definicje,
-przykłady czy też synonimy. Następnie program zapisuje nasz wybór do pliku "karty.txt", który możemy zaimportować do
-Anki.
+Search for a word and choose elements by their index. 
+Program will save your choice in a `cards.txt` file which can be
+imported directly into Anki provided your note has at least 9 vacant fields.
 
 ![image](https://user-images.githubusercontent.com/82805891/136019942-4f6dc200-880c-49cc-92af-f36659312b2d.png)
 
-Audio domyślnie zapisywane jest w folderze "Karty_audio" w folderze z programem.<br>
-Możemy zmienić ścieżkę zapisu audio, jak i wszystkie domyślne ustawienia używając komend.
+AnkiConnect lets you directly add cards to Anki without the need to import the `cards.txt` file manually.
+To configure AnkiConnect follow "Configuration" tab from `--help`.
 
-Najlepiej dodać ścieżkę do folderu "collection.media", aby audio było automatycznie odtwarzane w Anki bez potrzeby
-ręcznego przenoszenia zawartości "Karty_audio".<br>
-Aby to zrobić możemy ręcznie wpisać ścieżkę używając komendy `-ap [ścieżka]`<br>
-albo wpisać `-ap auto`, aby program wyszukał ścieżkę do "collection.media" automatycznie.
+To let Anki know where to look for audio files use `-ap auto` command.
 
-Aby wyświetlić pełną listę ustawień wpisujemy `-config` lub `-conf`.<br>
-Aby sprawdzić działanie i użycie danej komendy wpisujemy jej nazwę.
+To configure the program further use `-conf` or `-config` command.
+To display usage information for a command just type its name.
 
 ![image](https://user-images.githubusercontent.com/82805891/136023117-961a04a5-34c1-4a12-bc7a-c7d9c58f2f10.png)
 
-Wygląd jest w dużej mierze zależny od naszego emulatora terminala.
-Jeżeli opcje oferowane przez cmd są niewystarczające lub nie chcecie się bawić z tym niedomagającym terminalem polecam zainstalowanie _Windows Terminal_ lub _Alacritty_.
+If you are using Windows install Windows Terminal or any other terminal emulator than cmd for better user experience.
 
-### Aktualizacja do nowszej wersji
-Aby zaktualizować program zachowując swoją konfigurację i zawartość pliku "karty.txt" wystarczy wpisać:<br>
+### Updating
+To update the program to the latest tag with your `cards.txt` and configuration preserved use:
 `python update.py`<br>
-Nowa wersja zostanie zapisana w folderze wyżej jako "anki-dodawacz-{wersja}".
+New version will be saved in the parent directory as "anki-dodawacz-{version}".
 
-Obecnie `update.py` działa na Linuxie i Windowsie 10.
+Currently `update.py` works on Linux and Windows.
 
-## Konfiguracja Anki i AnkiConnect
+### Anki notes
 
-Program interfejsuje z Anki za pomocą AnkiConnect.<br>
-Używanie AnkiConnect przynosi wiele korzyści, takich jak:
+Program will try to guess where to put certain elements based on the names of the fields in your note.
+Names it definitely understands are:
 
-- bezpośrednie dodawanie kart do Anki bez potrzeby importowania pliku "karty.txt"
-- bezpośrednie dodawanie customowych notatek
-- dodawanie tagów (etykiet) do kart
-- dodatkowe opcje sprawdzania duplikatów
-
-#### Instalacja AnkiConnect:
-
-- Otwieramy Anki
-- Wchodzimy w "Narzędzia" -> "Dodatki"
-- Klikamy "Pobierz dodatki..."
-- Kopiujemy kod dodatku z https://ankiweb.net/shared/info/2055492159 i restartujemy Anki
-
-Teraz możemy przejść do Ankidodawacza i wpisać `-ankiconnect on`<br>
-Zanim jednak będziemy mogli dodawać karty, musimy sprecyzować do jakiej talii mają one trafiać.<br>
-Aby to zrobić, wpisujemy `-deck [nazwa talii]`
-
-Teraz została nam do ustawienia tylko notatka.<br>
-
-### Konfiguracja notatek:
-
-Notatkę ustawiamy wpisując `-note [nazwa notatki]`
-
-Program spróbuje automatycznie wykryć jakie informacje trafiają w poszczególne pola.<br>
-Jeżeli jednak coś pójdzie nie tak to musimy zmienić nazwy pól naszej notatki w Anki tak, aby były zrozumiałe dla
-dodawacza. Obsługiwane pola to:
-
-- Definicja
-- Synonimy
-- Przykłady
-- Słowo
-- Przykładowe zdanie
-- Części mowy
-- Etymologia
+- Definition
+- Synonyms
+- Sentence
+- Phrase
+- Usage (examples)
+- Parts of speech (pos)
+- Etymology
 - Audio
-- Nagranie
+- Recording
 
-### Dodawanie przykładowych notatek:
+### Custom notes
 
-Jeżeli nie chcesz używać swojej własnej notatki to możesz skorzystać z mojej przykładowej.<br>
-Aby dodać przykładową notatkę wpisujemy `--add-note gryzus-std`
-
-Notatka posiada tryb jasny oraz ciemny.
+You can add our custom notes to Anki if AnkiConnect is installed.
+To do that use `--add-note` command.
 
 ![image](https://user-images.githubusercontent.com/82805891/122020987-c8b45180-cdb4-11eb-9c1f-20fbfb44d0d4.png)
 
-Link do notatki "gryzus-std" w formie tekstowej: https://pastebin.com/9ZfWMpNu
+"gryzus-std" raw: https://pastebin.com/9ZfWMpNu
 
-## Importowanie ręczne
+## FFmpeg recording
 
-Aby zaimportować karty do Anki, na górnym pasku klikamy w "Plik" i "Importuj..." lub "Ctrl+Shift+I".
+The program offers a simple FFmpeg interface to record audio from the desktop.
 
-- Nawigujemy do folderu z Ankidodawaczem i wybieramy plik "karty.txt".
-- Wybieramy nasz typ notatki i talię
-- Klikamy w "Pola oddzielone o" i wpisujemy "\t"
-- Wybieramy "Ignoruj linie, których pierwsze pole pasuje do istniejącej notatki"
-- I na końcu ważne, aby zaznaczyć "Zezwól na HTML w polach"
-- Jeżeli nie sprecyzowaliśmy ścieżki zapisu audio w Ankidodawaczu, musimy przenieść zawartość folderu "Karty_audio" do
-  folderu "collection.media", aby audio było odtwarzane podczas powtarzania
+Supported configurations:<br>
 
-![image](https://user-images.githubusercontent.com/82805891/130698679-70fe0803-c98d-405e-82fe-d540675d0d65.png)
-
-Gdy raz ustawimy opcje importowania w Anki, nie musimy się przejmować ich ponownym ustawianiem. Ścieżka importu też
-powinna zostać zapisana.
-
-Po dodaniu kart możemy usunąć zawartość pliku "karty.txt", jednak gdy zostawimy go to kolejna próba importowania nie
-powinna zostać skompromitowane dzięki opcji "Ignoruj linie, których pierwsze pole pasuje do istniejącej notatki". Warto
-o tym pamiętać.
-
-## Konfiguracja nagrywania
-
-Ankidodawacz jest także prostym interfejsem do programu _ffmpeg_.<br>
-Możemy:
-
-- nagrywać audio bezpośrednio z naszego komputera lub mikrofonu
-- ustawiać jakość nagrywania
-
-Aktualnie obsługiwane systemy operacyjne i konfiguracja audio:<br>
-
-- Linux:    pulseaudio (z alsą)<br>
+- Linux:    pulseaudio (alsa)<br>
 - Windows:  dshow
 
-Oficjalna strona ffmpeg: https://www.ffmpeg.org/download.html
+Official FFmpeg site: https://www.ffmpeg.org/download.html
 
-Aby nagrywać audio musimy przenieść program _ffmpeg_ do folderu z programem lub dodać jego ścieżkę do $PATH. Następnie
-wybieramy urządzenie audio za pomocą którego chcemy nagrywać audio wpisując `--audio-device`.
+To use _ffmpeg_ first we have to add the executable to the system's $PATH or place it alongside `ankidodawacz.py` file in the program root directory.
+To choose your preferred audio device use `--audio-device` command.
+To start the recording add the `-rec` option after the search query.
 
-Jeżeli nie widzimy interesującego nas urządzenia na Windowsie:
+If recording doesn't work on Windows:
+- Open "Audio mixer" in the sound setting.
+- Tick the "Listen to this device" in its properties.
+- Allow applications to use the microphone.
 
-- Włączamy "Miks stereo" w ustawieniach dźwięku
-- Zaznaczamy "nasłuchuj tego urządzenia"
-- Zezwalamy aplikacjom na wykorzystywanie mikrofonu
+On GNU/Linux use your distribution's package manager to install _ffmpeg_.
+Setup:
+- Type `-rec`.
+- During recording go to the pulseaudio Audio mixer -> Recording.
+- Change the "Lavf" device to use your output device, speakers, DAC, etc.
 
-Na Linuxie jest duża szansa, że _ffmpeg_ jest zainstalowany i jest dostępny w $PATH.<br>
-Więc jedyne co musimy zrobić to:<br>
+## Code
 
-- Wpisujemy `-rec` w Ankidodawaczu
-- podczas nagrywania wchodzimy w mikser dźwięku pulseaudio -> Nagrywanie
-- zmieniamy urządzenie monitorujące dla Lavf na urządzenie wybrane przy konfiguracji za pomocą `--audio-device`
+This is my first programming project, feel free to contribute.
 
-## Kod
-
-Jestem początkujący, jeżeli chodzi o programowanie. Jest to mój pierwszy projekt i jakość kodu z pewnością pozostawia
-wiele do życzenia.
-
-Jestem otwarty na wszelkie sugestie i uwagi. Mam nadzieję, że narzędzie okaże się pomocne.
-
-Użyte biblioteki: BeautifulSoup4, colorama, lxml, requests
+Third-party libraries used: 
+BeautifulSoup4 (MIT),
+colorama (BSD),
+lxml (BSD),
+requests (Apache 2.0)
