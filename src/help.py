@@ -135,10 +135,9 @@ Komendy wpływające na sposób wyświetlania informacji.
 
 -textwrap  {{justify|regular|-}}   zawijanie tekstu
 -textwidth {{liczba >= 1|auto}}    szerokość tekstu do momentu zawinięcia
--columns   {{liczba >= 1|auto}}    ilość kolumn
--colviewat {{liczba >= 0|-}}       zawijanie słownika w kolumny jeżeli zajmie
-                                   więcej niż x% ekranu, aby wyłączyć widok
-                                   kolumnowy możesz wpisać np. 1000
+-columns   {{liczba >= 1|auto}}    (maksymalna) ilość kolumn
+-colviewat {{liczba >= 0}}         zawijanie słownika w kolumny jeżeli zajmie
+                                   więcej niż x% ekranu
 -indent    {{liczba >= 0}}         szerokość wcięć
 
 {BOLD}{'[ Komendy ukrywania i filtrowania ]'.center(79, '─')}{END}

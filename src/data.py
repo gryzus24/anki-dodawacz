@@ -102,7 +102,7 @@ command_to_help_dict = {
         'Zawijaj słownik w kolumny jeżeli zajmie więcej niż x% ekranu',
         '{liczba >= 0}'),
     '-columns': (
-        'Ilość kolumn',
+        '(Maksymalna) ilość kolumn',
         '{liczba >= 1|auto}'),
     '-indent': (
         'Szerokość wcięć',
