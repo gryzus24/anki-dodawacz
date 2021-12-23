@@ -1,5 +1,7 @@
 # Ankidodawacz
 
+![Polish](https://github.com/gryzus24/anki-dodawacz/blob/main/README.pl.md) | ![English](https://github.com/gryzus24/anki-dodawacz/blob/main/README.md)
+
 A command line dictionary look-up tool with Anki integration.<br>
 Currently available dictionaries:
 - American Heritage Dictionary
