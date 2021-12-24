@@ -1,268 +1,212 @@
-from src.colors import R, BOLD, END
+from src.colors import R, BOLD, END, GEX
 
 
 def quick_help():
     print(f"""\
-{R}{BOLD}{'[ Wyszukiwanie ]'.center(79, '─')}{END}
-UŻYCIE:
-  Szukaj $ HASŁO [-OPCJE ]...
+{R}{BOLD}{'[ Search ]'.center(79, '─')}{END}
+USAGE:
+  Search $ QUERY [OPTIONS...]
 
-Po wpisaniu hasła zapytany zostanie pierwszy słownik (domyślnie AH Dictionary)
- i rozpocznie się cykl dodawania karty, jeżeli hasło nie zostanie znalezione
- zapytany będzie następny słownik (domyślnie Lexico).
+First it tries to query `-dict` (AH Dictionary).
+If word not found, queries `-dict2` (Lexico).
 
-Aby bezpośrednio dodać przykładowe zdanie i wyszukać hasło użyjemy:
- >> Szukaj $ Your <beautiful> example sentence goes here.
- Tym sposobem wyszukamy słowo "beautiful" i wraz z nim dodamy resztę zdania
- ze słowem pogrubionym i zakolorowanym na zielono.
+OPTIONS:
+  -ahd          query AH Dictionary
+  -l, --lexico  query Lexico
+  -i, --idioms  query Farlex Idioms
 
-{BOLD}{'[ Pola dodawania elementów ]'.center(79, '─')}{END}
--s     pomija dodawanie zdania
--sc    pomija dodawanie karty
+  To search for a definition of a specific part of speech use its name as
+  an option.
+  e.g.  [QUERY] -noun        : searches for labels starting with "noun"
+        [QUERY] -adj -slang  : starting with "adj" and "slang"
 
-Znak ">" przy indeksie definicji oznacza, że definicja jest główną definicją,
-wszystkie definicje pod główną definicją są jej poddefinicjami.
+  To search for every label except some specific label use an "!" before
+  an option.
+  e.g.  [QUERY] -!tr -!intr  : searches for everything except labels starting
+                               with "tr" and "intr"
 
-Aby wybrać definicję lub poddefinicję wpisz numer jej indeksu.
-Aby wybrać więcej definicji oddziel wybór przecinkiem lub
-użyj przedziałów oddzielając wybrane indeksy dwukropkiem.
+  Other options:
+  -               search for labelled definitions
+  -!              search for unlabelled definitions
+  -f, -fsubdefs   filter out subdefinitions
 
-np. 3          dodaje trzeci element
-np. 2,5        dodaje drugi i piąty element
-np. 2:5        dodaje drugi, trzeci, czwarty i piąty element
-0 lub -s       pomija dodawanie elementu
--1, all        dodaje wszystkie elementy
--all           dodaje wszystkie elementy zaczynając od ostatniego
+For more options and commands see `--help-commands` or `-config`.
 
-Możemy także doprecyzować wybór używając '.' po numerze definicji lub
-przedziale. W ten sposób rozdzielamy wybraną definicję na każdym napotkanym
-specyfikatorze.
+To escape the query or embed it inside a sentence use <QUERY>, this will also
+make the word {BOLD}{GEX}Emphasized{R}{END}.
+e.g.  >> Search $ This is a sentence with a word <embedded> inside.
 
-Specyfikatory dla:
-  definicji:    ','
-  części mowy:  nowa linia
-  etymologii:   ','
-  synonimów:    ','
+{BOLD}{'[ Dictionary and fields ]'.center(79, '─')}{END}
+">" next to a definition means it's the main definition and definitions below
+are its subdefinitions.
 
- Np. "Extremely unreasonable, incongruous, or inappropriate."
-  wpisanie "1.1" doda: "Extremely unreasonable.",
-  a wpisanie "1.2" doda samo: "incongruous."
+To add an element (definition, part of speech, synonym) type its index or a
+position within a header.
+  3         add third element
+  2,5       add second and third element
+  2:5       add second, third, fourth and fifth element
+  -1, all   add all elements
+  -all      add all elements in a reverse order
+  0 or -s   skip element
+  -sc       skip card
 
- Możemy łączyć specyfikatory zaraz po kropce:
-  np. "1.231" doda: "Incongruous, extremely unreasonable, or inappropriate."
+To make a more specific choice follow the chosen element's index by a "." and
+a number. This will split the element on every "specifier" character and let
+you choose which parts you want to keep.
+Specifiers:
+  definitions:     ","
+  parts of speech: "\\n" (new line)
+  etymologies:     ","
+  synonyms:        ","
 
- Oraz mapować je na przedziały:
-  np. "1:8.1" doda pierwszą część ośmiu pierwszych definicji.
-  np. "all.2" doda drugą część wszystkich definicji.
+ e.g. "Extremely unreasonable, incongruous, or inappropriate."
+  type "1.1" to add "Extremely unreasonable.",
+  type "1.2" to add "incongruous.",
+  type "1.231" to add "Incongruous, extremely unreasonable, or inappropriate."
 
- Aby dodać własny tekst w pola definicji wystarczy zacząć wpisywanie od "/"
-  np. "/dwa grzyby 123" spowoduje dodaniem "dwa grzyby 123"
+Or not less valid:
+  "1:8.1" to add the first part of the first eight elements.
+  "all.2" to add the second part of all the elements.
 
- Wpisanie czegokolwiek niespełniającego zasad pomija dodawanie karty.
+To add your own text to the field precede it with a "/".
 
-{BOLD}{'[ Konfiguracja ]'.center(79, '─')}{END}
-Szybka konfiguracja programu, pozwoli na automatyczne dodawanie wymowy i kart
- do Anki.
+{BOLD}{'[ Audio and Anki configuration ]'.center(79, '─')}{END}
+{BOLD}1.{END} use `-ap auto` or `-ap {{path}}` to add "collection.media" path so that the
+   program knows where to save audio files.
+{BOLD}2.{END} open Anki and install AnkiConnect.
+{BOLD}3.{END} specify the deck `-deck {{deck name}}`
+{BOLD}4.{END} add a premade note `--add-note` or specify your own `-note {{note name}}`
+{BOLD}5.{END} enable AnkiConnect `-ankiconnect on`
 
-{BOLD}1.{END} Wpisujemy: "--audio-path auto"
-     wybieramy ścieżkę do "collection.media" naszego użytkownika Anki.
-     Jeżeli opcja "auto" nie działa wpisujemy ścieżkę manualnie.
-{BOLD}2.{END} Otwieramy Anki.
-{BOLD}3.{END} Instalujemy dodatek "AnkiConnect".
-{BOLD}4.{END} Wpisujemy: "-deck {{nazwa talii}}"
-     wybieramy talię używaną do dodawania kart.
-{BOLD}5.{END} Wpisujemy: "--add-note"
-     wybieramy notatkę używaną do dodawania kart:
-       "--add-note {{numer notatki|nazwa notatki}}"
-     Możesz także używać swojej własnej notatki.
-{BOLD}6.{END} Wpisujemy: "-ankiconnect on".
-
-Aby wyświetlić pełną listę opcji wpisujemy:
- "-conf" lub "-config"
-Wpisanie komendy wyświetli informacje o jej użyciu.
+To see more options type `-conf` or `-config`.
+Type command's name to display usage.
 
 {BOLD}{79 * '─'}{END}
--conf, -config     wyświetla pełną listę opcji
---help-commands    wyświetla informacje o komendach
---help-bulk        wyświetla informacje o masowym dodawaniu
---help-recording   wyświetla informacje o nagrywaniu\n""")
+-conf, -config     show current configuration and more options
+--help-commands    show full command help
+--help-bulk        show bulk adding help
+--help-recording   show recording help\n""")
 
 
 def commands_help():
     print(f"""\
-{R}{BOLD}{'[ Komendy dodawania ]'.center(79, '─')}{END}
-Wpisanie komendy wyświetli informacje o jej użyciu.
+Type command's name to display usage.
 
-{BOLD}[Komenda]      [włącza|wyłącza]{END}
--pz            pole przykładowego zdania
--def           pole definicji
--exsen         pole przykładów
--pos           pole części mowy
--etym          pole etymologii
--syn           pole synonimów
--all           zmienia wartości powyższych komend
+{R}{BOLD}{'[ Field configuration ]'.center(79, '─')}{END}
+Disabling a field means we won't be asked for input, the program will make the
+choice for us. This behavior can be changed through the `-cd` command.
 
--tsc           priorytet tworzenia Targeted Sentence Cards
-               brak przykładowego zdania zastąp:
-                 -      : niczym
-                 std    : przykładami
-                 strict : przykładami lub frazą
+{BOLD}[Commands]    [on|off]{END}
+-pz            sentence field
+-def           definition field
+-exsen         example sentence field
+-pos           part of speech field
+-etym          etymology field
+-syn           synonym field
+-all           change above fields state
 
--formatdefs    formatowanie definicji:
-                 każda definicja jest indeksowana
-                 każda następna dodana definicja staje się słabiej widoczna
--savecards     zapisywanie kart do pliku "karty.txt"
--createcards   tworzenie/dodawanie kart
+-tsc           targeted sentence card creation priority
+               empty sentence field replace with:
+                -      : don't replace
+                std    : an example sentence
+                strict : an example sentence or a phrase
 
--ap, --audio-path {{ścieżka|auto}}   ścieżka zapisu plików audio
-                                   (domyślnie "Karty_audio")
-Ścieżki "collection.media":
- Na Linuxie:
-  "~/.local/share/Anki2/{{Użytkownik Anki}}/collection.media"
- Na Macu:
-  "~/Library/Application Support/Anki2/{{Użytkownik Anki}}/collection.media"
- Na Windowsie:
-  "C:\\{{Users}}\\{{Użytkownik}}\\AppData\\Roaming\\Anki2\\{{Użytkownik Anki}}\\collection.media"
+-formatdefs    definition formatting:
+                every definition is indexed
+                subsequent definitions get more opaque/transparent
+-savecards     save cards to "cards.txt"
+-createcards   create/add cards
+
+-ap, --audio-path {{path|auto}}   audio save location (default "Cards_audio")
+
+"collection.media" paths on different OSes:
+GNU/Linux:
+  "~/.local/share/Anki2/{{Anki Username}}/collection.media"
+Mac:
+  "~/Library/Application Support/Anki2/{{Anki Username}}/collection.media"
+Windows:
+  "C:\\Users\\{{Username}}\\AppData\\Roaming\\Anki2\\{{Anki Username}}\\collection.media"
    (%appdata%)
 
-{BOLD}{'[ Komendy wyświetlania ]'.center(79, '─')}{END}
-Komendy wpływające na sposób wyświetlania informacji.
+{BOLD}{'[ Display configuration ]'.center(79, '─')}{END}
+-top                             move dictionaries to the top of the window
+-displaycard                     display the created card
+-showadded                       show added elements' indexes
+-showexsen                       show example sentences in a dictionary
 
--top                             wyrównywanie słownika do górnej krawędzi okna
--displaycard                     wyświetlanie podglądu karty
--showadded                       pokazywanie dodawanych elementów
--showexsen                       pokazywanie przykładów w słowniku
+-textwrap  {{justify|regular|-}}   text wrapping style
+-textwidth {{n >= 1|auto}}         width of the window
+-columns   {{n >= 1|auto}}         (maximum) number of columns
+-colviewat {{n >= 0}}              wrap into columns when the dictionary takes
+                                 more than x% of the screen
+-indent    {{n >= 0}}              width of definitions' indent
 
--textwrap  {{justify|regular|-}}   zawijanie tekstu
--textwidth {{liczba >= 1|auto}}    szerokość tekstu do momentu zawinięcia
--columns   {{liczba >= 1|auto}}    (maksymalna) ilość kolumn
--colviewat {{liczba >= 0}}         zawijanie słownika w kolumny jeżeli zajmie
-                                   więcej niż x% ekranu
--indent    {{liczba >= 0}}         szerokość wcięć
+{BOLD}{'[ Hide and filter configuration ]'.center(79, '─')}{END}
+Hiding a phrase means replacing it with "..." (default)
 
-{BOLD}{'[ Komendy ukrywania i filtrowania ]'.center(79, '─')}{END}
-Ukrywanie hasła to zamiana wyszukiwanego słowa na "..." (domyślnie)
-Filtrowanie to usunięcie elementów spełniających określone warunki
+-upz           hide in sentences
+-udef          hide in definitions
+-uexsen        hide in examples
+-usyn          hide in synonyms
+-upreps        hide prepositions
+-keependings   keep hidden word endings (~ed, ~ing etc.)
+-hideas        hide with (default "...")
 
--upz            ukrywanie hasła w zdaniu
--udef           ukrywanie hasła w definicjach
--uexsen         ukrywanie hasła w przykładach
--usyn           ukrywanie hasła w synonimach
--upreps         ukrywanie przyimków
--keependings    zachowywanie końcówek odmienionych słów (~ed, ~ing etc.)
--hideas         znaki służące jako ukrywacz
+-fsubdefs      filter out subdefinitions (definitions without ">")
+-fnolabel      filter out unlabelled definitions
 
--fsubdefs       filtrowanie poddefinicji (definicji bez ">")
--fnolabel       filtrowanie definicji niezawierających etykiet części mowy
+-toipa         translate AH Dictionary phonetic spelling into IPA
 
--toipa          tłumaczenie zapisu fonetycznego używanego w AHD do IPA
+{BOLD}{'[ Sources and recording configuration]'.center(79, '─')}{END}
+-dict  {{ahd|lexico|idioms}}        primary dictionary
+-dict2 {{ahd|lexico|idioms|-}}      fallback dictionary
+-thes  {{wordnet|-}}                thesaurus
+-audio {{ahd|lexico|diki|auto|-}}   audio server
 
-{BOLD}{'[ Komendy źródeł i nagrywania ]'.center(79, '─')}{END}
--dict  {{ahd|lexico|idioms}}        słownik pytany jako pierwszy
--dict2 {{ahd|lexico|idioms|-}}      słownik pytany jako drugi
--thes  {{wordnet|-}}                słownik synonimów
--audio {{ahd|lexico|diki|auto|-}}   serwer audio
+--audio-device           configure a recording device
+-rec, --record           start recording (saves recording, without adding it to
+                         the card)
+[QUERY] -rec, --record   start recording, (saves recording, adds it to the
+                         "Recording" field on the card and queries the
+                         dictionary
+-recqual {{0-9}}           recording quality:
+                           0 : best
+                           9 : worst
+                           4 : recommended
 
---audio-device            konfiguracja urządzeń do nagrywania audio
--rec, --record            rozpoczyna nagrywanie z wykorzystaniem wybranego
-                          urządzenia audio
-                          (zapisuje nagranie, ale nie dodaje audio na kartę)
+{BOLD}{'[ AnkiConnect configuration ]'.center(79, '─')}{END}
+-ankiconnect           use AnkiConnect to add cards
+-duplicates            allow duplicates
+-dupescope             look for duplicates in:
+                        deck, collection
 
-[hasło] -rec, --record    rozpoczyna nagrywanie, dodaje do nazwy pliku
-                          wyjściowego [hasło], po zakończeniu nagrywania
-                          wyszukuje [hasło] i dodaje nagranie na kartę
+-note {{note name}}      note used for adding cards
+-deck {{deck name}}      deck used for adding cards
+-tags {{tags|-}}         tags (separate by a comma)
 
--recqual {{0-9}}            jakość nagrywania:
-                            0 : najlepsza
-                            9 : najgorsza
-                            4 : rekomendowana
+--add-note {{id|note}}   add a custom note to the current user's collection
+-refresh               refresh cached notes (if the note has been changed
+                       in Anki)
 
-{BOLD}{'[ Komendy AnkiConnect ]'.center(79, '─')}{END}
--ankiconnect            bezpośrednie dodawanie kart do Anki poprzez AnkiConnect
--duplicates             zezwolenie na dodawanie duplikatów
--dupescope              określa zasięg sprawdzania duplikatów:
-           deck          w obrębie talii
-           collection    w obrębie całej kolekcji (wszystkich talii)
+-b, --browse [query]   open the card browser with "added:1" or [query]
 
--note {{notatka}}         notatka używana do dodawania kart
--deck {{talia}}           talia do której trafiają karty
--tags {{tagi|-}}          tagi dodawane wraz z kartą
-                        (aby dodać więcej tagów oddziel je przecinkiem)
-
---add-note {{notatka}}    dodaje notatkę do kolekcji zalogowanego użytkownika
--refresh                odświeża informacje o aktualnej notatce
-                        (użyć jeżeli pola notatki zostały zmienione w Anki)
-
--b, --browse [komenda]  otwiera wyszukiwarkę kart w Anki z komendą 'added:1'
-                        pokazując ostatnio dodawane karty
-
-{BOLD}{'[ Pozostałe komendy ]'.center(79, '─')}{END}
+{BOLD}{'[ Misc. commands ]'.center(79, '─')}{END}
 --delete-last,
---delete-recent      usuwa ostatnio dodawane karty z pliku karty.txt
+--delete-recent      remove the last card from the "cards.txt" file
 
--c, -color           zmiana koloru poszczególnych elementów
--cd                  zmiana domyślnych wartości
--fo, --field-order   zmiana kolejności zapisywania i wyświetlania pól
+-c, -color           change particular elements' colors
+-cd                  change default values
+-fo, --field-order   change the order in which cards are added and displayed
 
--conf, -config       wyświetla pełną listę opcji i ich konfigurację
---help-bulk          wyświetla informacje o masowym dodawaniu
---help-commands      wyświetla informacje o komendach
---help-recording     wyświetla informacje o nagrywaniu
-
-{BOLD}{'[ Flagi ]'.center(79, '─')}{END}
-Flagi pozwalają na włączenie/wyłączenie komendy lub opcji tylko na czas
-jednego cyklu tworzenia karty.
-
-Flagi stawiane są za wyszukiwaną frazą, każda flaga musi być poprzedzona
-myślnikiem i oddzielona spacją, kolejność flag nie ma znaczenia:
-  np. "cave in -idioms", "break -f -tr -n" itd.
-
-{BOLD}Flagi wyszukiwania:{END}
-  ahd         pyta tylko AH Dictionary
-  l, lexico   pyta tylko Lexico
-  i, idioms   pyta tylko Farlex Idioms
-
-{BOLD}Wyszukiwanie ze względu na etykiety:{END}
-  np. "-a"       wyszuka wszystkie etykiety zaczynające się na "a",
-                 czyli "adv., adj., archaic itd."
-  a np. "-adj"   wszystkie zaczynające się na "adj", czyli "adj."
-
-  Przykładowe etykiety:
-    n.       noun
-    v.       verb
-    tr.      transitive
-    intr.    intransitive
-    adj.     adjective
-    adv.     adverb
-    prep.    preposition
-    conj.    conjunction
-    interj.  interjection
-    pref.    prefix
-    suff.    suffix
-    abbr.    abbreviation
-    archaic
-    slang
-    ''       (brak etykiety)
-
-Aby odwrócić znaczenie flag (tylko dla etykiet), poprzedzamy je wykrzyknikiem.
-  W przeciwieństwie do "-n":
-    "pokaż wszystko zaczynające się na 'n'"
-
-  "-!n" oznacza:
-    "pokaż wszystko, tylko błagam nic zaczynającego się na 'n'"
-
-  Jeżeli podane kryteria nie pasują do żadnych etykiet, zostanie wyświetlony
-  cały słownik.
-
-{BOLD}Pozostałe flagi:{END}
-  -               wyszukuje tylko hasła z etykietami
-  -!              wyszukuje tylko hasła bez etykiet
-  -f, -fsubdefs   włącza filtrowanie poddefinicji\n""")
+-conf, -config       show current configuration and more options
+--help-commands      show full command help
+--help-bulk          show bulk adding help
+--help-recording     show recording help\n""")
 
 
 def bulk_help():
     print(f"""\
-{R}{BOLD}{'[ Masowe dodawanie (bulk) ]'.center(79, '─')}{END}
+{R}{BOLD}{'[ Adding cards in bulk ]'.center(79, '─')}{END}
 Bulk pozwala na dodawanie wielu kart na raz poprzez ustawianie
   domyślnych wartości dodawania.
 
