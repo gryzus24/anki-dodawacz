@@ -129,6 +129,6 @@ To start the recording add the `-rec` option after the search query.
 
 ## Code
 
-This is my first programming project, feel free to contribute if you find the program helpful.
+This is my first programming project, feel free to contribute if you find the program useful.
 
 Third-party libraries used: BeautifulSoup4 (MIT), colorama (BSD), lxml (BSD), requests (Apache 2.0)
