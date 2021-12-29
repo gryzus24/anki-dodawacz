@@ -115,20 +115,20 @@ To use _ffmpeg_ first we have to add the executable to the system's $PATH or pla
 To choose your preferred audio device use `--audio-device` command.
 
 If recording doesn't work on Windows:
-- Open "Audio mixer" in the sound setting.
-- Tick the "Listen to this device" in its properties.
-- Allow applications to use the microphone.
+- open "Audio mixer" in the sound settings
+- tick the "Listen to this device" in the audio mixer properties
+- allow applications to use the microphone
 
-On GNU/Linux use your distribution's package manager to install _ffmpeg_.
+On GNU/Linux use your distribution's package manager to install _ffmpeg_.<br>
 Setup:
-- Type `-rec` into Ankidodawacz.
-- During recording go to the pulseaudio Audio mixer -> Recording.
-- Change the "Lavf" device to use your output device, speakers, DAC, etc.
+- type `-rec` into the program
+- during recording go to the pulseaudio Audio mixer -> Recording
+- instruct the "Lavf" device to use your output device, speakers, DAC, etc.
 
 To start the recording add the `-rec` option after the search query.
 
 ## Code
 
-This is my first programming project, feel free to contribute.
+This is my first programming project, feel free to contribute if you find the program helpful.
 
 Third-party libraries used: BeautifulSoup4 (MIT), colorama (BSD), lxml (BSD), requests (Apache 2.0)
