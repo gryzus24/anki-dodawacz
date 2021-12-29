@@ -105,12 +105,11 @@ To do that use `--add-note` command.
 
 The program offers a simple FFmpeg interface to record audio from the desktop.
 
-Supported configurations:<br>
-
-- Linux:    pulseaudio (alsa)<br>
+Currently supported configurations:
+- Linux:    pulseaudio (alsa)
 - Windows:  dshow
 
-Official FFmpeg site: https://www.ffmpeg.org/download.html
+Official FFmpeg download site: https://www.ffmpeg.org/download.html
 
 To use _ffmpeg_ first we have to add the executable to the system's $PATH or place it alongside `ankidodawacz.py` file in the program's root directory.<br>
 To choose your preferred audio device use `--audio-device` command.
