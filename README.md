@@ -3,11 +3,28 @@
 ![Polish](https://github.com/gryzus24/anki-dodawacz/blob/main/README.pl.md) | ![English](https://github.com/gryzus24/anki-dodawacz/blob/main/README.md)
 
 A command line dictionary look-up tool with Anki integration.<br>
-Currently available dictionaries:
-- American Heritage Dictionary
-- Lexico
-- Farlex Dictionary of Idioms
-- WordNet 3.1
+
+![image](https://user-images.githubusercontent.com/82805891/147771954-d4eda99e-0265-46ca-8ad3-564669368845.png)
+
+## Usage
+
+Search for a word and choose elements by their index.<br>
+Program saves your choice in a `cards.txt` file which can be manually imported or you can use AnkiConnect to add cards directly into Anki.
+
+#### AnkiConnect configuration
+
+1. open Anki and install the AnkiConnect add-on (2055492159)
+2. use `-ap auto` or `-ap {path}` to add "collection.media" path so that the program knows where to save audio files
+3. specify your deck `-deck {deck name}`
+4. add a premade note `--add-note` or specify your own `-note {note name}`
+5. enable AnkiConnect `-ankiconnect on`
+
+To configure the program further use the `-conf` or `-config` command.<br>
+To display usage information for a command just type its name.
+
+![image](https://user-images.githubusercontent.com/82805891/147773917-6d070933-9e4c-4744-b7f0-9e4c9271bc07.png)
+
+If you are using Windows install Windows Terminal or any other than cmd terminal emulator for better user experience.
 
 ## Installation:
 
@@ -49,26 +66,6 @@ Install required libraries:<br>
 Run the program:<br>
 `python ankidodawacz.py`
 
-## Usage
-
-Search for a word and choose elements by their index.<br>
-Program will save your choice in a `cards.txt` file which can be
-imported directly into Anki provided your note has at least 9 vacant fields.
-
-![image](https://user-images.githubusercontent.com/82805891/136019942-4f6dc200-880c-49cc-92af-f36659312b2d.png)
-
-AnkiConnect lets you directly add cards to Anki without the need to import the `cards.txt` file manually.<br>
-To configure AnkiConnect follow "Configuration" tab from `--help`.
-
-To let Anki know where to look for audio files use `-ap auto` command.
-
-To configure the program further use the `-conf` command.<br>
-To display usage information for a command just type its name.
-
-![image](https://user-images.githubusercontent.com/82805891/136023117-961a04a5-34c1-4a12-bc7a-c7d9c58f2f10.png)
-
-If you are using Windows install Windows Terminal or any other than cmd terminal emulator for better user experience.
-
 ### Updating
 To update the program to the latest tag with your `cards.txt` and configuration preserved use:<br>
 `python update.py`
@@ -97,9 +94,9 @@ Names it definitely understands are:
 You can add our custom notes to Anki if AnkiConnect is installed.<br>
 To do that use `--add-note` command.
 
-![image](https://user-images.githubusercontent.com/82805891/122020987-c8b45180-cdb4-11eb-9c1f-20fbfb44d0d4.png)
+![image](https://user-images.githubusercontent.com/82805891/147774842-0f5d9e7e-2fca-4a0c-8f8e-ce4c6294a0b5.png)
 
-"gryzus-std" raw: https://pastebin.com/9ZfWMpNu
+"gryzus-std" note in a copy-pastable form: https://pastebin.com/9ZfWMpNu
 
 ## FFmpeg recording
 
