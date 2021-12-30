@@ -16,6 +16,7 @@
 import datetime
 import os.path
 import subprocess
+import sys
 
 from src.colors import R, YEX, GEX, index_c, err_c
 from src.commands import save_command
@@ -65,8 +66,8 @@ def record(filepath):
     else:
         raise NameError  # os not supported
 
-    print(f'{YEX}Rozpoczęto nagrywanie...\n'
-          f'{R}wciśnij [q], aby zakończyć i zapisać')
+    print(f'{YEX}Recording started...\n'
+          f'{R}press [q] to stop and save')
     result = subprocess.run((
         'ffmpeg',
         '-hide_banner',
@@ -87,16 +88,16 @@ def set_audio_device():
     try:
         audio_devices = find_devices()
         if audio_devices is None:
-            return 'Nagrywanie audio niedostępne na obecnym systemie operacyjnym'
+            return f'Audio recording is not available on {sys.platform!r}'
     except FileNotFoundError:
-        return 'Ffmpeg nie został odnaleziony\n' \
-               'Umieść ffmpeg w folderze z programem lub $PATH'
+        return 'Could not locate FFmpeg\n' \
+               "Place the FFmpeg binary alongside the program or in $PATH"
 
-    print('Wybierz urządzenie do przechwytywania audio poprzez ffmpeg:\n')
+    print('Choose your desktop output device:\n')
     for index, a in enumerate(audio_devices, start=1):
         print(f"{index_c}{index} {R}{a}")
 
-    choice = input('Wybierz urządzenie [1]: ').strip()
+    choice = input('Device [1]: ').strip()
     if not choice:
         choice = 1
     else:
@@ -105,11 +106,11 @@ def set_audio_device():
             if choice < 1 or choice > len(audio_devices):
                 raise ValueError
         except ValueError:
-            return 'Nieprawidłowa wartość, opuszczam konfigurację'
+            return 'Invalid input, leaving...'
 
     audio_device = audio_devices[choice - 1]
     save_command('audio_device', audio_device)
-    print(f'{GEX}Urządzenie przechwytujące audio ustawiono:\n'
+    print(f'{GEX}Chosen device:\n'
           f'{R}{audio_device}\n')
 
 
@@ -135,25 +136,25 @@ def capture_audio(*args):
     try:
         result = record(filepath)
     except NameError:  # if os is not linux or win
-        print(f'{err_c}Nagrywanie audio niedostępne na obecnym systemie operacyjnym')
+        print(f'{err_c}Audio recording is not available on {sys.platform!r}')
         return ''
     except FileNotFoundError:
-        print(f'{err_c}Ffmpeg nie został odnaleziony\n'
-              f'Umieść ffmpeg w folderze z programem lub $PATH')
+        print(f'{err_c}Could not locate FFmpeg\n'
+              "Place the FFmpeg binary alongside the program or in $PATH")
         return ''
 
     if 'Output file is empty' in result.stderr:
-        print(f'{err_c}Nagrywanie nie powiodło się: pusty plik wyjściowy\n'
-              f'Spróbuj nagrać dłuższy odcinek')
+        print(f'{err_c}Recording failed: empty output file\n'
+              'Try recording a longer excerpt')
         subprocess.run(('rm', filepath))
         return ''
     elif 'Queue input is backward in time' in result.stderr:
         pass
     elif result.stderr or result.returncode == 1:
-        print(f'{err_c}Nagrywanie nie powiodło się:')
+        print(f'{err_c}Recording failed:')
         print(result.stderr)
         return ''
 
-    print(f'{GEX}Nagranie pomyślnie zapisane jako:\n'
+    print(f'{GEX}Recorded successfully:\n'
           f'{R}{filepath}')
     return f"[sound:{date}_sentence{metadata}{recording_no}.mp3]"

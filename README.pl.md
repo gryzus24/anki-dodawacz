@@ -56,16 +56,16 @@ Otwieramy za pomocą Pythona:<br>
 ## Konfiguracja i działanie programu
 
 Cykl dodawanie jest bardzo prosty. Wyszukujemy słowo, przechodzimy przez pola wyboru elementów takich jak definicje,
-przykłady czy też synonimy. Następnie program zapisuje nasz wybór do pliku "karty.txt", który możemy zaimportować do
+przykłady czy też synonimy. Następnie program zapisuje nasz wybór do pliku "cards.txt", który możemy zaimportować do
 Anki.
 
 ![image](https://user-images.githubusercontent.com/82805891/136019942-4f6dc200-880c-49cc-92af-f36659312b2d.png)
 
-Audio domyślnie zapisywane jest w folderze "Karty_audio" w folderze z programem.<br>
+Audio domyślnie zapisywane jest w folderze "Cards_audio" w folderze z programem.<br>
 Możemy zmienić ścieżkę zapisu audio, jak i wszystkie domyślne ustawienia używając komend.
 
 Najlepiej dodać ścieżkę do folderu "collection.media", aby audio było automatycznie odtwarzane w Anki bez potrzeby
-ręcznego przenoszenia zawartości "Karty_audio".<br>
+ręcznego przenoszenia zawartości "Cards_audio".<br>
 Aby to zrobić możemy ręcznie wpisać ścieżkę używając komendy `-ap [ścieżka]`<br>
 albo wpisać `-ap auto`, aby program wyszukał ścieżkę do "collection.media" automatycznie.
 
@@ -78,7 +78,7 @@ Wygląd jest w dużej mierze zależny od naszego emulatora terminala.
 Jeżeli opcje oferowane przez cmd są niewystarczające lub nie chcecie się bawić z tym niedomagającym terminalem polecam zainstalowanie _Windows Terminal_ lub _Alacritty_.
 
 ### Aktualizacja do nowszej wersji
-Aby zaktualizować program zachowując swoją konfigurację i zawartość pliku "karty.txt" wystarczy wpisać:<br>
+Aby zaktualizować program zachowując swoją konfigurację i zawartość pliku "cards.txt" wystarczy wpisać:<br>
 `python update.py`<br>
 Nowa wersja zostanie zapisana w folderze wyżej jako "anki-dodawacz-{wersja}".
 
@@ -89,7 +89,7 @@ Obecnie `update.py` działa na Linuxie i Windowsie 10.
 Program interfejsuje z Anki za pomocą AnkiConnect.<br>
 Używanie AnkiConnect przynosi wiele korzyści, takich jak:
 
-- bezpośrednie dodawanie kart do Anki bez potrzeby importowania pliku "karty.txt"
+- bezpośrednie dodawanie kart do Anki bez potrzeby importowania pliku "cards.txt"
 - bezpośrednie dodawanie customowych notatek
 - dodawanie tagów (etykiet) do kart
 - dodatkowe opcje sprawdzania duplikatów
@@ -140,12 +140,12 @@ Link do notatki "gryzus-std" w formie tekstowej: https://pastebin.com/9ZfWMpNu
 
 Aby zaimportować karty do Anki, na górnym pasku klikamy w "Plik" i "Importuj..." lub "Ctrl+Shift+I".
 
-- Nawigujemy do folderu z Ankidodawaczem i wybieramy plik "karty.txt".
+- Nawigujemy do folderu z Ankidodawaczem i wybieramy plik "cards.txt".
 - Wybieramy nasz typ notatki i talię
 - Klikamy w "Pola oddzielone o" i wpisujemy "\t"
 - Wybieramy "Ignoruj linie, których pierwsze pole pasuje do istniejącej notatki"
 - I na końcu ważne, aby zaznaczyć "Zezwól na HTML w polach"
-- Jeżeli nie sprecyzowaliśmy ścieżki zapisu audio w Ankidodawaczu, musimy przenieść zawartość folderu "Karty_audio" do
+- Jeżeli nie sprecyzowaliśmy ścieżki zapisu audio w Ankidodawaczu, musimy przenieść zawartość folderu "Cards_audio" do
   folderu "collection.media", aby audio było odtwarzane podczas powtarzania
 
 ![image](https://user-images.githubusercontent.com/82805891/130698679-70fe0803-c98d-405e-82fe-d540675d0d65.png)
@@ -153,7 +153,7 @@ Aby zaimportować karty do Anki, na górnym pasku klikamy w "Plik" i "Importuj..
 Gdy raz ustawimy opcje importowania w Anki, nie musimy się przejmować ich ponownym ustawianiem. Ścieżka importu też
 powinna zostać zapisana.
 
-Po dodaniu kart możemy usunąć zawartość pliku "karty.txt", jednak gdy zostawimy go to kolejna próba importowania nie
+Po dodaniu kart możemy usunąć zawartość pliku "cards.txt", jednak gdy zostawimy go to kolejna próba importowania nie
 powinna zostać skompromitowane dzięki opcji "Ignoruj linie, których pierwsze pole pasuje do istniejącej notatki". Warto
 o tym pamiętać.
 

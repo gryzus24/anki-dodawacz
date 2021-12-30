@@ -42,36 +42,35 @@ def delete_cards(*args, **kwargs):
         if no_of_deletions < 1:
             raise ValueError
     except ValueError:
-        print(f'{err_c}Liczba kart do usunięcia musi być liczbą {R}>= 1')
+        print(f'{err_c}Number of cards to delete must be an integer >= 1')
         return None
 
     try:
-        with open('karty.txt', 'r') as r:
+        with open('cards.txt', 'r') as r:
             lines = r.readlines()
 
         if no_of_deletions >= len(lines):
-            with open('karty.txt', 'w') as w:
+            with open('cards.txt', 'w') as w:
                 w.write('')
             raise IndexError
     except IndexError:
-        print(f'{YEX}Plik {R}"karty.txt"{YEX} został opróżniony, nie ma co więcej usuwać')
+        print(f'{R}"cards.txt"{YEX} file has been emptied, nothing more to delete')
     except FileNotFoundError:
-        print(f'{err_c}Plik {R}"karty.txt"{err_c} nie istnieje, nie ma co usuwać')
+        print(f'{R}"cards.txt"{err_c} does not exist, nothing to delete')
     except UnicodeDecodeError:  # wolfram caused this
-        print(f'{err_c}Usuwanie karty nie powiodło się z powodu nieznanego znaku (prawdopodobnie w etymologii)')
+        print(f'{err_c}Could not decode a character, card deletion failed')
     except Exception:
-        print(f'{err_c}Coś poszło nie tak podczas usuwania kart,\n'
-              f'ale Karty są {GEX}bezpieczne{R}')
+        print(f'{err_c}Something went wrong, cards are {GEX}safe{R} though')
         raise
     else:
-        print(f'{YEX}Usunięto z pliku {R}"karty.txt"{YEX}:{R}')
+        print(f'{YEX}Deleted cards:{R}')
         for i in range(no_of_deletions):
             card_number = len(lines)
             deleted_line = lines.pop()
             deleted_line = deleted_line.strip().replace('\t', '  ')
-            print(f'Karta {card_number}: "{deleted_line[:66 - len(str(card_number))]}..."')
+            print(f'Card {card_number}: "{deleted_line[:66 - len(str(card_number))]}..."')
 
-        with open('karty.txt', 'w') as w:
+        with open('cards.txt', 'w') as w:
             w.write(''.join(lines))
 
 
@@ -81,19 +80,19 @@ def config_defaults(*args, **kwargs):
 
     bulk_elements = ('def', 'exsen', 'pos', 'etym', 'syn', 'all')
     if bulk_elem not in bulk_elements:
-        return f'Nieprawidłowy element: {R}{bulk_elem}\n' \
-               f'{BOLD}Dostępne elementy:{END}\n' \
+        return f'Unknown field name: {R}{bulk_elem}\n' \
+               f'{BOLD}Field names:{END}\n' \
                f'def, exsen, pos, etym, syn, all\n'
 
     try:
         value = args[2]
     except IndexError:
-        return f'{YEX}Brakuje wartości\n' \
-               f'{R}{cmd} {bulk_elem} {{wartość}}'
+        return f'{YEX}No value provided\n' \
+               f'{R}{cmd} {bulk_elem} {{value}}'
 
     if bulk_elem == 'all':
         values_to_save = [value] * 5
-        print(f'{GEX}Wartości domyślne zapisane dla:')
+        print(f'{GEX}Default values saved:')
         for elem, val in zip(bulk_elements, values_to_save):
             config[f'{elem}_bulk'] = val
             print(f'{R}{elem:6s}: {val}')
@@ -101,10 +100,11 @@ def config_defaults(*args, **kwargs):
         save_config(config)
         print()
     else:
-        print(f"{YEX}Domyślna wartość dla {R}{bulk_elem}{YEX}: {R}{value}")
+        print(f"{YEX}Default value for {R}{bulk_elem}{YEX}: {R}{value}")
         save_command(f'{bulk_elem}_bulk', value)
 
 
+# this is prospective
 def print_field_table():
     p = f'{BOLD}│{END}'
     print(f'{R}{BOLD}╭╴field╶─╴on/off╶─╴show/hide╶─╴default╶╮{END}')
@@ -128,7 +128,7 @@ def print_config_representation():
             t = 1
         save_command('columns', [t, '* auto'])
 
-    sys.stdout.write(f'{R}{BOLD}[config dodawania]     [config wyświetlania]     [domyślne wart.]{END}\n')
+    sys.stdout.write(f'{R}{BOLD}[card creation co.]     [display configur.]     [default values]{END}\n')
     for a, b, c in data.config_columns:
         a = a.replace('[', f'{BOLD}[').replace(']', f']{END}')
         b = b.replace('[', f'{BOLD}[').replace(']', f']{END}')
@@ -157,15 +157,15 @@ def print_config_representation():
         level_a = '\b\b\b\b\b' if '[' in a else ''
         level_b = '\b\b\b\b\b' if '[' in b else ''
 
-        sys.stdout.write(f'{a:13s}{color_a}{str(state_a):10s}{level_a}{R}'
-                         f'{b:15s}{color_b}{str(state_b):11s}{level_b}{R}'
+        sys.stdout.write(f'{a:14s}{color_a}{str(state_a):10s}{level_a}{R}'
+                         f'{b:14s}{color_b}{str(state_b):10s}{level_b}{R}'
                          f'{c:10s}{color_c}{state_c}{R}\n')
 
     sys.stdout.write(f'\n--audio-path: {config["audio_path"]}\n'
                      f'--audio-device: {config["audio_device"]}\n\n'
-                     'konfiguracja domyślnych wartości: "-cd"\n'
-                     'konfiguracja kolorów: "-c"\n'
-                     'konfiguracja pól: "-fo"\n\n')
+                     'default values configuration: "-cd"\n'
+                     'color configuration: "-c"\n'
+                     'field order configuration: "-fo"\n\n')
 
 
 def set_width_settings(*args, message):
@@ -183,7 +183,7 @@ def set_width_settings(*args, message):
             if val < lower:
                 raise ValueError
         except ValueError:
-            return f'Nieprawidłowa wartość: {R}{value}\n' \
+            return f'Invalid value: {R}{value}\n' \
                    f'{cmd} {data.command_to_help_dict[cmd][1]}'
         else:
             print(f'{R}{message}: {GEX}{value}')
@@ -231,21 +231,21 @@ def change_field_order(*args, **kwargs):
 
     first_arg = args[1].lower()
     if first_arg == 'std':
-        return set_field_order('Ustawiono domyślną kolejność pól:', STD_FIELD_ORDER, '3')
+        return set_field_order('STD field order:', STD_FIELD_ORDER, '3')
     elif first_arg == 'tsc':
-        return set_field_order('Ustawiono kolejność pól dla TSC:', TSC_FIELD_ORDER, '1')
+        return set_field_order('TSC field order:', TSC_FIELD_ORDER, '1')
 
     if first_arg not in ('1', '2', '3', '4', '5', '6', '7', '8', '9', 'd', '-'):
         cmd = args[0]
-        return f'Nieprawidłowy argument: {R}{first_arg}\n' \
+        return f'Invalid argument: {R}{first_arg}\n' \
                f'{cmd} {data.command_to_help_dict[cmd][1]}'
 
     try:
         field_name = args[2].lower()
     except IndexError:
         if first_arg == 'd':
-            return 'Brakuje numeru pola'
-        return 'Brakuje nazwy pola'
+            return 'No field number provided'
+        return 'No field name provided'
 
     # two arguments commands
     if first_arg in STD_FIELD_ORDER:  # 1 to 9
@@ -254,12 +254,12 @@ def change_field_order(*args, **kwargs):
             field_order[first_arg] = field_name
             save_command('fieldorder', field_order)
         else:
-            return 'Podano nieprawidłową nazwę pola'
+            return 'Invalid field name provided'
     elif first_arg == 'd':
         if field_name in STD_FIELD_ORDER:
             save_command('fieldorder_d', field_name)
         else:
-            return 'Podano nieprawidłowy numer pola'
+            return 'Invalid field number provided'
 
     display_field_order()
 
@@ -275,8 +275,8 @@ def set_audio_path(*args, message):
         elif MAC:
             tree = os.path.join(os.getenv('HOME'), 'Library/Application Support/Anki2')
         else:
-            return f'Lokalizowanie {R}"collection.media"{err_c} nie powiodło się:\n' \
-                   f'Nieznana ścieżka dla {R}"collection.media"{err_c} na {sys.platform!r}'
+            return f'Locating {R}"collection.media"{err_c} failed:\n' \
+                   f'Unknown path for {R}"collection.media"{err_c} on {sys.platform!r}'
 
         # searches the tree
         collections = []
@@ -286,16 +286,16 @@ def set_audio_path(*args, message):
                 print(f'{index_c}{len(collections)} {R}{path}')
 
         if not collections:
-            return f'Lokalizowanie {R}"collection.media"{err_c} nie powiodło się:\n' \
-                   'Brak wyników'
+            return f'Locating {R}"collection.media"{err_c} failed:\n' \
+                   'No results'
 
-        print(f'\n{YEX}Wybierz ścieżkę')
+        print(f'\n{YEX}Pick a path')
         try:
-            path_choice = int(input('[0-Anuluj]: '))
+            path_choice = int(input('[0-Cancel]: '))
             if path_choice < 1 or path_choice > len(collections):
                 raise ValueError
         except ValueError:
-            return 'Wybieranie ścieżki audio przerwane'
+            return 'Leaving...'
         else:
             path = collections[path_choice - 1]
     else:
@@ -303,7 +303,7 @@ def set_audio_path(*args, message):
         if path.startswith('~'):
             path = path.replace('~', os.getenv('HOME'), 1)
 
-    print(f'{YEX}{message} ustawiona:\n'
+    print(f'{YEX}{message} set to:\n'
           f'{R}"{path}"')
     save_command('audio_path', path)
 
@@ -338,7 +338,7 @@ def set_text_value_commands(*args, message):
         print(f'{R}{message}: {value}')
         save_command(cmd, value)
     else:
-        return f'Nieprawidłowa wartość: {R}{value}\n' \
+        return f'Invalid value: {R}{value}\n' \
                f'{cmd} {data.command_to_help_dict[cmd][1]}'
 
 
@@ -346,23 +346,23 @@ def set_colors(*args, **kwargs):
     cmd, element = args[0], args[1]
 
     if element not in data.color_elements_to_msg:
-        return f'Nieprawidłowy element: {R}{element}\n' \
-               f'Aby wyświetlić dostępne elementy wpisz "{cmd}"'
+        return f'Unknown element: {R}{element}\n' \
+               f'To display available elements use `{cmd}`'
 
     try:
         color = args[2].lower()
     except IndexError:
-        return f'{YEX}Brakuje koloru\n' \
-               f'{R}{cmd} {element} {{kolor}}'
+        return f'{YEX}No color provided\n' \
+               f'{R}{cmd} {element} {{color}}'
 
     if color not in data.str_colors_to_color:
-        return f'Nieprawidłowy kolor: {R}{color}\n' \
-               f'Aby wyświetlić dostępne kolory wpisz "{cmd}"'
+        return f'Unknown color: {R}{color}\n' \
+               f'To display available colors use `{cmd}`'
 
     msg = data.color_elements_to_msg[element]
     thiscolor = data.str_colors_to_color[color]
 
-    print(f'{R}{msg} ustawiony na: {thiscolor}{color}')
+    print(f'{R}{msg} set to: {thiscolor}{color}')
     save_command(f'{element}_c', color)
 
 
@@ -372,7 +372,7 @@ def boolean_commands(*args, message):
     try:
         value = data.bool_values_dict[args[1].lower()]
     except KeyError:
-        return f'{err_c}Nieprawidłowa wartość, użyj:\n' \
+        return f'{err_c}Invalid value, use:\n' \
                f'{R}{cmd} {{on|off}}'
 
     print(f'{R}{message}: {data.bool_colors_dict[value]}{value}')
@@ -385,7 +385,7 @@ def boolean_commands(*args, message):
 
 
 def show_available_colors():
-    print(f'{R}{BOLD}Dostępne kolory:{END}')
+    print(f'{R}{BOLD}Available colors:{END}')
     for color, thiscolor in data.str_colors_to_color.items():
         if color == 'reset':
             print(f'{R}{color}\n')
@@ -398,22 +398,22 @@ def show_available_colors():
 
 def color_command():
     print(f"""\
-{R}{BOLD}[Elementy]    [Zmiana koloru]{END}
-def1          {def1_c}nieparzystych definicji i definicji idiomów{R}
-def2          {def2_c}parzystych definicji{R}
-defsign       {defsign_c}znaku głównej definicji (>){R}
-exsen         {exsen_c}przykładów pod definicjami{R}
-pos           {pos_c}części mowy w słowniku{R}
-etym          {etym_c}etymologii w słowniku{R}
-syn           {syn_c}synonimów na WordNecie{R}
-syngloss      {syngloss_c}definicji przy synonimach{R}
-index         {index_c}indeksów w słowniku{R}
-phrase        {phrase_c}wyszukanego w słowniku hasła{R}
-phon          {phon_c}pisowni fonetycznej{R}
-poslabel      {poslabel_c}etykiet części mowy{R}
-inflection    {inflection_c}odmian hasła{R}
-error         {err_c}błędów{R}
-attention     {YEX}zwracającego uwagę{R}
-success       {GEX}udanej operacji{R}
-delimit       {delimit_c}odkreśleń{R}\n""")
+{R}{BOLD}[Elements]   [Changes the color of]{END}
+def1         {def1_c}odd definitions and idiom definitions{R}
+def2         {def2_c}even definitions{R}
+defsign      {defsign_c}definition sign (>){R}
+exsen        {exsen_c}example sentences{R}
+pos          {pos_c}parts of speech{R}
+etym         {etym_c}etymologies{R}
+syn          {syn_c}synonyms{R}
+syngloss     {syngloss_c}synonym definitions{R}
+index        {index_c}indexes{R}
+phrase       {phrase_c}phrase{R}
+phon         {phon_c}phonetic spelling{R}
+poslabel     {poslabel_c}part of speech labels{R}
+inflection   {inflection_c}inflections and additional label info{R}
+error        {err_c}errors{R}
+attention    {YEX}attention drawing{R}
+success      {GEX}successful operation{R}
+delimit      {delimit_c}delimiters/separators{R}\n""")
     show_available_colors()

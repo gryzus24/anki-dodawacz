@@ -34,7 +34,7 @@ if LINUX:
     import readline
     readline.read_init_file()
 
-__version__ = 'v1.3.2-1'
+__version__ = 'v1.3.2-2'
 
 required_arg_commands = {
     # commands that take arguments
@@ -74,7 +74,7 @@ no_arg_commands = {
 
 def search_interface():
     while True:
-        word = input('Szukaj $ ').strip()
+        word = input('Search $ ').strip()
         if not word:
             continue
 
@@ -107,7 +107,7 @@ def search_interface():
 
             # Print additional information
             if cmd in ('-ap', '--audio-path'):
-                print(f'{BOLD}Aktualna ścieżka:\n'
+                print(f'{BOLD}Current audio path:\n'
                       f'{END}{config["audio_path"]}\n')
             elif cmd == '--add-note':
                 anki.show_available_notes()
@@ -116,7 +116,7 @@ def search_interface():
             elif cmd in ('-c', '-color'):
                 c.color_command()
             elif cmd == '-cd':
-                print(f'{BOLD}Dostępne elementy:{END}\n'
+                print(f'{BOLD}Field names:{END}\n'
                       f'def, exsen, pos, etym, syn, all\n')
         else:
             err = method(*args, message=message)
@@ -128,13 +128,11 @@ def manage_audio(dictionary_name, audio_url, phrase, flags):
     def from_diki():
         flag = ''
         for f in flags:
-            if f in ('n', 'v', 'adj', 'noun', 'verb', 'adjective'):
-                flag = f
+            if f in ('n', 'v', 'a', 'adj', 'noun', 'verb', 'adjective'):
+                flag = '-' + f[0]
                 break
         url = diki_audio(phrase, flag)
-        if url:
-            return save_audio(url, url.split('/')[-1])
-        return ''
+        return save_audio(url, url.split('/')[-1]) if url else ''
 
     server = config['audio']
     if server == '-':
@@ -147,8 +145,8 @@ def manage_audio(dictionary_name, audio_url, phrase, flags):
     if server == 'auto' or dictionary_name == server:
         if audio_url:
             return save_audio(audio_url, audio_url.split('/')[-1])
-        print(f'{err_c}Słownik nie posiada audio dla {R}{phrase}\n'
-              f'{YEX}Sprawdzam diki...')
+        print(f'{err_c}The dictionary does not have the pronunciation for {R}{phrase}\n'
+              f'{YEX}Querying diki...')
         return from_diki()
 
     if server == 'ahd':
@@ -165,7 +163,7 @@ def manage_audio(dictionary_name, audio_url, phrase, flags):
 
 def save_card_to_file(field_values):
     try:
-        with open('karty.txt', 'a', encoding='utf-8') as f:
+        with open('cards.txt', 'a', encoding='utf-8') as f:
             f.write(f'{field_values[config["fieldorder"]["1"]]}\t'
                     f'{field_values[config["fieldorder"]["2"]]}\t'
                     f'{field_values[config["fieldorder"]["3"]]}\t'
@@ -176,10 +174,10 @@ def save_card_to_file(field_values):
                     f'{field_values[config["fieldorder"]["8"]]}\t'
                     f'{field_values[config["fieldorder"]["9"]]}\n')
     except (NameError, KeyError):
-        print(f'{err_c}Dodawanie karty do pliku nie powiodło się\n'
-              f'Spróbuj przywrócić domyślne ustawienia pól wpisując {R}-fo default\n')
+        print(f'{err_c}Could not save the card to a file\n'
+              f'Try restoring the default field order {R}`-fo {{std|tsc}}`\n')
     else:
-        print(f'{GEX}Karta pomyślnie zapisana do pliku\n')
+        print(f'{GEX}Card successfully saved to a file\n')
 
 
 def manage_dictionaries(_phrase, flags):
@@ -218,13 +216,13 @@ def manage_dictionaries(_phrase, flags):
         'lexico': ask_lexico,
         'idioms': ask_farlex
     }
-    print(f'{YEX}Szukam w drugim słowniku...')
+    print(f'{YEX}Querying the fallback dictionary...')
     dictionary = second_dicts[config['dict2']](_phrase, flags=flags)
     if dictionary is not None:
         dictionary.show()
         return dictionary
     if config['dict'] != 'idioms' and config['dict2'] != 'idioms':
-        print(f"{YEX}Aby zapytać słownik idiomów wpisz: {R}'{_phrase} -i'")
+        print(f"{YEX}To ask the idioms dictionary use {R}`{_phrase} -i`")
 
 
 def format_definitions(definitions):
@@ -247,14 +245,14 @@ def format_definitions(definitions):
 
 
 def main():
-    if config['audio_path'] == 'Karty_audio':
-        # Providing an explicit path solves an occasional PermissionError on Windows.
-        t = os.path.join(ROOT_DIR, 'Karty_audio')
+    if config['audio_path'] == 'Cards_audio':
+        # Providing the absolute path solves an occasional PermissionError on Windows.
+        t = os.path.join(ROOT_DIR, 'Cards_audio')
         if not os.path.exists(t):
             os.mkdir(t)
 
-    print(f'{BOLD}- Dodawacz kart do Anki {__version__} -{END}\n'
-          'Wpisz "--help", aby wyświetlić pomoc\n\n')
+    print(f'{BOLD}- Anki card generator {__version__} -{END}\n'
+          'type `-h` for usage and configuration\n\n')
 
     while True:
         field_values = {
@@ -345,7 +343,7 @@ def main():
             if content and config[f'u{elem}']:
                 field_values[elem] = hide(content, phrase)
 
-        if config['displaycard']:
+        if config['cardpreview']:
             if dictionary.display_card(field_values) == 1:
                 continue
         print()
@@ -370,6 +368,6 @@ if __name__ == '__main__':
     try:
         raise SystemExit(main())
     except (KeyboardInterrupt, EOFError):
-        print('\nUnicestwiony')
+        print()
     finally:
         request_session.close()

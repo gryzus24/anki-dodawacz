@@ -71,7 +71,7 @@ class FarlexIdioms(Dictionary):
         self._format_and_print_dictionary(buffer, textwidth, ncols, last_col_fill)
 
     def input_cycle(self):
-        def_field = input_field('def', 'Wybierz definicje')
+        def_field = input_field('def', 'Choose definitions')
         chosen_defs, def_choices = def_field(self.definitions, auto_choice='1')
         if chosen_defs is None:
             return None
@@ -80,7 +80,7 @@ class FarlexIdioms(Dictionary):
         phrase = self.phrases[phrase_choice - 1]
 
         auto_choice = self.to_auto_choice(def_choices, 'DEF')
-        exsen_field = input_field('exsen', 'Wybierz przykłady', specifier_split='<br>')
+        exsen_field = input_field('exsen', 'Choose example sentences', specifier_split='<br>')
         chosen_exsen, _ = exsen_field(self.example_sentences, auto_choice)
         if chosen_exsen is None:
             return None
@@ -99,7 +99,7 @@ def ask_farlex(query, **ignore):
 
     relevant_content = soup.find('section', {'data-src': 'FarlexIdi'})
     if relevant_content is None:
-        print(f'{err_c}Nie znaleziono {R}"{query}"{err_c} w Farlex Idioms')
+        print(f'{err_c}Could not find {R}"{query}"{err_c} in Farlex Idioms')
         return None
 
     farlex = FarlexIdioms()

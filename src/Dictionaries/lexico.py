@@ -28,7 +28,7 @@ class Lexico(Dictionary):
         super().__init__()
 
     def input_cycle(self):
-        def_field = input_field('def', 'Wybierz definicje')
+        def_field = input_field('def', 'Choose definitions')
         chosen_defs, def_choices = def_field(self.definitions, auto_choice='1')
         if chosen_defs is None:
             return None
@@ -44,13 +44,13 @@ class Lexico(Dictionary):
             audio = ''
 
         auto_choice = self.to_auto_choice(def_choices, 'DEF')
-        exsen_field = input_field('exsen', 'Wybierz przykłady')
+        exsen_field = input_field('exsen', 'Choose example sentences')
         chosen_exsen, _ = exsen_field(self.example_sentences, auto_choice)
         if chosen_exsen is None:
             return None
 
         auto_choice = self.to_auto_choice(choices_by_headers, 'ETYM')
-        etym_field = input_field('etym', 'Wybierz etymologie')
+        etym_field = input_field('etym', 'Choose etymologies')
         chosen_etyms, _ = etym_field(self.etymologies, auto_choice)
         if chosen_etyms is None:
             return None
@@ -141,8 +141,8 @@ def ask_lexico(query, flags='', _previous_query=''):
     main_div = soup.find('div', class_='entryWrapper')
     if main_div is None:  # lexico denied access
         import time
-        print(f'{err_c}Lexico doświadczyła zbyt wielu zapytań na raz...\n'
-              f'Spróbuj ponownie za 1-5 min.')
+        print(f'{err_c}Lexico could not handle this many requests...\n'
+              f'Try again in 1-5 minutes')
         time.sleep(2.5)
         raise SystemExit(1)
 
@@ -150,7 +150,7 @@ def ask_lexico(query, flags='', _previous_query=''):
     if page_check.get_text(strip=True) == 'HomeEnglish':
         revive = main_div.find('a', class_='no-transition')
         if revive is None:
-            print(f'{err_c}Nie znaleziono {R}"{query}"{err_c} w Lexico')
+            print(f'{err_c}Could not find {R}"{query}"{err_c} in Lexico')
             return None
         else:
             revive = revive.get('href')
@@ -190,7 +190,7 @@ def ask_lexico(query, flags='', _previous_query=''):
             if before_phrase:
                 before_phrase = False
                 if _previous_query and phrase_ != _previous_query:
-                    lexico.add(('NOTE', f' Wyniki dla {phrase_c}{phrase_}'))
+                    lexico.add(('NOTE', f' Results for {phrase_c}{phrase_}'))
             else:
                 lexico.add(('HEADER', HORIZONTAL_BAR))
 

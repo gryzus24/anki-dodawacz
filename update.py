@@ -11,7 +11,7 @@ from requests.exceptions import Timeout
 
 from ankidodawacz import __version__
 from ankidodawacz import config, R, GEX, YEX, err_c
-from src.data import ROOT_DIR, WINDOWS, LINUX
+from src.data import ROOT_DIR, WINDOWS, LINUX, ON_WINDOWS_CMD
 
 
 class Exit(Exception):
@@ -19,7 +19,7 @@ class Exit(Exception):
         print(f'{err_c}{err_msg}')
         # Sleep to prevent terminal window from closing instantaneously
         # when running the script by double clicking the file on Windows
-        if WINDOWS:
+        if ON_WINDOWS_CMD:
             import time
             time.sleep(2)
         raise SystemExit(1)
@@ -30,19 +30,19 @@ def get_request(session):
         try:
             response = session.get(url, **kwargs)
         except Timeout:
-            raise Exit('Github nie odpowiada.')
+            raise Exit('Github is not responding.')
         except RqConnectionError:
-            raise Exit('Połączenie z serwerem zostało zerwane.')
+            raise Exit('Server refused to connect.')
         except ConnectionError:
-            raise Exit('Nie udało się połączyć z serwerem,\n'
-                       'sprawdź swoje połączenie i spróbuj ponownie.')
+            raise Exit('Could not establish a connection,\n'
+                       'check your Internet connection and try again.')
         except Exception:
-            print(f'{err_c}Wystąpił nieoczekiwany błąd.')
+            print(f'{err_c}An unexpected error occurred.')
             raise
         else:
             if response.status_code != 200:
-                raise Exit('Nie udało się pozyskać danych z repozytorium.\n'
-                           'Przerywam aktualizację...')
+                raise Exit('Could not retrieve the package.\n'
+                           'Non 200 status code.')
             return response
 
     return wrapper
@@ -57,29 +57,29 @@ def main():
     except Exception:
         # .json() may raise multiple `DecodeError` type exceptions.
         # [0] may raise IndexError, in either case program should abort.
-        raise Exit('Nie udało się pozyskać tagów.\n'
-                   'Przerywam aktualizację...')
+        raise Exit('Could not retrieve tags.\n'
+                   'Aborting the installation...')
 
     if latest_tag['name'] == __version__:
-        print(f'{GEX}Korzystasz z najnowszej wersji ({__version__}).')
+        print(f'{GEX}You are using the latest version ({__version__}).')
         return 0
 
     out_dir_name = f'anki-dodawacz-{latest_tag["name"]}'
     out_dir_path = os.path.join(os.path.dirname(ROOT_DIR), out_dir_name)
     if os.path.exists(out_dir_path):
-        raise Exit(f'Folder o nazwie {out_dir_name!r} już istnieje.\n'
-                   f'Przerywam aktualizację...')
+        raise Exit(f'Directory {out_dir_name!r} already exists.\n'
+                   f'Aborting the installation...')
 
     if LINUX or WINDOWS:
         new_release_url = latest_tag['tarball_url']
     else:
         # There are too much os calls in this script. I'm not sure if it works on macOS.
-        raise Exit(f'Automatyczna aktualizacja niedostępna na {sys.platform!r}.')
+        raise Exit(f'update.py script does not work on {sys.platform!r}.\n')
 
-    print(f'{GEX}:: {R}Pobieram archiwum...')
+    print(f'{GEX}:: {R}Downloading the package...')
     archive = safe_get(new_release_url)
 
-    print(f'{GEX}:: {R}Rozpakowuję...')
+    print(f'{GEX}:: {R}Extracting...')
     tfile = tempfile.NamedTemporaryFile(delete=False)
     try:
         # We cannot use the NamedTemporaryFile as a context manager because Windows
@@ -96,11 +96,11 @@ def main():
                 os.rmdir(out_dir_path)
             except OSError:  # In case tar gets interrupted,
                 pass         # otherwise the directory should be empty.
-            raise Exit('Błąd podczas rozpakowywania archiwum.')
+            raise Exit('Could not extract archive.')
     finally:
         os.remove(tfile.name)
 
-    print(f"{GEX}:: {R}Przenoszę zawartość 'config.json'...")
+    print(f"{GEX}:: {R}Copying 'config.json'...")
     with open(os.path.join(out_dir_path, 'config/config.json'), 'r') as f:
         new_config = json.load(f)
         for key, val in config.items():
@@ -108,27 +108,27 @@ def main():
     with open(os.path.join(out_dir_path, 'config/config.json'), 'w') as f:
         json.dump(new_config, f, indent=0)
 
-    if os.path.exists('karty.txt'):
-        print(f"{GEX}:: {R}Przenoszę zawartość 'karty.txt'...")
+    if os.path.exists('cards.txt'):
+        print(f"{GEX}:: {R}Copying 'cards.txt'...")
         with \
-                open(os.path.join(out_dir_path, 'karty.txt'), 'w') as new_cards, \
-                open('karty.txt', 'r') as cards:
+                open(os.path.join(out_dir_path, 'cards.txt'), 'w') as new_cards, \
+                open('cards.txt', 'r') as cards:
             new_cards.writelines(cards.readlines())
 
-    if os.path.exists('Karty_audio') and config['audio_path'] == 'Karty_audio':
-        print(f"{YEX}:: {R}Zawartość folderu 'Karty_audio' musi zostać przeniesiona manualnie.")
+    if os.path.exists('Cards_audio') and config['audio_path'] == 'Cards_audio':
+        print(f"{YEX}:: {R}The 'Cards_audio' directory has to be moved manually.")
 
-    print(f'\n{GEX}Aktualizacja zakończona pomyślnie.\n'
-          f'Program zapisany w: {out_dir_path!r}')
+    print(f'\n{GEX}Updated successfully\n'
+          f'Program saved to {out_dir_path!r}')
 
 
 if __name__ == '__main__':
     try:
         e = main()
-        if WINDOWS:
+        if ON_WINDOWS_CMD:
             import time
             time.sleep(2)
         raise SystemExit(e)
     except (KeyboardInterrupt, EOFError):
-        print('\nUnicestwiony')
+        print()
         raise SystemExit

@@ -29,7 +29,7 @@ class AHDictionary(Dictionary):
         super().__init__()
 
     def input_cycle(self):
-        def_field = input_field('def', 'Wybierz definicje')
+        def_field = input_field('def', 'Choose definitions')
         chosen_defs, def_choices = def_field(self.definitions, auto_choice='1')
         if chosen_defs is None:
             return None
@@ -45,19 +45,19 @@ class AHDictionary(Dictionary):
             audio = ''
 
         auto_choice = self.to_auto_choice(def_choices, 'DEF')
-        exsen_field = input_field('exsen', 'Wybierz przykłady', specifier_split=';')
+        exsen_field = input_field('exsen', 'Choose example sentences', specifier_split=';')
         chosen_exsen, _ = exsen_field(self.example_sentences, auto_choice)
         if chosen_exsen is None:
             return None
 
         auto_choice = self.to_auto_choice(choices_by_header, 'POS')
-        pos_field = input_field('pos', 'Wybierz części mowy', connector=' | ', specifier_split=' |')
+        pos_field = input_field('pos', 'Choose parts of speech', connector=' | ', specifier_split=' |')
         chosen_pos, _ = pos_field(self.parts_of_speech, auto_choice)
         if chosen_pos is None:
             return None
 
         auto_choice = self.to_auto_choice(choices_by_header, 'ETYM')
-        etym_field = input_field('etym', 'Wybierz etymologie')
+        etym_field = input_field('etym', 'Choose etymologies')
         chosen_etyms, _ = etym_field(self.etymologies, auto_choice)
         if chosen_etyms is None:
             return None
@@ -96,7 +96,6 @@ def ask_ahdictionary(query, flags=''):
     def definition_cleanup(definition):
         rex = definition.lstrip('1234567890. a')
         rex = rex.split(' See Usage Note at')[0]
-        rex = rex.split(' See Synonyms at')[0]
         for letter in 'bcdefghijklmn':
             rex = rex.replace(f":{letter}. ", ": *")
             rex = rex.replace(f".{letter}. ", ". *")
@@ -191,7 +190,7 @@ def ask_ahdictionary(query, flags=''):
         return None
 
     if soup.find('div', {'id': 'results'}).text == 'No word definition found':
-        print(f'{err_c}Nie znaleziono {R}"{query}"{err_c} w AH Dictionary')
+        print(f'{err_c}Could not find {R}"{query}"{err_c} in AH Dictionary')
         return None
 
     ahd = AHDictionary()
@@ -247,7 +246,7 @@ def ask_ahdictionary(query, flags=''):
         if before_phrase:
             before_phrase = False
             if phrase.lower() != query.lower():
-                ahd.add(('NOTE', f' Wyniki dla {phrase_c}{phrase}'))
+                ahd.add(('NOTE', f' Results for {phrase_c}{phrase}'))
         else:
             ahd.add(('HEADER', HORIZONTAL_BAR))
 

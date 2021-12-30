@@ -15,13 +15,12 @@ OPTIONS:
   -l, --lexico  query Lexico
   -i, --idioms  query Farlex Idioms
 
-  To search for a definition of a specific part of speech use its name as
-  an option.
+  To search for definitions with specific labels use the starting part of
+  label's name as an option.
   e.g.  [QUERY] -noun        : searches for labels starting with "noun"
         [QUERY] -adj -slang  : starting with "adj" and "slang"
 
-  To search for every label except some specific label use an "!" before
-  an option.
+  To search for everything except some label use an "!" before an option.
   e.g.  [QUERY] -!tr -!intr  : searches for everything except labels starting
                                with "tr" and "intr"
 
@@ -34,13 +33,13 @@ For more options and commands see `--help-commands` or `-config`.
 
 To escape the query or embed it inside a sentence use <QUERY>, this will also
 make the word {BOLD}{GEX}Emphasized{R}{END}.
-e.g.  >> Search $ This is a sentence with a word <embedded> inside.
+e.g. >> Search $ This is a sentence with a word <embedded> inside.
 
 {BOLD}{'[ Dictionary and fields ]'.center(79, '─')}{END}
 ">" next to a definition means it's the main definition and definitions below
 are its subdefinitions.
 
-To add an element (definition, part of speech, synonym) type its index or a
+To add an element (definition, part of speech, synonym) type its index or
 position within a header.
   3         add third element
   2,5       add second and third element
@@ -130,7 +129,7 @@ Windows:
 
 {BOLD}{'[ Display configuration ]'.center(79, '─')}{END}
 -top                             move dictionaries to the top of the window
--displaycard                     display the created card
+-cardpreview                     preview the created card
 -showadded                       show added elements' indexes
 -showexsen                       show example sentences in a dictionary
 
@@ -138,7 +137,7 @@ Windows:
 -textwidth {{n >= 1|auto}}         width of the window
 -columns   {{n >= 1|auto}}         (maximum) number of columns
 -colviewat {{n >= 0}}              wrap into columns when the dictionary takes
-                                 more than x% of the screen
+                                 more than n% of the screen
 -indent    {{n >= 0}}              width of definitions' indent
 
 {BOLD}{'[ Hide and filter configuration ]'.center(79, '─')}{END}
@@ -182,7 +181,7 @@ Hiding a phrase means replacing it with "..." (default)
 
 -note {{note name}}      note used for adding cards
 -deck {{deck name}}      deck used for adding cards
--tags {{tags|-}}         tags (separate by a comma)
+-tags {{tags|-}}         Anki tags (separated by commas)
 
 --add-note {{id|note}}   add a custom note to the current user's collection
 -refresh               refresh cached notes (if the note has been changed
@@ -194,8 +193,8 @@ Hiding a phrase means replacing it with "..." (default)
 --delete-last,
 --delete-recent      remove the last card from the "cards.txt" file
 
--c, -color           change particular elements' colors
--cd                  change default values
+-c, -color           change elements' colors
+-cd                  change default field values
 -fo, --field-order   change the order in which cards are added and displayed
 
 -conf, -config       show current configuration and more options
@@ -206,96 +205,77 @@ Hiding a phrase means replacing it with "..." (default)
 
 def bulk_help():
     print(f"""\
-{R}{BOLD}{'[ Adding cards in bulk ]'.center(79, '─')}{END}
-Bulk pozwala na dodawanie wielu kart na raz poprzez ustawianie
-  domyślnych wartości dodawania.
+{R}{BOLD}{'[ Input fields and default values ]'.center(79, '─')}{END}
+You can create cards from single words or lists of words faster by changing
+default field values and disabling input fields.
 
-Domyślne wartości wyświetlane są w nawiasach kwadratowych przy prompcie.
-" Wybierz definicje [1]: "
-                   {BOLD}--^{END}
-Domyślnie, domyślne ustawienia dodawania to "auto" dla każdego elementu.
+By default every field default value is set to "auto" which picks etymologies,
+parts of speech and examples according to the chosen definitions.
 
--cd, --config-defaults   rozpoczyna pełną konfigurację domyślnych wartości
+When input fields are disabled, program doesn't prompt the user for input, but
+makes the choice based on input fields' default values.
 
-Możemy zmieniać domyślne wartości pojedynczych elementów
-lub wszystkich na raz używając "all"
-Elementy: def, pos, etym, syn, psyn, pidiom, all
+You can disable all input fields through the `-all off` command.
+To change default field values use the `-cd {{field name}} {{value}}` command.
+e.g. `-cd def 1:5`  - add first five definitions
+     `-cd etym 0`   - don't add etymologies
+     `-cd all auto` - restore everything to "auto"
 
--cd {{element}} {{wartość}}
-np. "-cd etym 0", "-cd def 1:5", "--config-bulk syn 1:4.1" itd.
+{BOLD}{'[ Creating cards from lists of words ]'.center(79, '─')}{END}
+By disabling every input field (`-all off`) the only thing you need to do is
+enter the desired word to create a card, thereby to add multiple words you
+need a list of words which you can paste into the program.
+example list:
+  gush          by pasting this list the program will treat it as if it was
+  glib          user input so it will add "gush, glib, gunk, glen and goal"
+  gunk          one by one.
+  glen
+  goal
 
-Aby domyślne wartości zostały wykorzystywane przy dodawaniu
-  musimy wyłączyć pola na input.
+If you enable one of the fields, for example the sentence field (`-pz on`),
+your list will look somewhat like this:
+  gush
+  An example sentence with gush.
+  glib
+  An interesting sentence with glib.
+  gunk
+  A compelling sentence with gunk.
+  ...
 
-Na przykład gdy wpiszemy "-all off", to przy następnym dodawaniu
-  domyślne wartości zrobią cały wybór za nas.
-  A gdy po tym wpiszemy "-pz on", "-def on", to będziemy
-  pytani o wybór tylko przy polach na 'przykładowe zdanie' i 'definicje'.
-
-
-{BOLD}Możemy wykorzystać bulk do dodawania list słówek.{END}
-  Słowa na liście musimy oddzielić nową linią.
-  Potem wklejamy taką listę do programu.
-  Możemy wykorzystywać dostępne flagi i opcje.
-{BOLD}NOTE:{END} Nie zapomnij o nowej linii ze spacją na końcu listy
-
-Na przykład:
-'decay -intr'  <-- słowo1
-'monolith'     <-- słowo2
-'dreg'         <-- słowo3
-' '            <-- nowa linia na końcu
-
-Lub z włączonym polem na 'przykładowe zdanie':
-'decay -intr'                <-- słowo1
-'the land began to decay'    <-- zdanie dla słowa1
-'monolith'                   <-- słowo2
-'the monolith crumbled'      <-- zdanie dla słowa2
-'dreg'                       <-- słowo3
-'fermented dregs scattered'  <-- zdanie dla słowa3
-' '                          <-- nowa linia na końcu
-
-{BOLD}NOTE:{END} Możesz używać "/" (np. przy polu na synonimy albo przykłady), aby dodać
-      własny tekst bez ustawiania domyślnych wartości i wyłączania pól.\n""")
+All query options and flags apply, so nothing is stopping you from specifying
+which part of speech you want the definitions for, or which filtering or
+formatting options to apply.
+  gush -n -f
+  An example sentence with <gush>.
+  ...\n""")
 
 
 def recording_help():
     print(f"""\
-{R}{BOLD}{'[ Nagrywanie audio ]'.center(79, '─')}{END}
-Ankidodawacz pozwala na nagrywanie audio prosto z komputera za wykorzystaniem
-  ffmpeg.
+{R}{BOLD}{'[ Desktop audio recording ]'.center(79, '─')}{END}
+The program offers a simple FFmpeg interface to record audio from the desktop.
 
-Aktualnie obsługiwane systemy operacyjne i konfiguracja audio:
-  Linux   : pulseaudio (z alsą)
+Currently supported configurations:
+  Linux   : pulseaudio (alsa)
   Windows : dshow
 
-Oficjalna strona ffmpeg: https://www.ffmpeg.org/download.html
+Official FFmpeg download site: https://www.ffmpeg.org/download.html
 
-Aby nagrywać audio musimy przenieść program ffmpeg do folderu z programem
-  lub dodać jego ścieżkę do $PATH.
-Następnie wybieramy urządzenie audio za pomocą którego chcemy nagrywać audio
-  wpisując "--audio-device".
+To use ffmpeg first we have to add the executable to the system's $PATH or
+place it alongside "ankidodawacz.py" file in the program's root directory.
+To choose your preferred audio device use `--audio-device` command.
 
-Jeżeli nie widzimy interesującego nas urządzenia na Windowsie:
-  Włączamy "Miks stereo" w ustawieniach dźwięku.
-  Zaznaczamy "nasłuchuj tego urządzenia".
-  Zezwalamy aplikacjom na wykorzystywanie mikrofonu.
+If recording doesn't work on Windows:
+  - open "Audio mixer" in the sound settings
+  - tick the "Listen to this device" in the audio mixer properties
+  - allow applications to use the microphone
 
-Na Linuxie jest duża szansa, że ffmpeg jest zainstalowany i jest dostępny
-  w $PATH, więc jedyne co musimy zrobić to:
-    Wpisujemy -rec w Ankidodawaczu
-    podczas nagrywania wchodzimy w mikser dźwięku pulseaudio -> Nagrywanie
-    zmieniamy urządzenie monitorujące dla Lavf na urządzenie wybrane przy
-     konfiguracji za pomocą "--audio-device".
+On GNU/Linux use your distribution's package manager to install ffmpeg.
+Setup:
+  - type `-rec` into the program
+  - during recording go to the pulseaudio Audio mixer -> Recording
+  - instruct the "Lavf" device to use your output device, speakers, DAC, etc.
 
-{BOLD}Komendy:{END}
--rec, --record           rozpoczyna nagrywanie z wykorzystaniem wybranego
-                         urządzenia audio, następnie zapisuje nagranie bez
-                         dodawania audio na kartę
-
-[hasło] -rec, --record   rozpoczyna nagrywanie, dodaje do nazwy pliku
-                         wyjściowego [hasło], po zakończeniu nagrywania
-                         wyszukuje [hasło] w słowniku i dodaje audio na kartę
-
-{BOLD}NOTE:{END} Aby zakończyć nagrywanie i zapisać plik wyjściowy użyj
-      klawisza [q], użycie [ctrl + c] też zakończy nagrywanie, ale nagranie
-      może zostać uszkodzone.\n""")
+To start the recording add the `-rec` option after the query.
+{BOLD}NOTE:{END} Use [q] to end the recording, otherwise the recording might
+      get corrupted or not save at all.\n""")

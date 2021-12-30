@@ -252,9 +252,9 @@ class Dictionary:
         )
         for line in zip_longest(*formatted, fillvalue=blank):
             if header in line[-1]:
-                sys.stdout.write(f"{R}│".join(line) + last_col_fill * HORIZONTAL_BAR + '\n')
+                sys.stdout.write(f"{delimit_c}│{R}".join(line) + last_col_fill * HORIZONTAL_BAR + '\n')
             else:
-                sys.stdout.write(f"{R}│".join(line) + '\n')
+                sys.stdout.write(f"{delimit_c}│{R}".join(line) + '\n')
         sys.stdout.write('\n')
 
     def print_dictionary(self):
@@ -384,7 +384,7 @@ class Dictionary:
                     sys.stdout.flush()
                     subprocess.run(['clear', '-x'])  # I hope the `-x` option works on macOS.
                 else:
-                    sys.stdout.write(f'{err_c}Komenda {R}"-top on"{err_c} nieobsługiwana na {sys.platform!r}.\n')
+                    sys.stdout.write(f'{R}`-top on`{err_c} command unavailable on {sys.platform!r}\n')
 
             self.print_dictionary()
         finally:
@@ -418,8 +418,8 @@ class Dictionary:
 
             print(f'{delimit_c}{delimit}')
         except (NameError, KeyError):
-            print(f'{err_c}\nDodawanie karty do pliku nie powiodło się\n'
-                  f'Spróbuj przywrócić domyślne ustawienia pól wpisując {R}-fo default\n')
+            print(f'{err_c}\nCould not save the card to a file\n'
+                  f'Try restoring the default field order {R}`-fo {{std|tsc}}`\n')
             return 1  # skip
         else:
             return 0

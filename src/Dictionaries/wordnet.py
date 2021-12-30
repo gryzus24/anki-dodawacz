@@ -62,7 +62,7 @@ class WordNet(Dictionary):
         self._format_and_print_dictionary(buffer, textwidth, ncols, last_col_fill)
 
     def input_cycle(self):
-        syn_field = input_field('syn', 'Wybierz synonimy', connector=' | ')
+        syn_field = input_field('syn', 'Choose synonyms', connector=' | ')
         chosen_synonyms, _ = syn_field(self.synonyms, auto_choice='0')
         if chosen_synonyms is None:
             return None
@@ -81,7 +81,7 @@ def ask_wordnet(query):
 
     header = soup.find('h3').text
     if header.startswith('Your') or header.startswith('Sorry'):
-        print(f'{err_c}Nie znaleziono {R}"{query}"{err_c} na WordNecie')
+        print(f'{err_c}Could not find {R}"{query}"{err_c} on WordNet')
         return None
 
     wordnet.title = 'WordNet'

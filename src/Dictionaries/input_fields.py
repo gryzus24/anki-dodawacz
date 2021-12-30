@@ -3,7 +3,7 @@ from src.data import config, bool_values_dict
 
 
 def ask_yes_no(prompt, *, default):
-    d = 'T/n' if default else 't/N'
+    d = 'Y/n' if default else 'y/N'
     i = input(f'{prompt} [{d}]: ').strip().lower()
     return bool_values_dict.get(i, default)
 
@@ -22,7 +22,7 @@ def input_field(field_name, prompt, connector='<br>', specifier_split=','):
             return default_value
         return input_choice
 
-    def _print_added(elems='', msg='Dodano'):
+    def _print_added(elems='', msg='Added'):
         if config['showadded']:
             print(f'{YEX}{msg}: {R}{elems}')
 
@@ -164,7 +164,7 @@ def input_field(field_name, prompt, connector='<br>', specifier_split=','):
 
         parsed_inputs = _parse_inputs(input_choice.split(','), content_length)
         if parsed_inputs is None:
-            print(f'{GEX}Pominięto dodawanie karty')
+            print(f'{GEX}Card skipped')
             return None, None
 
         # if f'1:{content_length}' in input_choice:
@@ -183,12 +183,12 @@ def sentence_input():
     if not config['pz']:
         return ''
 
-    sentence = input('Dodaj przykładowe zdanie: ')
+    sentence = input('Add a sentence: ')
     if sentence.lower() == '-sc':
-        print(f'{GEX}Pominięto dodawanie karty')
+        print(f'{GEX}Card skipped')
         return None
     elif sentence.lower() == '-s':
-        print(f'{GEX}Pominięto dodawanie zdania')
+        print(f'{GEX}Sentence skipped')
         return ''
     else:
         return sentence

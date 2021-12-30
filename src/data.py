@@ -43,136 +43,136 @@ number_to_note_dict = dict(
 
 command_to_help_dict = {
     # Boolean commands
-    '-pz': 'Pole przykładowego zdania',
-    '-def': 'Pole definicji',
-    '-pos': 'Pole części mowy',
-    '-etym': 'Pole etymologii',
-    '-syn': 'Pole synonimów',
-    '-exsen': 'Pole przykładów',
+    '-pz': 'Sentence field',
+    '-def': 'Definition field',
+    '-pos': 'Part of speech field',
+    '-etym': 'Etymology field',
+    '-syn': 'Synonym field',
+    '-exsen': 'Example sentence field',
 
-    '-formatdefs': 'Formatowanie definicji',
-    '-savecards': 'Zapisywanie kart do pliku "karty.txt"',
-    '-createcards': 'Tworzenie/dodawanie kart',
+    '-formatdefs': 'Definition formatting',
+    '-savecards': 'Save cards to "cards.txt"',
+    '-createcards': 'Create/add cards',
 
-    '-all': 'Wszystkie pola',
+    '-all': 'All fields',
 
-    '-fsubdefs': 'Filtrowanie poddefinicji w słownikach',
-    '-fnolabel': 'Filtrowanie definicji niezawierających etykiet części mowy',
-    '-toipa': 'Tłumaczenie zapisu fonetycznego AHD do IPA',
+    '-fsubdefs': 'Filter out subdefinitions (definitions without ">")',
+    '-fnolabel': 'Filter out unlabelled definitions',
+    '-toipa': 'Translate AH Dictionary phonetic spelling into IPA',
 
-    '-upz': 'Ukrywanie hasła w zdaniu',
-    '-udef': 'Ukrywanie hasła w definicjach',
-    '-usyn': 'Ukrywanie hasła w synonimach',
-    '-uexsen': 'Ukrywanie hasła w przykładach',
-    '-upreps': 'Ukrywanie przyimków',
-    '-keependings': 'Zachowój końcówki w odmienionych formach hasła (~ing, ~ed, etc.)',
+    '-upz': 'Hide phrase in sentence',
+    '-udef': 'Hide phrase in definitions',
+    '-usyn': 'Hide phrase in synonyms',
+    '-uexsen': 'Hide phrase in example sentences',
+    '-upreps': 'Hide prepositions',
+    '-keependings': 'Keep hidden word endings (~ed, ~ing etc.)',
 
-    '-top': 'Wyrównywanie słowników do górnej granicy okna',
-    '-displaycard': 'Podgląd karty',
-    '-showadded': 'Pokazywanie dodawanych elementów',
-    '-showexsen': 'Pokazywanie przykładów definicji pod definicjami',
+    '-top': 'Move dictionaries to the top of the window',
+    '-cardpreview': 'Preview the created card',
+    '-showadded': "Show added elements' indexes",
+    '-showexsen': 'Show example sentences in a dictionary',
 
-    '-ankiconnect': 'Dodawanie kart poprzez AnkiConnect',
-    '-duplicates': 'Zezwól na dodawanie duplikatów poprzez AnkiConnect',
+    '-ankiconnect': 'Use AnkiConnect to add cards',
+    '-duplicates': 'Allow duplicates',
     #
     # Text commands
     #
     '-textwrap': (
-        'Zawijanie tekstu',
+        'Text wrapping style',
         '{justify|regular|-}'),
     '-hideas': (
-        'Znaki służące jako ukrywacz',
+        'Hide with (default "...")',
         '{ whatever floats your boat }'),
     '-dupescope': (
-        'Zasięg sprawdzania duplikatów',
+        'Look for duplicates in',
         '{deck|collection}'),
     '-note': (
-        'Notatka używana do dodawania kart',
-        '{nazwa notatki w Anki}'),
+        'Note used for adding cards',
+        '{note name}'),
     '-deck': (
-        'Talia do której trafiają dodawane karty',
-        '{nazwa talii w Anki}'),
+        'Deck used for adding cards',
+        '{deck name}'),
     '-tags': (
-        'Tagi dla kart dodawanych poprzez AnkiConnect',
-        '{tagi oddzielone przecinkiem|-}'),
+        'Anki tags',
+        '{tags separated by commas|-}'),
     '-textwidth': (
-        'Szerokość tekstu do momentu zawinięcia',
-        '{liczba >= 1|auto}'),
+        'Width of the window',
+        '{n >= 1|auto}'),
     '-colviewat': (
-        'Zawijaj słownik w kolumny jeżeli zajmie więcej niż x% ekranu',
-        '{liczba >= 0}'),
+        'Wrap into columns when the dictionary takes more than n% of the screen',
+        '{n >= 0}'),
     '-columns': (
-        '(Maksymalna) ilość kolumn',
-        '{liczba >= 1|auto}'),
+        '(Maximum) number of columns',
+        '{n >= 1|auto}'),
     '-indent': (
-        'Szerokość wcięć',
-        '{liczba >= 0}'),
+        "Width of definitions' indent",
+        '{n >= 0}'),
     '--audio-path': (
-        'Ścieżka zapisu audio',
-        '{ścieżka|auto}'),
+        'Audio save location',
+        '{path|auto}'),
     '-ap': (
-        'Ścieżka zapisu audio',
-        '{ścieżka|auto}'),
-    '-tsc': ('Priorytet tworzenia Targeted Sentence Cards',
+        'Audio save location',
+        '{path|auto}'),
+    '-tsc': ('Targeted sentence card creation priority',
              '{\n'
-             '  Brak przykładowego zdania zastąp:\n'
-             '    -      : niczym\n'
-             '    std    : przykładami\n'
-             '    strict : przykładami lub frazą\n'
+             '  Empty sentence field replace with:\n'
+             "    -      : don't replace\n"
+             '    std    : an example sentence\n'
+             '    strict : an example sentence or a phrase\n'
              '}'),
     '-dict': (
-        'Słownik pytany jako pierwszy',
+        'Primary dictionary',
         '{ahd|lexico|idioms}'),
     '-dict2': (
-        'Słownik pytany jako drugi',
+        'Fallback dictionary',
         '{ahd|lexico|idioms|-}'),
     '-thes': (
-        'Słownik synonimów',
+        'Thesaurus',
         '{wordnet|-}'),
     '-audio': (
-        'Serwer audio',
+        'Audio server',
         '{ahd|lexico|diki|auto|-}'),
     '-recqual': (
-        'Jakość nagrywania',
+        'Recording quality',
         '{0-9}\n'
-        '(0: najlepsza, 9: najgorsza, 4: rekomendowana)'),
+        '(0: best, 9: worst, 4: recommended)'),
     #
     # Action commands
     #
     '--delete-last': (
-        'Usuwa ostatnio dodawane karty z pliku "karty.txt"',
-        '{ilość >= 1}'),
+        'Removes the last card from the "cards.txt" file',
+        '{n >= 1}'),
     '--delete-recent': (
-        'Usuwa ostatnio dodawane karty z pliku "karty.txt"',
-        '{ilość >= 1}'),
+        'Removes the last card from the "cards.txt" file',
+        '{n >= 1}'),
     '--add-note': (
-        'Dodaje notatkę do kolekcji aktualnie zalogowanego użytkownika',
-        '{numer notatki|nazwa notatki}'),
+        "Adds a custom note to the current user's collection",
+        '{note id|note name}'),
     '-fo': (
-        'Zmiana kolejności zapisywania i wyświetlania pól',
+        'Changes the order in which cards are added and displayed',
         '{\n'
-        '  std : ustawia domyślną kolejność pól\n'
-        '  tsc : ustawia kolejność pól dla TSC\n'
-        '  {1-9} {pole} : zmienia pole pod podanym numerem na {pole}\n'
-        '  d {1-9}      : przesuwa odkreślenie pod {1-9}\n'
+        '  std : default field order\n'
+        '  tsc : Targeted Sentence Cards field order\n'
+        '  {1-9} {field} : change a field {1-9} to {field}\n'
+        '  d {1-9}       : move the delimiter below {1-9}\n'
         '}'),
     '--field-order': (
-        'Zmiana kolejności zapisywania i wyświetlania pól',
+        'Changes the order in which cards are added and displayed',
         '{\n'
-        '  std : ustawia domyślną kolejność pól\n'
-        '  tsc : ustawia kolejność pól dla TSC\n'
-        '  {1-9} {pole} : zmienia pole pod podanym numerem na {pole}\n'
-        '  d {1-9}      : przesuwa odkreślenie pod {1-9}\n'
+        '  std : default field order\n'
+        '  tsc : Targeted Sentence Cards field order\n'
+        '  {1-9} {field} : change a field {1-9} to {field}\n'
+        '  d {1-9}       : move the delimiter below {1-9}\n'
         '}'),
     '-c': (
-        'Zmiana koloru elementów',
-        '{element} {kolor}'),
+        "Change elements' colors",
+        '{element} {color}'),
     '-color': (
-        'Zmiana koloru elementów',
-        '{element} {kolor}'),
+        "Change elements' colors",
+        '{element} {color}'),
     '-cd': (
-        'Zmiana domyślnych wartości',
-        '{element} {wartość}'),
+        'Change default field values',
+        '{field name} {value}'),
 }
 assert len(command_to_help_dict) == 51, "if you added a boolean command make sure to" \
                                         " update search_interface's boolean commands slice"
@@ -206,14 +206,22 @@ AC_BASE_FIELDS = (
     # The most common field name schemes
     ('def',         'def'),
     ('syn',         'syn'),
-    ('disamb',      'syb'),
-    ('przykłady',   'exsen'),
-    ('słowo',       'phrase'),
+    ('disamb',      'syn'),
+    ('sent',        'pz'),
     ('zdanie',      'pz'),
     ('przykładowe', 'pz'),
+    ('target',      'phrase'),
+    ('phras',       'phrase'),
+    ('słowo',       'phrase'),
+    ('example',     'exsen'),
+    ('usage',       'exsen'),
+    ('przykłady',   'exsen'),
+    ('part',        'pos'),
+    ('pos',         'pos'),
     ('części',      'pos'),
     ('etym',        'etym'),
     ('audio',       'audio'),
+    ('rec',         'recording'),
     ('nagr',        'recording'),
 
     # Others
@@ -227,24 +235,18 @@ AC_BASE_FIELDS = (
 
     ('przyklady', 'exsen'),
     ('illust',    'exsen'),
-    ('examples',  'exsen'),
     ('exsen',     'exsen'),
 
     ('slowo', 'phrase'),
     ('fraz',  'phrase'),
-    ('phras', 'phrase'),
     ('word',  'phrase'),
     ('vocab', 'phrase'),
     ('idiom', 'phrase'),
 
     ('przykladowe', 'pz'),
-    ('sentence',    'pz'),
     ('pz',          'pz'),
 
     ('czesci', 'pos'),
-    ('parts',  'pos'),
-    ('part',   'pos'),
-    ('pos',    'pos'),
 
     ('wymowa', 'audio'),
     ('pron',   'audio'),
@@ -253,7 +255,6 @@ AC_BASE_FIELDS = (
     ('sound',  'audio'),
     ('media',  'audio'),
 
-    ('recor',         'recording'),
     ('sentence_a',    'recording'),
     ('sentenceaudio', 'recording'),
     ('sentence_r',    'recording'),
@@ -339,7 +340,7 @@ SEARCH_FLAGS = (
 )
 
 USER_AGENT = {
-    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; rv:78.0) Gecko/20100101 Firefox/78.0'
+    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; rv:91.0) Gecko/20100101 Firefox/91.0'
 }
 
 config_column = (
@@ -347,23 +348,23 @@ config_column = (
     '',
     '-tsc', '-formatdefs', '-savecards', '-createcards',
     '',
-    '[config ukrywania]',
+    '[phrase hiding co.]',
     '-upz', '-udef', '-uexsen', '-usyn', '-upreps', '-keependings', '-hideas',
 )
 config_column_1 = (
-    '-top', '-displaycard', '-showadded', '-showexsen',
+    '-top', '-cardpreview', '-showadded', '-showexsen',
     '-textwrap', '-textwidth', '-columns', '-colviewat', '-indent',
     '',
-    '[config filtrowania]',
+    '[filtering config.]',
     '-fsubdefs', '-fnolabel', '-toipa',
     '',
-    '[config ankiconnect]',
+    '[ankiconnect conf.]',
     '-ankiconnect', '-duplicates', '-dupescope', '-note', '-deck', '-tags',
 )
 config_column_2 = (
     'def_bulk', 'exsen_bulk', 'pos_bulk', 'etym_bulk', 'syn_bulk',
     '',
-    '[config źródeł]',
+    '[source config.]',
     '-dict', '-dict2', '-thes', '-audio', '-recqual',
 )
 
@@ -389,24 +390,23 @@ str_colors_to_color = {
     'reset': Fore.RESET,
 }
 color_elements_to_msg = {
-    'def1': 'Kolor nieparzystych definicji',
-    'def2': 'Kolor parzystych definicji',
-    'defsign': 'Kolor znaku głównej definicji (>)',
-    'pos': 'Kolor części mowy',
-    'etym': 'Kolor etymologii',
-    'syn': 'Kolor synonimów',
-    'exsen': 'Kolor przykładów definicji',
-    'syngloss': 'Kolor definicji przy synonimach',
-    'synpos': 'Kolor części mowy przy synonimach',
-    'index': 'Kolor indeksów',
-    'phrase': 'Kolor hasła',
-    'phon': 'Kolor pisowni fonetycznej',
-    'poslabel': 'Kolor etykiet części mowy',
-    'inflection': 'Kolor odmian hasła',
-    'error': 'Kolor błędów',
-    'attention': 'Kolor zwracający uwagę',
-    'success': 'Kolor udanej operacji',
-    'delimit': 'Kolor odkreśleń',
+    'def1': 'Odd definitions and idiom definitions color',
+    'def2': 'Even definitions color',
+    'defsign': 'Definition sign (>) color',
+    'exsen': 'Example sentences color',
+    'pos': 'Parts of speech color',
+    'etym': 'Etymologies color',
+    'syn': 'Synonyms color',
+    'syngloss': 'Synonym definitions color',
+    'index': 'Indexes color',
+    'phrase': 'Phrase color',
+    'phon': 'Phonetic spelling color',
+    'poslabel': 'Part of speech labels color',
+    'inflection': 'Inflections and additional label info color',
+    'error': 'Errors color',
+    'attention': 'Attention drawing color',
+    'success': 'Successful operation color',
+    'delimit': 'Delimiters/separators color',
 }
 
 bool_values_dict = {
