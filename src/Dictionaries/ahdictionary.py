@@ -96,7 +96,7 @@ def ask_ahdictionary(query, flags=''):
     def definition_cleanup(definition):
         rex = definition.lstrip('1234567890. a')
         rex = rex.split(' See Usage Note at')[0]
-        for letter in 'bcdefghijklmn':
+        for letter in 'abcdefghijklmn':
             rex = rex.replace(f":{letter}. ", ": *")
             rex = rex.replace(f".{letter}. ", ". *")
             rex = rex.replace(f". {letter}. ", ".* ")

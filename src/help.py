@@ -70,10 +70,10 @@ Or not less valid:
 To add your own text to the field precede it with a "/".
 
 {BOLD}{'[ Audio and Anki configuration ]'.center(79, '─')}{END}
-{BOLD}1.{END} use `-ap auto` or `-ap {{path}}` to add "collection.media" path so that the
-   program knows where to save audio files.
-{BOLD}2.{END} open Anki and install AnkiConnect.
-{BOLD}3.{END} specify the deck `-deck {{deck name}}`
+{BOLD}1.{END} open Anki and install the AnkiConnect add-on (2055492159)
+{BOLD}2.{END} use `-ap auto` or `-ap {{path}}` to add "collection.media" path so that the
+   program knows where to save audio files
+{BOLD}3.{END} specify your deck `-deck {{deck name}}`
 {BOLD}4.{END} add a premade note `--add-note` or specify your own `-note {{note name}}`
 {BOLD}5.{END} enable AnkiConnect `-ankiconnect on`
 
