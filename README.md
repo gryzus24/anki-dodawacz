@@ -28,21 +28,27 @@ If you are using Windows install Windows Terminal or any other than cmd terminal
 
 ## Installation:
 
-Go to Releases (tags) -> Tags
-
 ### Windows:
-
-Download and extract the .zip archive.
 
 To open the program we need Python 3.7 or newer installed.<br>
 You can download Python from https://www.python.org/downloads/<br>
 During installation tick the "Add Python to PATH" box.
 
-##### After Python installation:<br>
+After you have installed Python:<br>
 
-Win+R and type `cmd`<br>
-Download required libraries:<br>
-`pip install beautifulsoup4 colorama lxml requests`<br>
+#### One command approach:
+Press Win+R, type "cmd" and enter the command:<br>
+```
+cd Downloads && curl https://api.github.com/repos/gryzus24/anki-dodawacz/tags | python -c"import json,sys;sys.stdout.write('url '+json.load(sys.stdin)[0]['tarball_url'])" | curl -L -K- -o a && mkdir Ankidodawacz && tar -xvzf a -C Ankidodawacz --strip-components=1 && del a && pip install --user --disable-pip-version-check beautifulsoup4 colorama lxml requests && cd Ankidodawacz && python ankidodawacz.py
+```
+The program will be downloaded into the Downloads\Ankidodawacz directory.
+
+#### or do what the command does manually:
+Go to Releases (tags) -> Tags<br>
+download and extract the .zip archive.
+
+Press Win+R, type "cmd" and install required libraries:<br>
+`pip install beautifulsoup4 colorama lxml requests`
 
 Go to the program's directory:<br>
 `cd <path to extracted archive>`<br>
