@@ -39,7 +39,7 @@ After you have installed Python:<br>
 #### One command approach:
 Press Win+R, type "cmd" and enter the command:<br>
 ```
-cd Downloads && curl https://api.github.com/repos/gryzus24/anki-dodawacz/tags | python -c"import json,sys;sys.stdout.write('url '+json.load(sys.stdin)[0]['tarball_url'])" | curl -L -K- -o a && mkdir Ankidodawacz && tar -xvzf a -C Ankidodawacz --strip-components=1 && del a && pip install --user --disable-pip-version-check beautifulsoup4 colorama lxml requests && cd Ankidodawacz && python ankidodawacz.py
+cd %HOMEPATH%\Downloads && curl https://api.github.com/repos/gryzus24/anki-dodawacz/tags | python -c"import json,sys;sys.stdout.write('url '+json.load(sys.stdin)[0]['tarball_url'])" | curl -L -K- -o a && mkdir Ankidodawacz && tar -xvzf a -C Ankidodawacz --strip-components=1 && del a && pip install --user --disable-pip-version-check beautifulsoup4 colorama lxml requests && cd Ankidodawacz && python ankidodawacz.py
 ```
 The program will be downloaded into the Downloads\Ankidodawacz directory.
 
