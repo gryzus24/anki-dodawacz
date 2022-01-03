@@ -39,7 +39,7 @@ After you have installed Python:<br>
 #### One command approach:
 Press Win+R, type "cmd" and enter the command:<br>
 ```
-cd %HOMEPATH%\Downloads && curl https://api.github.com/repos/gryzus24/anki-dodawacz/tags | python -c"import json,sys;sys.stdout.write('url '+json.load(sys.stdin)[0]['tarball_url'])" | curl -L -K- -o a && mkdir Ankidodawacz && tar -xvzf a -C Ankidodawacz --strip-components=1 && del a && pip install --user --disable-pip-version-check beautifulsoup4 colorama lxml requests && cd Ankidodawacz && python ankidodawacz.py
+mkdir %HOMEPATH%\Downloads\Ankidodawacz && cd %HOMEPATH%\Downloads\Ankidodawacz && curl https://api.github.com/repos/gryzus24/anki-dodawacz/tags | python -c"import json,sys;sys.stdout.write('url '+json.load(sys.stdin)[0]['tarball_url'])" | curl -L -K- -o a && tar -xvzf a --strip-components=1 && del a && pip install --disable-pip-version-check beautifulsoup4 colorama lxml requests && python ankidodawacz.py
 ```
 The program will be downloaded into the Downloads\Ankidodawacz directory.
 
@@ -61,16 +61,11 @@ You can also create a shortcut and run the program this way, however in case of 
 
 ### Linux:
 
-Download the .tar.gz archive and extract:<br>
-`tar -xvf <tar.gz file> -C <output path>`
-
-Most GNU/Linux distributions come with Python preinstalled.
-
-Install required libraries:<br>
-`pip install beautifulsoup4 colorama lxml requests`
-
-Run the program:<br>
-`python ankidodawacz.py`
+Most GNU/Linux distributions come with Python preinstalled.<br>
+Cd into the directory you want the program to be downloaded into and enter the command:<br>
+```
+mkdir Ankidodawacz && cd "$_" && curl https://api.github.com/repos/gryzus24/anki-dodawacz/tags | python -c"import json,sys;sys.stdout.write('url '+json.load(sys.stdin)[0]['tarball_url'])" | curl -L -K- -o a && tar -xvzf a --strip-components=1 && rm a && pip install --disable-pip-version-check beautifulsoup4 colorama lxml requests && python ankidodawacz.py
+```
 
 ### Updating
 To update the program to the latest tag with your `cards.txt` and configuration preserved use:<br>
