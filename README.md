@@ -28,21 +28,27 @@ If you are using Windows install Windows Terminal or any other than cmd terminal
 
 ## Installation:
 
-Go to Releases (tags) -> Tags
-
 ### Windows:
-
-Download and extract the .zip archive.
 
 To open the program we need Python 3.7 or newer installed.<br>
 You can download Python from https://www.python.org/downloads/<br>
 During installation tick the "Add Python to PATH" box.
 
-##### After Python installation:<br>
+After you have installed Python:<br>
 
-Win+R and type `cmd`<br>
-Download required libraries:<br>
-`pip install beautifulsoup4 colorama lxml requests`<br>
+#### One command approach:
+Press Win+R, type "cmd" and enter the command:<br>
+```
+mkdir %HOMEPATH%\Downloads\Ankidodawacz && cd %HOMEPATH%\Downloads\Ankidodawacz && curl https://api.github.com/repos/gryzus24/anki-dodawacz/tags | python -c"import json,sys;sys.stdout.write('url '+json.load(sys.stdin)[0]['tarball_url'])" | curl -L -K- -o a && tar -xvzf a --strip-components=1 && del a && pip install --disable-pip-version-check beautifulsoup4 colorama lxml requests && python ankidodawacz.py
+```
+The program will be downloaded into the Downloads\Ankidodawacz directory.
+
+#### or do what the command does manually:
+Go to Releases (tags) -> Tags<br>
+download and extract the .zip archive.
+
+Press Win+R, type "cmd" and install required libraries:<br>
+`pip install beautifulsoup4 colorama lxml requests`
 
 Go to the program's directory:<br>
 `cd <path to extracted archive>`<br>
@@ -55,16 +61,11 @@ You can also create a shortcut and run the program this way, however in case of 
 
 ### Linux:
 
-Download the .tar.gz archive and extract:<br>
-`tar -xvf <tar.gz file> -C <output path>`
-
-Most GNU/Linux distributions come with Python preinstalled.
-
-Install required libraries:<br>
-`pip install beautifulsoup4 colorama lxml requests`
-
-Run the program:<br>
-`python ankidodawacz.py`
+Most GNU/Linux distributions come with Python preinstalled.<br>
+Cd into the directory you want the program to be downloaded into and enter the command:<br>
+```
+mkdir Ankidodawacz && cd $_ && curl https://api.github.com/repos/gryzus24/anki-dodawacz/tags | python -c"import json,sys;sys.stdout.write('url '+json.load(sys.stdin)[0]['tarball_url'])" | curl -L -K- -o a && tar -xvzf a --strip-components=1 && rm a && pip install --disable-pip-version-check beautifulsoup4 colorama lxml requests && python ankidodawacz.py
+```
 
 ### Updating
 To update the program to the latest tag with your `cards.txt` and configuration preserved use:<br>
