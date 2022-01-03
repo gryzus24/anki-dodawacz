@@ -60,11 +60,12 @@ def main():
         raise Exit('Could not retrieve tags.\n'
                    'Aborting the installation...')
 
-    if latest_tag['name'] == __version__:
+    new_ver = latest_tag['name']
+    if new_ver == __version__:
         print(f'{GEX}You are using the latest version ({__version__}).')
         return 0
 
-    out_dir_name = f'anki-dodawacz-{latest_tag["name"]}'
+    out_dir_name = f'anki-dodawacz-{new_ver}'
     out_dir_path = os.path.join(os.path.dirname(ROOT_DIR), out_dir_name)
     if os.path.exists(out_dir_path):
         raise Exit(f'Directory {out_dir_name!r} already exists.\n'
@@ -100,19 +101,23 @@ def main():
     finally:
         os.remove(tfile.name)
 
-    print(f"{GEX}:: {R}Copying 'config.json'...")
-    with open(os.path.join(out_dir_path, 'config/config.json'), 'r') as f:
-        new_config = json.load(f)
-        for key, val in config.items():
-            new_config[key] = val
-    with open(os.path.join(out_dir_path, 'config/config.json'), 'w') as f:
-        json.dump(new_config, f, indent=0)
+    # Move current configuration only if backwards compatible.
+    if __version__.split('.')[1] != new_ver.split('.')[1]:
+        print(f"{err_c}:: {R}Could not move 'config.json': incompatible with the latest version")
+    else:
+        print(f"{GEX}:: {R}Copying 'config.json'...")
+        with open(os.path.join(out_dir_path, 'config/config.json'), 'r') as f:
+            new_config = json.load(f)
+            for key, val in config.items():
+                new_config[key] = val
+        with open(os.path.join(out_dir_path, 'config/config.json'), 'w') as f:
+            json.dump(new_config, f, indent=0)
 
     if os.path.exists('cards.txt'):
         print(f"{GEX}:: {R}Copying 'cards.txt'...")
         with \
-                open(os.path.join(out_dir_path, 'cards.txt'), 'w') as new_cards, \
-                open('cards.txt', 'r') as cards:
+                open(os.path.join(out_dir_path, 'cards.txt'), 'w', encoding='utf-8') as new_cards, \
+                open('cards.txt', 'r', encoding='utf-8') as cards:
             new_cards.writelines(cards.readlines())
 
     if os.path.exists('Cards_audio') and config['audio_path'] == 'Cards_audio':
