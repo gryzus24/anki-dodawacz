@@ -29,7 +29,7 @@ OPTIONS:
   -!              search for unlabelled definitions
   -f, -fsubdefs   filter out subdefinitions
 
-For more options and commands see `--help-commands` or `-config`.
+For more options and commands see `--help-config` or `-config`.
 
 To escape the query or embed it inside a sentence use <QUERY>, this will also
 make the word {BOLD}{GEX}Emphasized{R}{END}.
@@ -81,10 +81,10 @@ To see more options type `-conf` or `-config`.
 Type command's name to display usage.
 
 {BOLD}{79 * '─'}{END}
--conf, -config     show current configuration and more options
---help-commands    show full command help
---help-bulk        show bulk adding help
---help-recording   show recording help\n""")
+-conf, -config   show current configuration and more options
+--help-config    show full config/commands help
+--help-bulk      show bulk/define_all help
+--help-rec       show recording help\n""")
 
 
 def commands_help():
@@ -190,17 +190,21 @@ Hiding a phrase means replacing it with "..." (default)
 -b, --browse [query]   open the card browser with "added:1" or [query]
 
 {BOLD}{'[ Misc. commands ]'.center(79, '─')}{END}
+--define-all [sep]   load content from a "define_all.txt" file and feed it as
+                     search queries, use new lines as query separators unless
+                     a different separator is provided.
+
 --delete-last,
 --delete-recent      remove the last card from the "cards.txt" file
 
 -c, -color           change elements' colors
 -cd                  change default field values
--fo, --field-order   change the order in which cards are added and displayed
+-fo, --field-order   change the order in which fields are added and displayed
 
 -conf, -config       show current configuration and more options
---help-commands      show full command help
---help-bulk          show bulk adding help
---help-recording     show recording help\n""")
+--help-config        show full config/commands help
+--help-bulk          show bulk/define_all help
+--help-rec           show recording help\n""")
 
 
 def bulk_help():
@@ -232,22 +236,29 @@ example list:
   glen
   goal
 
-If you enable one of the fields, for example the sentence field (`-pz on`),
-your list will look somewhat like this:
-  gush
-  An example sentence with gush.
-  glib
-  An interesting sentence with glib.
-  gunk
-  A compelling sentence with gunk.
-  ...
+{BOLD}{'[ `--define-all` command ]'.center(79, '─')}{END}
+If you have a ready list of words (like the one with "gush, glib, gunk") and
+want to pass them only into the Search field giving you the whole control over
+the card creation process (no need for `-all off`), you can use the
+`--define-all [separator]` command.
+
+{BOLD}1.{END} create a file named "define_all.txt" in the program's directory.
+{BOLD}2.{END} open the program and type `--define-all`, optionally passing a different
+   separator, e.g. `--define-all ,` if your file looks like this:
+
+          gush, glib, gunk,
+          glen, goal
 
 All query options and flags apply, so nothing is stopping you from specifying
 which part of speech you want the definitions for, or which filtering or
 formatting options to apply.
   gush -n -f
-  An example sentence with <gush>.
-  ...\n""")
+  glib -adj
+  ...
+
+{BOLD}NOTE:{END} Lexico doesn't tolerate more than 80 queries at once, but it doesn't
+      mean that you should pester AHD or Farlex more for what they allow,
+      please be reasonable.\n""")
 
 
 def recording_help():
@@ -277,5 +288,5 @@ Setup:
   - instruct the "Lavf" device to use your output device, speakers, DAC, etc.
 
 To start the recording add the `-rec` option after the query.
-{BOLD}NOTE:{END} Use [q] to end the recording, otherwise the recording might
-      get corrupted or not save at all.\n""")
+{BOLD}NOTE:{END} Use [q] to end the recording, otherwise it might get corrupted or not
+      save at all.\n""")

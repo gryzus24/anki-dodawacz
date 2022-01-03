@@ -167,9 +167,6 @@ def input_field(field_name, prompt, connector='<br>', specifier_split=','):
             print(f'{GEX}Card skipped')
             return None, None
 
-        # if f'1:{content_length}' in input_choice:
-        #     choices = [-1]
-        # else:
         choices = [y for sublist in parsed_inputs for y in sublist[:-1]]
         if not choices:
             choices = [0]

@@ -16,8 +16,7 @@
 from src.Dictionaries.dictionary_base import Dictionary
 from src.Dictionaries.input_fields import input_field
 from src.Dictionaries.utils import request_soup, wrap_lines
-from src.colors import R, def1_c, def2_c, index_c, \
-    exsen_c, phrase_c, err_c
+from src.colors import R, def1_c, def2_c, index_c, exsen_c, phrase_c, err_c
 from src.data import config
 
 

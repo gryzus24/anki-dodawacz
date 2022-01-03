@@ -19,11 +19,14 @@ import sys
 from shutil import get_terminal_size
 
 import src.data as data
-from src.colors import R, BOLD, END, YEX, GEX, \
-    def1_c, def2_c, defsign_c, pos_c, etym_c, syn_c, exsen_c, syngloss_c, \
-    index_c, phrase_c, phon_c, poslabel_c, inflection_c, err_c, delimit_c
-from src.data import LINUX, WINDOWS, MAC
-from src.data import ROOT_DIR, STD_FIELD_ORDER, TSC_FIELD_ORDER, config, bool_colors_dict
+from src.colors import (
+    R, BOLD, END, YEX, GEX, def1_c, def2_c, defsign_c, pos_c, etym_c, syn_c, exsen_c,
+    syngloss_c, index_c, phrase_c, phon_c, poslabel_c, inflection_c, err_c, delimit_c
+)
+from src.data import (
+    ROOT_DIR, STD_FIELD_ORDER, TSC_FIELD_ORDER,
+    LINUX, WINDOWS, MAC, config, bool_colors_dict
+)
 
 
 def save_config(c):
@@ -208,34 +211,35 @@ def set_width_settings(*args, message):
     save_command(cmd, v)
 
 
-def display_field_order():
-    for field_number in STD_FIELD_ORDER:  # 1 to 9
-        field_name = config['fieldorder'][field_number]
-
-        b = BOLD if field_number == '1' else ''
-        print(f' {b}{field_number}: {field_name}{END}')
+def _display_field_order():
+    for field_number, field in enumerate(config['fieldorder'], start=1):
+        b = BOLD if field_number == 1 else ''
+        print(f' {b}{field_number}: {field}{END}')
 
         if field_number == config['fieldorder_d']:
             print(f' {delimit_c}D: ─────────{R}')
 
 
-def change_field_order(*args, **kwargs):
-    def set_field_order(msg, order, delimit):
-        print(f'{GEX}{msg}')
-        # I'm not sure what causes the change of 'order' after the manual change
-        # .copy() somehow resolves the issue
-        config['fieldorder'] = order.copy()
-        config['fieldorder_d'] = delimit
-        save_config(config)
-        display_field_order()
+def _set_field_order(msg, order, delimit):
+    print(f'{GEX}{msg}')
+    # I'm not sure what causes the change of 'order' in
+    # STD and TSC changing one of the values manually.
+    # .copy() somehow resolves the issue
+    config['fieldorder'] = order.copy()
+    config['fieldorder_d'] = delimit
+    save_config(config)
+    _display_field_order()
 
+
+def change_field_order(*args, **kwargs):
     first_arg = args[1].lower()
     if first_arg == 'std':
-        return set_field_order('STD field order:', STD_FIELD_ORDER, '3')
+        return _set_field_order('STD field order:', STD_FIELD_ORDER, 3)
     elif first_arg == 'tsc':
-        return set_field_order('TSC field order:', TSC_FIELD_ORDER, '1')
+        return _set_field_order('TSC field order:', TSC_FIELD_ORDER, 1)
 
-    if first_arg not in ('1', '2', '3', '4', '5', '6', '7', '8', '9', 'd', '-'):
+    _1_to_9 = ('1', '2', '3', '4', '5', '6', '7', '8', '9')
+    if first_arg not in _1_to_9 and first_arg not in ('d', '-'):
         cmd = args[0]
         return f'Invalid argument: {R}{first_arg}\n' \
                f'{cmd} {data.command_to_help_dict[cmd][1]}'
@@ -248,20 +252,19 @@ def change_field_order(*args, **kwargs):
         return 'No field name provided'
 
     # two arguments commands
-    if first_arg in STD_FIELD_ORDER:  # 1 to 9
-        if field_name in STD_FIELD_ORDER.values() or field_name == '-':
-            field_order = config['fieldorder']
-            field_order[first_arg] = field_name
-            save_command('fieldorder', field_order)
+    if first_arg in _1_to_9:
+        if field_name in STD_FIELD_ORDER or field_name == '-':
+            config['fieldorder'][int(first_arg) - 1] = field_name
+            save_config(config)
         else:
             return 'Invalid field name provided'
     elif first_arg == 'd':
-        if field_name in STD_FIELD_ORDER:
-            save_command('fieldorder_d', field_name)
+        if field_name in _1_to_9:
+            save_command('fieldorder_d', int(field_name))
         else:
             return 'Invalid field number provided'
 
-    display_field_order()
+    _display_field_order()
 
 
 def set_audio_path(*args, message):

@@ -2,23 +2,23 @@ import json
 import os.path
 import sys
 from itertools import zip_longest
-from json import JSONDecodeError
 
 from colorama import Fore
 
+# abspath(__file__) for <=3.8 compatibility
 ROOT_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
 try:
     with open(os.path.join(ROOT_DIR, 'config/config.json'), 'r') as cf:
         config = json.load(cf)
-except (FileNotFoundError, JSONDecodeError):
-    print(' Plik "config.json" nie istnieje '.center(79, '='))
+except (FileNotFoundError, json.JSONDecodeError):
+    print(' "config.json" does not exist '.center(79, '='))
     raise
 
 try:
     with open(os.path.join(ROOT_DIR, 'config/ankiconnect.json'), 'r') as af:
         config_ac = json.load(af)
-except (FileNotFoundError, JSONDecodeError):
+except (FileNotFoundError, json.JSONDecodeError):
     with open(os.path.join(ROOT_DIR, 'config/ankiconnect.json'), 'w') as af:
         af.write('{}')
     config_ac = json.loads('{}')
@@ -149,7 +149,7 @@ command_to_help_dict = {
         "Adds a custom note to the current user's collection",
         '{note id|note name}'),
     '-fo': (
-        'Changes the order in which cards are added and displayed',
+        'Changes the order in which fields are added and displayed',
         '{\n'
         '  std : default field order\n'
         '  tsc : Targeted Sentence Cards field order\n'
@@ -157,7 +157,7 @@ command_to_help_dict = {
         '  d {1-9}       : move the delimiter below {1-9}\n'
         '}'),
     '--field-order': (
-        'Changes the order in which cards are added and displayed',
+        'Changes the order in which fields are added and displayed',
         '{\n'
         '  std : default field order\n'
         '  tsc : Targeted Sentence Cards field order\n'
@@ -177,29 +177,29 @@ command_to_help_dict = {
 assert len(command_to_help_dict) == 51, "if you added a boolean command make sure to" \
                                         " update search_interface's boolean commands slice"
 
-STD_FIELD_ORDER = {
-    '1': 'def',
-    '2': 'syn',
-    '3': 'pz',
-    '4': 'phrase',
-    '5': 'exsen',
-    '6': 'pos',
-    '7': 'etym',
-    '8': 'audio',
-    '9': 'recording'
-}
+STD_FIELD_ORDER = [
+    'def',
+    'syn',
+    'pz',
+    'phrase',
+    'exsen',
+    'pos',
+    'etym',
+    'audio',
+    'recording'
+]
 
-TSC_FIELD_ORDER = {
-    '1': 'pz',
-    '2': 'def',
-    '3': 'syn',
-    '4': 'exsen',
-    '5': 'pos',
-    '6': 'etym',
-    '7': 'audio',
-    '8': 'recording',
-    '9': '-',
-}
+TSC_FIELD_ORDER = [
+    'pz',
+    'def',
+    'syn',
+    'exsen',
+    'pos',
+    'etym',
+    'audio',
+    'recording',
+    '-',
+]
 
 # fields used for Anki note recognition
 AC_BASE_FIELDS = (

@@ -19,10 +19,13 @@ from itertools import zip_longest
 from shutil import get_terminal_size
 
 from src.Dictionaries.utils import wrap_lines, get_config_terminal_size
-from src.colors import R, BOLD, END, def1_c, syn_c, exsen_c, pos_c, etym_c, phrase_c, \
-    err_c, delimit_c, def2_c, defsign_c, index_c, phon_c, poslabel_c, inflection_c
-from src.data import config, labels, \
-    SEARCH_FLAGS, WINDOWS, POSIX, HORIZONTAL_BAR, ON_WINDOWS_CMD
+from src.colors import (
+    R, BOLD, END, def1_c, syn_c, exsen_c, pos_c, etym_c, phrase_c, err_c,
+    delimit_c, def2_c, defsign_c, index_c, phon_c, poslabel_c, inflection_c
+)
+from src.data import (
+    config, labels, SEARCH_FLAGS, WINDOWS, POSIX, HORIZONTAL_BAR, ON_WINDOWS_CMD
+)
 
 
 def expand_labels(label_set):
@@ -75,7 +78,7 @@ class Dictionary:
 
     def __repr__(self):
         for op, *body in self.contents:
-            print(f'{op:7s}{body}')
+            sys.stdout.write(f'{op:7s}{body}\n')
 
     def add(self, value):
         # Value must be a Sequence containing at least 2 fields:
@@ -402,24 +405,19 @@ class Dictionary:
         }
         textwidth, _ = get_config_terminal_size()
         delimit = textwidth * HORIZONTAL_BAR
+        textwidth, padding = round((textwidth - 1) * 0.92) + 1,\
+                             round((textwidth - 1) * 0.04) * " "
 
-        print(f'\n{delimit_c}{delimit}')
-        try:
-            for field_number, field in config['fieldorder'].items():
-                if field == '-':
-                    continue
+        sys.stdout.write(f'\n{delimit_c}{delimit}\n')
+        for field_number, field in enumerate(config['fieldorder']):
+            if field == '-':
+                continue
 
-                for line in field_values[field].split('<br>'):
-                    for subline in wrap_lines(line, textwidth):
-                        print(f'{color_of[field]}{subline.center(textwidth)}')
+            for line in field_values[field].split('<br>'):
+                for subline in wrap_lines(line, textwidth):
+                    sys.stdout.write(f'{color_of[field]}{padding}{subline}\n')
 
-                if field_number == config['fieldorder_d']:  # d = delimitation
-                    print(f'{delimit_c}{delimit}')
+            if field_number + 1 == config['fieldorder_d']:  # d = delimitation
+                sys.stdout.write(f'{delimit_c}{delimit}\n')
 
-            print(f'{delimit_c}{delimit}')
-        except (NameError, KeyError):
-            print(f'{err_c}\nCould not save the card to a file\n'
-                  f'Try restoring the default field order {R}`-fo {{std|tsc}}`\n')
-            return 1  # skip
-        else:
-            return 0
+        sys.stdout.write(f'{delimit_c}{delimit}\n')
