@@ -64,7 +64,7 @@ You can also create a shortcut and run the program this way, however in case of 
 Most GNU/Linux distributions come with Python preinstalled.<br>
 Cd into the directory you want the program to be downloaded into and enter the command:<br>
 ```
-mkdir Ankidodawacz && cd "$_" && curl https://api.github.com/repos/gryzus24/anki-dodawacz/tags | python -c"import json,sys;sys.stdout.write('url '+json.load(sys.stdin)[0]['tarball_url'])" | curl -L -K- -o a && tar -xvzf a --strip-components=1 && rm a && pip install --disable-pip-version-check beautifulsoup4 colorama lxml requests && python ankidodawacz.py
+mkdir Ankidodawacz && cd $_ && curl https://api.github.com/repos/gryzus24/anki-dodawacz/tags | python -c"import json,sys;sys.stdout.write('url '+json.load(sys.stdin)[0]['tarball_url'])" | curl -L -K- -o a && tar -xvzf a --strip-components=1 && rm a && pip install --disable-pip-version-check beautifulsoup4 colorama lxml requests && python ankidodawacz.py
 ```
 
 ### Updating
