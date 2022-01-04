@@ -273,33 +273,35 @@ def set_audio_path(*args, message):
 
     if arg == 'auto':
         if WINDOWS:
-            tree = os.path.join(os.getenv('APPDATA'), 'Anki2')
+            initial_path = os.path.join(os.getenv('APPDATA'), 'Anki2')
         elif LINUX:
-            tree = os.path.join(os.getenv('HOME'), '.local/share/Anki2')
+            initial_path = os.path.join(os.getenv('HOME'), '.local/share/Anki2')
         elif MAC:
-            tree = os.path.join(os.getenv('HOME'), 'Library/Application Support/Anki2')
+            initial_path = os.path.join(os.getenv('HOME'), 'Library/Application Support/Anki2')
         else:
             return f'Locating {R}"collection.media"{err_c} failed:\n' \
                    f'Unknown path for {R}"collection.media"{err_c} on {sys.platform!r}'
 
-        # searches the tree
-        collections = []
-        for path, _, _ in os.walk(tree):
-            if path.endswith('collection.media'):
-                collections.append(path)
+        user_dirs = []
+        for i in os.listdir(initial_path):
+            next_ = os.path.join(initial_path, i)
+            if os.path.isdir(next_) and 'collection.media' in os.listdir(next_):
+                user_dirs.append(next_)
 
-        if not collections:
+        if not user_dirs:
             return f'Locating {R}"collection.media"{err_c} failed:\n' \
                    'No results'
-        elif len(collections) == 1:
-            path = collections[0]
+        elif len(user_dirs) == 1:
+            path = os.path.join(user_dirs[0], 'collection.media')
         else:
-            for i, col_path in enumerate(collections, start=1):
-                anki_user = os.path.basename(os.path.dirname(col_path))
+            for i, user_dir in enumerate(user_dirs, start=1):
+                anki_user = os.path.basename(user_dir)
                 print(f'{index_c}{i} {R}{anki_user}')
-            path = choose_item("\nWhich user's collection do you want to use?", collections)
+            path = choose_item("\nWhich user's collection do you want to use?", user_dirs)
             if path is None:
                 return 'Leaving...'
+            else:
+                path = os.path.join(path, 'collection.media')
     else:
         path = os.path.expanduser(os.path.normpath(' '.join(args[1:])))
 
