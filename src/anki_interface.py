@@ -18,10 +18,10 @@ import os
 import urllib.request
 from urllib.error import URLError
 
-from src.Dictionaries.input_fields import ask_yes_no
 from src.colors import R, BOLD, END, YEX, GEX, index_c, err_c
 from src.commands import save_command
 from src.data import ROOT_DIR, config, config_ac, AC_BASE_FIELDS, number_to_note_dict
+from src.input_fields import ask_yes_no
 
 # Module global configuration allows for hard refresh
 # of saved notes without restarting the program and

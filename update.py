@@ -60,12 +60,11 @@ def main():
         raise Exit('Could not retrieve tags.\n'
                    'Aborting the installation...')
 
-    new_ver = latest_tag['name']
-    if new_ver == __version__:
+    if latest_tag['name'] == __version__:
         print(f'{GEX}You are using the latest version ({__version__}).')
         return 0
 
-    out_dir_name = f'anki-dodawacz-{new_ver}'
+    out_dir_name = f'anki-dodawacz-{latest_tag["name"]}'
     out_dir_path = os.path.join(os.path.dirname(ROOT_DIR), out_dir_name)
     if os.path.exists(out_dir_path):
         raise Exit(f'Directory {out_dir_name!r} already exists.\n'
@@ -101,26 +100,31 @@ def main():
     finally:
         os.remove(tfile.name)
 
-    # Move current configuration only if backwards compatible.
-    if __version__.split('.')[1] != new_ver.split('.')[1]:
-        print(f"{err_c}:: {R}Could not move 'config.json': incompatible with the latest version")
-    else:
-        print(f"{GEX}:: {R}Copying 'config.json'...")
-        with open(os.path.join(out_dir_path, 'config/config.json'), 'r') as f:
-            new_config = json.load(f)
-            for key, val in config.items():
-                new_config[key] = val
+    print(f"{YEX}:: {R}Copying 'config.json'...")
+    with open(os.path.join(out_dir_path, 'config/config.json'), 'r') as f:
+        new_config = json.load(f)
+        for old_key, old_val in config.items():
+            try:
+                new_val = new_config[old_key]
+            except KeyError:
+                continue
+            # To prevent new versions from reading old config data types.
+            if isinstance(new_val, type(old_val)):
+                new_config[old_key] = old_val
+            else:
+                print(f"{err_c}:: {R}Could not copy '{old_key}': incompatible data type")
+
         with open(os.path.join(out_dir_path, 'config/config.json'), 'w') as f:
             json.dump(new_config, f, indent=0)
 
     if os.path.exists('cards.txt'):
-        print(f"{GEX}:: {R}Copying 'cards.txt'...")
+        print(f"{YEX}:: {R}Copying 'cards.txt'...")
         with \
                 open(os.path.join(out_dir_path, 'cards.txt'), 'w', encoding='utf-8') as new_cards, \
                 open('cards.txt', 'r', encoding='utf-8') as cards:
             new_cards.writelines(cards.readlines())
 
-    if os.path.exists('Cards_audio') and config['audio_path'] == 'Cards_audio':
+    if not config['ankiconnect'] and config['audio_path'] == 'Cards_audio' and os.path.exists('Cards_audio'):
         print(f"{YEX}:: {R}The 'Cards_audio' directory has to be moved manually.")
 
     print(f'\n{GEX}Updated successfully\n'

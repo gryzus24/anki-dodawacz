@@ -27,6 +27,7 @@ from src.data import (
     ROOT_DIR, STD_FIELD_ORDER, TSC_FIELD_ORDER,
     LINUX, WINDOWS, MAC, config, bool_colors_dict
 )
+from src.input_fields import choose_item
 
 
 def save_config(c):
@@ -286,25 +287,21 @@ def set_audio_path(*args, message):
         for path, _, _ in os.walk(tree):
             if path.endswith('collection.media'):
                 collections.append(path)
-                print(f'{index_c}{len(collections)} {R}{path}')
 
         if not collections:
             return f'Locating {R}"collection.media"{err_c} failed:\n' \
                    'No results'
-
-        print(f'\n{YEX}Pick a path')
-        try:
-            path_choice = int(input('[0-Cancel]: '))
-            if path_choice < 1 or path_choice > len(collections):
-                raise ValueError
-        except ValueError:
-            return 'Leaving...'
+        elif len(collections) == 1:
+            path = collections[0]
         else:
-            path = collections[path_choice - 1]
+            for i, col_path in enumerate(collections, start=1):
+                anki_user = os.path.basename(os.path.dirname(col_path))
+                print(f'{index_c}{i} {R}{anki_user}')
+            path = choose_item("\nWhich user's collection do you want to use?", collections)
+            if path is None:
+                return 'Leaving...'
     else:
-        path = ' '.join(args[1:])
-        if path.startswith('~'):
-            path = path.replace('~', os.getenv('HOME'), 1)
+        path = os.path.expanduser(os.path.normpath(' '.join(args[1:])))
 
     print(f'{YEX}{message} set to:\n'
           f'{R}"{path}"')

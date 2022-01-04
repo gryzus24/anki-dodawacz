@@ -8,6 +8,19 @@ def ask_yes_no(prompt, *, default):
     return bool_values_dict.get(i, default)
 
 
+def choose_item(prompt, list_, *, default=1):
+    # Get input from the user, return the item they picked or None.
+    i = input(f"{prompt} [{default}]: ").strip()
+    if not i:
+        i = default
+    try:
+        i = int(i)
+    except ValueError:
+        return None
+    if 0 < i <= len(list_):
+        return list_[i - 1]
+
+
 def input_field(field_name, prompt, connector='<br>', specifier_split=','):
     def _user_input(auto_choice):
         default_value = config[f'{field_name}_bulk']

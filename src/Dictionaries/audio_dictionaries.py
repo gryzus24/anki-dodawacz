@@ -13,8 +13,10 @@
 # You should have received a copy of the GNU General Public License
 # along with this program. If not, see <http://www.gnu.org/licenses/>.
 
+import binascii
 import os.path
 
+import src.anki_interface as anki
 from src.Dictionaries.utils import request_soup, request_session
 from src.colors import R, YEX, err_c
 from src.data import config
@@ -88,15 +90,28 @@ def diki_audio(raw_phrase, flag=''):
     return ''
 
 
-def save_audio(audio_url, filename):
+def save_audio_url(audio_url):
+    filename = audio_url.rsplit('/', 1)[-1]
+    audio_content = request_session.get(audio_url).content
+    audio_path = config['audio_path']
+
+    # Use AnkiConnect to save audio files if 'collection.media' path isn't given.
+    # Specifying audio_path is preferred as it's way faster.
+    if config['ankiconnect'] and os.path.basename(audio_path) != 'collection.media':
+        _, err = anki.invoke('storeMediaFile',
+                             filename=filename,
+                             data=binascii.b2a_base64(  # convert to base64 string
+                                 audio_content, newline=False).decode())
+        if err is None:
+            return f'[sound:{filename}]'
+
     try:
-        with open(os.path.join(config['audio_path'], filename), 'wb') as file:
-            response = request_session.get(audio_url)
-            file.write(response.content)
+        with open(os.path.join(audio_path, filename), 'wb') as file:
+            file.write(audio_content)
         return f'[sound:{filename}]'
     except FileNotFoundError:
         print(f"{err_c}Saving audio {R}{filename}{err_c} failed\n"
-              f"Current audio path: {R}{config['audio_path']}\n"
+              f"Current audio path: {R}{audio_path}\n"
               f"{err_c}Make sure the directory exists and try again\n")
         return ''
     except Exception:

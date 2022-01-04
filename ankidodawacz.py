@@ -20,21 +20,21 @@ import src.commands as c
 import src.ffmpeg_interface as ffmpeg
 import src.help as h
 from src.Dictionaries.ahdictionary import ask_ahdictionary
-from src.Dictionaries.audio_dictionaries import ahd_audio, lexico_audio, diki_audio, save_audio
+from src.Dictionaries.audio_dictionaries import ahd_audio, lexico_audio, diki_audio, save_audio_url
 from src.Dictionaries.farlex import ask_farlex
-from src.Dictionaries.input_fields import sentence_input
 from src.Dictionaries.lexico import ask_lexico
 from src.Dictionaries.utils import hide, request_session
 from src.Dictionaries.wordnet import ask_wordnet
 from src.colors import R, BOLD, END, YEX, GEX, err_c
 from src.data import config, command_to_help_dict, ROOT_DIR, LINUX
+from src.input_fields import sentence_input
 
 if LINUX:
     # "Enables command line editing using GNU readline."
     import readline
     readline.read_init_file()
 
-__version__ = 'v1.4.0-3'
+__version__ = 'v1.4.1-1'
 
 required_arg_commands = {
     # commands that take arguments
@@ -133,7 +133,7 @@ def manage_audio(dictionary_name, audio_url, phrase, flags):
                 flag = '-' + f[0]
                 break
         url = diki_audio(phrase, flag)
-        return save_audio(url, url.split('/')[-1]) if url else ''
+        return save_audio_url(url) if url else ''
 
     server = config['audio']
     if server == '-':
@@ -145,7 +145,7 @@ def manage_audio(dictionary_name, audio_url, phrase, flags):
 
     if server == 'auto' or dictionary_name == server:
         if audio_url:
-            return save_audio(audio_url, audio_url.split('/')[-1])
+            return save_audio_url(audio_url)
         print(f'{err_c}The dictionary does not have the pronunciation for {R}{phrase}\n'
               f'{YEX}Querying diki...')
         return from_diki()
@@ -158,7 +158,7 @@ def manage_audio(dictionary_name, audio_url, phrase, flags):
         assert False, 'unreachable'
 
     if audio_url:
-        return save_audio(audio_url, audio_url.split('/')[-1])
+        return save_audio_url(audio_url)
     return ''
 
 
@@ -287,10 +287,6 @@ def main_loop(query):
     field_values.update(dictionary_contents)
 
     phrase = field_values['phrase']
-    field_values['audio'] = manage_audio(dictionary.name,
-                                         field_values['audio'],
-                                         phrase,
-                                         flags)
     if dictionary.allow_thesaurus:
         thesaurus = ask_wordnet(
             phrase.split()[0] if 'also' in phrase.split() else phrase
@@ -302,6 +298,11 @@ def main_loop(query):
                 return
             field_values.update(thesaurus_contents)
 
+    field_values['audio'] = manage_audio(dictionary.name,
+                                         field_values['audio'],
+                                         phrase,
+                                         flags)
+    # Format card content.
     if zdanie:
         field_values['pz'] = zdanie
     else:

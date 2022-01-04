@@ -118,15 +118,6 @@ choice for us. This behavior can be changed through the `-cd` command.
 
 -ap, --audio-path {{path|auto}}   audio save location (default "Cards_audio")
 
-"collection.media" paths on different OSes:
-GNU/Linux:
-  "~/.local/share/Anki2/{{Anki Username}}/collection.media"
-Mac:
-  "~/Library/Application Support/Anki2/{{Anki Username}}/collection.media"
-Windows:
-  "C:\\Users\\{{Username}}\\AppData\\Roaming\\Anki2\\{{Anki Username}}\\collection.media"
-   (%appdata%)
-
 {BOLD}{'[ Display configuration ]'.center(79, '─')}{END}
 -top                             move dictionaries to the top of the window
 -cardpreview                     preview the created card
@@ -156,7 +147,7 @@ Hiding a phrase means replacing it with "..." (default)
 
 -toipa         translate AH Dictionary phonetic spelling into IPA
 
-{BOLD}{'[ Sources and recording configuration]'.center(79, '─')}{END}
+{BOLD}{'[ Sources and recording configuration ]'.center(79, '─')}{END}
 -dict  {{ahd|lexico|idioms}}        primary dictionary
 -dict2 {{ahd|lexico|idioms|-}}      fallback dictionary
 -thes  {{wordnet|-}}                thesaurus

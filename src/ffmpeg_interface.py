@@ -21,6 +21,7 @@ import sys
 from src.colors import R, YEX, GEX, index_c, err_c
 from src.commands import save_command
 from src.data import config, WINDOWS, LINUX
+from src.input_fields import choose_item
 
 if WINDOWS:
     def find_devices():
@@ -93,22 +94,14 @@ def set_audio_device():
         return 'Could not locate FFmpeg\n' \
                "Place the FFmpeg binary alongside the program or in $PATH"
 
-    print('Choose your desktop output device:\n')
-    for index, a in enumerate(audio_devices, start=1):
-        print(f"{index_c}{index} {R}{a}")
+    print('Choose your desktop output device:')
+    for i, device in enumerate(audio_devices, start=1):
+        print(f"{index_c}{i} {R}{device}")
 
-    choice = input('Device [1]: ').strip()
-    if not choice:
-        choice = 1
-    else:
-        try:
-            choice = int(choice)
-            if choice < 1 or choice > len(audio_devices):
-                raise ValueError
-        except ValueError:
-            return 'Invalid input, leaving...'
+    audio_device = choose_item('\nDevice', audio_devices)
+    if audio_device is None:
+        return 'Invalid input, leaving...'
 
-    audio_device = audio_devices[choice - 1]
     save_command('audio_device', audio_device)
     print(f'{GEX}Chosen device:\n'
           f'{R}{audio_device}\n')
