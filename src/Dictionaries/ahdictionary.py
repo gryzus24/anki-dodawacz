@@ -279,18 +279,14 @@ def ask_ahdictionary(query, flags=''):
             for def_root in block.find_all('div', class_=('ds-list', 'ds-single'), recursive=False):
                 def_root = definition_cleanup(def_root.text)
                 for i, subdefinition in enumerate(def_root.split('*')):
-                    # strip an occasional leftover octothorpe
-                    subdef_exsen = subdefinition.strip('# ').split(':', 1)
                     def_type = 'DEF' if not i else 'SUBDEF'
-                    subdef = subdef_exsen[0].strip(' .') + '.'
-                    if len(subdef_exsen) == 2:
-                        exsen = subdef_exsen[1].strip()
-                        if exsen:
-                            ahd.add((def_type, subdef, '‘' + exsen + '’'))
-                        else:
-                            ahd.add((def_type, subdef))
-                    else:
-                        ahd.add((def_type, subdef))
+                    # strip an occasional leftover octothorpe
+                    subdef, _, exsen = subdefinition.strip('# ').partition(':')
+                    subdef = subdef.strip(' .') + '.'
+                    exsen = exsen.strip()
+                    if exsen:
+                        exsen = '‘' + exsen + '’'
+                    ahd.add((def_type, subdef, exsen))
 
                     if filter_subdefs:
                         break

@@ -48,7 +48,7 @@ class FarlexIdioms(Dictionary):
                     padding = (textwidth - len(def_tp)) * ' '
                     buffer.append(f'${def_c}{def_tp}{padding}')
 
-                if show_exsen and len(body) > 1:
+                if show_exsen and body[1]:
                     for exsen in body[1].split('<br>'):
                         wrapped_exsen = wrap_lines(exsen, textwidth, def_index_len, 2, 1)
                         padding = (textwidth - len(wrapped_exsen[0]) - def_index_len - 1) * ' '

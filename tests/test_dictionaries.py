@@ -149,13 +149,13 @@ def dictionary_content_check(dictionary):
 
         elif 'DEF' in op:
             def_index += 1
+            if len(body) != 2:
+                log(f'!! | len(body != 2')
+                continue
             if is_funny(body[0]):
                 log(f'?? | potential funny characters in definitions ({def_index})')
-            if len(body) == 2:
-                if not (exsen := body[1]):
-                    log(f'!! | empty example sentence ({def_index})')
-                if is_funny(exsen):
-                    log(f'?? | potential funny characters in example sentences ({def_index})')
+            if body[1] and is_funny(body[1]):
+                log(f'?? | potential funny characters in example sentences ({def_index})')
 
         elif op == 'PHRASE':
             if len(body) != 2:

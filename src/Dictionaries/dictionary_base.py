@@ -108,7 +108,7 @@ class Dictionary:
 
     @property
     def example_sentences(self):
-        return [body[1] if len(body) > 1 else '' for op, *body in self.contents if 'DEF' in op]
+        return [b[1] for op, *b in self.contents if 'DEF' in op]
 
     def _by_header(self, type_, method=lambda x: x[0]):
         # Return a list of (`type_'s` bodies if `type_` is present within
@@ -283,7 +283,7 @@ class Dictionary:
         buffer = []
         communal_index = 0
         for op, *body in self.contents:
-            # print(f'{op}\n\n{body}'); continue  # DEBUG
+            # print(f'{op}\n{body}'); continue  # DEBUG
             if 'DEF' in op:
                 communal_index += 1
                 def_c = def1_c if communal_index % 2 else def2_c
@@ -297,7 +297,7 @@ class Dictionary:
                     padding = (textwidth - len(def_tp)) * ' '
                     buffer.append(f'${def_c}{def_tp}{padding}')
 
-                if show_exsen and len(body) > 1:
+                if show_exsen and body[1]:
                     wrapped_exsen = wrap_lines(body[1], textwidth, def_index_len, 3, 2)
                     padding = (textwidth - def_index_len - len(wrapped_exsen[0]) - 2) * ' '
                     buffer.append(f'${def_index_len * " "}  {exsen_c}{wrapped_exsen[0]}{padding}')

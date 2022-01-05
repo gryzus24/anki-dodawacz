@@ -128,9 +128,8 @@ def ask_lexico(query, flags='', _previous_query=''):
         # as is the case with "suspicion"
         example_ = example_.replace('‘', '', 1).replace('’', '', 1).strip()
         if example_:
-            lexico.add((deftype, definition_.strip(), '‘' + example_ + '’'))
-        else:
-            lexico.add((deftype, definition_.strip()))
+            example_ =  '‘' + example_ + '’'
+        lexico.add((deftype, definition_.strip(), example_))
     #
     # Lexico
     #
