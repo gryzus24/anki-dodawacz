@@ -67,6 +67,11 @@ Cd into the directory you want the program to be downloaded into and enter the c
 mkdir Ankidodawacz && cd $_ && curl https://api.github.com/repos/gryzus24/anki-dodawacz/tags | python -c"import json,sys;sys.stdout.write('url '+json.load(sys.stdin)[0]['tarball_url'])" | curl -L -K- -o a && tar -xvzf a --strip-components=1 && rm a && pip install --disable-pip-version-check beautifulsoup4 colorama lxml requests && python ankidodawacz.py
 ```
 
+### MacOS:
+
+Check whether you have Python 3 installed by opening the Terminal app and typing `python3 -V`<br>
+If you see a version that is >=3.7 it means you can use the Linux command to download the program into the directory you are currently in. You can change the directory by typing `cd [directory name]`
+
 ### Updating
 To update the program to the latest tag with your `cards.txt` and configuration preserved use:<br>
 `python update.py`
