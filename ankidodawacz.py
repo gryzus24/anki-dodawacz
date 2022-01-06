@@ -29,12 +29,7 @@ from src.colors import R, BOLD, END, YEX, GEX, err_c
 from src.data import config, command_to_help_dict, ROOT_DIR, LINUX
 from src.input_fields import sentence_input
 
-if LINUX:
-    # "Enables command line editing using GNU readline."
-    import readline
-    readline.read_init_file()
-
-__version__ = 'v1.4.2-2'
+__version__ = 'v1.4.3-1'
 
 required_arg_commands = {
     # commands that take arguments
@@ -56,7 +51,6 @@ required_arg_commands = {
     '-dupescope': c.set_text_value_commands,
     '-audio': c.set_text_value_commands,
     '-recqual': c.set_text_value_commands,
-    '--add-note': anki.add_note_to_anki,
     '--field-order': c.change_field_order, '-fo': c.change_field_order,
     '-color': c.set_colors, '-c': c.set_colors,
     '-cd': c.config_defaults,
@@ -64,6 +58,7 @@ required_arg_commands = {
 no_arg_commands = {
     '--audio-device': ffmpeg.set_audio_device,
     '-refresh': anki.refresh_cached_notes,
+    '--add-note': anki.add_note_to_anki,
     '--help': h.quick_help, '-help': h.quick_help, '-h': h.quick_help,
     '--help-bulk': h.bulk_help, '--help-define-all': h.bulk_help,
     '--help-commands': h.commands_help, '--help-command': h.commands_help,
@@ -73,11 +68,24 @@ no_arg_commands = {
 }
 
 
+# Completer doesn't work on Windows.
+# It should work on macOS, but I haven't tested it yet.
+if LINUX:
+    from src.completer import Completer
+    tab_completion = Completer(
+        [x for x in list(command_to_help_dict) + list(no_arg_commands)]
+    )
+else:
+    from contextlib import nullcontext
+    tab_completion = nullcontext
+
+
 def search_interface():
     while True:
-        word = input('Search $ ').strip()
-        if not word:
-            continue
+        with tab_completion():
+            word = input('Search $ ').strip()
+            if not word:
+                continue
 
         args = word.split()
         cmd = args[0]
@@ -110,10 +118,8 @@ def search_interface():
             if cmd in ('-ap', '--audio-path'):
                 print(f'{BOLD}Current audio path:\n'
                       f'{END}{config["audio_path"]}\n')
-            elif cmd == '--add-note':
-                anki.show_available_notes()
             elif cmd in ('-fo', '--field-order'):
-                c._display_field_order()
+                c.display_field_order()
             elif cmd in ('-c', '-color'):
                 c.color_command()
             elif cmd == '-cd':

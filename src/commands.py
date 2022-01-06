@@ -212,7 +212,7 @@ def set_width_settings(*args, message):
     save_command(cmd, v)
 
 
-def _display_field_order():
+def display_field_order():
     for field_number, field in enumerate(config['fieldorder'], start=1):
         b = BOLD if field_number == 1 else ''
         print(f' {b}{field_number}: {field}{END}')
@@ -229,7 +229,7 @@ def _set_field_order(msg, order, delimit):
     config['fieldorder'] = order.copy()
     config['fieldorder_d'] = delimit
     save_config(config)
-    _display_field_order()
+    display_field_order()
 
 
 def change_field_order(*args, **kwargs):
@@ -265,7 +265,7 @@ def change_field_order(*args, **kwargs):
         else:
             return 'Invalid field number provided'
 
-    _display_field_order()
+    display_field_order()
 
 
 def set_audio_path(*args, message):

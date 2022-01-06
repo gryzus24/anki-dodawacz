@@ -1,0 +1,41 @@
+import readline
+from contextlib import contextmanager
+
+
+# Import on Linux (maybe POSIX) only, readline doesn't work on Windows.
+def Completer(completions):
+    # Initializes a tab completer and returns a contextmanager,
+    # that can be used to limit the scope of tab completion, as
+    # it is global by default.
+    _matches = []
+
+    def complete(text, state):
+        text = text.strip().lower()
+        if not text:
+            if state == 0:
+                return '\t'
+            return None
+
+        if state == 0:
+            nonlocal _matches
+            _matches = [x for x in completions if x.startswith(text)]
+
+        try:
+            return _matches[state]
+        except IndexError:
+            return None
+
+    @contextmanager
+    def context():
+        try:
+            readline.parse_and_bind('set disable-completion off')
+            yield
+        finally:
+            readline.parse_and_bind('set disable-completion on')
+
+    readline.parse_and_bind('tab: complete')
+    readline.parse_and_bind('set horizontal-scroll-mode on')
+    readline.set_completer_delims(' \t\n')
+    readline.set_completer(complete)
+
+    return context

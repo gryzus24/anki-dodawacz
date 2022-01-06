@@ -29,6 +29,7 @@ input_field_config = {
     'syn':   ('Choose synonyms', ' | ', ','),
 }
 
+
 def input_field(field_name):
     prompt, connector, specifier_split = input_field_config[field_name]
 

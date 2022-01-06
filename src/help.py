@@ -175,7 +175,7 @@ Hiding a phrase means replacing it with "..." (default)
 -deck {{deck name}}      deck used for adding cards
 -tags {{tags|-}}         Anki tags (separated by commas)
 
---add-note {{id|note}}   add a custom note to the current user's collection
+--add-note             add a custom note to the current user's collection
 -refresh               refresh cached notes (if the note has been changed
                        in Anki)
 

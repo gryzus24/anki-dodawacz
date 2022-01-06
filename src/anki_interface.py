@@ -20,8 +20,8 @@ from urllib.error import URLError
 
 from src.colors import R, BOLD, END, YEX, GEX, index_c, err_c
 from src.commands import save_command
-from src.data import ROOT_DIR, config, config_ac, AC_BASE_FIELDS, number_to_note_dict
-from src.input_fields import ask_yes_no
+from src.data import ROOT_DIR, config, config_ac, AC_BASE_FIELDS, custom_notes
+from src.input_fields import ask_yes_no, choose_item
 
 # Module global configuration allows for hard refresh
 # of saved notes without restarting the program and
@@ -45,13 +45,6 @@ def refresh_cached_notes():
         except FileNotFoundError:
             return f'{R}"ankiconnect.json"{err_c} file does not exist'
     print(f'{YEX}Notes refreshed')
-
-
-def show_available_notes():
-    print(f'{BOLD}Available notes:{END}')
-    for i, note in number_to_note_dict.items():
-        print(f'{index_c}{i} {R}{note}')
-    print()
 
 
 def ankiconnect_request(action, **params):
@@ -115,15 +108,18 @@ def gui_browse_cards(query):
         print(f'{err_c}Could not open the card browser:\n{err}\n')
 
 
-def add_note_to_anki(*args, **kwargs):
-    arg = args[1].lower()
-    note_name = number_to_note_dict.get(arg, arg)
+def add_note_to_anki():
+    print(f'{BOLD}Available notes:{END}')
+    for i, note in enumerate(custom_notes, start=1):
+        print(f'{index_c}{i} {R}{note[:-5]}')  # strip ".json"
+    print()
 
-    try:
-        with open(os.path.join(ROOT_DIR, f'notes/{note_name}.json'), 'r') as f:
-            note_config = json.load(f)
-    except FileNotFoundError:
-        return f'Could not find {R}"{note_name}"{err_c}'
+    note_name = choose_item('Choose a note to add', custom_notes, default=0)
+    if note_name is None:
+        return 'Leaving...'
+
+    with open(os.path.join(ROOT_DIR, f'notes/{note_name}'), 'r') as f:
+        note_config = json.load(f)
 
     model_name = note_config['modelName']
     _, err = invoke('createModel',

@@ -34,12 +34,7 @@ else:
 
 HORIZONTAL_BAR = '─'
 
-# Creates an ID to NOTE_NAME dictionary from the contents of ../notes:
-#   e.g. {'1': 'gryzus-tsc', '2': 'gryzus-std', ...}
-_notes = os.listdir(os.path.join(ROOT_DIR, 'notes'))
-number_to_note_dict = dict(
-    zip(map(str, range(1, len(_notes) + 1)), map(lambda x: x[:-5], sorted(_notes, reverse=True)))
-)
+custom_notes = sorted(os.listdir(os.path.join(ROOT_DIR, 'notes')))
 
 command_to_help_dict = {
     # Boolean commands
@@ -145,9 +140,6 @@ command_to_help_dict = {
     '--delete-recent': (
         'Removes the last card from the "cards.txt" file',
         '{n >= 1}'),
-    '--add-note': (
-        "Adds a custom note to the current user's collection",
-        '{note id|note name}'),
     '-fo': (
         'Changes the order in which fields are added and displayed',
         '{\n'
@@ -174,7 +166,7 @@ command_to_help_dict = {
         'Change default field values',
         '{field name} {value}'),
 }
-assert len(command_to_help_dict) == 51, "if you added a boolean command make sure to" \
+assert len(command_to_help_dict) == 50, "if you added a boolean command make sure to" \
                                         " update search_interface's boolean commands slice"
 
 STD_FIELD_ORDER = [
