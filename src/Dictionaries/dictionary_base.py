@@ -92,25 +92,30 @@ class Dictionary:
 
     @property
     def phrases(self):
-        return [b[0] for op, *b in self.contents if op == 'PHRASE']
+        r = [b[0] for op, *b in self.contents if op == 'PHRASE']
+        return r if r else ['']
 
     @property
     def audio_urls(self):
-        return [b[0] for op, *b in self.contents if op == 'AUDIO']
+        r = [b[0] for op, *b in self.contents if op == 'AUDIO']
+        return r if r else ['']
 
     @property
     def synonyms(self):
-        return [b[0] for op, *b in self.contents if op == 'SYN']
+        r = [b[0] for op, *b in self.contents if op == 'SYN']
+        return r if r else ['']
 
     @property
     def definitions(self):
-        return [b[0] for op, *b in self.contents if 'DEF' in op]
+        r = [b[0] for op, *b in self.contents if 'DEF' in op]
+        return r if r else ['']
 
     @property
     def example_sentences(self):
-        return [b[1] for op, *b in self.contents if 'DEF' in op]
+        r = [b[1] for op, *b in self.contents if 'DEF' in op]
+        return r if r else ['']
 
-    def _by_header(self, type_, method=lambda x: x[0]):
+    def _by_header(self, type_, method):
         # Return a list of (`type_'s` bodies if `type_` is present within
         # HEADER instructions or empty string if `type_` is not present.)
         result = []
@@ -122,15 +127,15 @@ class Dictionary:
                 result.append(t)
                 t = ''
         result.append(t)
-        return result
+        return result if result else ['']
 
     @property
     def parts_of_speech(self):
-        return self._by_header('POS', lambda x: ' | '.join(map(lambda y: y[0], x)))
+        return self._by_header('POS', lambda x: '<br>'.join(map(' '.join, x)))
 
     @property
     def etymologies(self):
-        return self._by_header('ETYM')
+        return self._by_header('ETYM', lambda x: x[0])
 
     def count_ops(self, type_):
         ntype = 0
@@ -149,25 +154,37 @@ class Dictionary:
             return '-1'
         return ','.join(map(str, choices))
 
-    def get_positions_in_sections(self, choices, from_within='HEADER', choices_of='DEF', *, expect_choice_first=False):
-        # Returns instruction's positions with respect to `self.contents`
-        # from within `from_within` calculated from `choices` of `choices_of`.
-        # If `choices_of` always comes before `from_within` use expect_choice_first=True.
-        # If instruction from `from_within` is not present in `self.contents` return [1].
+    def get_positions_in_sections(self, choices, from_within='HEADER', choices_of='DEF'):
+        # Returns a list of indexes of sections which contain user's choices.
+        # If no `from_within` and `choices_of` instructions present in the dictionary return [1].
+        # e.g.  [D1, D2, D3, HEADER, D4, D5, HEADER, D6]
+        #       User picks D1 and D4,  function returns "[1,2]"
+        #       User picks D1 and D2,  function returns "[1]"
+        #       User picks D6 and D3,  function returns "[3,1]"
 
-        locations = []
-        section_no = 1 if expect_choice_first else 0
+        # Determine what instruction comes first, so we know how to start counting.
+        for op, *_ in self.contents:
+            if choices_of in op:
+                section_no = 1
+                break
+            if from_within in op:
+                section_no = 0
+                break
+        else:
+            return [1]
+
+        section_no_per_choice = []
         for op, *_ in self.contents:
             if from_within in op:
                 section_no += 1
             elif choices_of in op:
-                locations.append(section_no)
+                section_no_per_choice.append(section_no)
 
         result = []
-        locations_len = len(locations)
+        len_s = len(section_no_per_choice)
         for choice in choices:
-            if 0 < choice <= locations_len:
-                index = locations[choice - 1]
+            if 0 < choice <= len_s:
+                index = section_no_per_choice[choice - 1]
                 if index not in result:
                     result.append(index)
 
@@ -298,12 +315,13 @@ class Dictionary:
                     buffer.append(f'${def_c}{def_tp}{padding}')
 
                 if show_exsen and body[1]:
-                    wrapped_exsen = wrap_lines(body[1], textwidth, def_index_len, 3, 2)
-                    padding = (textwidth - def_index_len - len(wrapped_exsen[0]) - 2) * ' '
-                    buffer.append(f'${def_index_len * " "}  {exsen_c}{wrapped_exsen[0]}{padding}')
-                    for exsen in wrapped_exsen[1:]:
-                        padding = (textwidth - len(exsen)) * ' '
-                        buffer.append(f'${exsen_c}{exsen}{padding}')
+                    for exsen in body[1].split('<br>'):
+                        wrapped_exsen = wrap_lines(exsen, textwidth, def_index_len, 3, 2)
+                        padding = (textwidth - def_index_len - len(wrapped_exsen[0]) - 2) * ' '
+                        buffer.append(f'${def_index_len * " "}  {exsen_c}{wrapped_exsen[0]}{padding}')
+                        for exsen in wrapped_exsen[1:]:
+                            padding = (textwidth - len(exsen)) * ' '
+                            buffer.append(f'${exsen_c}{exsen}{padding}')
             elif op == 'LABEL':
                 buffer.append(blank)
                 label, inflections = body

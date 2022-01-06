@@ -62,8 +62,7 @@ class WordNet(Dictionary):
         self._format_and_print_dictionary(buffer, textwidth, ncols, last_col_fill)
 
     def input_cycle(self):
-        syn_field = input_field('syn', 'Choose synonyms', connector=' | ')
-        chosen_synonyms, _ = syn_field(self.synonyms, auto_choice='0')
+        chosen_synonyms, _ = input_field('syn')(self.synonyms, auto_choice='0')
         if chosen_synonyms is None:
             return None
         return {'syn': chosen_synonyms}

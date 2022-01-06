@@ -21,7 +21,17 @@ def choose_item(prompt, list_, *, default=1):
         return list_[i - 1]
 
 
-def input_field(field_name, prompt, connector='<br>', specifier_split=','):
+input_field_config = {
+    'def':   ('Choose definitions', '<br>', ','),
+    'exsen': ('Choose example sentences', '<br>', '<br>'),
+    'pos':   ('Choose parts of speech', '<br>', '<br>'),
+    'etym':  ('Choose etymologies', '<br>', ','),
+    'syn':   ('Choose synonyms', ' | ', ','),
+}
+
+def input_field(field_name):
+    prompt, connector, specifier_split = input_field_config[field_name]
+
     def _user_input(auto_choice):
         default_value = config[f'{field_name}_bulk']
         if default_value.lower() == 'auto':
@@ -43,47 +53,41 @@ def input_field(field_name, prompt, connector='<br>', specifier_split=','):
         content = []
         valid_choices = []
         for input_block in parsed_inputs:
-            choices = input_block[:-1]
-            specifiers = input_block[-1].lstrip('0')
+            *choices, specifiers = input_block
+            specifiers = specifiers.lstrip('0')
 
             for choice in choices:
-                if choice == 0 or choice > len(content_list):
+                if choice == 0 or choice > len(content_list) or not content_list[choice - 1]:
                     continue
 
                 content_element = content_list[choice - 1]
-                if not content_element:
-                    continue
-
-                if not specifiers:
+                if not specifiers or specifier_split not in content_element:
                     content.append(content_element)
                     valid_choices.append(choice)
                     continue
 
-                sliced_content_element = (content_element.strip(' .[]')).split(specifier_split)
-                if len(sliced_content_element) == 1:
-                    content.append(content_element)
-                    valid_choices.append(choice)
-                    continue
-
-                element = []
+                new_element = []
+                sliced_element = (content_element.strip(' .[]')).split(specifier_split)
                 for specifier in specifiers:
                     specifier = int(specifier)
-                    if specifier == 0 or specifier > len(sliced_content_element):
+                    if specifier == 0 or specifier > len(sliced_element):
                         continue
 
-                    slice_of_content = sliced_content_element[specifier - 1].strip()
+                    slice_of_content = sliced_element[specifier - 1].strip()
                     valid_choices.append(f'{choice}.{specifier}')
-                    element.append(slice_of_content)
+                    new_element.append(slice_of_content)
 
                 # join specified elements
-                element = (specifier_split + ' ').join(element).strip('.') + '.'
-                if element and content_element.startswith('['):  # brackets in etymologies
-                    element = '[' + element.strip('.[]') + '.]'
+                if field_name in ('def', 'syn'):
+                    new_element = (specifier_split + ' ').join(new_element) + '.'
+                elif field_name in ('exsen', 'pos'):
+                    new_element = specifier_split.join(new_element)
+                elif field_name == 'etym':
+                    new_element = '[' + (specifier_split + ' ').join(new_element) + '.]'
 
-                if element == '.' or element == '[.]':
-                    content.append('')
-                else:
-                    content.append(element)
+                if new_element.strip(' .[]'):
+                    content.append(new_element)
+
         _print_added(', '.join(map(str, valid_choices)))
         return content
 

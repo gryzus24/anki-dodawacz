@@ -29,36 +29,28 @@ class AHDictionary(Dictionary):
         super().__init__()
 
     def input_cycle(self):
-        def_field = input_field('def', 'Choose definitions')
-        chosen_defs, def_choices = def_field(self.definitions, auto_choice='1')
+        chosen_defs, def_choices = input_field('def')(self.definitions, auto_choice='1')
         if chosen_defs is None:
             return None
 
-        choices_by_header = self.get_positions_in_sections(def_choices, expect_choice_first=True)
+        choices_by_header = self.get_positions_in_sections(def_choices)
         phrase = self.phrases[choices_by_header[0] - 1]
 
-        audio_urls = self.audio_urls
-        if audio_urls:
-            choices_by_labels = self.get_positions_in_sections(def_choices, from_within='AUDIO')
-            audio = audio_urls[choices_by_labels[0] - 1]
-        else:
-            audio = ''
+        choices_by_labels = self.get_positions_in_sections(def_choices, from_within='AUDIO')
+        audio = self.audio_urls[choices_by_labels[0] - 1]
 
         auto_choice = self.to_auto_choice(def_choices, 'DEF')
-        exsen_field = input_field('exsen', 'Choose example sentences', specifier_split=';')
-        chosen_exsen, _ = exsen_field(self.example_sentences, auto_choice)
+        chosen_exsen, _ = input_field('exsen')(self.example_sentences, auto_choice)
         if chosen_exsen is None:
             return None
 
         auto_choice = self.to_auto_choice(choices_by_header, 'POS')
-        pos_field = input_field('pos', 'Choose parts of speech', connector=' | ', specifier_split=' |')
-        chosen_pos, _ = pos_field(self.parts_of_speech, auto_choice)
+        chosen_pos, _ = input_field('pos')(self.parts_of_speech, auto_choice)
         if chosen_pos is None:
             return None
 
         auto_choice = self.to_auto_choice(choices_by_header, 'ETYM')
-        etym_field = input_field('etym', 'Choose etymologies')
-        chosen_etyms, _ = etym_field(self.etymologies, auto_choice)
+        chosen_etyms, _ = input_field('etym')(self.etymologies, auto_choice)
         if chosen_etyms is None:
             return None
 
@@ -285,7 +277,9 @@ def ask_ahdictionary(query, flags=''):
                     subdef = subdef.strip(' .') + '.'
                     exsen = exsen.strip()
                     if exsen:
-                        exsen = '‘' + exsen + '’'
+                        # Separate examples with '<br>' to avoid
+                        # semicolon conflicts in other dictionaries
+                        exsen = '<br>'.join('‘' + e.strip() + '’' for e in exsen.split(';'))
                     ahd.add((def_type, subdef, exsen))
 
                     if filter_subdefs:
@@ -293,24 +287,24 @@ def ask_ahdictionary(query, flags=''):
 
         # Add parts of speech
         td_pos = ['POS']
-        for pos in td.find_all('div', class_='runseg', recursive=False):
+        for runseg in td.find_all('div', class_='runseg', recursive=False):
             # removing ',' makes parts of speech with multiple spelling variants get
             # their phonetic spelling correctly detected
-            postring = pos.text.replace('(', ' (').replace(')', ') ')
-            postring, phon_spell = extract_phrase_and_phonetic_spelling(postring)
+            runseg = runseg.text.replace('(', ' (').replace(')', ') ')
+            pos, phon_spell = extract_phrase_and_phonetic_spelling(runseg)
 
             # accentuation and hyphenation
-            postring = fix_stress_and_remove_private_symbols(', '.join(postring))
+            pos = fix_stress_and_remove_private_symbols(', '.join(pos))
             phon_spell = ' '.join(phon_spell).rstrip(',')
 
             if config['toipa']:
                 # this is very general, I have no idea how to differentiate these correctly
-                th = 'ð' if postring.startswith('th') else 'θ'
+                th = 'ð' if pos.startswith('th') else 'θ'
                 phon_spell = translate_ahd_to_ipa(phon_spell, th)
             else:
                 phon_spell = fix_stress_and_remove_private_symbols(phon_spell)
 
-            td_pos.append((postring, phon_spell))
+            td_pos.append((pos, phon_spell))
         if len(td_pos) > 1:
             ahd.add(td_pos)
 

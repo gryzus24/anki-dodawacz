@@ -1,18 +1,17 @@
-import src.Dictionaries.input_fields as i
-
-test_list = ['a', 'b', 'c', 'd', '', 'e', '', 'f', 'g']
-
+import src.input_fields as i
 
 # SETUP:
 #   -cd all auto
 #   -all on
 
-def input_field_testing(tl=None, ac='1', s='.'):
-    def tested(input_, output_):
-        test_field = i.input_field('def', 'Wybierz definicje', connector=';', specifier_split=s)
+i.input_field_config['def'] = ('Choose definitions', ';', ',')
+test_list = ['a', 'b', 'c', 'd', '', 'e', '', 'f', 'g']
 
+
+def input_field_testing(tl=None, ac='1', fn='def'):
+    def tested(input_, output_):
         i.input = lambda _: input_
-        result, choices = test_field(content_list=tl, auto_choice=ac)
+        result, choices = i.input_field(fn)(content_list=tl, auto_choice=ac)
         if output_ is None:
             assert result is output_
         else:
@@ -216,6 +215,23 @@ def test_empty_content_list():
     test = input_field_testing(tl=[], ac='0')
 
     test('', '')
+    test('-1', '')
+    test('-all,all', '')
+    test('auto', '')
+    test('1,1:2', '')
+    test('1:90:,2', '')
+    test(',2,1:2,2', '')
+    test(' 1;1,  3  ,3 : 0 ', '')
+    test('1,2', '')
+    test(' ,0,1.,', '')
+    test('auto.12', '')
+    test('1.419', '')
+    test(',', None)
+
+    test = input_field_testing(tl=[''], ac='0')
+    test('', '')
+    test('-1', '')
+    test('-all,all', '')
     test('auto', '')
     test('1,1:2', '')
     test('1:90:,2', '')
@@ -229,20 +245,20 @@ def test_empty_content_list():
 
 
 def test_specifiers():
-    test_list = ['[1,2,3.]', 'a,b,c,d.', 'single', '-1,  -2,  -3, ,', 'sen1.,sen2.,sen3...']
-    test = input_field_testing(tl=test_list, ac='1.21, 2.36', s=',')
+    test_list = ['1,2,3.', 'a,b,c,d.', 'single', '-1,  -2,  -3, ,', 'sen1.,sen2.,sen3...']
+    test = input_field_testing(tl=test_list, ac='1.21, 2.36')
 
-    test('1.123', '[1, 2, 3.]')
-    test('1.321', '[3, 2, 1.]')
-    test('1.213', '[2, 1, 3.]')
+    test('1.123', '1, 2, 3.')
+    test('1.321', '3, 2, 1.')
+    test('1.213', '2, 1, 3.')
     test('1.444', '')
-    test('1.543', '[3.]')
-    test('1.01020304', '[1, 2, 3.]')
-    test('1.500203', '[2, 3.]')
-    test('1.0', '[1,2,3.]')
-    test('1.0000', '[1,2,3.]')
+    test('1.543', '3.')
+    test('1.01020304', '1, 2, 3.')
+    test('1.500203', '2, 3.')
+    test('1.0', '1,2,3.')
+    test('1.0000', '1,2,3.')
     test('1.-1', None)
-    test('1.', '[1,2,3.]')
+    test('1.', '1,2,3.')
     test('1...', None)
 
     test('2.1', 'a.')
@@ -269,19 +285,21 @@ def test_specifiers():
     test('4.87654', ', .')
     test('4.185', '-1, .')
 
-    test('5.12', 'sen1., sen2.')
+    test('5.12', 'sen1., sen2..')
     test('5.0', 'sen1.,sen2.,sen3...')
     test('5.3', 'sen3.')
-    test('5.432', 'sen3, sen2.')
+    test('5.432', 'sen3, sen2..')
 
-    test('all.1', '[1.];a.;single;-1.;sen1.')
-    test('-all.21', 'sen2., sen1.;-2, -1.;single;b, a.;[2, 1.]')
-    test('2,all.1', 'a,b,c,d.;[1.];a.;single;-1.;sen1.')
+    test('5.423,4.2', 'sen2., sen3.;-2.')
 
-    test('', '[2, 1.];c.')
-    test('auto', '[2, 1.];c.')
-    test('auto.0', '[2, 1.]')
-    test('auto.1', '[2, 1.]')
+    test('all.1', '1.;a.;single;-1.;sen1..')
+    test('-all.21', 'sen2., sen1..;-2, -1.;single;b, a.;2, 1.')
+    test('2,all.1', 'a,b,c,d.;1.;a.;single;-1.;sen1..')
+
+    test('', '2, 1.;c.')
+    test('auto', '2, 1.;c.')
+    test('auto.0', '2, 1.')
+    test('auto.1', '2, 1.')
     test('.', None)
     test('a.1', None)
     test('2.a', None)
@@ -289,12 +307,14 @@ def test_specifiers():
     test('-1-1.-1', None)
 
 
-def test_specifiers_two():
+def test_specifiers_etym():
     test_list = ['[Middle English, from Old English mynet, coin, from Latin monēta; see  MONEY.]',
                  '[from Latin menta; akin to Greek minthē, mint (both Greek and Latin being of substrate origin).]']
-    test = input_field_testing(tl=test_list, ac='1.21, 2.36', s=',')
+    test = input_field_testing(tl=test_list, ac='1.12, 2.36', fn='etym')
 
     test('1.1', '[Middle English.]')
+    test('1.2', '[from Old English mynet.]')
+    test('1.12', '[Middle English, from Old English mynet.]')
 
 
 if __name__ == '__main__':

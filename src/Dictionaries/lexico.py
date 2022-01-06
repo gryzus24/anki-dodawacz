@@ -28,30 +28,23 @@ class Lexico(Dictionary):
         super().__init__()
 
     def input_cycle(self):
-        def_field = input_field('def', 'Choose definitions')
-        chosen_defs, def_choices = def_field(self.definitions, auto_choice='1')
+        chosen_defs, def_choices = input_field('def')(self.definitions, auto_choice='1')
         if chosen_defs is None:
             return None
 
-        choices_by_headers = self.get_positions_in_sections(def_choices, expect_choice_first=True)
+        choices_by_headers = self.get_positions_in_sections(def_choices)
         phrase = self.phrases[choices_by_headers[0] - 1]
 
-        audio_urls = self.audio_urls
-        if audio_urls:
-            choices_by_labels = self.get_positions_in_sections(def_choices, from_within='AUDIO', expect_choice_first=True)
-            audio = audio_urls[choices_by_labels[0] - 1]
-        else:
-            audio = ''
+        choices_by_labels = self.get_positions_in_sections(def_choices, from_within='AUDIO')
+        audio = self.audio_urls[choices_by_labels[0] - 1]
 
         auto_choice = self.to_auto_choice(def_choices, 'DEF')
-        exsen_field = input_field('exsen', 'Choose example sentences')
-        chosen_exsen, _ = exsen_field(self.example_sentences, auto_choice)
+        chosen_exsen, _ = input_field('exsen')(self.example_sentences, auto_choice)
         if chosen_exsen is None:
             return None
 
         auto_choice = self.to_auto_choice(choices_by_headers, 'ETYM')
-        etym_field = input_field('etym', 'Choose etymologies')
-        chosen_etyms, _ = etym_field(self.etymologies, auto_choice)
+        chosen_etyms, _ = input_field('etym')(self.etymologies, auto_choice)
         if chosen_etyms is None:
             return None
 
@@ -128,7 +121,7 @@ def ask_lexico(query, flags='', _previous_query=''):
         # as is the case with "suspicion"
         example_ = example_.replace('‘', '', 1).replace('’', '', 1).strip()
         if example_:
-            example_ =  '‘' + example_ + '’'
+            example_ = '‘' + example_ + '’'
         lexico.add((deftype, definition_.strip(), example_))
     #
     # Lexico

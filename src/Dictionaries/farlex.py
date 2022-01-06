@@ -70,8 +70,7 @@ class FarlexIdioms(Dictionary):
         self._format_and_print_dictionary(buffer, textwidth, ncols, last_col_fill)
 
     def input_cycle(self):
-        def_field = input_field('def', 'Choose definitions')
-        chosen_defs, def_choices = def_field(self.definitions, auto_choice='1')
+        chosen_defs, def_choices = input_field('def')(self.definitions, auto_choice='1')
         if chosen_defs is None:
             return None
 
@@ -79,8 +78,7 @@ class FarlexIdioms(Dictionary):
         phrase = self.phrases[phrase_choice - 1]
 
         auto_choice = self.to_auto_choice(def_choices, 'DEF')
-        exsen_field = input_field('exsen', 'Choose example sentences', specifier_split='<br>')
-        chosen_exsen, _ = exsen_field(self.example_sentences, auto_choice)
+        chosen_exsen, _ = input_field('exsen')(self.example_sentences, auto_choice)
         if chosen_exsen is None:
             return None
 
@@ -115,17 +113,20 @@ def ask_farlex(query, **ignore):
 
         # Gather definitions
         definition = content_block.find('span', class_='illustration', recursive=False)
-        # definition can be None if there are no illustrations
+        # definition can be None if there are no examples
         if definition is None:
             definition = content_block.text.lstrip('1234567890.').strip()
         else:
             definition = definition.previous_element.lstrip('1234567890.').strip()
 
         # Gather idiom examples
-        illustrations = content_block.find_all('span', class_='illustration', recursive=False)
-        exsen = ['‘' + illust.text.strip() + '’' for illust in illustrations]
+        examples = content_block.find_all('span', class_='illustration', recursive=False)
+        if examples:
+            examples = '<br>'.join('‘' + e.text.strip() + '’' for e in examples)
+        else:
+            examples = ''
 
-        farlex.add(('DEF', definition, '<br>'.join(exsen)))
+        farlex.add(('DEF', definition, examples))
         farlex.add(('HEADER', ' '))
 
     return farlex
