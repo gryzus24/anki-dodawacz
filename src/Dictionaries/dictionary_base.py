@@ -319,9 +319,9 @@ class Dictionary:
                         wrapped_exsen = wrap_lines(exsen, textwidth, def_index_len, 3, 2)
                         padding = (textwidth - def_index_len - len(wrapped_exsen[0]) - 2) * ' '
                         buffer.append(f'${def_index_len * " "}  {exsen_c}{wrapped_exsen[0]}{padding}')
-                        for exsen in wrapped_exsen[1:]:
-                            padding = (textwidth - len(exsen)) * ' '
-                            buffer.append(f'${exsen_c}{exsen}{padding}')
+                        for e in wrapped_exsen[1:]:
+                            padding = (textwidth - len(e)) * ' '
+                            buffer.append(f'${exsen_c}{e}{padding}')
             elif op == 'LABEL':
                 buffer.append(blank)
                 label, inflections = body

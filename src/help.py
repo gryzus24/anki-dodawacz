@@ -53,10 +53,11 @@ To make a more specific choice follow the chosen element's index by a "." and
 a number. This will split the element on every "specifier" character and let
 you choose which parts you want to keep.
 Specifiers:
-  definitions:     ","
-  parts of speech: "\\n" (new line)
-  etymologies:     ","
-  synonyms:        ","
+  definitions:      ","
+  example sentences "\\n" (new line)
+  parts of speech:  "\\n" (new line)
+  etymologies:      ","
+  synonyms:         ","
 
  e.g. "Extremely unreasonable, incongruous, or inappropriate."
   type "1.1" to add "Extremely unreasonable.",
