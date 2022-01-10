@@ -48,7 +48,7 @@ Go to Releases (tags) -> Tags<br>
 download and extract the .zip archive.
 
 Press Win+R, type "cmd" and install required libraries:<br>
-`pip install beautifulsoup4 colorama lxml requests`
+`pip install beautifulsoup4 colorama lxml urllib3`
 
 Go to the program's directory:<br>
 `cd <path to extracted archive>`<br>
