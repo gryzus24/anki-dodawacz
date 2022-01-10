@@ -39,7 +39,7 @@ After you have installed Python:<br>
 #### One command approach:
 Press Win+R, type "cmd" and enter the command:<br>
 ```
-mkdir %HOMEPATH%\Downloads\Ankidodawacz && cd %HOMEPATH%\Downloads\Ankidodawacz && curl https://api.github.com/repos/gryzus24/anki-dodawacz/tags | python -c"import json,sys;sys.stdout.write('url '+json.load(sys.stdin)[0]['tarball_url'])" | curl -L -K- -o a && tar -xvzf a --strip-components=1 && del a && pip install --disable-pip-version-check beautifulsoup4 colorama lxml requests && python ankidodawacz.py
+mkdir %HOMEPATH%\Downloads\Ankidodawacz && cd %HOMEPATH%\Downloads\Ankidodawacz && curl https://api.github.com/repos/gryzus24/anki-dodawacz/tags | python -c"import json,sys;sys.stdout.write('url '+json.load(sys.stdin)[0]['tarball_url'])" | curl -L -K- -o a && tar -xvzf a --strip-components=1 && del a && pip install --disable-pip-version-check beautifulsoup4 colorama lxml urllib3 && python ankidodawacz.py
 ```
 The program will be downloaded into the Downloads\Ankidodawacz directory.
 
@@ -64,7 +64,7 @@ You can also create a shortcut and run the program this way, however in case of 
 Most GNU/Linux distributions come with Python preinstalled.<br>
 Cd into the directory you want the program to be downloaded into and enter the command:<br>
 ```
-mkdir Ankidodawacz && cd $_ && curl https://api.github.com/repos/gryzus24/anki-dodawacz/tags | python -c"import json,sys;sys.stdout.write('url '+json.load(sys.stdin)[0]['tarball_url'])" | curl -L -K- -o a && tar -xvzf a --strip-components=1 && rm a && pip install --disable-pip-version-check beautifulsoup4 colorama lxml requests && python ankidodawacz.py
+mkdir Ankidodawacz && cd $_ && curl https://api.github.com/repos/gryzus24/anki-dodawacz/tags | python -c"import json,sys;sys.stdout.write('url '+json.load(sys.stdin)[0]['tarball_url'])" | curl -L -K- -o a && tar -xvzf a --strip-components=1 && rm a && pip install --disable-pip-version-check beautifulsoup4 colorama lxml urllib3 && python ankidodawacz.py
 ```
 
 ### MacOS:
@@ -134,4 +134,4 @@ To start the recording add the `-rec` option after the search query.
 
 This is my first programming project, feel free to contribute if you find the program useful.
 
-Third-party libraries used: BeautifulSoup4 (MIT), colorama (BSD), lxml (BSD), requests (Apache 2.0)
+Third-party libraries used: BeautifulSoup4 (MIT), colorama (BSD), lxml (BSD), urllib3 (MIT)
