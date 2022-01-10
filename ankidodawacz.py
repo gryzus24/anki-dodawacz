@@ -25,11 +25,10 @@ from src.Dictionaries.farlex import ask_farlex
 from src.Dictionaries.lexico import ask_lexico
 from src.Dictionaries.utils import hide, request_session
 from src.Dictionaries.wordnet import ask_wordnet
+from src.__version__ import __version__
 from src.colors import R, BOLD, END, YEX, GEX, err_c
 from src.data import config, command_to_help_dict, ROOT_DIR, LINUX
 from src.input_fields import sentence_input
-
-__version__ = 'v1.4.3-1'
 
 required_arg_commands = {
     # commands that take arguments

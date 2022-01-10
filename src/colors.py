@@ -1,9 +1,9 @@
-import colorama
-from colorama import Fore
+from colorama import init
 
 from src.data import str_colors_to_color, config, POSIX
 
-colorama.init(autoreset=True)
+# Importing on POSIX only for the autoreset functionality.
+init(autoreset=True)
 
 if POSIX:
     # I'm pretty sure BOLD font is supported by default macos' terminal
@@ -26,7 +26,7 @@ class Color:
         return len(str_colors_to_color[config[self.color]])
 
 
-R = Fore.RESET
+R = '\033[39m'  # Reset colors
 GEX = Color('success_c')
 YEX = Color('attention_c')
 

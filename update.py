@@ -9,9 +9,9 @@ import requests
 from requests.exceptions import ConnectionError as RqConnectionError
 from requests.exceptions import Timeout
 
-from ankidodawacz import __version__
-from ankidodawacz import config, R, GEX, YEX, err_c
-from src.data import ROOT_DIR, WINDOWS, LINUX, ON_WINDOWS_CMD
+from src.__version__ import __version__
+from src.colors import R, GEX, YEX, err_c
+from src.data import config, ROOT_DIR, WINDOWS, LINUX, ON_WINDOWS_CMD
 
 
 class Exit(Exception):

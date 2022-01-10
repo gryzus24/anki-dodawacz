@@ -3,8 +3,6 @@ import os.path
 import sys
 from itertools import zip_longest
 
-from colorama import Fore
-
 # abspath(__file__) for <=3.8 compatibility
 ROOT_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
@@ -363,23 +361,23 @@ config_column_2 = (
 config_columns = tuple(zip_longest(config_column, config_column_1, config_column_2, fillvalue=''))
 
 str_colors_to_color = {
-    'black': Fore.BLACK,
-    'red': Fore.RED,
-    'green': Fore.GREEN,
-    'yellow': Fore.YELLOW,
-    'blue': Fore.BLUE,
-    'magenta': Fore.MAGENTA,
-    'cyan': Fore.CYAN,
-    'white': Fore.WHITE,
-    'lightblack': Fore.LIGHTBLACK_EX,
-    'lightred': Fore.LIGHTRED_EX,
-    'lightgreen': Fore.LIGHTGREEN_EX,
-    'lightyellow': Fore.LIGHTYELLOW_EX,
-    'lightblue': Fore.LIGHTBLUE_EX,
-    'lightmagenta': Fore.LIGHTMAGENTA_EX,
-    'lightcyan': Fore.LIGHTCYAN_EX,
-    'lightwhite': Fore.LIGHTWHITE_EX,
-    'reset': Fore.RESET,
+    'black': '\033[30m',
+    'red': '\033[31m',
+    'green': '\033[32m',
+    'yellow': '\033[33m',
+    'blue': '\033[34m',
+    'magenta': '\033[35m',
+    'cyan': '\033[36m',
+    'white': '\033[37m',
+    'lightblack': '\033[90m',
+    'lightred': '\033[91m',
+    'lightgreen': '\033[92m',
+    'lightyellow': '\033[93m',
+    'lightblue': '\033[94m',
+    'lightmagenta': '\033[95m',
+    'lightcyan': '\033[96m',
+    'lightwhite': '\033[97m',
+    'reset': '\033[39m',
 }
 color_elements_to_msg = {
     'def1': 'Odd definitions and idiom definitions color',
@@ -413,8 +411,8 @@ bool_values_dict = {
 }
 
 bool_colors_dict = {
-    True: Fore.LIGHTGREEN_EX,
-    False: Fore.LIGHTRED_EX,
-    'True': Fore.LIGHTGREEN_EX,
-    'False': Fore.LIGHTRED_EX,
+    True: '\033[92m',   # LIGHT GREEN
+    False: '\033[91m',  # LIGHT RED
+    'True': '\033[92m',
+    'False': '\033[91m',
 }
