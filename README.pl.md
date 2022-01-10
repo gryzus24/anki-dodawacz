@@ -26,7 +26,7 @@ Przy instalacji zaznaczamy "Add python to PATH"
 ##### Po zainstalowaniu Pythona:<br>
 
 Otwieramy terminal (cmd na windowsie) i pobieramy wymagane biblioteki wpisując:<br>
-`pip install beautifulsoup4 colorama lxml requests`<br>
+`pip install beautifulsoup4 colorama lxml urllib3`<br>
 
 Następnie wpisujemy:<br>
 `cd <ścieżka do folderu z programem>`<br>
@@ -48,7 +48,7 @@ Możemy użyć komendy:<br>
 Na większości dystrybucji odpowiednia wersja Pythona powinna być już zainstalowana.
 
 Instalujemy wymagane biblioteki:<br>
-`pip install beautifulsoup4 colorama lxml requests`
+`pip install beautifulsoup4 colorama lxml urllib3`
 
 Otwieramy za pomocą Pythona:<br>
 `python ankidodawacz.py`
@@ -195,4 +195,4 @@ wiele do życzenia.
 
 Jestem otwarty na wszelkie sugestie i uwagi. Mam nadzieję, że narzędzie okaże się pomocne.
 
-Użyte biblioteki: BeautifulSoup4 (MIT), colorama (BSD), lxml (BSD), requests (Apache 2.0)
+Użyte biblioteki: BeautifulSoup4 (MIT), colorama (BSD), lxml (BSD), urllib3 (MIT)
