@@ -388,14 +388,12 @@ def boolean_commands(*args, message):
 
 def show_available_colors():
     print(f'{R}{BOLD}Available colors:{END}')
-    for color, thiscolor in data.str_colors_to_color.items():
-        if color == 'reset':
-            print(f'{R}{color}\n')
-            break
-
-        print(f'{thiscolor}{color}', end=', ')
-        if color in ('yellow', 'white', 'lightyellow', 'lightwhite'):
-            print()
+    t = tuple(data.str_colors_to_color.items())
+    for i, (name, col, lname, lcol) in enumerate([
+        (*t[0 + i], *t[len(t) // 2 + i]) for i in range(len(t) // 2)
+    ]):
+        sys.stdout.write(f'{col}{name:9s}{lcol}{lname:14s}{col}██{lcol}██ {BOLD}{i}{END}\n')
+    sys.stdout.write(f'{R}reset                  ██\n\n')
 
 
 def color_command():
