@@ -15,9 +15,10 @@
 
 import json
 import os
-import urllib.request
-from urllib.error import URLError
 
+from urllib3.exceptions import NewConnectionError
+
+from src.Dictionaries.utils import http
 from src.colors import R, BOLD, END, YEX, GEX, index_c, err_c
 from src.commands import save_command
 from src.data import ROOT_DIR, config, config_ac, AC_BASE_FIELDS, custom_notes
@@ -47,17 +48,21 @@ def refresh_cached_notes():
     print(f'{YEX}Notes refreshed')
 
 
-def ankiconnect_request(action, **params):
-    return {'action': action, 'params': params, 'version': 6}
-
-
 def invoke(action, **params):
-    request_json = json.dumps(ankiconnect_request(action, **params)).encode('utf-8')
+    request_json = json.dumps(
+        {'action': action, 'params': params, 'version': 6}
+    ).encode()
 
     try:
-        # Using 127.0.0.1 as Windows is very slow to resolve "localhost" for some reason
-        response = json.load(urllib.request.urlopen(urllib.request.Request('http://127.0.0.1:8765', request_json)))
-    except URLError:
+        response = json.loads(
+            http.urlopen(
+                'POST',
+                'http://127.0.0.1:8765',
+                retries=False,
+                body=request_json
+            ).data.decode()
+        )
+    except NewConnectionError:
         return None, '  Could not connect with Anki:\n' \
                      '    Open Anki and try again.'
 

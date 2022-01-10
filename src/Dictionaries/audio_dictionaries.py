@@ -17,7 +17,7 @@ import binascii
 import os.path
 
 import src.anki_interface as anki
-from src.Dictionaries.utils import request_soup, request_session
+from src.Dictionaries.utils import request_soup, http
 from src.colors import R, YEX, err_c
 from src.data import config
 
@@ -33,16 +33,17 @@ def diki_audio(raw_phrase, flag=''):
     url = f'https://www.diki.pl/images-common/en/mp3/{diki_phrase}{flag}.mp3'
     url_ame = f'https://www.diki.pl/images-common/en-ame/mp3/{diki_phrase}{flag}.mp3'
     # First try British pronunciation, then American
-    if request_session.head(url).status_code == 200 or \
-       request_session.head(url_ame).status_code == 200:
+
+    if http.urlopen('HEAD', url).status == 200 or \
+       http.urlopen('HEAD', url_ame).status == 200:
         return url
 
     if flag:
         # Try the same but without the flag
         url = f'https://www.diki.pl/images-common/en/mp3/{diki_phrase}.mp3'
         url_ame = f'https://www.diki.pl/images-common/en-ame/mp3/{diki_phrase}.mp3'
-        if request_session.head(url).status_code == 200 or \
-           request_session.head(url_ame).status_code == 200:
+        if http.urlopen('HEAD', url).status == 200 or \
+           http.urlopen('HEAD', url_ame).status == 200:
             return url
 
     print(f'{err_c}Diki does not have the desired pronunciation\n'
@@ -83,7 +84,7 @@ def diki_audio(raw_phrase, flag=''):
             last_phrase = diki_phrase
 
         url = f'https://www.diki.pl/images-common/en/mp3/{diki_phrase}.mp3'
-        if request_session.head(url).status_code == 200:
+        if http.urlopen('HEAD', url).status == 200:
             return url
 
     print(f"{err_c}Diki does not have the pronunciation for {R}{raw_phrase}")
@@ -92,7 +93,7 @@ def diki_audio(raw_phrase, flag=''):
 
 def save_audio_url(audio_url):
     filename = audio_url.rsplit('/', 1)[-1]
-    audio_content = request_session.get(audio_url).content
+    audio_content = http.urlopen('GET', audio_url).data
     audio_path = config['audio_path']
 
     # Use AnkiConnect to save audio files if 'collection.media' path isn't given.

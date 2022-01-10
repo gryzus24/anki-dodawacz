@@ -5,13 +5,12 @@ import subprocess
 import sys
 import tempfile
 
-import requests
-from requests.exceptions import ConnectionError as RqConnectionError
-from requests.exceptions import Timeout
+import urllib3
+from urllib3.exceptions import NewConnectionError, ConnectTimeoutError
 
 from src.__version__ import __version__
 from src.colors import R, GEX, YEX, err_c
-from src.data import config, ROOT_DIR, WINDOWS, LINUX, ON_WINDOWS_CMD
+from src.data import config, ROOT_DIR, USER_AGENT, WINDOWS, LINUX, ON_WINDOWS_CMD
 
 
 class Exit(Exception):
@@ -25,22 +24,22 @@ class Exit(Exception):
         raise SystemExit(1)
 
 
-def get_request(session):
+def get_request():
     def wrapper(url, **kwargs):
         try:
-            response = session.get(url, **kwargs)
-        except Timeout:
-            raise Exit('Github is not responding.')
-        except RqConnectionError:
-            raise Exit('Server refused to connect.')
-        except ConnectionError:
-            raise Exit('Could not establish a connection,\n'
-                       'check your Internet connection and try again.')
-        except Exception:
-            print(f'{err_c}An unexpected error occurred.')
-            raise
+            http = urllib3.PoolManager(num_pools=1, timeout=10, headers=USER_AGENT)
+            response = http.urlopen('GET', url, **kwargs)
+        except Exception as e:
+            if isinstance(e.__context__, NewConnectionError):
+                raise Exit('Could not establish a connection,\n'
+                           'check your Internet connection and try again.')
+            elif isinstance(e.__context__, ConnectTimeoutError):
+                raise Exit('Github is not responding')
+            else:
+                print(f'{err_c}An unexpected error occurred.')
+                raise
         else:
-            if response.status_code != 200:
+            if response.status != 200:
                 raise Exit('Could not retrieve the package.\n'
                            'Non 200 status code.')
             return response
@@ -49,17 +48,10 @@ def get_request(session):
 
 
 def main():
-    safe_get = get_request(requests.Session())
+    safe_get = get_request()
     response = safe_get('https://api.github.com/repos/gryzus24/anki-dodawacz/tags')
 
-    try:
-        latest_tag = response.json()[0]
-    except Exception:
-        # .json() may raise multiple `DecodeError` type exceptions.
-        # [0] may raise IndexError, in either case program should abort.
-        raise Exit('Could not retrieve tags.\n'
-                   'Aborting the installation...')
-
+    latest_tag = json.loads(response.data.decode())[0]
     if latest_tag['name'] == __version__:
         print(f'{GEX}You are using the latest version ({__version__}).')
         return 0
@@ -114,8 +106,8 @@ def main():
             else:
                 print(f"{err_c}:: {R}Could not copy '{old_key}': incompatible data type")
 
-        with open(os.path.join(out_dir_path, 'config/config.json'), 'w') as f:
-            json.dump(new_config, f, indent=0)
+    with open(os.path.join(out_dir_path, 'config/config.json'), 'w') as f:
+        json.dump(new_config, f, indent=0)
 
     if os.path.exists('cards.txt'):
         print(f"{YEX}:: {R}Copying 'cards.txt'...")

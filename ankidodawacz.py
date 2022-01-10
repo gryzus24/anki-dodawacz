@@ -23,7 +23,7 @@ from src.Dictionaries.ahdictionary import ask_ahdictionary
 from src.Dictionaries.audio_dictionaries import ahd_audio, lexico_audio, diki_audio, save_audio_url
 from src.Dictionaries.farlex import ask_farlex
 from src.Dictionaries.lexico import ask_lexico
-from src.Dictionaries.utils import hide, request_session
+from src.Dictionaries.utils import hide
 from src.Dictionaries.wordnet import ask_wordnet
 from src.__version__ import __version__
 from src.colors import R, BOLD, END, YEX, GEX, err_c
@@ -399,5 +399,3 @@ if __name__ == '__main__':
         raise SystemExit(main())
     except (KeyboardInterrupt, EOFError):
         print()
-    finally:
-        request_session.close()

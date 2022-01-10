@@ -15,40 +15,38 @@
 
 from shutil import get_terminal_size
 
-import requests
+import urllib3
 from bs4 import BeautifulSoup
-from requests.exceptions import ConnectionError as RqConnectionError
-from requests.exceptions import Timeout
+from urllib3.exceptions import NewConnectionError, ConnectTimeoutError
 
 from src.colors import err_c
 from src.data import config, USER_AGENT, PREPOSITIONS, ON_WINDOWS_CMD
 
-request_session = requests.Session()
-request_session.headers.update(USER_AGENT)
+http = urllib3.PoolManager(timeout=10, headers=USER_AGENT)
 
 
 def handle_connection_exceptions(func):
     def wrapper(*args, **kwargs):
         try:
             return func(*args, **kwargs)
-        except Timeout:
-            print(f'{err_c}Connection timed out.')
-        except RqConnectionError:
-            print(f'{err_c}Server refused to connect.')
-        except ConnectionError:
-            print(f'{err_c}Could not establish a connection,\n'
-                  f'check your Internet connection and try again.')
-        except Exception:
-            print(f'{err_c}An unexpected error occurred in {func.__qualname__}.')
-            raise
+        except Exception as e:
+            if isinstance(e.__context__, NewConnectionError):
+                print(f'{err_c}Could not establish a connection,\n'
+                      'check your Internet connection and try again.')
+            elif isinstance(e.__context__, ConnectTimeoutError):
+                print(f'{err_c}Connection timed out.')
+            else:
+                print(f'{err_c}An unexpected error occurred in {func.__qualname__}.')
+                raise
     return wrapper
 
 
 @handle_connection_exceptions
 def request_soup(url):
-    reqs = request_session.get(url, timeout=10)
-    reqs.encoding = 'UTF-8'
-    return BeautifulSoup(reqs.text, 'lxml')
+    r = http.urlopen('GET', url)
+    # At the moment only WordNet uses other than utf-8 encoding (iso-8859-1).
+    # Use utf-8 as there were no decoding problems thus far.
+    return BeautifulSoup(r.data.decode(), 'lxml')
 
 
 def hide(content, phrase):
