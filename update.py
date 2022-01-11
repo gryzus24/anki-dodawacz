@@ -12,6 +12,8 @@ from src.__version__ import __version__
 from src.colors import R, GEX, YEX, err_c
 from src.data import config, ROOT_DIR, USER_AGENT, WINDOWS, LINUX, ON_WINDOWS_CMD
 
+http = urllib3.PoolManager(timeout=10, headers=USER_AGENT)
+
 
 class Exit(Exception):
     def __init__(self, err_msg):
@@ -27,7 +29,6 @@ class Exit(Exception):
 def get_request():
     def wrapper(url, **kwargs):
         try:
-            http = urllib3.PoolManager(num_pools=1, timeout=10, headers=USER_AGENT)
             response = http.urlopen('GET', url, **kwargs)
         except Exception as e:
             if isinstance(e.__context__, NewConnectionError):
@@ -76,7 +77,7 @@ def main():
     try:
         # We cannot use the NamedTemporaryFile as a context manager because Windows
         # is unable to open the temporary file in the subprocess.
-        tfile.write(archive.content)
+        tfile.write(archive.data)
         tfile.flush()
         tfile.close()
         os.mkdir(out_dir_path)
