@@ -181,8 +181,12 @@ def ask_ahdictionary(query, flags=''):
     if soup is None:
         return None
 
-    if soup.find('div', {'id': 'results'}).text == 'No word definition found':
-        print(f'{err_c}Could not find {R}"{query}"{err_c} in AH Dictionary')
+    try:
+        if soup.find('div', {'id': 'results'}).text == 'No word definition found':
+            print(f'{err_c}Could not find {R}"{query}"{err_c} in AH Dictionary')
+            return None
+    except AttributeError:
+        print(f'{err_c}AH Dictionary is probably down:\n{R}{soup.prettify()}')
         return None
 
     ahd = AHDictionary()

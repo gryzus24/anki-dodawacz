@@ -19,7 +19,7 @@ import os
 from urllib3.exceptions import NewConnectionError
 
 from src.Dictionaries.utils import http
-from src.colors import R, BOLD, END, YEX, GEX, index_c, err_c
+from src.colors import R, BOLD, DEFAULT, YEX, GEX, index_c, err_c
 from src.commands import save_command
 from src.data import ROOT_DIR, config, config_ac, AC_BASE_FIELDS, custom_notes
 from src.input_fields import ask_yes_no, choose_item
@@ -114,7 +114,7 @@ def gui_browse_cards(query):
 
 
 def add_note_to_anki():
-    print(f'{BOLD}Available notes:{END}')
+    print(f'{BOLD}Available notes:{DEFAULT}')
     for i, note in enumerate(custom_notes, start=1):
         print(f'{index_c}{i} {R}{note[:-5]}')  # strip ".json"
     print()

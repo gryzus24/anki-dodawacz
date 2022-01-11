@@ -20,7 +20,7 @@ from shutil import get_terminal_size
 
 import src.data as data
 from src.colors import (
-    R, BOLD, END, YEX, GEX, def1_c, def2_c, defsign_c, pos_c, etym_c, syn_c, exsen_c,
+    R, BOLD, DEFAULT, YEX, GEX, def1_c, def2_c, defsign_c, pos_c, etym_c, syn_c, exsen_c,
     syngloss_c, index_c, phrase_c, phon_c, poslabel_c, inflection_c, err_c, delimit_c
 )
 from src.data import (
@@ -85,7 +85,7 @@ def config_defaults(*args, **kwargs):
     bulk_elements = ('def', 'exsen', 'pos', 'etym', 'syn', 'all')
     if bulk_elem not in bulk_elements:
         return f'Unknown field name: {R}{bulk_elem}\n' \
-               f'{BOLD}Field names:{END}\n' \
+               f'{BOLD}Field names:{DEFAULT}\n' \
                f'def, exsen, pos, etym, syn, all\n'
 
     try:
@@ -110,15 +110,15 @@ def config_defaults(*args, **kwargs):
 
 # this is prospective
 def print_field_table():
-    p = f'{BOLD}│{END}'
-    print(f'{R}{BOLD}╭╴field╶─╴on/off╶─╴show/hide╶─╴default╶╮{END}')
+    p = f'{BOLD}│{DEFAULT}'
+    print(f'{R}{BOLD}╭╴field╶─╴on/off╶─╴show/hide╶─╴default╶╮{DEFAULT}')
     for e in ('pz', 'def', 'exsen', 'pos', 'etym', 'syn'):
         on_off = config[e]
         show_hide = config.get('u'+e, '')
         default = config.get(e+'_bulk', '')
         c1, c2 = bool_colors_dict.get(on_off, ''), bool_colors_dict.get(show_hide, '')
         print(f'{p} -{e:7s}{c1}{str(on_off):9s}{c2}{str(show_hide):12s}{R}{str(default):8s}{p}')
-    print(f'{BOLD}╰──────────────────────────────────────╯{END}')
+    print(f'{BOLD}╰──────────────────────────────────────╯{DEFAULT}')
 
 
 def print_config_representation():
@@ -132,11 +132,11 @@ def print_config_representation():
             t = 1
         save_command('columns', [t, '* auto'])
 
-    sys.stdout.write(f'{R}{BOLD}[card creation co.]     [display configur.]     [default values]{END}\n')
+    sys.stdout.write(f'{R}{BOLD}[card creation co.]     [display configur.]     [default values]{DEFAULT}\n')
     for a, b, c in data.config_columns:
-        a = a.replace('[', f'{BOLD}[').replace(']', f']{END}')
-        b = b.replace('[', f'{BOLD}[').replace(']', f']{END}')
-        c = c.replace('[', f'{BOLD}[').replace(']', f']{END}')
+        a = a.replace('[', f'{BOLD}[').replace(']', f']{DEFAULT}')
+        b = b.replace('[', f'{BOLD}[').replace(']', f']{DEFAULT}')
+        c = c.replace('[', f'{BOLD}[').replace(']', f']{DEFAULT}')
 
         state_a = config.get(a[1:], '')
         state_b = config.get(b[1:], '')
@@ -215,7 +215,7 @@ def set_width_settings(*args, message):
 def display_field_order():
     for field_number, field in enumerate(config['fieldorder'], start=1):
         b = BOLD if field_number == 1 else ''
-        print(f' {b}{field_number}: {field}{END}')
+        print(f' {b}{field_number}: {field}{DEFAULT}')
 
         if field_number == config['fieldorder_d']:
             print(f' {delimit_c}D: ─────────{R}')
@@ -387,18 +387,18 @@ def boolean_commands(*args, message):
 
 
 def show_available_colors():
-    print(f'{R}{BOLD}Available colors:{END}')
+    print(f'{R}{BOLD}Available colors:{DEFAULT}')
     t = tuple(data.str_colors_to_color.items())
     for i, (name, col, lname, lcol) in enumerate([
         (*t[0 + i], *t[len(t) // 2 + i]) for i in range(len(t) // 2)
     ]):
-        sys.stdout.write(f'{col}{name:9s}{lcol}{lname:14s}{col}██{lcol}██ {BOLD}{i}{END}\n')
+        sys.stdout.write(f'{col}{name:9s}{lcol}{lname:14s}{col}██{lcol}██ {BOLD}{i}{DEFAULT}\n')
     sys.stdout.write(f'{R}reset                  ██\n\n')
 
 
 def color_command():
     print(f"""\
-{R}{BOLD}[Elements]   [Changes the color of]{END}
+{R}{BOLD}[Elements]   [Changes the color of]{DEFAULT}
 def1         {def1_c}odd definitions and idiom definitions{R}
 def2         {def2_c}even definitions{R}
 defsign      {defsign_c}definition sign (>){R}

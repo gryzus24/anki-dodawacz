@@ -1,17 +1,37 @@
-from colorama import init
+import sys
 
-from src.data import str_colors_to_color, config, POSIX
+from src.data import str_colors_to_color, config, WINDOWS
 
-# Importing on POSIX only for the autoreset functionality.
-init(autoreset=True)
+# Reset all color attributes except BOLD
+R = '\033[39m'
 
-if POSIX:
-    # I'm pretty sure BOLD font is supported by default macos' terminal
-    BOLD = '\033[1m'
-    END = '\033[0m'
-else:
+if WINDOWS:
+    from colorama import init
+
+    init(autoreset=True)
+
     BOLD = ''
-    END = ''
+    DEFAULT = ''
+else:
+    BOLD = '\033[1m'
+    # Use default foreground color
+    DEFAULT = '\033[0m'
+
+    class Autoreset:
+        def __init__(self, fp):
+            self.fp = fp
+
+        def write(self, a):
+            self.fp.write(a + R)
+
+        def writelines(self, a):
+            for line in a:
+                self.fp.write(line)
+
+        def flush(self):
+            self.fp.flush()
+
+    sys.stdout = Autoreset(sys.stdout)
 
 
 class Color:
@@ -26,7 +46,6 @@ class Color:
         return len(str_colors_to_color[config[self.color]])
 
 
-R = '\033[39m'  # Reset colors
 GEX = Color('success_c')
 YEX = Color('attention_c')
 

@@ -20,7 +20,7 @@ from shutil import get_terminal_size
 
 from src.Dictionaries.utils import wrap_lines, get_config_terminal_size
 from src.colors import (
-    R, BOLD, END, def1_c, syn_c, exsen_c, pos_c, etym_c, phrase_c, err_c,
+    R, BOLD, DEFAULT, def1_c, syn_c, exsen_c, pos_c, etym_c, phrase_c, err_c,
     delimit_c, def2_c, defsign_c, index_c, phon_c, poslabel_c, inflection_c
 )
 from src.data import (
@@ -191,8 +191,8 @@ class Dictionary:
         return result if result and result[0] else [1]
 
     def format_title(self, textwidth):
-        t = f'[ {BOLD}{self.title}{END}{delimit_c} ]'
-        esc_seq_len = len(BOLD) + len(END) + len(delimit_c)
+        t = f'[ {BOLD}{self.title}{DEFAULT}{delimit_c} ]'
+        esc_seq_len = len(BOLD) + len(DEFAULT) + len(delimit_c)
         return f'{delimit_c}{t.center(textwidth + esc_seq_len, HORIZONTAL_BAR)}'
 
     def _get_term_parameters(self):
@@ -372,7 +372,7 @@ class Dictionary:
             elif op == 'NOTE':
                 note = body[0]
                 padding = (textwidth + len(phrase_c) - len(note)) * ' '
-                buffer.append(f'{R}{BOLD}{note}{END}{padding}')
+                buffer.append(f'{R}{BOLD}{note}{DEFAULT}{padding}')
             else:
                 assert False, f'unreachable dictionary operation: {op!r}'
 

@@ -26,7 +26,7 @@ from src.Dictionaries.lexico import ask_lexico
 from src.Dictionaries.utils import hide
 from src.Dictionaries.wordnet import ask_wordnet
 from src.__version__ import __version__
-from src.colors import R, BOLD, END, YEX, GEX, err_c
+from src.colors import R, BOLD, DEFAULT, YEX, GEX, err_c
 from src.data import config, command_to_help_dict, ROOT_DIR, LINUX
 from src.input_fields import sentence_input
 
@@ -116,13 +116,13 @@ def search_interface():
             # Print additional information
             if cmd in ('-ap', '--audio-path'):
                 print(f'{BOLD}Current audio path:\n'
-                      f'{END}{config["audio_path"]}\n')
+                      f'{DEFAULT}{config["audio_path"]}\n')
             elif cmd in ('-fo', '--field-order'):
                 c.display_field_order()
             elif cmd in ('-c', '-color'):
                 c.color_command()
             elif cmd == '-cd':
-                print(f'{BOLD}Field names:{END}\n'
+                print(f'{BOLD}Field names:{DEFAULT}\n'
                       f'def, exsen, pos, etym, syn, all\n')
         else:
             err = method(*args, message=message)
@@ -353,7 +353,7 @@ def main():
         if not os.path.exists(t):
             os.mkdir(t)
 
-    print(f'{BOLD}- Anki card generator {__version__} -{END}\n'
+    print(f'{BOLD}- Anki card generator {__version__} -{DEFAULT}\n'
           'type `-h` for usage and configuration\n\n')
 
     while True:
