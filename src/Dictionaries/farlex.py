@@ -14,7 +14,7 @@
 # along with this program. If not, see <http://www.gnu.org/licenses/>.
 
 from src.Dictionaries.dictionary_base import Dictionary
-from src.Dictionaries.utils import request_soup, wrap_lines
+from src.Dictionaries.utils import request_soup, wrap_and_pad
 from src.colors import R, def1_c, def2_c, index_c, exsen_c, phrase_c, err_c
 from src.data import config
 from src.input_fields import input_field
@@ -41,27 +41,21 @@ class FarlexIdioms(Dictionary):
                 def_c = def1_c if communal_index % 2 else def2_c
                 def_index_len = len(str(communal_index))
 
-                wrapped_def = wrap_lines(body[0], textwidth, def_index_len, indent - 1, 1)
-                padding = (textwidth - len(wrapped_def[0]) - def_index_len - 1) * ' '
-                buffer.append(f'{index_c}{communal_index} {def_c}{wrapped_def[0]}{padding}')
-                for def_tp in wrapped_def[1:]:
-                    padding = (textwidth - len(def_tp)) * ' '
-                    buffer.append(f'${def_c}{def_tp}{padding}')
+                first_line, *rest = wrap_and_pad(body[0], textwidth, def_index_len, indent -1, 1)
+                buffer.append(f'{index_c}{communal_index} {def_c}{first_line}')
+                for def_tp in rest:
+                    buffer.append(f'${def_c}{def_tp}')
 
                 if show_exsen and body[1]:
                     for exsen in body[1].split('<br>'):
-                        wrapped_exsen = wrap_lines(exsen, textwidth, def_index_len, 2, 1)
-                        padding = (textwidth - len(wrapped_exsen[0]) - def_index_len - 1) * ' '
-                        buffer.append(f'${def_index_len * " "} {exsen_c}{wrapped_exsen[0]}{padding}')
-                        for wrapped_line in wrapped_exsen[1:]:
-                            padding = (textwidth - len(wrapped_line)) * ' '
-                            buffer.append(f'${exsen_c}{wrapped_line}{padding}')
+                        first_line, *rest = wrap_and_pad(exsen, textwidth, def_index_len, 2, 1)
+                        buffer.append(f'${def_index_len * " "} {exsen_c}{first_line}')
+                        for wrapped_line in rest:
+                            buffer.append(f'${exsen_c}{wrapped_line}')
             elif op == 'PHRASE':
-                phrase = body[0]
-                wrapped_phrase = wrap_lines(phrase, textwidth, 0, 0, 1)
-                for phrase_chunk in wrapped_phrase:
-                    padding = (textwidth - len(phrase_chunk) - 1) * ' '
-                    buffer.append(f'! {phrase_c}{phrase_chunk}{padding}')
+                wrapped = wrap_and_pad(body[0], textwidth - 1, 0, 0, 0)
+                for phrase_chunk in wrapped:
+                    buffer.append(f'! {phrase_c}{phrase_chunk}')
             elif op == 'HEADER':
                 buffer.append(textwidth * body[0])
             else:

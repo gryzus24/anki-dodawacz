@@ -18,7 +18,7 @@ import sys
 from itertools import zip_longest
 from shutil import get_terminal_size
 
-from src.Dictionaries.utils import wrap_lines, get_config_terminal_size
+from src.Dictionaries.utils import wrap_lines, wrap_and_pad, get_config_terminal_size
 from src.colors import (
     R, BOLD, DEFAULT, def1_c, syn_c, exsen_c, pos_c, etym_c, phrase_c, err_c,
     delimit_c, def2_c, defsign_c, index_c, phon_c, poslabel_c, inflection_c
@@ -294,9 +294,6 @@ class Dictionary:
         indent = config['indent'][0]
         show_exsen = config['showexsen']
 
-        # TODO:
-        #  Easier way to correctly wrap elements without having to
-        #  hardcode padding values and iterate over wrapped lines[1:].
         buffer = []
         communal_index = 0
         for op, *body in self.contents:
@@ -307,21 +304,17 @@ class Dictionary:
                 sign = ' ' if 'SUB' in op else '>'
                 def_index_len = len(str(communal_index))
 
-                wrapped_def = wrap_lines(body[0], textwidth, def_index_len, indent, 2)
-                padding = (textwidth - len(wrapped_def[0]) - def_index_len - 2) * ' '
-                buffer.append(f'{defsign_c}{sign}{index_c}{communal_index} {def_c}{wrapped_def[0]}{padding}')
-                for def_tp in wrapped_def[1:]:
-                    padding = (textwidth - len(def_tp)) * ' '
-                    buffer.append(f'${def_c}{def_tp}{padding}')
+                first_line, *rest = wrap_and_pad(body[0], textwidth, def_index_len, indent, 2)
+                buffer.append(f'{defsign_c}{sign}{index_c}{communal_index} {def_c}{first_line}')
+                for def_tp in rest:
+                    buffer.append(f'${def_c}{def_tp}')
 
                 if show_exsen and body[1]:
                     for exsen in body[1].split('<br>'):
-                        wrapped_exsen = wrap_lines(exsen, textwidth, def_index_len, 3, 2)
-                        padding = (textwidth - def_index_len - len(wrapped_exsen[0]) - 2) * ' '
-                        buffer.append(f'${def_index_len * " "}  {exsen_c}{wrapped_exsen[0]}{padding}')
-                        for e in wrapped_exsen[1:]:
-                            padding = (textwidth - len(e)) * ' '
-                            buffer.append(f'${exsen_c}{e}{padding}')
+                        first_line, *rest = wrap_and_pad(exsen, textwidth, def_index_len, 3, 2)
+                        buffer.append(f'${def_index_len * " "}  {exsen_c}{first_line}')
+                        for e in rest:
+                            buffer.append(f'${exsen_c}{e}')
             elif op == 'LABEL':
                 buffer.append(blank)
                 label, inflections = body
@@ -340,14 +333,11 @@ class Dictionary:
                 if padding:
                     buffer.append(f'! {phrase_c}{phrase}  {phon_c}{phon}{padding}')
                 else:
-                    wrapped_phrase = wrap_lines(phrase, textwidth, 0, 0, 1)
-                    padding = (textwidth - len(wrapped_phrase[0]) - 1) * ' '
-                    buffer.append(f'! {phrase_c}{wrapped_phrase[0]}{padding}')
-                    for phrase_line in wrapped_phrase[1:]:
-                        padding = (textwidth - len(phrase_line) - 1) * ' '
-                        buffer.append(f'! {phrase_c}{phrase_line}{padding}')
-                    padding = (textwidth - len(phon) - 1) * ' '
+                    wrapped = wrap_and_pad(phrase, textwidth - 1, 0, 0, 0)
+                    for phrase_line in wrapped:
+                        buffer.append(f'! {phrase_c}{phrase_line}')
                     if phon:
+                        padding = (textwidth - len(phon) - 1) * ' '
                         buffer.append(f'! {phon_c}{phon}{padding}')
             elif op == 'HEADER':
                 buffer.append(f'{delimit_c}{textwidth * body[0]}')
@@ -355,12 +345,10 @@ class Dictionary:
                 etym = body[0]
                 if etym:
                     buffer.append(blank)
-                    wrapped_etym = wrap_lines(etym, textwidth, 0, 1, 1)
-                    padding = (textwidth - len(wrapped_etym[0]) - 1) * ' '
-                    buffer.append(f' {etym_c}{wrapped_etym[0]}{padding}')
-                    for e in wrapped_etym[1:]:
-                        padding = (textwidth - len(e)) * ' '
-                        buffer.append(f'${etym_c}{e}{padding}')
+                    first_line, *rest = wrap_and_pad(etym, textwidth, 0, 1, 1)
+                    buffer.append(f' {etym_c}{first_line}')
+                    for e in rest:
+                        buffer.append(f'${etym_c}{e}')
             elif op == 'POS':
                 if body[0]:
                     buffer.append(blank)

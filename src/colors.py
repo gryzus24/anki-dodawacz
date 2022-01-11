@@ -1,37 +1,8 @@
-import sys
+from colorama import init
 
-from src.data import str_colors_to_color, config, WINDOWS
+from src.data import str_colors_to_color, config, POSIX
 
-# Reset all color attributes except BOLD
-R = '\033[39m'
-
-if WINDOWS:
-    from colorama import init
-
-    init(autoreset=True)
-
-    BOLD = ''
-    DEFAULT = ''
-else:
-    BOLD = '\033[1m'
-    # Use default foreground color
-    DEFAULT = '\033[0m'
-
-    class Autoreset:
-        def __init__(self, fp):
-            self.fp = fp
-
-        def write(self, a):
-            self.fp.write(a + R)
-
-        def writelines(self, a):
-            for line in a:
-                self.fp.write(line)
-
-        def flush(self):
-            self.fp.flush()
-
-    sys.stdout = Autoreset(sys.stdout)
+init(autoreset=True)
 
 
 class Color:
@@ -46,6 +17,13 @@ class Color:
         return len(str_colors_to_color[config[self.color]])
 
 
+if POSIX:
+    BOLD, DEFAULT = '\033[1m', '\033[0m'
+else:
+    BOLD = DEFAULT = ''
+
+# Reset all color attributes except BOLD
+R = '\033[39m'
 GEX = Color('success_c')
 YEX = Color('attention_c')
 

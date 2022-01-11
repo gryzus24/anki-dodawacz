@@ -188,3 +188,11 @@ def wrap_lines(string, term_width=79, index_width=0, indent=0, gap=0):
     elif config['textwrap'] == 'justify':
         return justification_wrap()
     return no_wrap(string)
+
+
+def wrap_and_pad(lines, textwidth, index_width, indent, gap):
+    fl, *rest = wrap_lines(lines, textwidth, index_width, indent, gap)
+    result = [fl + (textwidth - len(fl) - index_width - gap) * ' ']
+    for line in rest:
+        result.append(line + (textwidth - len(line)) * ' ')
+    return result

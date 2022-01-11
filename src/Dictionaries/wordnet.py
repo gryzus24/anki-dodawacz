@@ -14,7 +14,7 @@
 # along with this program. If not, see <http://www.gnu.org/licenses/>.
 
 from src.Dictionaries.dictionary_base import Dictionary
-from src.Dictionaries.utils import request_soup, wrap_lines
+from src.Dictionaries.utils import request_soup, wrap_and_pad
 from src.colors import R, index_c, syn_c, syngloss_c, poslabel_c, err_c
 from src.data import config
 from src.input_fields import input_field
@@ -41,21 +41,15 @@ class WordNet(Dictionary):
 
                 pos = body[2]
                 pos_len = len(pos)
-                wrapped_synonyms = wrap_lines(body[0], textwidth, index_len, pos_len + 2, pos_len + 2)
-                padding = (textwidth - len(wrapped_synonyms[0]) - index_len - pos_len - 2) * ' '
-                buffer.append(
-                    f'{index_c}{communal_index} {poslabel_c}{pos} {syn_c}{wrapped_synonyms[0]}{padding}'
-                )
-                for subsyn in wrapped_synonyms[1:]:
-                    padding = (textwidth - len(subsyn)) * ' '
-                    buffer.append(f'{syn_c}{subsyn}{padding}')
+                first_line, *rest = wrap_and_pad(body[0], textwidth, index_len, pos_len + 2, pos_len + 2)
+                buffer.append(f'{index_c}{communal_index} {poslabel_c}{pos} {syn_c}{first_line}')
+                for subsyn in rest:
+                    buffer.append(f'{syn_c}{subsyn}')
 
-                wrapped_glosses = wrap_lines(body[1], textwidth, index_len, 1, 1)
-                padding = (textwidth - len(wrapped_glosses[0]) - index_len - 1) * ' '
-                buffer.append(f'{index_len * " "} {syngloss_c}{wrapped_glosses[0]}{padding}')
-                for rest in wrapped_glosses[1:]:
-                    padding = (textwidth - len(rest)) * ' '
-                    buffer.append(f'{syngloss_c}{rest}{padding}')
+                first_line, *rest = wrap_and_pad(body[1], textwidth, index_len, 1, 1)
+                buffer.append(f'{index_len * " "} {syngloss_c}{first_line}')
+                for gloss in rest:
+                    buffer.append(f'{syngloss_c}{gloss}')
             else:
                 assert False, f'unreachable wordnet operation: {op!r}'
 
