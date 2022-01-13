@@ -191,6 +191,7 @@ def wrap_lines(string, term_width=79, index_width=0, indent=0, gap=0):
 
 
 def wrap_and_pad(lines, textwidth, index_width, indent, gap):
+    # Wraps and adds right side padding that matches `textwidth`.
     fl, *rest = wrap_lines(lines, textwidth, index_width, indent, gap)
     result = [fl + (textwidth - len(fl) - index_width - gap) * ' ']
     for line in rest:

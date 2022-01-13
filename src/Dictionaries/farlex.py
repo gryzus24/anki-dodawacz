@@ -27,9 +27,7 @@ class FarlexIdioms(Dictionary):
     def __init__(self):
         super().__init__()
 
-    def print_dictionary(self):
-        textwidth, ncols, last_col_fill = self._get_term_parameters()
-
+    def format_dictionary(self, textwidth):
         indent = config['indent'][0]
         show_exsen = config['showexsen']
 
@@ -61,7 +59,7 @@ class FarlexIdioms(Dictionary):
             else:
                 assert False, f'unreachable farlex idioms operation: {op!r}'
 
-        self._format_and_print_dictionary(buffer, textwidth, ncols, last_col_fill)
+        return buffer
 
     def input_cycle(self):
         chosen_defs, def_choices = input_field('def')(self.definitions, auto_choice='1')

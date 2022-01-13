@@ -190,11 +190,6 @@ class Dictionary:
 
         return result if result and result[0] else [1]
 
-    def format_title(self, textwidth):
-        t = f'[ {BOLD}{self.title}{DEFAULT}{delimit_c} ]'
-        esc_seq_len = len(BOLD) + len(DEFAULT) + len(delimit_c)
-        return f'{delimit_c}{t.center(textwidth + esc_seq_len, HORIZONTAL_BAR)}'
-
     def _get_term_parameters(self):
         # Returns:
         #   column's text width,
@@ -204,7 +199,7 @@ class Dictionary:
         approx_lines = sum(
             2 if op in ('LABEL', 'ETYM')
             or
-            ('DEF' in op and len(body) > 1) else 1
+            ('DEF' in op and body[1]) else 1
             for op, *body in self.contents
         )
         if approx_lines < height * 0.01 * config['colviewat'][0]:
@@ -228,56 +223,12 @@ class Dictionary:
                 return textwidth - 1, ncols, remainder + 1
             return textwidth, ncols, 0
 
-    def _format_and_print_dictionary(self, buffer, textwidth, ncols, last_col_fill):
-        blank = textwidth * ' '
-        header = 2 * HORIZONTAL_BAR
-        buff_len = len(buffer)
-        initial_col_height = buff_len // ncols + buff_len % ncols
+    def format_title(self, textwidth):
+        t = f'[ {BOLD}{self.title}{DEFAULT}{delimit_c} ]'
+        esc_seq_len = len(BOLD) + len(DEFAULT) + len(delimit_c)
+        return f'{delimit_c}{t.center(textwidth + esc_seq_len, HORIZONTAL_BAR)}'
 
-        col_no = lines_to_move = 0
-        cbreak = current_col_height = initial_col_height
-        formatted = [[] for _ in range(ncols)]
-        for li, line in enumerate(buffer):
-            control_symbol = line[0]
-            line = line.lstrip('$!')
-
-            if li < cbreak:
-                formatted[col_no].append(line)
-                if control_symbol == '!' or line == blank or header in line:
-                    lines_to_move += 1
-                else:
-                    lines_to_move = 0
-            elif control_symbol == '$':
-                formatted[col_no].append(line)
-                current_col_height += 1
-            elif line == blank or header in line:
-                continue
-            else:
-                if lines_to_move:
-                    for _i in range(-lines_to_move, 0):
-                        m, formatted[col_no][_i] = formatted[col_no][_i], blank
-                        if (m == blank and _i == -lines_to_move) or header in m:
-                            continue
-                        formatted[col_no + 1].append(m)
-                col_no += 1
-                formatted[col_no].append(line)
-                cbreak += current_col_height
-                current_col_height = initial_col_height
-
-        sys.stdout.write(
-            self.format_title(textwidth)
-            + (ncols - 1) * ('┬' + textwidth * HORIZONTAL_BAR)
-            + last_col_fill * HORIZONTAL_BAR
-            + '\n'
-        )
-        for line in zip_longest(*formatted, fillvalue=blank):
-            if header in line[-1]:
-                sys.stdout.write(f"{delimit_c}│{R}".join(line) + last_col_fill * HORIZONTAL_BAR + '\n')
-            else:
-                sys.stdout.write(f"{delimit_c}│{R}".join(line) + '\n')
-        sys.stdout.write('\n')
-
-    def print_dictionary(self):
+    def format_dictionary(self, textwidth):
         # Available instructions:
         #  (DEF,    definition, example_sentence)
         #  (SUBDEF, definition, example_sentence)
@@ -287,8 +238,6 @@ class Dictionary:
         #  (POS,    [pos, phonetic_spelling], ...)
         #  (AUDIO,  audio_url)
         #  (NOTE,   note)
-
-        textwidth, ncols, last_col_fill = self._get_term_parameters()
 
         blank = textwidth * ' '
         indent = config['indent'][0]
@@ -364,7 +313,58 @@ class Dictionary:
             else:
                 assert False, f'unreachable dictionary operation: {op!r}'
 
-        self._format_and_print_dictionary(buffer, textwidth, ncols, last_col_fill)
+        return buffer
+
+    def print_dictionary(self, textwidth, ncols, last_col_fill):
+        buffer = self.format_dictionary(textwidth)
+
+        blank = textwidth * ' '
+        header = 2 * HORIZONTAL_BAR
+        buff_len = len(buffer)
+        initial_col_height = buff_len // ncols + buff_len % ncols
+
+        col_no = lines_to_move = 0
+        cbreak = current_col_height = initial_col_height
+        formatted = [[] for _ in range(ncols)]
+        for li, line in enumerate(buffer):
+            control_symbol = line[0]
+            line = line.lstrip('$!')
+
+            if li < cbreak:
+                formatted[col_no].append(line)
+                if control_symbol == '!' or line == blank or header in line:
+                    lines_to_move += 1
+                else:
+                    lines_to_move = 0
+            elif control_symbol == '$':
+                formatted[col_no].append(line)
+                current_col_height += 1
+            elif line == blank or header in line:
+                continue
+            else:
+                if lines_to_move:
+                    for _i in range(-lines_to_move, 0):
+                        m, formatted[col_no][_i] = formatted[col_no][_i], blank
+                        if (m == blank and _i == -lines_to_move) or header in m:
+                            continue
+                        formatted[col_no + 1].append(m)
+                col_no += 1
+                formatted[col_no].append(line)
+                cbreak += current_col_height
+                current_col_height = initial_col_height
+
+        sys.stdout.write(
+            self.format_title(textwidth)
+            + (ncols - 1) * ('┬' + textwidth * HORIZONTAL_BAR)
+            + last_col_fill * HORIZONTAL_BAR
+            + '\n'
+        )
+        for line in zip_longest(*formatted, fillvalue=blank):
+            if header in line[-1]:
+                sys.stdout.write(f"{delimit_c}│{R}".join(line) + last_col_fill * HORIZONTAL_BAR + '\n')
+            else:
+                sys.stdout.write(f"{delimit_c}│{R}".join(line) + '\n')
+        sys.stdout.write('\n')
 
     def show(self):
         if not self.contents:
@@ -395,7 +395,7 @@ class Dictionary:
                 else:
                     sys.stdout.write(f'{R}`-top on`{err_c} command unavailable on {sys.platform!r}\n')
 
-            self.print_dictionary()
+            self.print_dictionary(*self._get_term_parameters())
         finally:
             if POSIX:
                 sys.stdout.write('\033[?25h')  # Show cursor

@@ -26,11 +26,9 @@ class WordNet(Dictionary):
     def __init__(self):
         super().__init__()
 
-    def print_dictionary(self):
+    def format_dictionary(self, textwidth):
         # Available instructions:
         #   (SYN, synonyms, glosses, pos_label)
-
-        textwidth, ncols, last_col_fill = self._get_term_parameters()
 
         buffer = []
         communal_index = 0
@@ -53,7 +51,7 @@ class WordNet(Dictionary):
             else:
                 assert False, f'unreachable wordnet operation: {op!r}'
 
-        self._format_and_print_dictionary(buffer, textwidth, ncols, last_col_fill)
+        return buffer
 
     def input_cycle(self):
         chosen_synonyms, _ = input_field('syn')(self.synonyms, auto_choice='0')
