@@ -18,9 +18,9 @@ import sys
 from itertools import zip_longest
 from shutil import get_terminal_size
 
-from src.Dictionaries.utils import wrap_lines, wrap_and_pad, get_config_terminal_size
+from src.Dictionaries.utils import wrap_and_pad, get_config_terminal_size
 from src.colors import (
-    R, BOLD, DEFAULT, def1_c, syn_c, exsen_c, pos_c, etym_c, phrase_c, err_c,
+    R, BOLD, DEFAULT, def1_c, exsen_c, pos_c, etym_c, phrase_c, err_c,
     delimit_c, def2_c, defsign_c, index_c, phon_c, poslabel_c, inflection_c
 )
 from src.data import (
@@ -81,6 +81,7 @@ class Dictionary:
             sys.stdout.write(f'{op:7s}{body}\n')
 
     def add(self, value):
+        # Add an instruction to the dictionary.
         # Value must be a Sequence containing at least 2 fields:
         # ('OPERATION', 'BODY', ... )
         try:
@@ -229,6 +230,8 @@ class Dictionary:
         return f'{delimit_c}{t.center(textwidth + esc_seq_len, HORIZONTAL_BAR)}'
 
     def format_dictionary(self, textwidth):
+        # Format self.contents' list of (op, body)
+        # into wrapped, colored and padded body lines.
         # Available instructions:
         #  (DEF,    definition, example_sentence)
         #  (SUBDEF, definition, example_sentence)
@@ -315,9 +318,7 @@ class Dictionary:
 
         return buffer
 
-    def print_dictionary(self, textwidth, ncols, last_col_fill):
-        buffer = self.format_dictionary(textwidth)
-
+    def print_dictionary_buffer(self, buffer, textwidth, ncols, last_col_fill):
         blank = textwidth * ' '
         header = 2 * HORIZONTAL_BAR
         buff_len = len(buffer)
@@ -395,35 +396,14 @@ class Dictionary:
                 else:
                     sys.stdout.write(f'{R}`-top on`{err_c} command unavailable on {sys.platform!r}\n')
 
-            self.print_dictionary(*self._get_term_parameters())
+            textwidth, ncols, last_col_fill = self._get_term_parameters()
+            self.print_dictionary_buffer(
+                self.format_dictionary(textwidth),
+                textwidth,
+                ncols,
+                last_col_fill
+            )
         finally:
             if POSIX:
                 sys.stdout.write('\033[?25h')  # Show cursor
                 sys.stdout.flush()
-
-    @staticmethod
-    def display_card(field_values):
-        # field coloring
-        color_of = {
-            'def': def1_c, 'syn': syn_c, 'exsen': exsen_c,
-            'phrase': phrase_c, 'pz': '', 'pos': pos_c,
-            'etym': etym_c, 'audio': '', 'recording': '',
-        }
-        textwidth, _ = get_config_terminal_size()
-        delimit = textwidth * HORIZONTAL_BAR
-        textwidth, padding = round((textwidth - 1) * 0.92) + 1,\
-                             round((textwidth - 1) * 0.04) * " "
-
-        sys.stdout.write(f'\n{delimit_c}{delimit}\n')
-        for field_number, field in enumerate(config['fieldorder']):
-            if field == '-':
-                continue
-
-            for line in field_values[field].split('<br>'):
-                for subline in wrap_lines(line, textwidth):
-                    sys.stdout.write(f'{color_of[field]}{padding}{subline}\n')
-
-            if field_number + 1 == config['fieldorder_d']:  # d = delimitation
-                sys.stdout.write(f'{delimit_c}{delimit}\n')
-
-        sys.stdout.write(f'{delimit_c}{delimit}\n')

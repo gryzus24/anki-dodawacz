@@ -23,11 +23,14 @@ from src.Dictionaries.ahdictionary import ask_ahdictionary
 from src.Dictionaries.audio_dictionaries import ahd_audio, lexico_audio, diki_audio, save_audio_url
 from src.Dictionaries.farlex import ask_farlex
 from src.Dictionaries.lexico import ask_lexico
-from src.Dictionaries.utils import hide
+from src.Dictionaries.utils import hide, get_config_terminal_size, wrap_lines
 from src.Dictionaries.wordnet import ask_wordnet
 from src.__version__ import __version__
-from src.colors import R, BOLD, DEFAULT, YEX, GEX, err_c
-from src.data import config, command_to_help_dict, ROOT_DIR, LINUX
+from src.colors import (
+    R, BOLD, DEFAULT, YEX, GEX, def1_c, syn_c,
+    exsen_c, phrase_c, pos_c, etym_c, err_c, delimit_c
+)
+from src.data import config, command_to_help_dict, ROOT_DIR, LINUX, HORIZONTAL_BAR
 from src.input_fields import sentence_input
 
 required_arg_commands = {
@@ -65,7 +68,6 @@ no_arg_commands = {
     '--help-recording': h.recording_help, '--help-rec': h.recording_help,
     '-config': c.print_config_representation, '-conf': c.print_config_representation
 }
-
 
 # Completer doesn't work on Windows.
 # It should work on macOS, but I haven't tested it yet.
@@ -130,49 +132,6 @@ def search_interface():
                 print(f'{err_c}{err}')
 
 
-def manage_audio(dictionary_name, audio_url, phrase, flags):
-    def from_diki():
-        flag = ''
-        for f in flags:
-            if f in ('n', 'v', 'a', 'adj', 'noun', 'verb', 'adjective'):
-                flag = '-' + f[0]
-                break
-        url = diki_audio(phrase, flag)
-        return save_audio_url(url) if url else ''
-
-    server = config['audio']
-    if server == '-':
-        return ''
-
-    # Farlex has no audio, so we try to get it from diki.
-    if server == 'diki' or dictionary_name == 'farlex':
-        return from_diki()
-
-    if server == 'auto' or dictionary_name == server:
-        if audio_url:
-            return save_audio_url(audio_url)
-        print(f'{err_c}The dictionary does not have the pronunciation for {R}{phrase}\n'
-              f'{YEX}Querying diki...')
-        return from_diki()
-
-    if server == 'ahd':
-        audio_url = ahd_audio(phrase)
-    elif server == 'lexico':
-        audio_url = lexico_audio(phrase)
-    else:
-        assert False, 'unreachable'
-
-    if audio_url:
-        return save_audio_url(audio_url)
-    return ''
-
-
-def save_card_to_file(field_values):
-    with open('cards.txt', 'a', encoding='utf-8') as f:
-        f.write('\t'.join(field_values[field] for field in config['fieldorder']) + '\n')
-    print(f'{GEX}Card successfully saved to a file\n')
-
-
 def manage_dictionaries(_phrase, flags):
     first_dicts = {
         'ahd': ask_ahdictionary,
@@ -218,6 +177,70 @@ def manage_dictionaries(_phrase, flags):
         print(f"{YEX}To ask the idioms dictionary use {R}`{_phrase} -i`")
 
 
+def manage_audio(dictionary_name, audio_url, phrase, flags):
+    def from_diki():
+        flag = ''
+        for f in flags:
+            if f in ('n', 'v', 'a', 'adj', 'noun', 'verb', 'adjective'):
+                flag = '-' + f[0]
+                break
+        url = diki_audio(phrase, flag)
+        return save_audio_url(url) if url else ''
+
+    server = config['audio']
+    if server == '-':
+        return ''
+
+    # Farlex has no audio, so we try to get it from diki.
+    if server == 'diki' or dictionary_name == 'farlex':
+        return from_diki()
+
+    if server == 'auto' or dictionary_name == server:
+        if audio_url:
+            return save_audio_url(audio_url)
+        print(f'{err_c}The dictionary does not have the pronunciation for {R}{phrase}\n'
+              f'{YEX}Querying diki...')
+        return from_diki()
+
+    if server == 'ahd':
+        audio_url = ahd_audio(phrase)
+    elif server == 'lexico':
+        audio_url = lexico_audio(phrase)
+    else:
+        assert False, 'unreachable'
+
+    if audio_url:
+        return save_audio_url(audio_url)
+    return ''
+
+
+def display_card(field_values):
+    # field coloring
+    color_of = {
+        'def': def1_c, 'syn': syn_c, 'exsen': exsen_c,
+        'phrase': phrase_c, 'pz': '', 'pos': pos_c,
+        'etym': etym_c, 'audio': '', 'recording': '',
+    }
+    textwidth, _ = get_config_terminal_size()
+    delimit = textwidth * HORIZONTAL_BAR
+    textwidth, padding = round((textwidth - 1) * 0.92) + 1,\
+                         round((textwidth - 1) * 0.04) * " "
+
+    print(f'\n{delimit_c}{delimit}')
+    for field_number, field in enumerate(config['fieldorder']):
+        if field == '-':
+            continue
+
+        for line in field_values[field].split('<br>'):
+            for subline in wrap_lines(line, textwidth):
+                print(f'{color_of[field]}{padding}{subline}')
+
+        if field_number + 1 == config['fieldorder_d']:  # d = delimitation
+            print(f'{delimit_c}{delimit}')
+
+    print(f'{delimit_c}{delimit}')
+
+
 def format_definitions(definitions):
     styles = (
         ('', ''),
@@ -235,6 +258,12 @@ def format_definitions(definitions):
         formatted.append(prefix + item + suffix)
 
     return '<br>'.join(formatted)
+
+
+def save_card_to_file(field_values):
+    with open('cards.txt', 'a', encoding='utf-8') as f:
+        f.write('\t'.join(field_values[field] for field in config['fieldorder']) + '\n')
+    print(f'{GEX}Card successfully saved to a file\n')
 
 
 def main_loop(query):
@@ -327,7 +356,7 @@ def main_loop(query):
             field_values[elem] = hide(content, phrase)
 
     if config['cardpreview']:
-        dictionary.display_card(field_values)
+        display_card(field_values)
 
     # format card content
     for key, val in field_values.items():

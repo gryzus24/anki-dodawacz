@@ -14,7 +14,7 @@
 # along with this program. If not, see <http://www.gnu.org/licenses/>.
 
 import json
-import os
+import os.path
 
 from urllib3.exceptions import NewConnectionError
 
