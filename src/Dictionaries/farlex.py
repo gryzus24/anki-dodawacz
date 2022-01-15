@@ -21,6 +21,7 @@ from src.input_fields import input_field
 
 
 class FarlexIdioms(Dictionary):
+    title = 'Farlex Idioms'
     name = 'farlex'
     allow_thesaurus = False
 
@@ -81,7 +82,7 @@ class FarlexIdioms(Dictionary):
         }
 
 
-def ask_farlex(query, **ignore):
+def ask_farlex(query):
     soup = request_soup('https://idioms.thefreedictionary.com/' + query)
     if soup is None:
         return None
@@ -92,8 +93,6 @@ def ask_farlex(query, **ignore):
         return None
 
     farlex = FarlexIdioms()
-    farlex.title = 'Farlex Idioms'
-
     last_phrase = ''
     content_blocks = relevant_content.find_all('div', class_=('ds-single', 'ds-list'), recursive=False)
     for content_block in content_blocks:

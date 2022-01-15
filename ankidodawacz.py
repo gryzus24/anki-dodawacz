@@ -132,31 +132,26 @@ def search_interface():
                 print(f'{err_c}{err}')
 
 
-def manage_dictionaries(_phrase, flags):
+def manage_dictionaries(_phrase, dict_flags, filter_flags):
     first_dicts = {
         'ahd': ask_ahdictionary,
         'lexico': ask_lexico, 'l': ask_lexico,
         'idioms': ask_farlex, 'idiom': ask_farlex, 'i': ask_farlex
     }
 
-    dict_flags = []
-    for f in flags:
-        if f in first_dicts:
-            dict_flags.append(f)
-
     if dict_flags:
         dictionary = None
         for flag in dict_flags:
-            dictionary = first_dicts[flag](_phrase, flags=flags)
+            dictionary = first_dicts[flag](_phrase)
             # If we don't break out of the for loop, we can query multiple
             # dictionaries by specifying more than one dictionary flag
             if dictionary is not None:
-                dictionary.show()
+                dictionary.show(filter_flags)
         return dictionary
     else:
-        dictionary = first_dicts[config['dict']](_phrase, flags=flags)
+        dictionary = first_dicts[config['dict']](_phrase)
         if dictionary is not None:
-            dictionary.show()
+            dictionary.show(filter_flags)
             return dictionary
 
     # fallback dictionary section
@@ -169,9 +164,9 @@ def manage_dictionaries(_phrase, flags):
         'idioms': ask_farlex
     }
     print(f'{YEX}Querying the fallback dictionary...')
-    dictionary = second_dicts[config['dict2']](_phrase, flags=flags)
+    dictionary = second_dicts[config['dict2']](_phrase)
     if dictionary is not None:
-        dictionary.show()
+        dictionary.show(filter_flags)
         return dictionary
     if config['dict'] != 'idioms' and config['dict2'] != 'idioms':
         print(f"{YEX}To ask the idioms dictionary use {R}`{_phrase} -i`")
@@ -266,6 +261,20 @@ def save_card_to_file(field_values):
     print(f'{GEX}Card successfully saved to a file\n')
 
 
+def parse_flags(flags):
+    dict_flags, rec_flags, filter_flags = [], [], []
+    for flag in flags:
+        flag = flag.strip('-')
+        if flag in ('ahd', 'i', 'idiom', 'idioms', 'farlex', 'l', 'lexico'):
+            dict_flags.append(flag)
+        elif flag in ('rec', 'record'):
+            rec_flags.append(flag)
+        else:
+            filter_flags.append(flag)
+
+    return dict_flags, rec_flags, filter_flags
+
+
 def main_loop(query):
     field_values = {
         'def': '',
@@ -281,8 +290,6 @@ def main_loop(query):
     }
 
     dict_query, *flags = query.split(' -')
-    flags = [x.strip('-') for x in flags]
-
     if dict_query in ('-rec', '--record'):
         ffmpeg.capture_audio()
         return
@@ -295,10 +302,11 @@ def main_loop(query):
     else:
         searched_phrase, zdanie = dict_query, ''
 
-    if 'rec' in flags or 'record' in flags:
+    dict_flags, rec_flags, filter_flags = parse_flags(flags)
+    if rec_flags:
         field_values['recording'] = ffmpeg.capture_audio(searched_phrase)
 
-    dictionary = manage_dictionaries(searched_phrase, flags)
+    dictionary = manage_dictionaries(searched_phrase, dict_flags, filter_flags)
     if dictionary is None:
         return
 

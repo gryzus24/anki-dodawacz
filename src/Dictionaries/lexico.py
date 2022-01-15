@@ -13,14 +13,15 @@
 # You should have received a copy of the GNU General Public License
 # along with this program. If not, see <http://www.gnu.org/licenses/>.
 
-from src.Dictionaries.dictionary_base import Dictionary, prepare_flags, evaluate_skip
+from src.Dictionaries.dictionary_base import Dictionary
 from src.Dictionaries.utils import request_soup
 from src.colors import R, phrase_c, err_c
-from src.data import config, HORIZONTAL_BAR
+from src.data import HORIZONTAL_BAR
 from src.input_fields import input_field
 
 
 class Lexico(Dictionary):
+    title = 'Lexico'
     name = 'lexico'
     allow_thesaurus = True
 
@@ -57,37 +58,7 @@ class Lexico(Dictionary):
         }
 
 
-def create_skip_dict(entry_blocks, flags):
-    # Create a dictionary that tells what labelled block to skip for each phrase block
-    flags = prepare_flags(flags)
-    skip_dict = {}
-    skip_items_view = skip_dict.items()
-
-    for block in entry_blocks:
-        block_id = block.get('id')
-        if block_id is not None:  # if block is a phrase header block
-            skip_dict[block_id] = []
-
-        elif block.get('class')[0] == 'gramb':
-            label_set = {block.find('span', class_='pos').text}
-            skip = evaluate_skip(label_set, flags)
-            # appends to the list of the last key in skip_dict
-            skip_dict[list(skip_items_view)[-1][0]].append(skip)
-
-    # if every skip element is true make all of them false
-    all_false_skip_dict = {}
-    for key, skip_list in skip_items_view:
-        if not all(skip_list):
-            return skip_dict
-
-        temp = []
-        for elem in skip_list:
-            temp.append(not elem)
-        all_false_skip_dict[key] = temp
-    return all_false_skip_dict
-
-
-def ask_lexico(query, flags='', _previous_query=''):
+def ask_lexico(query, _previous_query=''):
     def get_phonetic_spelling(block_):
         pronunciation_block = block_.find('span', class_='phoneticspelling')
         if pronunciation_block is not None:
@@ -126,12 +97,17 @@ def ask_lexico(query, flags='', _previous_query=''):
     #
     # Lexico
     #
-    soup = request_soup('https://www.lexico.com/definition/' + query.replace(' ', '_'))
+    query = query.strip('?/.#')
+    if not query:
+        print(f'{err_c}Invalid query')
+        return None
+
+    soup = request_soup('https://www.lexico.com/definition/' + query)
     if soup is None:
         return None
 
     main_div = soup.find('div', class_='entryWrapper')
-    if main_div is None:  # lexico denied access
+    if main_div is None:  # lexico probably denied access
         import time
         print(f'{err_c}Lexico could not handle this many requests...\n'
               f'Try again in 1-5 minutes')
@@ -147,34 +123,14 @@ def ask_lexico(query, flags='', _previous_query=''):
         else:
             revive = revive.get('href')
             revive = revive.rsplit('/', 1)[-1]
-            return ask_lexico(revive, flags, _previous_query=query)
+            return ask_lexico(revive, _previous_query=query)
 
     lexico = Lexico()
-    if config['fsubdefs'] or ('f' in flags or 'fsubdefs' in flags):
-        filter_subdefs = True
-        lexico.title = 'Lexico (filtered)'
-    else:
-        filter_subdefs = False
-        lexico.title = 'Lexico'
-
-    skip_index = -1
-    skips = []
-
-    entry_blocks = page_check.find_next_siblings()
-    skip_dict = create_skip_dict(entry_blocks, flags)
-
     etym = ''
     before_phrase = True
-    for block in entry_blocks:
+    for block in page_check.find_next_siblings():
         block_id = block.get('id')
         if block_id is not None:  # header
-            skip_index = -1
-            # example skip_dict for query "mint -l -n":
-            # {'h70098473699380': [False], 'h70098474045940': [False, True, True]}
-            skips = skip_dict[block_id]
-            if all(skips):
-                continue
-
             # Gather phrases
             phrase_ = block.find('span', class_='hw')
             phrase_ = phrase_.find(recursive=False, text=True)
@@ -209,11 +165,6 @@ def ask_lexico(query, flags='', _previous_query=''):
                 next_sib = next_sib.next_sibling
 
         elif block.get('class')[0] == 'gramb':
-            skip_index += 1
-            skip = skips[skip_index]
-            if skip:
-                continue
-
             pos_label = block.find('span', class_='pos').text.strip()
             if pos_label:
                 trans_note = block.find('span', class_='transitivity').text.strip()
@@ -242,8 +193,6 @@ def ask_lexico(query, flags='', _previous_query=''):
                     def_ = get_gram_note(dlist) + get_defs(dlist)
                     exsen = get_exsen(dlist)
                     add_def(def_, exsen)
-                    if filter_subdefs:
-                        continue
 
                     subdef_semb = dlist.find('ol', class_='subSenses')
                     if subdef_semb is not None:
@@ -272,10 +221,7 @@ def ask_lexico(query, flags='', _previous_query=''):
                     if gram_urls:
                         lexico.add(('AUDIO', gram_urls[-1].get('src')))
 
-        elif block.get('class')[0] == 'etymology' and block.h3.text == 'Origin':
-            if all(skips):
-                continue
-            if etym:
-                lexico.add(('ETYM', etym))
+        elif block.get('class')[0] == 'etymology' and block.h3.text == 'Origin' and etym:
+            lexico.add(('ETYM', etym))
 
     return lexico

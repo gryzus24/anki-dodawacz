@@ -21,13 +21,81 @@ from urllib3.exceptions import NewConnectionError
 from src.Dictionaries.utils import http
 from src.colors import R, BOLD, DEFAULT, YEX, GEX, index_c, err_c
 from src.commands import save_command
-from src.data import ROOT_DIR, config, config_ac, AC_BASE_FIELDS, custom_notes
+from src.data import ROOT_DIR, config
 from src.input_fields import ask_yes_no, choose_item
 
 # Module global configuration allows for hard refresh
 # of saved notes without restarting the program and
 # takes care of some edge cases
-_config_ac = config_ac
+try:
+    with open(os.path.join(ROOT_DIR, 'config/ankiconnect.json'), 'r') as af:
+        config_ac = json.load(af)
+except (FileNotFoundError, json.JSONDecodeError):
+    with open(os.path.join(ROOT_DIR, 'config/ankiconnect.json'), 'w') as af:
+        af.write('{}')
+    config_ac = json.loads('{}')
+
+CUSTOM_NOTES = sorted(os.listdir(os.path.join(ROOT_DIR, 'notes')))
+
+# fields used for Anki note recognition
+AC_BASE_FIELDS = (
+    # The most common field name schemes
+    ('def',         'def'),
+    ('syn',         'syn'),
+    ('disamb',      'syn'),
+    ('sent',        'pz'),
+    ('zdanie',      'pz'),
+    ('przykładowe', 'pz'),
+    ('target',      'phrase'),
+    ('phras',       'phrase'),
+    ('słowo',       'phrase'),
+    ('example',     'exsen'),
+    ('usage',       'exsen'),
+    ('przykłady',   'exsen'),
+    ('part',        'pos'),
+    ('pos',         'pos'),
+    ('części',      'pos'),
+    ('etym',        'etym'),
+    ('audio',       'audio'),
+    ('rec',         'recording'),
+    ('nagr',        'recording'),
+
+    # Others
+    ('gloss', 'def'),
+    ('wyjaś', 'def'),
+    ('wyjas', 'def'),
+
+    ('usunięcie', 'syn'),
+    ('usuniecie', 'syn'),
+    ('ujedn',     'syn'),
+
+    ('przyklady', 'exsen'),
+    ('illust',    'exsen'),
+    ('exsen',     'exsen'),
+
+    ('slowo', 'phrase'),
+    ('fraz',  'phrase'),
+    ('word',  'phrase'),
+    ('vocab', 'phrase'),
+    ('idiom', 'phrase'),
+
+    ('przykladowe', 'pz'),
+    ('pz',          'pz'),
+
+    ('czesci', 'pos'),
+
+    ('wymowa', 'audio'),
+    ('pron',   'audio'),
+    ('dźwięk', 'audio'),
+    ('dzwiek', 'audio'),
+    ('sound',  'audio'),
+    ('media',  'audio'),
+
+    ('sentence_a',    'recording'),
+    ('sentenceaudio', 'recording'),
+    ('sentence_r',    'recording'),
+    ('sentencerec',   'recording'),
+)
 
 
 def save_ac_config(c):
@@ -36,13 +104,13 @@ def save_ac_config(c):
 
 
 def refresh_cached_notes():
-    global _config_ac
-    _config_ac = {}
+    global config_ac
+    config_ac = {}
 
     err = cache_current_note(refresh=True)
     if err is not None:
         try:
-            save_ac_config(_config_ac)
+            save_ac_config(config_ac)
         except FileNotFoundError:
             return f'{R}"ankiconnect.json"{err_c} file does not exist'
     print(f'{YEX}Notes refreshed')
@@ -115,11 +183,11 @@ def gui_browse_cards(query):
 
 def add_note_to_anki():
     print(f'{BOLD}Available notes:{DEFAULT}')
-    for i, note in enumerate(custom_notes, start=1):
+    for i, note in enumerate(CUSTOM_NOTES, start=1):
         print(f'{index_c}{i} {R}{note[:-5]}')  # strip ".json"
     print()
 
-    note_name = choose_item('Choose a note to add', custom_notes, default=0)
+    note_name = choose_item('Choose a note to add', CUSTOM_NOTES, default=0)
     if note_name is None:
         return 'Leaving...'
 
@@ -163,15 +231,15 @@ def cache_current_note(*, refresh=False):
         return f'  Check if note {R}{model_name}{err_c} contains required fields\n' \
                f'  or if field names have been changed, use {R}`-refresh`'
 
-    _config_ac[model_name] = organized_fields
-    save_ac_config(_config_ac)
+    config_ac[model_name] = organized_fields
+    save_ac_config(config_ac)
 
 
 def add_card_to_anki(field_values):
     note_name = config['note']
 
     # So that familiar notes aren't reorganized
-    if note_name not in _config_ac:
+    if note_name not in config_ac:
         err = cache_current_note()
         if err is not None:
             print(f'{err_c}Could not recognize note:\n{err}\n')
@@ -180,7 +248,7 @@ def add_card_to_anki(field_values):
     # When note is not found return an empty dict so that
     # there's no attribute error in the try block below
     fields_to_add = {}
-    note_from_config = _config_ac.get(note_name, {})
+    note_from_config = config_ac.get(note_name, {})
     try:
         for anki_field_name, base in note_from_config.items():
             fields_to_add[anki_field_name] = field_values[base]

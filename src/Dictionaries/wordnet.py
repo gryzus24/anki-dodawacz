@@ -21,6 +21,7 @@ from src.input_fields import input_field
 
 
 class WordNet(Dictionary):
+    title = 'WordNet'
     name = 'wordnet'
 
     def __init__(self):
@@ -66,7 +67,7 @@ def ask_wordnet(query):
         # without skipping
         return wordnet
 
-    soup = request_soup('http://wordnetweb.princeton.edu/perl/webwn?s=' + query)
+    soup = request_soup('http://wordnetweb.princeton.edu/perl/webwn', {'s': query})
     if soup is None:
         return None
 
@@ -75,7 +76,6 @@ def ask_wordnet(query):
         print(f'{err_c}Could not find {R}"{query}"{err_c} on WordNet')
         return None
 
-    wordnet.title = 'WordNet'
     for elem in soup.find_all('li'):
         elem = elem.text.replace('S:', '', 1).strip()
         temp = elem.split(')', 1)

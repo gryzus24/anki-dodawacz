@@ -20,7 +20,17 @@ from bs4 import BeautifulSoup
 from urllib3.exceptions import NewConnectionError, ConnectTimeoutError
 
 from src.colors import err_c
-from src.data import config, USER_AGENT, PREPOSITIONS, ON_WINDOWS_CMD
+from src.data import config, USER_AGENT, ON_WINDOWS_CMD
+
+PREPOSITIONS = (
+    'about', 'above', 'across', 'after', 'against', 'along', 'among', 'around',
+    'as', 'at', 'before', 'behind', 'below', 'beneath', 'beside', 'between',
+    'beyond', 'by', 'despite', 'down', 'during', 'except', 'for', 'from', 'in',
+    'inside', 'into', 'like', 'near', 'of', 'off', 'on', 'onto', 'opposite',
+    'out', 'outside', 'over', 'past', 'round', 'since', 'than', 'through', 'to',
+    'towards', 'under', 'underneath', 'unlike', 'until', 'up', 'upon', 'via',
+    'with', 'within', 'without'
+)
 
 http = urllib3.PoolManager(timeout=10, headers=USER_AGENT)
 
@@ -42,10 +52,10 @@ def handle_connection_exceptions(func):
 
 
 @handle_connection_exceptions
-def request_soup(url):
-    r = http.urlopen('GET', url)
-    # At the moment only WordNet uses other than utf-8 encoding (iso-8859-1).
-    # Use utf-8 as there were no decoding problems thus far.
+def request_soup(url, fields=None, **kw):
+    r = http.request_encode_url('GET', url, fields=fields, **kw)
+    # At the moment only WordNet uses other than utf-8 encoding (iso-8859-1),
+    # so as long as there are no decoding problems we'll use utf-8.
     return BeautifulSoup(r.data.decode(), 'lxml')
 
 

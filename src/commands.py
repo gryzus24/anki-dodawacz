@@ -16,18 +16,82 @@
 import json
 import os
 import sys
+from itertools import zip_longest
 from shutil import get_terminal_size
 
-import src.data as data
 from src.colors import (
     R, BOLD, DEFAULT, YEX, GEX, def1_c, def2_c, defsign_c, pos_c, etym_c, syn_c, exsen_c,
     syngloss_c, index_c, phrase_c, phon_c, poslabel_c, inflection_c, err_c, delimit_c
 )
 from src.data import (
-    ROOT_DIR, STD_FIELD_ORDER, TSC_FIELD_ORDER,
-    LINUX, WINDOWS, MAC, config, bool_colors_dict
+    ROOT_DIR, LINUX, WINDOWS, MAC, command_to_help_dict,
+    str_colors_to_color, bool_values_dict, config
 )
 from src.input_fields import choose_item
+
+STD_FIELD_ORDER = [
+    'def', 'syn', 'pz', 'phrase', 'exsen', 'pos', 'etym', 'audio', 'recording',
+]
+TSC_FIELD_ORDER = [
+    'pz', 'def', 'syn', 'exsen', 'pos', 'etym', 'audio', 'recording', '-',
+]
+
+CONFIG_COLUMNS = tuple(
+    zip_longest(
+        (
+            '-pz', '-def', '-exsen', '-pos', '-etym', '-syn',
+            '',
+            '-tsc', '-formatdefs', '-savecards', '-createcards',
+            '',
+            '[phrase hiding co.]',
+            '-upz', '-udef', '-uexsen', '-usyn', '-upreps', '-keependings', '-hideas',
+        ),
+        (
+            '-top', '-cardpreview', '-showadded', '-showexsen',
+            '-textwrap', '-textwidth', '-columns', '-colviewat', '-indent',
+            '',
+            '[filtering config.]',
+            '-fsubdefs', '-fnolabel', '-toipa',
+            '',
+            '[ankiconnect conf.]',
+            '-ankiconnect', '-duplicates', '-dupescope', '-note', '-deck', '-tags',
+        ),
+        (
+            'def_bulk', 'exsen_bulk', 'pos_bulk', 'etym_bulk', 'syn_bulk',
+            '',
+            '[source config.]',
+            '-dict', '-dict2', '-thes', '-audio', '-recqual',
+        ),
+        fillvalue=''
+    )
+)
+
+COLOR_TO_MSG = {
+    'def1': 'Odd definitions and idiom definitions color',
+    'def2': 'Even definitions color',
+    'defsign': 'Definition sign (>) color',
+    'exsen': 'Example sentences color',
+    'pos': 'Parts of speech color',
+    'etym': 'Etymologies color',
+    'syn': 'Synonyms color',
+    'syngloss': 'Synonym definitions color',
+    'index': 'Indexes color',
+    'phrase': 'Phrase color',
+    'phon': 'Phonetic spelling color',
+    'poslabel': 'Part of speech labels color',
+    'inflection': 'Inflections and additional label info color',
+    'error': 'Errors color',
+    'attention': 'Attention drawing color',
+    'success': 'Successful operation color',
+    'delimit': 'Delimiters/separators color',
+}
+
+BOOL_COLORS_DICT = {
+    True: '\033[92m',   # LIGHT GREEN
+    False: '\033[91m',  # LIGHT RED
+    'True': '\033[92m',
+    'False': '\033[91m',
+}
 
 
 def save_config(c):
@@ -116,7 +180,7 @@ def print_field_table():
         on_off = config[e]
         show_hide = config.get('u'+e, '')
         default = config.get(e+'_bulk', '')
-        c1, c2 = bool_colors_dict.get(on_off, ''), bool_colors_dict.get(show_hide, '')
+        c1, c2 = BOOL_COLORS_DICT.get(on_off, ''), BOOL_COLORS_DICT.get(show_hide, '')
         print(f'{p} -{e:7s}{c1}{str(on_off):9s}{c2}{str(show_hide):12s}{R}{str(default):8s}{p}')
     print(f'{BOLD}╰──────────────────────────────────────╯{DEFAULT}')
 
@@ -133,7 +197,7 @@ def print_config_representation():
         save_command('columns', [t, '* auto'])
 
     sys.stdout.write(f'{R}{BOLD}[card creation co.]     [display configur.]     [default values]{DEFAULT}\n')
-    for a, b, c in data.config_columns:
+    for a, b, c in CONFIG_COLUMNS:
         a = a.replace('[', f'{BOLD}[').replace(']', f']{DEFAULT}')
         b = b.replace('[', f'{BOLD}[').replace(']', f']{DEFAULT}')
         c = c.replace('[', f'{BOLD}[').replace(']', f']{DEFAULT}')
@@ -153,9 +217,9 @@ def print_config_representation():
         else:
             state_c = config.get(c[1:], '')
 
-        color_a = bool_colors_dict.get(state_a, '')
-        color_b = bool_colors_dict.get(state_b, '')
-        color_c = bool_colors_dict.get(state_c, '')
+        color_a = BOOL_COLORS_DICT.get(state_a, '')
+        color_b = BOOL_COLORS_DICT.get(state_b, '')
+        color_c = BOOL_COLORS_DICT.get(state_c, '')
         if color_c: state_c = 10*'\b'+'watch?v=LDl544TI_mU'
 
         level_a = '\b\b\b\b\b' if '[' in a else ''
@@ -188,7 +252,7 @@ def set_width_settings(*args, message):
                 raise ValueError
         except ValueError:
             return f'Invalid value: {R}{value}\n' \
-                   f'{cmd} {data.command_to_help_dict[cmd][1]}'
+                   f'{cmd} {command_to_help_dict[cmd][1]}'
         else:
             print(f'{R}{message}: {GEX}{value}')
             save_command(cmd, [val, ''])
@@ -243,7 +307,7 @@ def change_field_order(*args, **kwargs):
     if first_arg not in _1_to_9 and first_arg not in ('d', '-'):
         cmd = args[0]
         return f'Invalid argument: {R}{first_arg}\n' \
-               f'{cmd} {data.command_to_help_dict[cmd][1]}'
+               f'{cmd} {command_to_help_dict[cmd][1]}'
 
     try:
         field_name = args[2].lower()
@@ -341,13 +405,13 @@ def set_text_value_commands(*args, message):
         save_command(cmd, value)
     else:
         return f'Invalid value: {R}{value}\n' \
-               f'{cmd} {data.command_to_help_dict[cmd][1]}'
+               f'{cmd} {command_to_help_dict[cmd][1]}'
 
 
 def set_colors(*args, **kwargs):
     cmd, element = args[0], args[1]
 
-    if element not in data.color_elements_to_msg:
+    if element not in COLOR_TO_MSG:
         return f'Unknown element: {R}{element}\n' \
                f'To display available elements use `{cmd}`'
 
@@ -357,12 +421,12 @@ def set_colors(*args, **kwargs):
         return f'{YEX}No color provided\n' \
                f'{R}{cmd} {element} {{color}}'
 
-    if color not in data.str_colors_to_color:
+    if color not in str_colors_to_color:
         return f'Unknown color: {R}{color}\n' \
                f'To display available colors use `{cmd}`'
 
-    msg = data.color_elements_to_msg[element]
-    thiscolor = data.str_colors_to_color[color]
+    msg = COLOR_TO_MSG[element]
+    thiscolor = str_colors_to_color[color]
 
     print(f'{R}{msg} set to: {thiscolor}{color}')
     save_command(f'{element}_c', color)
@@ -372,12 +436,12 @@ def boolean_commands(*args, message):
     cmd = args[0]
 
     try:
-        value = data.bool_values_dict[args[1].lower()]
+        value = bool_values_dict[args[1].lower()]
     except KeyError:
         return f'{err_c}Invalid value, use:\n' \
                f'{R}{cmd} {{on|off}}'
 
-    print(f'{R}{message}: {data.bool_colors_dict[value]}{value}')
+    print(f'{R}{message}: {BOOL_COLORS_DICT[value]}{value}')
     if cmd == '-all':
         for cmd in ('pz', 'def', 'pos', 'etym', 'syn', 'exsen'):
             config[cmd] = value
@@ -388,7 +452,7 @@ def boolean_commands(*args, message):
 
 def show_available_colors():
     print(f'{R}{BOLD}Available colors:{DEFAULT}')
-    t = tuple(data.str_colors_to_color.items())
+    t = tuple(str_colors_to_color.items())
     for i, (name, col, lname, lcol) in enumerate([
         (*t[0 + i], *t[len(t) // 2 + i]) for i in range(len(t) // 2)
     ]):

@@ -13,11 +13,24 @@
 # You should have received a copy of the GNU General Public License
 # along with this program. If not, see <http://www.gnu.org/licenses/>.
 
-from src.Dictionaries.dictionary_base import Dictionary, prepare_flags, evaluate_skip
+from src.Dictionaries.dictionary_base import Dictionary
 from src.Dictionaries.utils import request_soup
 from src.colors import R, phrase_c, err_c
-from src.data import config, AHD_IPA_translation, HORIZONTAL_BAR
+from src.data import config, HORIZONTAL_BAR
 from src.input_fields import input_field
+
+AHD_IPA_translation = str.maketrans({
+    'ă': 'æ',   'ā': 'eɪ',  'ä': 'ɑː',
+    'â': 'eə',  'ĕ': 'ɛ',   'ē': 'iː',  # There are some private symbols here
+    'ĭ': 'ɪ',   'î': 'ɪ',   'ī': 'aɪ',  # that AHD claims to be using, but
+    'i': 'aɪ',  'ŏ': 'ɒ',   'ō': 'oʊ',  # I haven't found any usages yet.
+    'ô': 'ɔː',   '': 'ʊ',   '': 'ʊ',
+    '': 'u',   '': 'u:', '': 'ð',
+    'ŭ': 'ʌ',   'û': 'ɔ:',  'y': 'j',
+    'j': 'dʒ',  'ü': 'y',   '': 'ç',
+    '': 'x',   '': 'bõ',  'ɴ': 'ⁿ',
+    '(': '/',   ')': '/'
+})
 
 
 class AHDictionary(Dictionary):
@@ -64,7 +77,7 @@ class AHDictionary(Dictionary):
         }
 
 
-def ask_ahdictionary(query, flags=''):
+def ask_ahdictionary(query):
     def fix_stress_and_remove_private_symbols(string):
         return string.replace('′', 'ˌ').replace('', 'ˈ')\
             .replace('', 'o͞o').replace('', 'o͝o')
@@ -159,25 +172,15 @@ def ask_ahdictionary(query, flags=''):
                 else:
                     _phrase.append(elem)
         return _phrase, _phon_spell
-
-    def skip_this_td():
-        skip_set = set()
-        for lblock in labeled_blocks:
-            lbls = lblock.find_all('i', recursive=False)
-            lbls = {x.text.strip() for x in lbls}
-            if filter_labels and not lbls:
-                return True
-
-            skip = evaluate_skip(lbls, flags)
-            skip_set.add(skip)
-
-        if False in skip_set:
-            return False
-        return True
     #
     #  American Heritage Dictionary
     #
-    soup = request_soup('https://www.ahdictionary.com/word/search.html?q=' + query.lstrip('&'))
+    query = query.strip('\'";')
+    if not query:
+        print(f'{err_c}Invalid query')
+        return None
+
+    soup = request_soup('https://www.ahdictionary.com/word/search.html', {'q': query})
     if soup is None:
         return None
 
@@ -190,33 +193,8 @@ def ask_ahdictionary(query, flags=''):
         return None
 
     ahd = AHDictionary()
-    filter_labels = config['fnolabel']
-    if config['fsubdefs'] or ('f' in flags or 'fsubdefs' in flags):
-        filter_subdefs = True
-        ahd.title = 'AH Dictionary (filtered)'
-    else:
-        filter_subdefs = False
-        ahd.title = 'AH Dictionary'
-
-    tds = soup.find_all('td')
-    if flags or filter_labels:
-        flags = prepare_flags(flags)
-
-        for td in tds:
-            labeled_blocks = td.find_all('div', class_='pseg', recursive=False)
-            if not skip_this_td():
-                break
-        else:
-            flags = ()  # display all definitions
-
     before_phrase = True
-    for td in tds:
-        # also used when printing definitions
-        labeled_blocks = td.find_all('div', class_='pseg', recursive=False)
-        if flags or filter_labels:
-            if skip_this_td():
-                continue
-
+    for td in soup.find_all('td'):
         # Gather audio urls
         audio_url = td.find('a', {'target': '_blank'})
         if audio_url is not None:
@@ -248,19 +226,11 @@ def ask_ahdictionary(query, flags=''):
 
         ahd.add(('PHRASE', phrase, phon_spell))
 
-        for block in labeled_blocks:
+        for block in td.find_all('div', class_='pseg', recursive=False):
             # Gather part of speech labels
             pos_labels = block.find_all('i', recursive=False)
             pos_labels = {x.text.strip() for x in pos_labels if x.text.strip()}
             pos_labels.discard('th')
-
-            if not pos_labels and filter_labels:
-                continue
-
-            # part of speech labels from a single block
-            skip_current_block = evaluate_skip(pos_labels, flags)
-            if skip_current_block:
-                continue
 
             # Gather phrase tenses
             pos_label = ' '.join(pos_labels)
@@ -285,9 +255,6 @@ def ask_ahdictionary(query, flags=''):
                         # semicolon conflicts in other dictionaries
                         exsen = '<br>'.join('‘' + e.strip() + '’' for e in exsen.split(';'))
                     ahd.add((def_type, subdef, exsen))
-
-                    if filter_subdefs:
-                        break
 
         # Add parts of speech
         td_pos = ['POS']

@@ -24,50 +24,84 @@ from src.colors import (
     delimit_c, def2_c, defsign_c, index_c, phon_c, poslabel_c, inflection_c
 )
 from src.data import (
-    config, labels, SEARCH_FLAGS, WINDOWS, POSIX, HORIZONTAL_BAR, ON_WINDOWS_CMD
+    config, WINDOWS, POSIX, HORIZONTAL_BAR, ON_WINDOWS_CMD
 )
+
+# Part of speech labels used to extend commonly used
+# abbreviations so that full flags can be matched.
+LABELS = {
+    # These have to be len 1 iterables, as they are fed to the `set.update()` method.
+    'adj': ('adjective',),
+    'adv': ('adverb',),
+    'conj': ('conjunction',),
+    'defart': ('def',),
+    'indef': ('indefart',),
+    'interj': ('interjection',),
+    'n': ('noun',),
+
+    'pl': ('plural', 'pln', 'npl', 'noun'),
+    'npl': ('plural', 'pl', 'pln', 'noun'),
+    'pln': ('plural', 'npl', 'noun'),
+    'plural': ('pln', 'npl', 'noun'),
+
+    'prep': ('preposition',),
+    'pron': ('pronoun',),
+
+    # verbs shouldn't be expanded when in labels, -!v won't work
+    # not all verbs are tr.v. or intr.v. ... etc.
+    'v': ('verb',),
+
+    'tr': ('transitive', 'trv', 'vtr', 'verb'),
+    'trv': ('transitive', 'vtr', 'verb'),
+    'vtr': ('transitive', 'trv', 'verb'),
+
+    'intr': ('intransitive', 'intrv', 'vintr', 'verb'),
+    'intrv': ('intransitive', 'vintr', 'verb'),
+    'vintr': ('intransitive', 'intrv', 'verb'),
+
+    'intr&trv': (
+        'intransitive', 'transitive', 'v',
+        'intrv', 'trv', 'vintr', 'vtr', 'verb'
+    ),
+    'tr&intrv': (
+        'intransitive', 'transitive', 'v',
+        'intrv', 'trv', 'vintr', 'vtr', 'verb'
+    ),
+
+    'aux': ('auxiliary', 'auxv'),
+    'auxv': ('auxiliary',),
+
+    'pref': ('prefix',),
+    'suff': ('suffix',),
+    'abbr': ('abbreviation',),
+}
 
 
 def expand_labels(label_set):
-    # By expanding these sets we get more leeway when specifying flags
     for item in label_set.copy():
         try:
-            label_set.update(labels[item])
+            label_set.update(LABELS[item])
         except KeyError:
             pass
     return label_set
 
 
-def prepare_flags(flags):
-    return {
-        x.replace(' ', '').replace('.', '').lower()
-        for x in flags
-        if x.replace('!', '').replace(' ', '').replace('.', '').lower()
-        not in SEARCH_FLAGS
-    }
-
-
 def evaluate_skip(labels_, flags):
-    if not flags:
-        return False
-
-    labels_ = {x.replace(' ', '').replace('.', '').lower() for x in labels_}
-    expanded_labels = expand_labels(labels_)
-
-    inclusive = True
+    labels_ = expand_labels(
+        {x.replace(' ', '').replace('.', '').lower() for x in labels_}
+    )
+    skip = True
     for flag in flags:
         if flag.startswith('!'):
-            inclusive = False
-            for label in expanded_labels:
+            skip = False
+            for label in labels_:
                 if label.startswith(flag[1:]):
                     return True
         else:
-            for label in expanded_labels:
+            for label in labels_:
                 if label.startswith(flag):
                     return False
-    if inclusive:
-        return True
-    return False
+    return skip
 
 
 class Dictionary:
@@ -367,7 +401,72 @@ class Dictionary:
                 sys.stdout.write(f"{delimit_c}│{R}".join(line) + '\n')
         sys.stdout.write('\n')
 
-    def show(self):
+    def filter_contents(self, flags):
+        flags = {x.replace(' ', '').replace('.', '').lower() for x in flags}
+
+        if config['fsubdefs'] or 'f' in flags or 'fsubdefs' in flags:
+            i = 0
+            while True:
+                try:
+                    op, *body = self.contents[i]
+                except IndexError:
+                    break
+                if op == 'SUBDEF':
+                    self.contents.pop(i)
+                else:
+                    i += 1
+            flags.difference_update(('f', 'fsubdefs'))
+
+        if config['fnolabel']:
+            flags.add('')
+        else:
+            if not flags:
+                return
+
+        skips_in_headers = [[]]
+        for op, *body in self.contents:
+            if op == 'LABEL':
+                s = evaluate_skip(set(body[0].split()), flags)
+                skips_in_headers[-1].append(s)
+            elif op == 'HEADER':
+                skips_in_headers.append([])
+
+        if all(skip for header in skips_in_headers for skip in header):
+            return
+
+        skip = all(skips_in_headers[0])
+
+        result = []
+        header_i = label_i = 0
+        for op, *body in self.contents:
+            if op == 'LABEL':
+                skip = skips_in_headers[header_i][label_i]
+                label_i += 1
+                if skip:
+                    continue
+            elif op == 'HEADER':
+                header_i += 1
+                skip = all(skips_in_headers[header_i])
+                label_i = 0
+            elif op in ('POS', 'ETYM'):
+                skip = all(skips_in_headers[header_i])
+
+            if skip or (not result and op == 'HEADER'):
+                continue
+            result.append((op, *body))
+
+        self.contents = result
+
+    def show(self, filter_flags=None):
+        # High level method that does:
+        #  - filter dictionary contents based on filter_flags and filter configuration.
+        #  - move terminal cursor to the top.
+        #  - print dictionary
+
+        if filter_flags is None:
+            filter_flags = []
+
+        self.filter_contents(filter_flags)
         if not self.contents:
             return None
 
@@ -385,7 +484,6 @@ class Dictionary:
                         # Use Windows ANSI sequence to clear the screen
                         h = (height - 1) * '\n'
                         sys.stdout.write(f'{h}\033[2J')
-
                     sys.stdout.flush()
                 elif POSIX:
                     # Even though `clear -x` is slower than using
