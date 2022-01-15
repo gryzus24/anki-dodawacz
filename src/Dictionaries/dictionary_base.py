@@ -423,6 +423,8 @@ class Dictionary:
             if not flags:
                 return
 
+        # We have to first build the "skip per label, per header" list, otherwise we
+        # wouldn't be able to tell whether to include HEADER and PHRASE instructions.
         skips_in_headers = [[]]
         for op, *body in self.contents:
             if op == 'LABEL':
@@ -434,24 +436,26 @@ class Dictionary:
         if all(skip for header in skips_in_headers for skip in header):
             return
 
-        skip = all(skips_in_headers[0])
-
+        # Example skips_in_headers: [[True, False], [False, False, True], [True]]
+        # Change current skip state by moving
+        # header cursor and label cursor through these skips.
+        skip_state = all(skips_in_headers[0])
         result = []
-        header_i = label_i = 0
+        header_cur = label_cur = 0
         for op, *body in self.contents:
             if op == 'LABEL':
-                skip = skips_in_headers[header_i][label_i]
-                label_i += 1
-                if skip:
+                skip_state = skips_in_headers[header_cur][label_cur]
+                label_cur += 1
+                if skip_state:
                     continue
             elif op == 'HEADER':
-                header_i += 1
-                skip = all(skips_in_headers[header_i])
-                label_i = 0
+                header_cur += 1
+                skip_state = all(skips_in_headers[header_cur])
+                label_cur = 0
             elif op in ('POS', 'ETYM'):
-                skip = all(skips_in_headers[header_i])
+                skip_state = all(skips_in_headers[header_cur])
 
-            if skip or (not result and op == 'HEADER'):
+            if skip_state or (not result and op == 'HEADER'):
                 continue
             result.append((op, *body))
 
