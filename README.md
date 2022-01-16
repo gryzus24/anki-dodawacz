@@ -27,9 +27,9 @@ To display usage information for a command just type its name.
 
 If you are using Windows install Windows Terminal or any other than cmd terminal emulator for better user experience.
 
-## Installation:
+## Installation
 
-### Windows:
+### Windows
 
 To open the program we need Python 3.7 or newer installed.<br>
 You can download Python from https://www.python.org/downloads/<br>
@@ -60,7 +60,7 @@ To run the program type:<br>
 
 You can also create a shortcut and run the program this way, however in case of an unexpected error the program will crash immediately.
 
-### Linux:
+### Linux
 
 Most GNU/Linux distributions come with Python preinstalled.<br>
 Cd into the directory you want the program to be downloaded into and enter the command:<br>
@@ -68,7 +68,7 @@ Cd into the directory you want the program to be downloaded into and enter the c
 mkdir Ankidodawacz && cd $_ && curl https://api.github.com/repos/gryzus24/anki-dodawacz/tags | python -c"import json,sys;sys.stdout.write('url '+json.load(sys.stdin)[0]['tarball_url'])" | curl -L -K- -o a && tar -xvzf a --strip-components=1 && rm a && pip install --disable-pip-version-check beautifulsoup4 colorama lxml urllib3 && python ankidodawacz.py
 ```
 
-### MacOS:
+### MacOS
 
 Check whether you have Python 3 installed by opening the Terminal app and typing `python3 -V`<br>
 If you see a version that is >=3.7 it means you can use the Linux command to download the program into the directory you are currently in. You can change the directory by typing `cd {directory name}`
