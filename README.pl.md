@@ -27,9 +27,9 @@ Aby wyświetlić użycie dla danej komendy po prostu wpisz jej nazwę.
 
 Jeżeli używasz Windowsa polecam zainstalować Windows Terminal lub jakikolwiek inny niż cmd emulator terminala, aby zwiększyć wygodę użytkowania.
 
-## Instalacja:
+## Instalacja
 
-### Windows:
+### Windows
 
 Aby uruchomić program, potrzebujesz Pythona 3.7 lub nowszego.<br>
 Pobierz Pythona z oficjalnej strony: https://www.python.org/downloads/<br>
@@ -61,14 +61,14 @@ Gdy jesteś w folderze z programem, aby go uruchomić wpisz:<br>
 Na Windowsie kliknięcie w ikonkę też powinno otworzyć program, jednak przy wystąpieniu jakiegokolwiek nieoczekiwanego
 błędu, okno zamknie się natychmiastowo.
 
-### Linux:
+### Linux
 
 Większość dystrybucji GNU/Linuxa ma już zainstalowaną odpowiednią wersję Pythona, więc pójdź do folderu w którym chcesz pobrać program i wpisz:<br>
 ```
 mkdir Ankidodawacz && cd $_ && curl https://api.github.com/repos/gryzus24/anki-dodawacz/tags | python -c"import json,sys;sys.stdout.write('url '+json.load(sys.stdin)[0]['tarball_url'])" | curl -L -K- -o a && tar -xvzf a --strip-components=1 && rm a && pip install --disable-pip-version-check beautifulsoup4 colorama lxml urllib3 && python ankidodawacz.py
 ```
 
-### MacOS:
+### MacOS
 Sprawdź czy masz zainstalowanego Pythona 3 poprzez otworzenie terminala i wpisanie `python3 -V`<br>
 Jeżeli wersja wskazuje >=3.7 oznacza to, że możesz użyć Linuxowej komendy, aby pobrać program do folderu w którym aktualnie się znajdujesz. Możesz zmienić folder używając `cd {nazwa folderu}`
 
