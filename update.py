@@ -94,7 +94,7 @@ def main():
         os.remove(tfile.name)
 
     print(f"{YEX}:: {R}Copying 'config.json'...")
-    with open(os.path.join(out_dir_path, 'config/config.json'), 'r') as f:
+    with open(os.path.join(out_dir_path, 'config/config.json')) as f:
         new_config = json.load(f)
         for old_key, old_val in config.items():
             try:
@@ -114,7 +114,7 @@ def main():
         print(f"{YEX}:: {R}Copying 'cards.txt'...")
         with \
                 open(os.path.join(out_dir_path, 'cards.txt'), 'w', encoding='utf-8') as new_cards, \
-                open('cards.txt', 'r', encoding='utf-8') as cards:
+                open('cards.txt', encoding='utf-8') as cards:
             new_cards.writelines(cards.readlines())
 
     if not config['ankiconnect'] and config['audio_path'] == 'Cards_audio' and os.path.exists('Cards_audio'):

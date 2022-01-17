@@ -415,7 +415,7 @@ def main():
         if not sep:
             sep = '\n'
 
-        with open(define_file, 'r') as f:
+        with open(define_file) as f:
             lines = [x.strip().strip(sep) for x in f if x.strip().strip(sep)]
 
         if not lines:

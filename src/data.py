@@ -8,7 +8,7 @@ import sys
 ROOT_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
 try:
-    with open(os.path.join(ROOT_DIR, 'config/config.json'), 'r') as cf:
+    with open(os.path.join(ROOT_DIR, 'config/config.json')) as cf:
         config = json.load(cf)
 except (FileNotFoundError, json.JSONDecodeError):
     print(' "config.json" does not exist '.center(79, '='))

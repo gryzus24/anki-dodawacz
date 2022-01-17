@@ -28,7 +28,7 @@ from src.input_fields import ask_yes_no, choose_item
 # of saved notes without restarting the program and
 # takes care of some edge cases
 try:
-    with open(os.path.join(ROOT_DIR, 'config/ankiconnect.json'), 'r') as af:
+    with open(os.path.join(ROOT_DIR, 'config/ankiconnect.json')) as af:
         config_ac = json.load(af)
 except (FileNotFoundError, json.JSONDecodeError):
     with open(os.path.join(ROOT_DIR, 'config/ankiconnect.json'), 'w') as af:
@@ -191,7 +191,7 @@ def add_note_to_anki():
     if note_name is None:
         return 'Leaving...'
 
-    with open(os.path.join(ROOT_DIR, f'notes/{note_name}'), 'r') as f:
+    with open(os.path.join(ROOT_DIR, f'notes/{note_name}')) as f:
         note_config = json.load(f)
 
     model_name = note_config['modelName']

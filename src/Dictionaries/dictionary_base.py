@@ -168,6 +168,8 @@ class Dictionary:
         return self._by_header('ETYM', lambda x: x[0])
 
     def to_auto_choice(self, choices, type_):
+        # Convert a list of direct user inputs or inputs already passed through the
+        # `get_positions_in_sections` method into a string based on what's in the Dictionary.
         ntype = 0
         for op, *_ in self.contents:
             if type_ in op:

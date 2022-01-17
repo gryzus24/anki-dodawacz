@@ -114,7 +114,7 @@ def delete_cards(*args, **kwargs):
         return None
 
     try:
-        with open('cards.txt', 'r') as r:
+        with open('cards.txt') as r:
             lines = r.readlines()
 
         if no_of_deletions >= len(lines):
