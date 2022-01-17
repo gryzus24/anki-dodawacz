@@ -198,7 +198,7 @@ def ask_ahdictionary(query):
         # Gather audio urls
         audio_url = td.find('a', {'target': '_blank'})
         if audio_url is not None:
-            ahd.add(('AUDIO', 'https://www.ahdictionary.com' + audio_url.get('href').strip()))
+            ahd.add('AUDIO', 'https://www.ahdictionary.com' + audio_url.get('href').strip())
 
         header = td.find('div', class_='rtseg', recursive=False)
         if header is None:  # if there are more tables present, e.g. Bible
@@ -220,11 +220,11 @@ def ask_ahdictionary(query):
         if before_phrase:
             before_phrase = False
             if phrase.lower() != query.lower():
-                ahd.add(('NOTE', f' Results for {phrase_c}{phrase}'))
+                ahd.add('NOTE', f' Results for {phrase_c}{phrase}')
         else:
-            ahd.add(('HEADER', HORIZONTAL_BAR))
+            ahd.add('HEADER', HORIZONTAL_BAR)
 
-        ahd.add(('PHRASE', phrase, phon_spell))
+        ahd.add('PHRASE', phrase, phon_spell)
 
         for block in td.find_all('div', class_='pseg', recursive=False):
             # Gather part of speech labels
@@ -237,9 +237,9 @@ def ask_ahdictionary(query):
             phrase_tenses = parse_phrase_tenses(get_phrase_tenses(block.contents[1:]))
 
             if pos_label or phrase_tenses:
-                ahd.add(('LABEL', pos_label, phrase_tenses))
+                ahd.add('LABEL', pos_label, phrase_tenses)
             else:
-                ahd.add(('LABEL', '', ''))
+                ahd.add('LABEL', '', '')
 
             # Add definitions and their corresponding elements
             for def_root in block.find_all('div', class_=('ds-list', 'ds-single'), recursive=False):
@@ -254,7 +254,7 @@ def ask_ahdictionary(query):
                         # Separate examples with '<br>' to avoid
                         # semicolon conflicts in other dictionaries
                         exsen = '<br>'.join('‘' + e.strip() + '’' for e in exsen.split(';'))
-                    ahd.add((def_type, subdef, exsen))
+                    ahd.add(def_type, subdef, exsen)
 
         # Add parts of speech
         td_pos = ['POS']
@@ -277,11 +277,11 @@ def ask_ahdictionary(query):
 
             td_pos.append((pos, phon_spell))
         if len(td_pos) > 1:
-            ahd.add(td_pos)
+            ahd.add(*td_pos)
 
         # Add etymologies
         etymology = td.find('div', class_='etyseg', recursive=False)
         if etymology is not None:
-            ahd.add(('ETYM', etymology.text))
+            ahd.add('ETYM', etymology.text)
 
     return ahd

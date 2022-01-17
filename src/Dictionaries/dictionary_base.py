@@ -114,16 +114,11 @@ class Dictionary:
         for op, *body in self.contents:
             sys.stdout.write(f'{op:7s}{body}\n')
 
-    def add(self, value):
+    def add(self, op, body, *args):
         # Add an instruction to the dictionary.
-        # Value must be a Sequence containing at least 2 fields:
+        # Value must be a Sequence containing 2 or more fields:
         # ('OPERATION', 'BODY', ... )
-        try:
-            assert value[0] or value[1], 'no instruction specified'
-        except IndexError:
-            raise ValueError('instruction must contain at least 2 fields')
-        else:
-            self.contents.append(value)
+        self.contents.append((op, body, *args))
 
     @property
     def phrases(self):
@@ -172,15 +167,11 @@ class Dictionary:
     def etymologies(self):
         return self._by_header('ETYM', lambda x: x[0])
 
-    def count_ops(self, type_):
+    def to_auto_choice(self, choices, type_):
         ntype = 0
         for op, *_ in self.contents:
             if type_ in op:
                 ntype += 1
-        return ntype
-
-    def to_auto_choice(self, choices, type_):
-        ntype = self.count_ops(type_)
         if not ntype:
             return '0'
 

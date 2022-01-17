@@ -83,6 +83,6 @@ def ask_wordnet(query):
         syn = temp[0].strip()
         gloss = '(' + temp[1].rsplit(')', 1)[0].strip() + ')'
 
-        wordnet.add(('SYN', syn, gloss, pos))
+        wordnet.add('SYN', syn, gloss, pos)
 
     return wordnet

@@ -93,7 +93,7 @@ def ask_lexico(query, _previous_query=''):
         example_ = example_.replace('‘', '', 1).replace('’', '', 1).strip()
         if example_:
             example_ = '‘' + example_ + '’'
-        lexico.add((deftype, definition_.strip(), example_))
+        lexico.add(deftype, definition_.strip(), example_)
     #
     # Lexico
     #
@@ -138,11 +138,11 @@ def ask_lexico(query, _previous_query=''):
             if before_phrase:
                 before_phrase = False
                 if _previous_query and phrase_ != _previous_query:
-                    lexico.add(('NOTE', f' Results for {phrase_c}{phrase_}'))
+                    lexico.add('NOTE', f' Results for {phrase_c}{phrase_}')
             else:
-                lexico.add(('HEADER', HORIZONTAL_BAR))
+                lexico.add('HEADER', HORIZONTAL_BAR)
 
-            lexico.add(('PHRASE', phrase_, get_phonetic_spelling(block)))
+            lexico.add('PHRASE', phrase_, get_phonetic_spelling(block))
 
             # Gather etymologies
             # Etymologies are bound to more than one block so it's better to search
@@ -168,7 +168,7 @@ def ask_lexico(query, _previous_query=''):
             pos_label = block.find('span', class_='pos').text.strip()
             if pos_label:
                 trans_note = block.find('span', class_='transitivity').text.strip()
-                lexico.add(('LABEL', pos_label, trans_note))
+                lexico.add('LABEL', pos_label, trans_note)
 
             semb = block.find('ul', class_='semb', recursive=False)
             if semb is None:
@@ -213,15 +213,15 @@ def ask_lexico(query, _previous_query=''):
 
             header_audio = current_header_block.find('audio')
             if header_audio is not None:
-                lexico.add(('AUDIO', header_audio.get('src')))
+                lexico.add('AUDIO', header_audio.get('src'))
             else:
                 gramb_audio = semb.next_sibling
                 if gramb_audio is not None:
                     gram_urls = gramb_audio.find_all('audio')
                     if gram_urls:
-                        lexico.add(('AUDIO', gram_urls[-1].get('src')))
+                        lexico.add('AUDIO', gram_urls[-1].get('src'))
 
         elif block.get('class')[0] == 'etymology' and block.h3.text == 'Origin' and etym:
-            lexico.add(('ETYM', etym))
+            lexico.add('ETYM', etym)
 
     return lexico

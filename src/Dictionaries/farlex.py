@@ -100,7 +100,7 @@ def ask_farlex(query):
         idiom_phrase = content_block.find_previous_sibling('h2').text.strip()
         if last_phrase != idiom_phrase:
             last_phrase = idiom_phrase
-            farlex.add(('PHRASE', idiom_phrase, ''))  # no phonetic spelling
+            farlex.add('PHRASE', idiom_phrase, '')  # no phonetic spelling
 
         # Gather definitions
         definition = content_block.find('span', class_='illustration', recursive=False)
@@ -117,7 +117,7 @@ def ask_farlex(query):
         else:
             examples = ''
 
-        farlex.add(('DEF', definition, examples))
-        farlex.add(('HEADER', ' '))
+        farlex.add('DEF', definition, examples)
+        farlex.add('HEADER', ' ')
 
     return farlex
