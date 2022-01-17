@@ -1,6 +1,6 @@
 # Ankidodawacz
 
-![Polish](https://github.com/gryzus24/anki-dodawacz/blob/main/README.pl.md) | ![English](https://github.com/gryzus24/anki-dodawacz/blob/main/README.md)
+![Polish](https://github.com/gryzus24/anki-dodawacz/blob/main/README.pl.md) • ![English](https://github.com/gryzus24/anki-dodawacz/blob/main/README.md)
 
 A command line dictionary look-up tool with Anki integration.<br>
 
@@ -9,7 +9,8 @@ A command line dictionary look-up tool with Anki integration.<br>
 ## Usage
 
 Search for a word and choose elements by their index.<br>
-Program saves your choice in a `cards.txt` file which can be manually imported or you can use AnkiConnect to add cards directly into Anki.
+Program saves your choice in a `cards.txt` file which can be manually imported to Anki.<br>
+You can also connect it directly to Anki via AnkiConnect to streamline the process.
 
 #### AnkiConnect configuration
 
@@ -26,9 +27,9 @@ To display usage information for a command just type its name.
 
 If you are using Windows install Windows Terminal or any other than cmd terminal emulator for better user experience.
 
-## Installation:
+## Installation
 
-### Windows:
+### Windows
 
 To open the program we need Python 3.7 or newer installed.<br>
 You can download Python from https://www.python.org/downloads/<br>
@@ -52,14 +53,14 @@ Press Win+R, type "cmd" and install required libraries:<br>
 
 Go to the program's directory:<br>
 `cd <path to extracted archive>`<br>
-e.g. `cd Downloads\anki-dodawacz-v1.3.1-1`
+e.g. `cd Downloads\Ankidodawacz`
 
 To run the program type:<br>
 `python ankidodawacz.py`<br>
 
 You can also create a shortcut and run the program this way, however in case of an unexpected error the program will crash immediately.
 
-### Linux:
+### Linux
 
 Most GNU/Linux distributions come with Python preinstalled.<br>
 Cd into the directory you want the program to be downloaded into and enter the command:<br>
@@ -67,10 +68,10 @@ Cd into the directory you want the program to be downloaded into and enter the c
 mkdir Ankidodawacz && cd $_ && curl https://api.github.com/repos/gryzus24/anki-dodawacz/tags | python -c"import json,sys;sys.stdout.write('url '+json.load(sys.stdin)[0]['tarball_url'])" | curl -L -K- -o a && tar -xvzf a --strip-components=1 && rm a && pip install --disable-pip-version-check beautifulsoup4 colorama lxml urllib3 && python ankidodawacz.py
 ```
 
-### MacOS:
+### MacOS
 
 Check whether you have Python 3 installed by opening the Terminal app and typing `python3 -V`<br>
-If you see a version that is >=3.7 it means you can use the Linux command to download the program into the directory you are currently in. You can change the directory by typing `cd [directory name]`
+If you see a version that is >=3.7 it means you can use the Linux command to download the program into the directory you are currently in. You can change the directory by typing `cd {directory name}`
 
 ### Updating
 To update the program to the latest tag with your `cards.txt` and configuration preserved use:<br>

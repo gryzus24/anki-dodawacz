@@ -1,120 +1,89 @@
 # Ankidodawacz
 
-![Polish](https://github.com/gryzus24/anki-dodawacz/blob/main/README.pl.md) | ![English](https://github.com/gryzus24/anki-dodawacz/blob/main/README.md)
+![Polish](https://github.com/gryzus24/anki-dodawacz/blob/main/README.pl.md) • ![English](https://github.com/gryzus24/anki-dodawacz/blob/main/README.md)
 
-Otwarty na konfigurację program do szybkiego tworzenia i dodawania monojęzycznych kart do Anki.<br>
-Obecnie obsługiwane słowniki:
-- American Heritage Dictionary
-- Lexico
-- Farlex Dictionary of Idioms
-- WordNet 3.1
+Zintegrowany z Anki terminalowy program do przeglądania słowników.<br>
 
-## Instalacja:
+![image](https://user-images.githubusercontent.com/82805891/147771954-d4eda99e-0265-46ca-8ad3-564669368845.png)
 
-Wchodzimy w Releases (tags) -> Tags
+## Użycie
 
-### Windows:
+Wyszukaj słowo i wybierz elementy wpisując ich indeks.<br>
+Program zapisze Twój wybór w pliku `cards.txt`, który może być manualnie zaimportowany do Anki.<br>
+Możesz także połączyć program z Anki poprzez AnkiConnect co znacznie uprości proces dodawania.
 
-Pobieramy .zip i rozpakowujemy.
+#### Konfiguracja AnkiConnect
 
-##### Po rozpakowaniu archiwum:
+1. otwórz Anki i zainstaluj dodatek AnkiConnect (2055492159)
+2. wpisz `-ap auto` lub `-ap {ścieżka}`, aby dodać ścieżkę do folderu "collection.media", aby program wiedział gdzie zapisywać pliki audio
+3. wybierz swoją talię `-deck {nazwa talii}`
+4. dodaj wbudowaną notatkę `--add-note` lub wybierz swoją własną `-note {nazwa notatki}`
+5. włącz AnkiConnect `-ankiconnect on`
 
-Aby uruchomić program, potrzebujemy Pythona 3.7 lub nowszego.<br>
-Pythona pobieramy z oficjalnej strony: https://www.python.org/downloads/<br>
-Przy instalacji zaznaczamy "Add python to PATH"
+Aby wyświetlić więcej opcji konfiguracji wpisz `-conf` lub `-config`<br>
+Aby wyświetlić użycie dla danej komendy po prostu wpisz jej nazwę.
 
-##### Po zainstalowaniu Pythona:<br>
+![image](https://user-images.githubusercontent.com/82805891/147773917-6d070933-9e4c-4744-b7f0-9e4c9271bc07.png)
 
-Otwieramy terminal (cmd na windowsie) i pobieramy wymagane biblioteki wpisując:<br>
-`pip install beautifulsoup4 colorama lxml urllib3`<br>
+Jeżeli używasz Windowsa polecam zainstalować Windows Terminal lub jakikolwiek inny niż cmd emulator terminala, aby zwiększyć wygodę użytkowania.
 
-Następnie wpisujemy:<br>
-`cd <ścieżka do folderu z programem>`<br>
-np. `cd Pobrane`
+## Instalacja
 
-Gdy jesteśmy w folderze z programem, aby uruchomić Ankidodawacza wpisujemy:<br>
+### Windows
+
+Aby uruchomić program, potrzebujesz Pythona 3.7 lub nowszego.<br>
+Pobierz Pythona z oficjalnej strony: https://www.python.org/downloads/<br>
+Przy instalacji zaznacz "Add python to PATH".
+
+Po zainstalowaniu Pythona:<br>
+
+#### Za pomocą jednej komendy:
+Wciśnij Win+R, wpisz "cmd" i użyj komendy:
+```
+mkdir %HOMEPATH%\Downloads\Ankidodawacz && cd %HOMEPATH%\Downloads\Ankidodawacz && curl https://api.github.com/repos/gryzus24/anki-dodawacz/tags | python -c"import json,sys;sys.stdout.write('url '+json.load(sys.stdin)[0]['tarball_url'])" | curl -L -K- -o a && tar -xvzf a --strip-components=1 && del a && pip install --disable-pip-version-check beautifulsoup4 colorama lxml urllib3 && python ankidodawacz.py
+```
+Program zostanie pobrany do folderu Pobrane\Ankidodawacz.
+
+#### lub zrób to co komenda, ale manualnie:
+Wejdź w Releases (tags) -> Tags<br>
+pobierz i wypakuj .zip archiwum.
+
+Wciśnij Win+R, wpisz "cmd" i użyj komendy, aby zainstalować wymagane biblioteki:<br>
+`pip install beautifulsoup4 colorama lxml urllib3`
+
+Pójdź do folderu z programem:<br>
+`cd <ścieżka do folderu>`<br>
+np. `cd Downloads\Ankidodawacz`
+
+Gdy jesteś w folderze z programem, aby go uruchomić wpisz:<br>
 `python ankidodawacz.py`<br>
 
 Na Windowsie kliknięcie w ikonkę też powinno otworzyć program, jednak przy wystąpieniu jakiegokolwiek nieoczekiwanego
 błędu, okno zamknie się natychmiastowo.
 
-### Linux:
+### Linux
 
-Pobieramy archiwum .tar.gz i rozpakowujemy.
+Większość dystrybucji GNU/Linuxa ma już zainstalowaną odpowiednią wersję Pythona, więc pójdź do folderu w którym chcesz pobrać program i wpisz:<br>
+```
+mkdir Ankidodawacz && cd $_ && curl https://api.github.com/repos/gryzus24/anki-dodawacz/tags | python -c"import json,sys;sys.stdout.write('url '+json.load(sys.stdin)[0]['tarball_url'])" | curl -L -K- -o a && tar -xvzf a --strip-components=1 && rm a && pip install --disable-pip-version-check beautifulsoup4 colorama lxml urllib3 && python ankidodawacz.py
+```
 
-Możemy użyć komendy:<br>
-`tar -xvf <pobrany tar.gz> -C <ścieżka gdzie chcemy rozpakować>`
+### MacOS
+Sprawdź czy masz zainstalowanego Pythona 3 poprzez otworzenie terminala i wpisanie `python3 -V`<br>
+Jeżeli wersja wskazuje >=3.7 oznacza to, że możesz użyć Linuxowej komendy, aby pobrać program do folderu w którym aktualnie się znajdujesz. Możesz zmienić folder używając `cd {ścieżka}`
 
-Na większości dystrybucji odpowiednia wersja Pythona powinna być już zainstalowana.
+### Aktualizacja
+Aby zaktualizować program zachowując swoją konfigurację i zawartość pliku "cards.txt" użyj:<br>
+`python update.py`
 
-Instalujemy wymagane biblioteki:<br>
-`pip install beautifulsoup4 colorama lxml urllib3`
-
-Otwieramy za pomocą Pythona:<br>
-`python ankidodawacz.py`
-
-## Konfiguracja i działanie programu
-
-Cykl dodawanie jest bardzo prosty. Wyszukujemy słowo, przechodzimy przez pola wyboru elementów takich jak definicje,
-przykłady czy też synonimy. Następnie program zapisuje nasz wybór do pliku "cards.txt", który możemy zaimportować do
-Anki.
-
-![image](https://user-images.githubusercontent.com/82805891/136019942-4f6dc200-880c-49cc-92af-f36659312b2d.png)
-
-Audio domyślnie zapisywane jest w folderze "Cards_audio" w folderze z programem.<br>
-Możemy zmienić ścieżkę zapisu audio, jak i wszystkie domyślne ustawienia używając komend.
-
-Najlepiej dodać ścieżkę do folderu "collection.media", aby audio było automatycznie odtwarzane w Anki bez potrzeby
-ręcznego przenoszenia zawartości "Cards_audio".<br>
-Aby to zrobić możemy ręcznie wpisać ścieżkę używając komendy `-ap [ścieżka]`<br>
-albo wpisać `-ap auto`, aby program wyszukał ścieżkę do "collection.media" automatycznie.
-
-Aby wyświetlić pełną listę ustawień wpisujemy `-config` lub `-conf`.<br>
-Aby sprawdzić działanie i użycie danej komendy wpisujemy jej nazwę.
-
-![image](https://user-images.githubusercontent.com/82805891/136023117-961a04a5-34c1-4a12-bc7a-c7d9c58f2f10.png)
-
-Wygląd jest w dużej mierze zależny od naszego emulatora terminala.
-Jeżeli opcje oferowane przez cmd są niewystarczające lub nie chcecie się bawić z tym niedomagającym terminalem polecam zainstalowanie _Windows Terminal_ lub _Alacritty_.
-
-### Aktualizacja do nowszej wersji
-Aby zaktualizować program zachowując swoją konfigurację i zawartość pliku "cards.txt" wystarczy wpisać:<br>
-`python update.py`<br>
 Nowa wersja zostanie zapisana w folderze wyżej jako "anki-dodawacz-{wersja}".
 
 Obecnie `update.py` działa na Linuxie i Windowsie 10.
 
-## Konfiguracja Anki i AnkiConnect
-
-Program interfejsuje z Anki za pomocą AnkiConnect.<br>
-Używanie AnkiConnect przynosi wiele korzyści, takich jak:
-
-- bezpośrednie dodawanie kart do Anki bez potrzeby importowania pliku "cards.txt"
-- bezpośrednie dodawanie customowych notatek
-- dodawanie tagów (etykiet) do kart
-- dodatkowe opcje sprawdzania duplikatów
-
-#### Instalacja AnkiConnect:
-
-- Otwieramy Anki
-- Wchodzimy w "Narzędzia" -> "Dodatki"
-- Klikamy "Pobierz dodatki..."
-- Kopiujemy kod dodatku z https://ankiweb.net/shared/info/2055492159 i restartujemy Anki
-
-Teraz możemy przejść do Ankidodawacza i wpisać `-ankiconnect on`<br>
-Zanim jednak będziemy mogli dodawać karty, musimy sprecyzować do jakiej talii mają one trafiać.<br>
-Aby to zrobić, wpisujemy `-deck [nazwa talii]`
-
-Teraz została nam do ustawienia tylko notatka.<br>
-
-### Konfiguracja notatek:
-
-Notatkę ustawiamy wpisując `-note [nazwa notatki]`
+### Konfiguracja notatek
 
 Program spróbuje automatycznie wykryć jakie informacje trafiają w poszczególne pola.<br>
-Jeżeli jednak coś pójdzie nie tak to musimy zmienić nazwy pól naszej notatki w Anki tak, aby były zrozumiałe dla
-dodawacza. Obsługiwane pola to:
-
+Pola, które są na pewno zrozumiałe dla programu to:
 - Definicja
 - Synonimy
 - Przykłady
@@ -125,74 +94,43 @@ dodawacza. Obsługiwane pola to:
 - Audio
 - Nagranie
 
-### Dodawanie przykładowych notatek:
+### Wbudowane notatki
 
-Jeżeli nie chcesz używać swojej własnej notatki to możesz skorzystać z mojej przykładowej.<br>
-Aby dodać przykładową notatkę wpisujemy `--add-note gryzus-std`
+Jeżeli nie chcesz używać swojej własnej notatki to możesz skorzystać z tych wbudowanych.<br>
+Aby dodać przykładową notatkę wpisujemy `--add-note`
 
-Notatka posiada tryb jasny oraz ciemny.
-
-![image](https://user-images.githubusercontent.com/82805891/122020987-c8b45180-cdb4-11eb-9c1f-20fbfb44d0d4.png)
+![image](https://user-images.githubusercontent.com/82805891/147774842-0f5d9e7e-2fca-4a0c-8f8e-ce4c6294a0b5.png)
 
 Link do notatki "gryzus-std" w formie tekstowej: https://pastebin.com/9ZfWMpNu
 
-## Importowanie ręczne
+## Nagrywanie za pomocą FFmpeg
 
-Aby zaimportować karty do Anki, na górnym pasku klikamy w "Plik" i "Importuj..." lub "Ctrl+Shift+I".
+Ankidodawacz oferuje prosty interfejs do programu FFmpeg, aby nagrywać audio z komputera.
 
-- Nawigujemy do folderu z Ankidodawaczem i wybieramy plik "cards.txt".
-- Wybieramy nasz typ notatki i talię
-- Klikamy w "Pola oddzielone o" i wpisujemy "\t"
-- Wybieramy "Ignoruj linie, których pierwsze pole pasuje do istniejącej notatki"
-- I na końcu ważne, aby zaznaczyć "Zezwól na HTML w polach"
-- Jeżeli nie sprecyzowaliśmy ścieżki zapisu audio w Ankidodawaczu, musimy przenieść zawartość folderu "Cards_audio" do
-  folderu "collection.media", aby audio było odtwarzane podczas powtarzania
-
-![image](https://user-images.githubusercontent.com/82805891/130698679-70fe0803-c98d-405e-82fe-d540675d0d65.png)
-
-Gdy raz ustawimy opcje importowania w Anki, nie musimy się przejmować ich ponownym ustawianiem. Ścieżka importu też
-powinna zostać zapisana.
-
-Po dodaniu kart możemy usunąć zawartość pliku "cards.txt", jednak gdy zostawimy go to kolejna próba importowania nie
-powinna zostać skompromitowane dzięki opcji "Ignoruj linie, których pierwsze pole pasuje do istniejącej notatki". Warto
-o tym pamiętać.
-
-## Konfiguracja nagrywania
-
-Ankidodawacz jest także prostym interfejsem do programu _ffmpeg_.<br>
-Możemy:
-
-- nagrywać audio bezpośrednio z naszego komputera lub mikrofonu
-- ustawiać jakość nagrywania
-
-Aktualnie obsługiwane systemy operacyjne i konfiguracja audio:<br>
-
-- Linux:    pulseaudio (z alsą)<br>
+Aktualnie obsługiwane systemy operacyjne i konfiguracja audio:
+- Linux:    pulseaudio (z alsą)
 - Windows:  dshow
 
-Oficjalna strona ffmpeg: https://www.ffmpeg.org/download.html
+Oficjalna strona FFmpeg: https://www.ffmpeg.org/download.html
 
-Aby nagrywać audio musimy przenieść program _ffmpeg_ do folderu z programem lub dodać jego ścieżkę do $PATH. Następnie
-wybieramy urządzenie audio za pomocą którego chcemy nagrywać audio wpisując `--audio-device`.
+Aby nagrywać audio musisz dodać program _ffmpeg_ do $PATH albo umieścić go w folderze z Ankidodawaczem.<br>
+Aby wybrać preferowane użądzenie audio użyj komendy `--audio-device`
 
-Jeżeli nie widzimy interesującego nas urządzenia na Windowsie:
+Jeżeli nagrywanie nie działa na Windowsie:
+- włącz "Miks stereo" w ustawieniach dźwięku
+- zaznacz "nasłuchuj tego urządzenia" we właściwościach "Miksu stereo"
+- zezwól aplikacjom na wykorzystywanie mikrofonu
 
-- Włączamy "Miks stereo" w ustawieniach dźwięku
-- Zaznaczamy "nasłuchuj tego urządzenia"
-- Zezwalamy aplikacjom na wykorzystywanie mikrofonu
+Na GNU/Linuxie jest duża szansa, że _ffmpeg_ jest już zainstalowany i dostępny w $PATH.<br>
+Więc jedyne co trzeba zrobić to:
+- wpisz `-rec` w Ankidodawaczu
+- podczas nagrywania wejdź w mikser dźwięku pulseaudio -> Nagrywanie
+- zmień urządzenie monitorujące dla Lavf na preferowane użądzenie wyjściowe, głośniki, DAC, itd.
 
-Na Linuxie jest duża szansa, że _ffmpeg_ jest zainstalowany i jest dostępny w $PATH.<br>
-Więc jedyne co musimy zrobić to:<br>
-
-- Wpisujemy `-rec` w Ankidodawaczu
-- podczas nagrywania wchodzimy w mikser dźwięku pulseaudio -> Nagrywanie
-- zmieniamy urządzenie monitorujące dla Lavf na urządzenie wybrane przy konfiguracji za pomocą `--audio-device`
+Aby rozpocząć nagrywanie dodaj `-rec` po wyszukiwanej frazie.
 
 ## Kod
 
-Jestem początkujący, jeżeli chodzi o programowanie. Jest to mój pierwszy projekt i jakość kodu z pewnością pozostawia
-wiele do życzenia.
-
-Jestem otwarty na wszelkie sugestie i uwagi. Mam nadzieję, że narzędzie okaże się pomocne.
+Jest to mój pierwszy projekt. Jestem otwarty na wszelkie sugestie i uwagi. Mam nadzieję, że narzędzie okaże się pomocne.
 
 Użyte biblioteki: BeautifulSoup4 (MIT), colorama (BSD), lxml (BSD), urllib3 (MIT)
