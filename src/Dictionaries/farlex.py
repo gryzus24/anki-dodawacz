@@ -14,9 +14,8 @@
 # along with this program. If not, see <http://www.gnu.org/licenses/>.
 
 from src.Dictionaries.dictionary_base import Dictionary
-from src.Dictionaries.utils import request_soup, wrap_and_pad
-from src.colors import R, def1_c, def2_c, index_c, exsen_c, phrase_c, err_c
-from src.data import config
+from src.Dictionaries.utils import request_soup
+from src.colors import R, err_c
 from src.input_fields import input_field
 
 
@@ -25,42 +24,9 @@ class FarlexIdioms(Dictionary):
     name = 'farlex'
     allow_thesaurus = False
 
-    def __init__(self):
-        super().__init__()
-
-    def format_dictionary(self, textwidth):
-        indent = config['indent'][0]
-        show_exsen = config['showexsen']
-
-        buffer = []
-        communal_index = 0
-        for op, *body in self.contents:
-            if op == 'DEF':
-                communal_index += 1
-                def_c = def1_c if communal_index % 2 else def2_c
-                def_index_len = len(str(communal_index))
-
-                first_line, *rest = wrap_and_pad(body[0], textwidth, def_index_len, indent -1, 1)
-                buffer.append(f'{index_c}{communal_index} {def_c}{first_line}')
-                for def_tp in rest:
-                    buffer.append(f'${def_c}{def_tp}')
-
-                if show_exsen and body[1]:
-                    for exsen in body[1].split('<br>'):
-                        first_line, *rest = wrap_and_pad(exsen, textwidth, def_index_len, 2, 1)
-                        buffer.append(f'${def_index_len * " "} {exsen_c}{first_line}')
-                        for wrapped_line in rest:
-                            buffer.append(f'${exsen_c}{wrapped_line}')
-            elif op == 'PHRASE':
-                wrapped = wrap_and_pad(body[0], textwidth - 1, 0, 0, 0)
-                for phrase_chunk in wrapped:
-                    buffer.append(f'! {phrase_c}{phrase_chunk}')
-            elif op == 'HEADER':
-                buffer.append(textwidth * body[0])
-            else:
-                assert False, f'unreachable farlex idioms operation: {op!r}'
-
-        return buffer
+    PHRASE_FMT = ('! {phrase_c}{phrase}{padding}',)
+    DEF_FMT    = ('{index_c}{index} {def_c}{first_line}', '${def_c}{line}',)
+    EXSEN_FMT  = ('${index_pad} {exsen_c}{first_line}', '${exsen_c}{line}',)
 
     def input_cycle(self):
         chosen_defs, def_choices = input_field('def')(self.definitions, auto_choice='1')

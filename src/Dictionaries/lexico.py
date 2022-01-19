@@ -25,9 +25,6 @@ class Lexico(Dictionary):
     name = 'lexico'
     allow_thesaurus = True
 
-    def __init__(self):
-        super().__init__()
-
     def input_cycle(self):
         chosen_defs, def_choices = input_field('def')(self.definitions, auto_choice='1')
         if chosen_defs is None:

@@ -268,7 +268,7 @@ def set_width_settings(*args, message):
             t = 1
         v = [t, '* auto']
     elif cmd == '-indent':
-        v = [2, '']
+        v = [0, '']
     else:
         assert False, 'unreachable in `set_width_settings`'
 

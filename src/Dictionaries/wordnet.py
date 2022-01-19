@@ -24,31 +24,28 @@ class WordNet(Dictionary):
     title = 'WordNet'
     name = 'wordnet'
 
-    def __init__(self):
-        super().__init__()
-
     def format_dictionary(self, textwidth):
         # Available instructions:
         #   (SYN, synonyms, glosses, pos_label)
 
         buffer = []
-        communal_index = 0
+        index = 0
         for op, *body in self.contents:
             if op == 'SYN':
-                communal_index += 1
-                index_len = len(str(communal_index))
+                index += 1
+                index_len = len(str(index))
 
                 pos = body[2]
                 pos_len = len(pos)
-                first_line, *rest = wrap_and_pad(body[0], textwidth, index_len, pos_len + 2, pos_len + 2)
-                buffer.append(f'{index_c}{communal_index} {poslabel_c}{pos} {syn_c}{first_line}')
-                for subsyn in rest:
-                    buffer.append(f'{syn_c}{subsyn}')
+                first_line, *rest = wrap_and_pad(body[0], textwidth, pos_len + index_len + 2)
+                buffer.append(f'{index_c}{index} {poslabel_c}{pos} {syn_c}{first_line}')
+                for line in rest:
+                    buffer.append(f'{syn_c}{line}')
 
-                first_line, *rest = wrap_and_pad(body[1], textwidth, index_len, 1, 1)
+                first_line, *rest = wrap_and_pad(body[1], textwidth, config['indent'][0] + index_len + 1)
                 buffer.append(f'{index_len * " "} {syngloss_c}{first_line}')
-                for gloss in rest:
-                    buffer.append(f'{syngloss_c}{gloss}')
+                for line in rest:
+                    buffer.append(f'{syngloss_c}{line}')
             else:
                 assert False, f'unreachable wordnet operation: {op!r}'
 

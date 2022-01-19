@@ -116,21 +116,21 @@ def get_config_terminal_size():
     return config_width, term_height
 
 
-def wrap_lines(string, term_width=79, index_width=0, indent=0, gap=0):
+def wrap_lines(string, term_width=79, gap=0, indent=0):
     def _indent_and_connect(_lines):
         for i in range(1, len(_lines)):
-            _lines[i] = (indent + index_width) * ' ' + _lines[i]
+            _lines[i] = (gap + indent) * ' ' + _lines[i]
         return _lines
 
     def no_wrap(string_):
-        line = string[:real_width]
+        line = string[:term_width - gap]
         if line.endswith(' '):
             line = line.replace(' ', '  ', 1)
 
         lines = [line.strip()]
-        string_ = string_[real_width:].strip()
+        string_ = string_[term_width - gap:].strip()
         while string_:
-            llen = term_width - indent - index_width
+            llen = term_width - indent - gap
             line = string_[:llen]
             if line.endswith(' '):
                 line = line.replace(' ', '  ', 1)
@@ -142,13 +142,13 @@ def wrap_lines(string, term_width=79, index_width=0, indent=0, gap=0):
     def trivial_wrap():
         lines = []
         line = []
-        current_llen = 0
+        current_llen = gap
         for word in string.split():
             # >= for one character right-side padding
             word_len = len(word)
-            if current_llen + word_len >= real_width:
+            if current_llen + word_len >= term_width:
                 lines.append(' '.join(line))
-                current_llen = indent - gap
+                current_llen = gap + indent
                 line = []
 
             line.append(word)
@@ -160,14 +160,14 @@ def wrap_lines(string, term_width=79, index_width=0, indent=0, gap=0):
     def justification_wrap():
         lines = []
         line = []
-        current_llen = 0
+        current_llen = gap
         for word in string.split():
             word_len = len(word)
-            if current_llen + word_len >= real_width:
+            if current_llen + word_len >= term_width:
                 nwords = len(line)
                 if nwords > 1:
                     i = 0
-                    filling = real_width - current_llen
+                    filling = term_width - current_llen
                     # filling shouldn't be negative but just in case.
                     while filling > 0:
                         if i > nwords - 2:
@@ -179,7 +179,7 @@ def wrap_lines(string, term_width=79, index_width=0, indent=0, gap=0):
 
                 lines.append(' '.join(line))
                 line = []
-                current_llen = indent - gap
+                current_llen = gap + indent
 
             line.append(word)
             current_llen += word_len + 1
@@ -188,22 +188,21 @@ def wrap_lines(string, term_width=79, index_width=0, indent=0, gap=0):
         return _indent_and_connect(lines)
 
     # Gap is the gap between indexes and strings
-    real_width = term_width - index_width - gap
-    if len(string) <= real_width:
+    if len(string) <= term_width - gap:
         return [string]
 
     if config['textwrap'] == 'regular':
-        real_width += 1
+        term_width += 1
         return trivial_wrap()
     elif config['textwrap'] == 'justify':
         return justification_wrap()
     return no_wrap(string)
 
 
-def wrap_and_pad(lines, textwidth, index_width, indent, gap):
+def wrap_and_pad(lines, textwidth, gap=0, indent=0):
     # Wraps and adds right side padding that matches `textwidth`.
-    fl, *rest = wrap_lines(lines, textwidth, index_width, indent, gap)
-    result = [fl + (textwidth - len(fl) - index_width - gap) * ' ']
+    fl, *rest = wrap_lines(lines, textwidth, gap, indent)
+    result = [fl + (textwidth - len(fl) - gap) * ' ']
     for line in rest:
         result.append(line + (textwidth - len(line)) * ' ')
     return result

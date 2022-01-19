@@ -20,13 +20,29 @@ from shutil import get_terminal_size
 
 from src.Dictionaries.utils import wrap_and_pad, get_config_terminal_size
 from src.colors import (
-    R, BOLD, DEFAULT, def1_c, exsen_c, pos_c, etym_c, phrase_c, err_c,
-    delimit_c, def2_c, defsign_c, index_c, phon_c, poslabel_c, inflection_c
+    R, BOLD, DEFAULT, def1_c, exsen_c, pos_c, etym_c, phrase_c, err_c, syngloss_c,
+    delimit_c, def2_c, defsign_c, index_c, phon_c, poslabel_c, inflection_c, syn_c
 )
 from src.data import (
     config, WINDOWS, POSIX, HORIZONTAL_BAR, ON_WINDOWS_CMD
 )
 
+COLOR_FORMATS = {
+    'exsen_c': exsen_c,
+    'defsign_c': defsign_c,
+    'index_c': index_c,
+    'phrase_c': phrase_c,
+    'phon_c': phon_c,
+    'pos_c': pos_c,
+    'poslabel_c': poslabel_c,
+    'inflection_c': inflection_c,
+    'etym_c': etym_c,
+    'syn_c': syn_c,
+    'syngloss_c': syngloss_c,
+    'R': R,
+    'BOLD': BOLD,
+    'DEFAULT': DEFAULT,
+}
 # Part of speech labels used to extend commonly used
 # abbreviations so that full flags can be matched.
 LABELS = {
@@ -107,7 +123,22 @@ def evaluate_skip(labels_, flags):
 class Dictionary:
     title = 'Dictionary'
 
+    # (First line format, rest of lines)
+    PHRASE_FMT = ('! {phrase_c}{phrase}  {phon_c}{phon}{padding}',)
+    LABEL_FMT  = ('! {poslabel_c}{label}  {inflection_c}{inflections}{padding}',)
+    DEF_FMT    = ('{defsign_c}{sign}{index_c}{index} {def_c}{first_line}', '${def_c}{line}',)
+    EXSEN_FMT  = ('${index_pad}  {exsen_c}{first_line}', '${exsen_c}{line}',)
+    POS_FMT    = (' {pos_c}{pos}  {phon_c}{phon}{padding}',)
+    ETYM_FMT   = (' {etym_c}{first_line}', '${etym_c}{line}')
+
     def __init__(self):
+        self.DEF_GAPS = self._gap_count(self.DEF_FMT[0])
+        self.EXSEN_GAPS = self._gap_count(self.EXSEN_FMT[0])
+        self.LABEL_GAPS = self._gap_count(self.LABEL_FMT[0])
+        self.PHRASE_GAPS = self._gap_count(self.PHRASE_FMT[0])
+        self.ETYM_GAPS = self._gap_count(self.ETYM_FMT[0])
+        self.POS_GAPS = self._gap_count(self.POS_FMT[0])
+
         self.contents = []
 
     def __repr__(self):
@@ -256,6 +287,10 @@ class Dictionary:
         esc_seq_len = len(BOLD) + len(DEFAULT) + len(delimit_c)
         return f'{delimit_c}{t.center(textwidth + esc_seq_len, HORIZONTAL_BAR)}'
 
+    def _gap_count(self, fstring):
+        n = fstring.count(' ')
+        return n + 1 if '{sign}' in fstring else n
+
     def format_dictionary(self, textwidth):
         # Format self.contents' list of (op, body)
         # into wrapped, colored and padded body lines.
@@ -271,36 +306,39 @@ class Dictionary:
 
         blank = textwidth * ' '
         indent = config['indent'][0]
-        show_exsen = config['showexsen']
 
         buffer = []
-        communal_index = 0
+
+        def _format_push(fmt, **kwargs):
+            buffer.append(fmt.format(**kwargs, **COLOR_FORMATS))
+
+        index = 0
         for op, *body in self.contents:
             # print(f'{op}\n{body}'); continue  # DEBUG
             if 'DEF' in op:
-                communal_index += 1
-                def_c = def1_c if communal_index % 2 else def2_c
+                index += 1
+                def_c = def1_c if index % 2 else def2_c
                 sign = ' ' if 'SUB' in op else '>'
-                def_index_len = len(str(communal_index))
+                index_len = len(str(index))
 
-                first_line, *rest = wrap_and_pad(body[0], textwidth, def_index_len, indent, 2)
-                buffer.append(f'{defsign_c}{sign}{index_c}{communal_index} {def_c}{first_line}')
-                for def_tp in rest:
-                    buffer.append(f'${def_c}{def_tp}')
+                first_line, *rest = wrap_and_pad(body[0], textwidth, self.DEF_GAPS + index_len, indent)
+                _format_push(self.DEF_FMT[0], sign=sign, index=index, def_c=def_c, first_line=first_line)
+                for line in rest:
+                    _format_push(self.DEF_FMT[1], def_c=def_c, line=line)
 
-                if show_exsen and body[1]:
+                if config['showexsen'] and body[1]:
                     for exsen in body[1].split('<br>'):
-                        first_line, *rest = wrap_and_pad(exsen, textwidth, def_index_len, 3, 2)
-                        buffer.append(f'${def_index_len * " "}  {exsen_c}{first_line}')
-                        for e in rest:
-                            buffer.append(f'${exsen_c}{e}')
+                        first_line, *rest = wrap_and_pad(exsen, textwidth, self.EXSEN_GAPS + index_len, indent + 1)
+                        _format_push(self.EXSEN_FMT[0], index_pad=index_len * ' ', first_line=first_line)
+                        for line in rest:
+                            _format_push(self.EXSEN_FMT[1], line=line)
             elif op == 'LABEL':
                 buffer.append(blank)
                 label, inflections = body
                 if label:
-                    padding = (textwidth - len(label) - len(inflections) - 3) * ' '
+                    padding = (textwidth - len(label) - len(inflections) - self.LABEL_GAPS) * ' '
                     if padding:
-                        buffer.append(f'! {poslabel_c}{label}  {inflection_c}{inflections}{padding}')
+                        _format_push(self.LABEL_FMT[0], label=label, inflections=inflections, padding=padding)
                     else:
                         padding = (textwidth - len(label) - 1) * ' '
                         buffer.append(f'! {poslabel_c}{label}{padding}')
@@ -308,13 +346,13 @@ class Dictionary:
                         buffer.append(f'! {inflection_c}{inflections}{padding}')
             elif op == 'PHRASE':
                 phrase, phon = body
-                padding = (textwidth - len(phrase) - len(phon) - 3) * ' '
+                padding = (textwidth - len(phrase) - len(phon) - self.PHRASE_GAPS) * ' '
                 if padding:
-                    buffer.append(f'! {phrase_c}{phrase}  {phon_c}{phon}{padding}')
+                    _format_push(self.PHRASE_FMT[0], phrase=phrase, phon=phon, padding=padding)
                 else:
-                    wrapped = wrap_and_pad(phrase, textwidth - 1, 0, 0, 0)
-                    for phrase_line in wrapped:
-                        buffer.append(f'! {phrase_c}{phrase_line}')
+                    wrapped = wrap_and_pad(phrase, textwidth - 1)
+                    for line in wrapped:
+                        buffer.append(f'! {phrase_c}{line}')
                     if phon:
                         padding = (textwidth - len(phon) - 1) * ' '
                         buffer.append(f'! {phon_c}{phon}{padding}')
@@ -324,16 +362,16 @@ class Dictionary:
                 etym = body[0]
                 if etym:
                     buffer.append(blank)
-                    first_line, *rest = wrap_and_pad(etym, textwidth, 0, 1, 1)
-                    buffer.append(f' {etym_c}{first_line}')
-                    for e in rest:
-                        buffer.append(f'${etym_c}{e}')
+                    first_line, *rest = wrap_and_pad(etym, textwidth, self.ETYM_GAPS, indent)
+                    _format_push(self.ETYM_FMT[0], first_line=first_line)
+                    for line in rest:
+                        _format_push(self.ETYM_FMT[1], line=line)
             elif op == 'POS':
                 if body[0]:
                     buffer.append(blank)
                     for pos, phon in body:
-                        padding = (textwidth - len(pos) - len(phon) - 3) * ' '
-                        buffer.append(f' {pos_c}{pos}  {phon_c}{phon}{padding}')
+                        padding = (textwidth - len(pos) - len(phon) - self.POS_GAPS) * ' '
+                        _format_push(self.POS_FMT[0], pos=pos, phon=phon, padding=padding)
             elif op == 'AUDIO':
                 pass
             elif op == 'NOTE':
