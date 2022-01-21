@@ -43,79 +43,38 @@ COLOR_FORMATS = {
     'BOLD': BOLD,
     'DEFAULT': DEFAULT,
 }
-# Part of speech labels used to extend commonly used
-# abbreviations so that full flags can be matched.
-LABELS = {
-    # These have to be len 1 iterables, as they are fed to the `set.update()` method.
-    'adj': ('adjective',),
-    'adv': ('adverb',),
-    'conj': ('conjunction',),
-    'defart': ('def',),
-    'indef': ('indefart',),
-    'interj': ('interjection',),
-    'n': ('noun',),
-
-    'pl': ('plural', 'pln', 'npl', 'noun'),
-    'npl': ('plural', 'pl', 'pln', 'noun'),
-    'pln': ('plural', 'npl', 'noun'),
-    'plural': ('pln', 'npl', 'noun'),
-
-    'prep': ('preposition',),
-    'pron': ('pronoun',),
-
-    # verbs shouldn't be expanded when in labels, -!v won't work
-    # not all verbs are tr.v. or intr.v. ... etc.
-    'v': ('verb',),
-
-    'tr': ('transitive', 'trv', 'vtr', 'verb'),
-    'trv': ('transitive', 'vtr', 'verb'),
-    'vtr': ('transitive', 'trv', 'verb'),
-
-    'intr': ('intransitive', 'intrv', 'vintr', 'verb'),
-    'intrv': ('intransitive', 'vintr', 'verb'),
-    'vintr': ('intransitive', 'intrv', 'verb'),
-
-    'intr&trv': (
-        'intransitive', 'transitive', 'v',
-        'intrv', 'trv', 'vintr', 'vtr', 'verb'
-    ),
-    'tr&intrv': (
-        'intransitive', 'transitive', 'v',
-        'intrv', 'trv', 'vintr', 'vtr', 'verb'
-    ),
-
-    'aux': ('auxiliary', 'auxv'),
-    'auxv': ('auxiliary',),
-
-    'pref': ('prefix',),
-    'suff': ('suffix',),
-    'abbr': ('abbreviation',),
-}
 
 
-def expand_labels(label_set):
-    for item in label_set.copy():
-        try:
-            label_set.update(LABELS[item])
-        except KeyError:
-            pass
-    return label_set
+def multi_split(string, *split_args):
+    # Splits a string at multiple places omitting redundancy just like `.split()`.
+    labels_list = []
+    lab = ''
+    for letter in string.strip():
+        if letter in split_args:
+            if lab:
+                labels_list.append(lab)
+                lab = ''
+        else:
+            lab += letter
+    if lab:
+        labels_list.append(lab)
+    return labels_list
 
 
-def evaluate_skip(labels_, flags):
-    labels_ = expand_labels(
-        {x.replace(' ', '').replace('.', '').lower() for x in labels_}
-    )
+def should_skip(label_str, flags):
+    labels_list = [x.lower() for x in multi_split(label_str, ' ', '.', '&')]
+
     skip = True
     for flag in flags:
         if flag.startswith('!'):
             skip = False
-            for label in labels_:
-                if label.startswith(flag[1:]):
+            flag = flag[1:]
+            for label in labels_list:
+                if label.startswith(flag) or flag.startswith(label):
                     return True
         else:
-            for label in labels_:
-                if label.startswith(flag):
+            for label in labels_list:
+                if label.startswith(flag) or flag.startswith(label):
                     return False
     return skip
 
@@ -459,8 +418,7 @@ class Dictionary:
         skips_in_headers = [[]]
         for op, *body in self.contents:
             if op == 'LABEL':
-                s = evaluate_skip(set(body[0].split()), flags)
-                skips_in_headers[-1].append(s)
+                skips_in_headers[-1].append(should_skip(body[0], flags))
             elif op == 'HEADER':
                 skips_in_headers.append([])
 
@@ -493,10 +451,10 @@ class Dictionary:
         self.contents = result
 
     def show(self, filter_flags=None):
-        # High level method that does:
-        #  - filter dictionary contents based on filter_flags and filter configuration.
-        #  - move terminal cursor to the top.
-        #  - print dictionary
+        # High level method that:
+        #  - filters dictionary contents based on filter_flags and filter configuration.
+        #  - moves terminal cursor to the top as specified in `config['top']`.
+        #  - pretty prints dictionary from `self.contents`.
 
         if filter_flags is None:
             filter_flags = []

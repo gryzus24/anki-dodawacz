@@ -38,9 +38,6 @@ class AHDictionary(Dictionary):
     name = 'ahd'
     allow_thesaurus = True
 
-    def __init__(self):
-        super().__init__()
-
     def input_cycle(self):
         chosen_defs, def_choices = input_field('def')(self.definitions, auto_choice='1')
         if chosen_defs is None:
@@ -110,24 +107,23 @@ def ask_ahdictionary(query):
         rex = fix_stress_and_remove_private_symbols(rex.strip())
         return rex.replace('  ', ' # ')
 
-    def get_phrase_tenses(contents):
-        return [
-            x.string.strip(', ') for x in contents
-            if x.string is not None and x.string.strip(', ') and
-            ('<b>' in str(x) or x.string.strip(', ') in ('or', 'also'))
+    def get_phrase_inflections(content_list):
+        parsed_cl = [
+            x.string.strip(', ') for x in content_list
+            if x.string is not None
+            and x.string.strip(', ')
+            and ('<b>' in str(x) or x.string.strip(', ') in ('or', 'also'))
         ]
-
-    def parse_phrase_tenses(pt):
         skip_next = False
         result = []
-        for i, elem in enumerate(pt):
+        for i, elem in enumerate(parsed_cl):
             if elem == 'or' and result:  # `and result` because of "gift-wrap"
                 result.pop()
-                result.append(' '.join((pt[i-1], pt[i], pt[i+1])))
+                result.append(' '.join((parsed_cl[i-1], parsed_cl[i], parsed_cl[i+1])))
                 skip_next = True
             elif elem == 'also':
                 try:
-                    result.append(' '.join((pt[i], pt[i+1])))
+                    result.append(' '.join((parsed_cl[i], parsed_cl[i+1])))
                 except IndexError:  # "decerebrate"
                     pass
                 else:
@@ -233,11 +229,10 @@ def ask_ahdictionary(query):
             pos_labels.discard('th')
 
             # Gather phrase tenses
-            pos_label = ' '.join(pos_labels)
-            phrase_tenses = parse_phrase_tenses(get_phrase_tenses(block.contents[1:]))
+            inflections = get_phrase_inflections(block.contents[1:])
 
-            if pos_label or phrase_tenses:
-                ahd.add('LABEL', pos_label, phrase_tenses)
+            if pos_labels or inflections:
+                ahd.add('LABEL', ' '.join(pos_labels), inflections)
             else:
                 ahd.add('LABEL', '', '')
 

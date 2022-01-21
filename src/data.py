@@ -89,7 +89,7 @@ command_to_help_dict = {
         '(Maximum) number of columns',
         '{n >= 1|auto}'),
     '-indent': (
-        "Width of definitions' indent",
+        "Width of wrapped lines' indent",
         '{n >= 0}'),
     '--audio-path': (
         'Audio save location',

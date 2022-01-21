@@ -130,7 +130,7 @@ choice for us. This behavior can be changed through the `-cd` command.
 -columns   {{n >= 1|auto}}         (maximum) number of columns
 -colviewat {{n >= 0}}              wrap into columns when the dictionary takes
                                  more than n% of the screen
--indent    {{n >= 0}}              width of definitions' indent
+-indent    {{n >= 0}}              width of wrapped lines' indent
 
 {BOLD}{'[ Hide and filter configuration ]'.center(79, '─')}{DEFAULT}
 Hiding a phrase means replacing it with "..." (default)
