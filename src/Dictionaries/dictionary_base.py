@@ -75,6 +75,45 @@ def should_skip(label_str, flags):
     return skip
 
 
+def columnize(buffer, textwidth, ncols):
+    blank = textwidth * ' '
+    header = 2 * HORIZONTAL_BAR
+    buff_len = len(buffer)
+    initial_col_height = buff_len // ncols + buff_len % ncols
+
+    col_no = lines_to_move = 0
+    cbreak = current_col_height = initial_col_height
+    formatted = [[] for _ in range(ncols)]
+    for li, line in enumerate(buffer):
+        control_symbol = line[0]
+        line = line.lstrip('$!')
+
+        if li < cbreak:
+            formatted[col_no].append(line)
+            if control_symbol == '!' or line == blank or header in line:
+                lines_to_move += 1
+            else:
+                lines_to_move = 0
+        elif control_symbol == '$':
+            formatted[col_no].append(line)
+            current_col_height += 1
+        elif line == blank or header in line:
+            continue
+        else:
+            if lines_to_move:
+                for _i in range(-lines_to_move, 0):
+                    m, formatted[col_no][_i] = formatted[col_no][_i], blank
+                    if (m == blank and _i == -lines_to_move) or header in m:
+                        continue
+                    formatted[col_no + 1].append(m)
+            col_no += 1
+            formatted[col_no].append(line)
+            cbreak += current_col_height
+            current_col_height = initial_col_height
+
+    return formatted
+
+
 class Dictionary:
     title = 'Dictionary'
 
@@ -147,7 +186,7 @@ class Dictionary:
                 result.append(t)
                 t = ''
         result.append(t)
-        return result if result else ['']
+        return result
 
     @property
     def parts_of_speech(self):
@@ -338,50 +377,15 @@ class Dictionary:
 
         return buffer
 
-    def print_dictionary_buffer(self, buffer, textwidth, ncols, last_col_fill):
-        blank = textwidth * ' '
-        header = 2 * HORIZONTAL_BAR
-        buff_len = len(buffer)
-        initial_col_height = buff_len // ncols + buff_len % ncols
-
-        col_no = lines_to_move = 0
-        cbreak = current_col_height = initial_col_height
-        formatted = [[] for _ in range(ncols)]
-        for li, line in enumerate(buffer):
-            control_symbol = line[0]
-            line = line.lstrip('$!')
-
-            if li < cbreak:
-                formatted[col_no].append(line)
-                if control_symbol == '!' or line == blank or header in line:
-                    lines_to_move += 1
-                else:
-                    lines_to_move = 0
-            elif control_symbol == '$':
-                formatted[col_no].append(line)
-                current_col_height += 1
-            elif line == blank or header in line:
-                continue
-            else:
-                if lines_to_move:
-                    for _i in range(-lines_to_move, 0):
-                        m, formatted[col_no][_i] = formatted[col_no][_i], blank
-                        if (m == blank and _i == -lines_to_move) or header in m:
-                            continue
-                        formatted[col_no + 1].append(m)
-                col_no += 1
-                formatted[col_no].append(line)
-                cbreak += current_col_height
-                current_col_height = initial_col_height
-
+    def print_columns(self, columns, textwidth, last_col_fill):
         sys.stdout.write(
             self.format_title(textwidth)
-            + (ncols - 1) * ('┬' + textwidth * HORIZONTAL_BAR)
+            + (len(columns) - 1) * ('┬' + textwidth * HORIZONTAL_BAR)
             + last_col_fill * HORIZONTAL_BAR
             + '\n'
         )
-        for line in zip_longest(*formatted, fillvalue=blank):
-            if header in line[-1]:
+        for line in zip_longest(*columns, fillvalue=textwidth * ' '):
+            if line[-1][0] == HORIZONTAL_BAR:
                 sys.stdout.write(f"{delimit_c}│{R}".join(line) + last_col_fill * HORIZONTAL_BAR + '\n')
             else:
                 sys.stdout.write(f"{delimit_c}│{R}".join(line) + '\n')
@@ -460,10 +464,10 @@ class Dictionary:
             return None
 
         textwidth, ncols, last_col_fill = self._get_term_parameters()
-        buffer = self.format_dictionary(textwidth)
+        columns = columnize(self.format_dictionary(textwidth), textwidth, ncols)
 
         if config['top']:
             with ClearScreen():
-                self.print_dictionary_buffer(buffer, textwidth, ncols, last_col_fill)
+                self.print_columns(columns, textwidth, last_col_fill)
         else:
-            self.print_dictionary_buffer(buffer, textwidth, ncols, last_col_fill)
+            self.print_columns(columns, textwidth, last_col_fill)
