@@ -87,12 +87,16 @@ class Dictionary:
     ETYM_FMT   = (' {etym_c}{first_line}', '${etym_c}{line}')
 
     def __init__(self):
-        self.DEF_GAPS = self._gap_count(self.DEF_FMT[0])
-        self.EXSEN_GAPS = self._gap_count(self.EXSEN_FMT[0])
-        self.LABEL_GAPS = self._gap_count(self.LABEL_FMT[0])
-        self.PHRASE_GAPS = self._gap_count(self.PHRASE_FMT[0])
-        self.ETYM_GAPS = self._gap_count(self.ETYM_FMT[0])
-        self.POS_GAPS = self._gap_count(self.POS_FMT[0])
+        def _gap_count(s):
+            n = s.count(' ')
+            return n + 1 if '{sign}' in s else n
+
+        self.DEF_GAPS = _gap_count(self.DEF_FMT[0])
+        self.EXSEN_GAPS = _gap_count(self.EXSEN_FMT[0])
+        self.LABEL_GAPS = _gap_count(self.LABEL_FMT[0])
+        self.PHRASE_GAPS = _gap_count(self.PHRASE_FMT[0])
+        self.ETYM_GAPS = _gap_count(self.ETYM_FMT[0])
+        self.POS_GAPS = _gap_count(self.POS_FMT[0])
 
         self.contents = []
 
@@ -241,10 +245,6 @@ class Dictionary:
         t = f'[ {BOLD}{self.title}{DEFAULT}{delimit_c} ]'
         esc_seq_len = len(BOLD) + len(DEFAULT) + len(delimit_c)
         return f'{delimit_c}{t.center(textwidth + esc_seq_len, HORIZONTAL_BAR)}'
-
-    def _gap_count(self, fstring):
-        n = fstring.count(' ')
-        return n + 1 if '{sign}' in fstring else n
 
     def format_dictionary(self, textwidth):
         # Format self.contents' list of (op, body)
@@ -409,7 +409,7 @@ class Dictionary:
             if not flags:
                 return
 
-        # We have to first build the "skip per label, per header" list, otherwise we
+        # We have to first build the list of [header_skip][label_skip], otherwise we
         # wouldn't be able to tell whether to include HEADER and PHRASE instructions.
         skips_in_headers = [[]]
         for op, *body in self.contents:
@@ -448,9 +448,9 @@ class Dictionary:
 
     def show(self, filter_flags=None):
         # High level method that:
-        #  - filters dictionary contents based on filter_flags and filter configuration.
-        #  - moves terminal cursor to the top as specified in `config['top']`.
-        #  - pretty prints dictionary from `self.contents`.
+        #  - filters dictionary contents based on filter_flags and filter configuration
+        #  - prepares the screen for printing
+        #  - pretty prints dictionary from `self.contents`
 
         if filter_flags is None:
             filter_flags = []

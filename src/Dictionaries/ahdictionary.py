@@ -171,7 +171,7 @@ def ask_ahdictionary(query):
     #
     #  American Heritage Dictionary
     #
-    query = query.strip('\'";')
+    query = query.strip(' \'";')
     if not query:
         print(f'{err_c}Invalid query')
         return None

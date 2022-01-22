@@ -94,7 +94,7 @@ def ask_lexico(query, _previous_query=''):
     #
     # Lexico
     #
-    query = query.strip('?/.#')
+    query = query.strip(' ?/.#')
     if not query:
         print(f'{err_c}Invalid query')
         return None
