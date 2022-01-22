@@ -13,19 +13,15 @@
 # You should have received a copy of the GNU General Public License
 # along with this program. If not, see <http://www.gnu.org/licenses/>.
 
-import subprocess
 import sys
 from itertools import zip_longest
-from shutil import get_terminal_size
 
-from src.Dictionaries.utils import wrap_and_pad, get_config_terminal_size
+from src.Dictionaries.utils import wrap_and_pad, get_config_terminal_size, ClearScreen
 from src.colors import (
-    R, BOLD, DEFAULT, def1_c, exsen_c, pos_c, etym_c, phrase_c, err_c, syngloss_c,
+    R, BOLD, DEFAULT, def1_c, exsen_c, pos_c, etym_c, phrase_c, syngloss_c,
     delimit_c, def2_c, defsign_c, index_c, phon_c, poslabel_c, inflection_c, syn_c
 )
-from src.data import (
-    config, WINDOWS, POSIX, HORIZONTAL_BAR, ON_WINDOWS_CMD
-)
+from src.data import config, HORIZONTAL_BAR
 
 COLOR_FORMATS = {
     'exsen_c': exsen_c,
@@ -46,7 +42,7 @@ COLOR_FORMATS = {
 
 
 def multi_split(string, *split_args):
-    # Splits a string at multiple places omitting redundancy just like `.split()`.
+    # Splits a string at multiple places discarding redundancies just like `.split()`.
     labels_list = []
     lab = ''
     for letter in string.strip():
@@ -463,38 +459,11 @@ class Dictionary:
         if not self.contents:
             return None
 
-        try:
-            if config['top']:
-                if WINDOWS:
-                    # There has to exist a less hacky way of doing `clear -x` on Windows.
-                    # I'm not sure if it works on terminals other than cmd and WT
-                    height = get_terminal_size().lines
-                    if ON_WINDOWS_CMD:
-                        # Move cursor up and down
-                        h = height * '\n'
-                        sys.stdout.write(f'{h}\033[{height}A')
-                    else:
-                        # Use Windows ANSI sequence to clear the screen
-                        h = (height - 1) * '\n'
-                        sys.stdout.write(f'{h}\033[2J')
-                    sys.stdout.flush()
-                elif POSIX:
-                    # Even though `clear -x` is slower than using
-                    # ANSI escapes it doesn't have flickering issues.
-                    sys.stdout.write('\033[?25l')  # Hide cursor
-                    sys.stdout.flush()
-                    subprocess.run(['clear', '-x'])  # I hope the `-x` option works on macOS.
-                else:
-                    sys.stdout.write(f'{R}`-top on`{err_c} command unavailable on {sys.platform!r}\n')
+        textwidth, ncols, last_col_fill = self._get_term_parameters()
+        buffer = self.format_dictionary(textwidth)
 
-            textwidth, ncols, last_col_fill = self._get_term_parameters()
-            self.print_dictionary_buffer(
-                self.format_dictionary(textwidth),
-                textwidth,
-                ncols,
-                last_col_fill
-            )
-        finally:
-            if POSIX:
-                sys.stdout.write('\033[?25h')  # Show cursor
-                sys.stdout.flush()
+        if config['top']:
+            with ClearScreen():
+                self.print_dictionary_buffer(buffer, textwidth, ncols, last_col_fill)
+        else:
+            self.print_dictionary_buffer(buffer, textwidth, ncols, last_col_fill)

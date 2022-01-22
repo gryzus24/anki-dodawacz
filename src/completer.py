@@ -16,8 +16,8 @@ def Completer(completions):
                 return '\t'
             return None
 
+        nonlocal _matches
         if state == 0:
-            nonlocal _matches
             _matches = [x for x in completions if x.startswith(text)]
 
         try:
@@ -27,8 +27,8 @@ def Completer(completions):
 
     @contextmanager
     def context():
+        readline.parse_and_bind('set disable-completion off')
         try:
-            readline.parse_and_bind('set disable-completion off')
             yield
         finally:
             readline.parse_and_bind('set disable-completion on')

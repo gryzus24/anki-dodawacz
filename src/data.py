@@ -51,7 +51,7 @@ command_to_help_dict = {
     '-upreps': 'Hide prepositions',
     '-keependings': 'Keep hidden word endings (~ed, ~ing etc.)',
 
-    '-top': 'Move dictionaries to the top of the window',
+    '-top': 'Clear screen before displaying dictionaries',
     '-cardpreview': 'Preview the created card',
     '-showadded': "Show added elements' indexes",
     '-showexsen': 'Show example sentences in a dictionary',

@@ -13,6 +13,8 @@
 # You should have received a copy of the GNU General Public License
 # along with this program. If not, see <http://www.gnu.org/licenses/>.
 
+import subprocess
+import sys
 from shutil import get_terminal_size
 
 import urllib3
@@ -20,7 +22,7 @@ from bs4 import BeautifulSoup
 from urllib3.exceptions import NewConnectionError, ConnectTimeoutError
 
 from src.colors import err_c
-from src.data import config, USER_AGENT, ON_WINDOWS_CMD
+from src.data import config, USER_AGENT, POSIX, WINDOWS, ON_WINDOWS_CMD
 
 PREPOSITIONS = (
     'about', 'above', 'across', 'after', 'against', 'along', 'among', 'around',
@@ -57,6 +59,35 @@ def request_soup(url, fields=None, **kw):
     # At the moment only WordNet uses other than utf-8 encoding (iso-8859-1),
     # so as long as there are no decoding problems we'll use utf-8.
     return BeautifulSoup(r.data.decode(), 'lxml')
+
+
+class ClearScreen:
+    def __enter__(self):
+        if WINDOWS:
+            # There has to exist a less hacky way of doing `clear -x` on Windows.
+            # I'm not sure if it works on terminals other than cmd and WT
+            height = get_terminal_size().lines
+            if ON_WINDOWS_CMD:
+                # Move cursor up and down
+                h = height * '\n'
+                sys.stdout.write(f'{h}\033[{height}A')
+            else:
+                # Use Windows ANSI sequence to clear the screen
+                sys.stdout.write((height - 1) * '\n' + '\033[2J')
+            sys.stdout.flush()
+        elif POSIX:
+            # Even though `clear -x` is slower than using
+            # ANSI escapes it doesn't have flickering issues.
+            sys.stdout.write('\033[?25l')  # Hide cursor
+            sys.stdout.flush()
+            subprocess.run(['clear', '-x'])  # I hope the `-x` option works on macOS.
+        else:
+            sys.stdout.write(f'\033[39m`-top on`{err_c} command unavailable on {sys.platform!r}\n')
+
+    def __exit__(self, tp, inst, tb):
+        if POSIX:
+            sys.stdout.write('\033[?25h')  # Show cursor
+            sys.stdout.flush()
 
 
 def hide(content, phrase):
@@ -109,7 +140,7 @@ def get_config_terminal_size():
     config_width, flag = config['textwidth']
 
     if flag == '* auto' or config_width > term_width:
-        # cmd always reports wrong width.
+        # cmd always reports wrong width by 1 cell.
         if ON_WINDOWS_CMD:
             term_width -= 1
         return term_width, term_height
@@ -117,6 +148,11 @@ def get_config_terminal_size():
 
 
 def wrap_lines(string, term_width=79, gap=0, indent=0):
+    # gap: space left for characters before the start of the
+    #        first line and indent for the subsequent lines.
+    # indent: additional indent for the remaining lines.
+    # This comment is wrapped with `gap=5, indent=2`.
+
     def _indent_and_connect(_lines):
         for i in range(1, len(_lines)):
             _lines[i] = (gap + indent) * ' ' + _lines[i]

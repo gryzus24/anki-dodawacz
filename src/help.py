@@ -120,7 +120,7 @@ choice for us. This behavior can be changed through the `-cd` command.
 -ap, --audio-path {{path|auto}}   audio save location (default "Cards_audio")
 
 {BOLD}{'[ Display configuration ]'.center(79, '─')}{DEFAULT}
--top                             move dictionaries to the top of the window
+-top                             clear screen before displaying dictionaries
 -cardpreview                     preview the created card
 -showadded                       show added elements' indexes
 -showexsen                       show example sentences in a dictionary

@@ -97,7 +97,7 @@ def save_audio_url(audio_url):
     audio_path = config['audio_path']
 
     # Use AnkiConnect to save audio files if 'collection.media' path isn't given.
-    # Specifying audio_path is preferred as it's way faster.
+    # However, specifying the audio_path is preferred as it's way faster.
     if config['ankiconnect'] and os.path.basename(audio_path) != 'collection.media':
         _, err = anki.invoke('storeMediaFile',
                              filename=filename,
