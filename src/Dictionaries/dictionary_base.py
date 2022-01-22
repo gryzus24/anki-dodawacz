@@ -60,19 +60,19 @@ def multi_split(string, *split_args):
 def should_skip(label_str, flags):
     labels_list = [x.lower() for x in multi_split(label_str, ' ', '.', '&')]
 
-    skip = True
+    skip_if_match = False
     for flag in flags:
         if flag.startswith('!'):
-            skip = False
+            skip_if_match = True
             flag = flag[1:]
-            for label in labels_list:
-                if label.startswith(flag) or flag.startswith(label):
-                    return True
         else:
-            for label in labels_list:
-                if label.startswith(flag) or flag.startswith(label):
-                    return False
-    return skip
+            skip_if_match = False
+
+        for label in labels_list:
+            if label.startswith(flag) or flag.startswith(label):
+                return skip_if_match
+
+    return not skip_if_match
 
 
 def columnize(buffer, textwidth, ncols):
@@ -392,7 +392,7 @@ class Dictionary:
         sys.stdout.write('\n')
 
     def filter_contents(self, flags):
-        flags = {x.replace(' ', '').replace('.', '').lower() for x in flags}
+        flags = [x.replace(' ', '').replace('.', '').lower() for x in flags]
 
         if config['fsubdefs'] or 'f' in flags or 'fsubdefs' in flags:
             i = 0
@@ -405,10 +405,10 @@ class Dictionary:
                     self.contents.pop(i)
                 else:
                     i += 1
-            flags.difference_update(('f', 'fsubdefs'))
+            flags = [x for x in flags if x not in ('f', 'fsubdefs')]
 
         if config['fnolabel']:
-            flags.add('')
+            flags.append('')
         else:
             if not flags:
                 return
