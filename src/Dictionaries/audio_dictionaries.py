@@ -32,19 +32,21 @@ def diki_audio(raw_phrase, flag=''):
 
     url = f'https://www.diki.pl/images-common/en/mp3/{diki_phrase}{flag}.mp3'
     url_ame = f'https://www.diki.pl/images-common/en-ame/mp3/{diki_phrase}{flag}.mp3'
-    # First try British pronunciation, then American
 
-    if http.urlopen('HEAD', url).status == 200 or \
-       http.urlopen('HEAD', url_ame).status == 200:
+    # First try British pronunciation, then American.
+    if http.urlopen('HEAD', url).status == 200:
         return url
+    if http.urlopen('HEAD', url_ame).status == 200:
+        return url_ame
 
     if flag:
         # Try the same but without the flag
         url = f'https://www.diki.pl/images-common/en/mp3/{diki_phrase}.mp3'
         url_ame = f'https://www.diki.pl/images-common/en-ame/mp3/{diki_phrase}.mp3'
-        if http.urlopen('HEAD', url).status == 200 or \
-           http.urlopen('HEAD', url_ame).status == 200:
+        if http.urlopen('HEAD', url).status == 200:
             return url
+        if http.urlopen('HEAD', url_ame).status == 200:
+            return url_ame
 
     print(f'{err_c}Diki does not have the desired pronunciation\n'
           f'{YEX}Squeezing the last bits out...')
