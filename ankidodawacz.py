@@ -318,7 +318,7 @@ def main_loop(query):
             t.show()
         return
 
-    if not zdanie:  # if sentence wasn't passed as a query
+    if not zdanie and config['pz']:
         zdanie = sentence_input()
         if zdanie is None:
             return
