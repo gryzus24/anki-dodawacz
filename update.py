@@ -26,31 +26,27 @@ class Exit(Exception):
         raise SystemExit(1)
 
 
-def get_request():
-    def wrapper(url, **kwargs):
-        try:
-            response = http.urlopen('GET', url, **kwargs)
-        except Exception as e:
-            if isinstance(e.__context__, NewConnectionError):
-                raise Exit('Could not establish a connection,\n'
-                           'check your Internet connection and try again.')
-            elif isinstance(e.__context__, ConnectTimeoutError):
-                raise Exit('Github is not responding')
-            else:
-                print(f'{err_c}An unexpected error occurred.')
-                raise
+def get_request(url):
+    try:
+        response = http.urlopen('GET', url)
+    except Exception as e:
+        if isinstance(e.__context__, NewConnectionError):
+            raise Exit('Could not establish a connection,\n'
+                       'check your Internet connection and try again.')
+        elif isinstance(e.__context__, ConnectTimeoutError):
+            raise Exit('Github is not responding')
         else:
-            if response.status != 200:
-                raise Exit('Could not retrieve the package.\n'
-                           'Non 200 status code.')
-            return response
-
-    return wrapper
+            print(f'{err_c}An unexpected error occurred.')
+            raise
+    else:
+        if response.status != 200:
+            raise Exit('Could not retrieve the package.\n'
+                       'Non 200 status code.')
+        return response
 
 
 def main():
-    safe_get = get_request()
-    response = safe_get('https://api.github.com/repos/gryzus24/anki-dodawacz/tags')
+    response = get_request('https://api.github.com/repos/gryzus24/anki-dodawacz/tags')
 
     latest_tag = json.loads(response.data.decode())[0]
     if latest_tag['name'] == __version__:
@@ -61,16 +57,14 @@ def main():
     out_dir_path = os.path.join(os.path.dirname(ROOT_DIR), out_dir_name)
     if os.path.exists(out_dir_path):
         raise Exit(f'Directory {out_dir_name!r} already exists.\n'
-                   f'Aborting the installation...')
+                   f'Exiting...')
 
-    if LINUX or WINDOWS:
-        new_release_url = latest_tag['tarball_url']
-    else:
+    if not LINUX and not WINDOWS:
         # There are too much os calls in this script. I'm not sure if it works on macOS.
         raise Exit(f'update.py script does not work on {sys.platform!r}.\n')
 
     print(f'{GEX}:: {R}Downloading the package...')
-    archive = safe_get(new_release_url)
+    archive = get_request(latest_tag['tarball_url'])
 
     print(f'{GEX}:: {R}Extracting...')
     tfile = tempfile.NamedTemporaryFile(delete=False)
