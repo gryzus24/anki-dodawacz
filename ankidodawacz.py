@@ -390,7 +390,7 @@ def main():
         if not os.path.exists(t):
             os.mkdir(t)
 
-    print(f'{BOLD}- Anki card generator {__version__} -{DEFAULT}\n'
+    print(f'{BOLD}- Anki card generator {__version__.split("-")[0]} -{DEFAULT}\n'
           'type `-h` for usage and configuration\n\n')
 
     while True:

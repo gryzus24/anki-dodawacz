@@ -14,6 +14,7 @@
 # along with this program. If not, see <http://www.gnu.org/licenses/>.
 
 import sys
+from collections import namedtuple
 from itertools import zip_longest
 
 from src.Dictionaries.utils import wrap_and_pad, get_config_terminal_size, ClearScreen
@@ -114,29 +115,28 @@ def columnize(buffer, textwidth, ncols):
     return formatted
 
 
+class FieldFormat(namedtuple('FieldFormat', ('fl_fmt', 'l_fmt', 'gaps'))):
+    def __new__(cls, first_line_format: str, lines_format: str = None, _gaps: int = None):
+        if lines_format is None:
+            lines_format = first_line_format
+        if _gaps is None:
+            _gaps = first_line_format.count(' ')
+            if '{sign}' in first_line_format:
+                _gaps += 1
+        return super().__new__(cls, first_line_format, lines_format, _gaps)
+
+
 class Dictionary:
     title = 'Dictionary'
 
-    # (First line format, rest of lines)
-    PHRASE_FMT = ('! {phrase_c}{phrase}  {phon_c}{phon}{padding}',)
-    LABEL_FMT  = ('! {poslabel_c}{label}  {inflection_c}{inflections}{padding}',)
-    DEF_FMT    = ('{defsign_c}{sign}{index_c}{index} {def_c}{first_line}', '${def_c}{line}',)
-    EXSEN_FMT  = ('${index_pad}  {exsen_c}{first_line}', '${exsen_c}{line}',)
-    POS_FMT    = (' {pos_c}{pos}  {phon_c}{phon}{padding}',)
-    ETYM_FMT   = (' {etym_c}{first_line}', '${etym_c}{line}')
+    PHRASE = FieldFormat('! {phrase_c}{phrase}  {phon_c}{phon}{padding}')
+    LABEL  = FieldFormat('! {poslabel_c}{label}  {inflection_c}{inflections}{padding}')
+    DEF    = FieldFormat('{defsign_c}{sign}{index_c}{index} {def_c}{first_line}', '${def_c}{line}')
+    EXSEN  = FieldFormat('${index_pad}  {exsen_c}{first_line}', '${exsen_c}{line}')
+    POS    = FieldFormat(' {pos_c}{pos}  {phon_c}{phon}{padding}')
+    ETYM   = FieldFormat(' {etym_c}{first_line}', '${etym_c}{line}')
 
     def __init__(self):
-        def _gap_count(s):
-            n = s.count(' ')
-            return n + 1 if '{sign}' in s else n
-
-        self.DEF_GAPS = _gap_count(self.DEF_FMT[0])
-        self.EXSEN_GAPS = _gap_count(self.EXSEN_FMT[0])
-        self.LABEL_GAPS = _gap_count(self.LABEL_FMT[0])
-        self.PHRASE_GAPS = _gap_count(self.PHRASE_FMT[0])
-        self.ETYM_GAPS = _gap_count(self.ETYM_FMT[0])
-        self.POS_GAPS = _gap_count(self.POS_FMT[0])
-
         self.contents = []
 
     def __repr__(self):
@@ -315,24 +315,24 @@ class Dictionary:
                 sign = ' ' if 'SUB' in op else '>'
                 index_len = len(str(index))
 
-                first_line, *rest = wrap_and_pad(body[0], textwidth, self.DEF_GAPS + index_len, indent)
-                _format_push(self.DEF_FMT[0], sign=sign, index=index, def_c=def_c, first_line=first_line)
+                first_line, *rest = wrap_and_pad(body[0], textwidth, self.DEF.gaps + index_len, indent)
+                _format_push(self.DEF.fl_fmt, sign=sign, index=index, def_c=def_c, first_line=first_line)
                 for line in rest:
-                    _format_push(self.DEF_FMT[1], def_c=def_c, line=line)
+                    _format_push(self.DEF.l_fmt, def_c=def_c, line=line)
 
                 if config['showexsen'] and body[1]:
                     for exsen in body[1].split('<br>'):
-                        first_line, *rest = wrap_and_pad(exsen, textwidth, self.EXSEN_GAPS + index_len, indent + 1)
-                        _format_push(self.EXSEN_FMT[0], index_pad=index_len * ' ', first_line=first_line)
+                        first_line, *rest = wrap_and_pad(exsen, textwidth, self.EXSEN.gaps + index_len, indent + 1)
+                        _format_push(self.EXSEN.fl_fmt, index_pad=index_len * ' ', first_line=first_line)
                         for line in rest:
-                            _format_push(self.EXSEN_FMT[1], line=line)
+                            _format_push(self.EXSEN.l_fmt, line=line)
             elif op == 'LABEL':
                 buffer.append(blank)
                 label, inflections = body
                 if label:
-                    padding = (textwidth - len(label) - len(inflections) - self.LABEL_GAPS) * ' '
+                    padding = (textwidth - len(label) - len(inflections) - self.LABEL.gaps) * ' '
                     if padding:
-                        _format_push(self.LABEL_FMT[0], label=label, inflections=inflections, padding=padding)
+                        _format_push(self.LABEL.fl_fmt, label=label, inflections=inflections, padding=padding)
                     else:
                         padding = (textwidth - len(label) - 1) * ' '
                         buffer.append(f'! {poslabel_c}{label}{padding}')
@@ -340,9 +340,9 @@ class Dictionary:
                         buffer.append(f'! {inflection_c}{inflections}{padding}')
             elif op == 'PHRASE':
                 phrase, phon = body
-                padding = (textwidth - len(phrase) - len(phon) - self.PHRASE_GAPS) * ' '
+                padding = (textwidth - len(phrase) - len(phon) - self.PHRASE.gaps) * ' '
                 if padding:
-                    _format_push(self.PHRASE_FMT[0], phrase=phrase, phon=phon, padding=padding)
+                    _format_push(self.PHRASE.fl_fmt, phrase=phrase, phon=phon, padding=padding)
                 else:
                     wrapped = wrap_and_pad(phrase, textwidth - 1)
                     for line in wrapped:
@@ -356,16 +356,16 @@ class Dictionary:
                 etym = body[0]
                 if etym:
                     buffer.append(blank)
-                    first_line, *rest = wrap_and_pad(etym, textwidth, self.ETYM_GAPS, indent)
-                    _format_push(self.ETYM_FMT[0], first_line=first_line)
+                    first_line, *rest = wrap_and_pad(etym, textwidth, self.ETYM.gaps, indent)
+                    _format_push(self.ETYM.fl_fmt, first_line=first_line)
                     for line in rest:
-                        _format_push(self.ETYM_FMT[1], line=line)
+                        _format_push(self.ETYM.l_fmt, line=line)
             elif op == 'POS':
                 if body[0]:
                     buffer.append(blank)
                     for pos, phon in body:
-                        padding = (textwidth - len(pos) - len(phon) - self.POS_GAPS) * ' '
-                        _format_push(self.POS_FMT[0], pos=pos, phon=phon, padding=padding)
+                        padding = (textwidth - len(pos) - len(phon) - self.POS.gaps) * ' '
+                        _format_push(self.POS.fl_fmt, pos=pos, phon=phon, padding=padding)
             elif op == 'AUDIO':
                 pass
             elif op == 'NOTE':

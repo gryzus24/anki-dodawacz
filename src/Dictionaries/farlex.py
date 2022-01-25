@@ -13,7 +13,7 @@
 # You should have received a copy of the GNU General Public License
 # along with this program. If not, see <http://www.gnu.org/licenses/>.
 
-from src.Dictionaries.dictionary_base import Dictionary
+from src.Dictionaries.dictionary_base import Dictionary, FieldFormat
 from src.Dictionaries.utils import request_soup
 from src.colors import R, err_c
 from src.input_fields import input_field
@@ -24,9 +24,9 @@ class FarlexIdioms(Dictionary):
     name = 'farlex'
     allow_thesaurus = False
 
-    PHRASE_FMT = ('! {phrase_c}{phrase}{padding}',)
-    DEF_FMT    = ('{index_c}{index} {def_c}{first_line}', '${def_c}{line}',)
-    EXSEN_FMT  = ('${index_pad} {exsen_c}{first_line}', '${exsen_c}{line}',)
+    PHRASE = FieldFormat('! {phrase_c}{phrase}{padding}',)
+    DEF    = FieldFormat('{index_c}{index} {def_c}{first_line}', '${def_c}{line}',)
+    EXSEN  = FieldFormat('${index_pad} {exsen_c}{first_line}', '${exsen_c}{line}',)
 
     def input_cycle(self):
         chosen_defs, def_choices = input_field('def')(self.definitions, auto_choice='1')
