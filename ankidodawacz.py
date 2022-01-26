@@ -383,6 +383,38 @@ def main_loop(query):
         save_card_to_file(field_values)
 
 
+def from_define_all_file(users_query):
+    # Search for the "define_all" like file.
+    for file in os.listdir():
+        if file.lower().startswith('define') and 'all' in file.lower():
+            define_file = file
+            break
+    else:
+        print(f'{err_c}Could not find {R}"define_all.txt"{err_c} file.\n'
+              f'Create one and paste your list of queries there.')
+        return None
+
+    _, _, sep = users_query.partition(' ')
+    sep = sep.strip()
+    if not sep:
+        sep = '\n'
+
+    with open(define_file) as f:
+        lines = [x.strip().strip(sep) for x in f if x.strip().strip(sep)]
+
+    if not lines:
+        print(f'{R}"{define_file}"{err_c} file is empty.')
+        return None
+
+    for line in lines:
+        for query in line.split(sep):
+            query = query.strip()
+            if query:
+                yield query
+
+    print(f'{YEX}** {R}"{define_file}"{YEX} has been exhausted **\n')
+
+
 def main():
     if config['audio_path'] == 'Cards_audio':
         # Providing the absolute path solves an occasional PermissionError on Windows.
@@ -395,40 +427,11 @@ def main():
 
     while True:
         users_query = search_interface()
-        if not users_query.startswith('--define-all'):
-            main_loop(users_query)
-            continue
-
-        # Search for the "define_all" like file.
-        for file in os.listdir():
-            file = file.lower()
-            if file.startswith('define') and 'all' in file:
-                define_file = file
-                break
+        if users_query.startswith('--define-all'):
+            for query in from_define_all_file(users_query):
+                main_loop(query)
         else:
-            print(f'{err_c}Could not find {R}"define_all.txt"{err_c} file.\n'
-                  f'Create one and paste your list of queries there.')
-            continue
-
-        _, _, sep = users_query.partition(' ')
-        sep = sep.strip()
-        if not sep:
-            sep = '\n'
-
-        with open(define_file) as f:
-            lines = [x.strip().strip(sep) for x in f if x.strip().strip(sep)]
-
-        if not lines:
-            print(f'{R}"{define_file}"{err_c} file is empty.')
-            continue
-
-        for line in lines:
-            for query in line.split(sep):
-                query = query.strip()
-                if query:
-                    main_loop(query)
-
-        print(f'{YEX}** {R}"{define_file}"{YEX} has been exhausted **\n')
+            main_loop(users_query)
 
 
 if __name__ == '__main__':

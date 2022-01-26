@@ -7,8 +7,11 @@ def quick_help():
 USAGE:
   Search $ QUERY [OPTIONS...]
 
-First it tries to query `-dict` (AH Dictionary).
-If word not found, queries `-dict2` (Lexico).
+Enter your queries into the search box or save them to the "define_all" file.
+See `--help-define-all` for more information.
+
+First the program queries `-dict` (default: AH Dictionary).
+If query fails it fallbacks to `-dict2` (default: Lexico).
 
 OPTIONS:
   -ahd          query AH Dictionary
@@ -220,7 +223,7 @@ e.g. `-cd def 1:5`  - add first five definitions
 {BOLD}{'[ Creating cards from lists of words ]'.center(79, '─')}{DEFAULT}
 By disabling every input field (`-all off`) the only thing you need to do is
 enter the desired word to create a card, thereby to add multiple words you
-need a list of words which you can paste into the program.
+need a list of words which you can enter into the program.
 example list:
   gush          by pasting this list the program will treat it as if it was
   glib          user input so it will add "gush, glib, gunk, glen and goal"
