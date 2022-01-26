@@ -253,7 +253,8 @@ class Dictionary:
         #   number of columns,
         #   division remainder used to fill the last column
         full_textwidth, height = get_config_terminal_size()
-        approx_lines = sum(
+        # approx_lines initially = 3 to include title and prompt.
+        approx_lines = 3 + sum(
             2 if op in ('LABEL', 'ETYM')
             or
             ('DEF' in op and body[1]) else 1
