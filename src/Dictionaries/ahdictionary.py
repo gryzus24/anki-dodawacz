@@ -230,11 +230,8 @@ def ask_ahdictionary(query):
 
             # Gather phrase tenses
             inflections = get_phrase_inflections(block.contents[1:])
-
-            if pos_labels or inflections:
-                ahd.add('LABEL', ' '.join(pos_labels), inflections)
-            else:
-                ahd.add('LABEL', '', '')
+            # ' '.joining an empty set gives an empty string ''.
+            ahd.add('LABEL', ' '.join(pos_labels), inflections)
 
             # Add definitions and their corresponding elements
             for def_root in block.find_all('div', class_=('ds-list', 'ds-single'), recursive=False):

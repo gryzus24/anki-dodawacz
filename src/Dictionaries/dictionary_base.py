@@ -309,7 +309,7 @@ class Dictionary:
 
         index = 0
         for op, *body in self.contents:
-            # print(f'{op}\n{body}'); continue  # DEBUG
+            # sys.stdout.write(f'{op}\n{body}\n'); continue  # DEBUG
             if 'DEF' in op:
                 index += 1
                 def_c = def1_c if index % 2 else def2_c
@@ -396,17 +396,8 @@ class Dictionary:
         flags = [x.replace(' ', '').replace('.', '').lower() for x in flags]
 
         if config['fsubdefs'] or 'f' in flags or 'fsubdefs' in flags:
-            i = 0
-            while True:
-                try:
-                    op, *body = self.contents[i]
-                except IndexError:
-                    break
-                if op == 'SUBDEF':
-                    self.contents.pop(i)
-                else:
-                    i += 1
-            flags = [x for x in flags if x not in ('f', 'fsubdefs')]
+            self.contents = [instr for instr in self.contents if instr[0] != 'SUBDEF']
+            flags = [flag for flag in flags if flag not in ('f', 'fsubdefs')]
 
         if config['fnolabel']:
             flags.append('')
