@@ -21,7 +21,7 @@ def Completer(completions):
             _matches = [x for x in completions if x.startswith(text)]
 
         try:
-            return _matches[state]
+            return _matches[state] + ' '
         except IndexError:
             return None
 
