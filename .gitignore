@@ -1,3 +1,5 @@
+*.pyc
+*_tested_words.json
 /shelf/
 /.idea
 cards.txt
