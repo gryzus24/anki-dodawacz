@@ -116,6 +116,9 @@ def columnize(buffer, textwidth, ncols):
 
 
 class FieldFormat(namedtuple('FieldFormat', ('fl_fmt', 'l_fmt', 'gaps'))):
+    # Make it truly immutable.
+    __slots__ = ()
+
     def __new__(cls, first_line_format: str, lines_format: str = None, _gaps: int = None):
         if lines_format is None:
             lines_format = first_line_format
