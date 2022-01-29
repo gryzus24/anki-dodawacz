@@ -25,13 +25,15 @@ from src.colors import err_c
 from src.data import config, USER_AGENT, POSIX, WINDOWS, ON_WINDOWS_CMD
 
 PREPOSITIONS = (
-    'about', 'above', 'across', 'after', 'against', 'along', 'among', 'around',
-    'as', 'at', 'before', 'behind', 'below', 'beneath', 'beside', 'between',
-    'beyond', 'by', 'despite', 'down', 'during', 'except', 'for', 'from', 'in',
-    'inside', 'into', 'like', 'near', 'of', 'off', 'on', 'onto', 'opposite',
-    'out', 'outside', 'over', 'past', 'round', 'since', 'than', 'through', 'to',
-    'towards', 'under', 'underneath', 'unlike', 'until', 'up', 'upon', 'via',
-    'with', 'within', 'without'
+    'beyond', 'of', 'outside', 'upon', 'with', 'within',
+    'behind', 'from', 'like', 'opposite', 'to', 'under',
+    'after', 'against', 'around', 'near', 'over', 'via',
+    'among', 'except', 'for', 'out', 'since', 'through',
+    'about', 'along', 'beneath', 'underneath', 'unlike',
+    'below', 'into', 'on', 'onto', 'past', 'than', 'up',
+    'across', 'by', 'despite', 'inside', 'off', 'round',
+    'at', 'beside', 'between', 'in', 'towards', 'until',
+    'above', 'as', 'before', 'down', 'during', 'without'
 )
 
 http = urllib3.PoolManager(timeout=10, headers=USER_AGENT)
@@ -147,7 +149,7 @@ def get_config_terminal_size():
     return config_width, term_height
 
 
-def wrap_lines(string, term_width=79, gap=0, indent=0):
+def wrap_lines(string, textwidth=79, gap=0, indent=0):
     # gap: space left for characters before the start of the
     #        first line and indent for the subsequent lines.
     # indent: additional indent for the remaining lines.
@@ -159,14 +161,14 @@ def wrap_lines(string, term_width=79, gap=0, indent=0):
         return _lines
 
     def no_wrap(string_):
-        line = string[:term_width - gap]
+        line = string[:textwidth - gap]
         if line.endswith(' '):
             line = line.replace(' ', '  ', 1)
 
         lines = [line.strip()]
-        string_ = string_[term_width - gap:].strip()
+        string_ = string_[textwidth - gap:].strip()
         while string_:
-            llen = term_width - indent - gap
+            llen = textwidth - indent - gap
             line = string_[:llen]
             if line.endswith(' '):
                 line = line.replace(' ', '  ', 1)
@@ -182,7 +184,7 @@ def wrap_lines(string, term_width=79, gap=0, indent=0):
         for word in string.split():
             # >= for one character right-side padding
             word_len = len(word)
-            if current_llen + word_len >= term_width:
+            if current_llen + word_len >= textwidth:
                 lines.append(' '.join(line))
                 current_llen = gap + indent
                 line = []
@@ -199,11 +201,11 @@ def wrap_lines(string, term_width=79, gap=0, indent=0):
         current_llen = gap
         for word in string.split():
             word_len = len(word)
-            if current_llen + word_len >= term_width:
+            if current_llen + word_len >= textwidth:
                 nwords = len(line)
                 if nwords > 1:
                     i = 0
-                    filling = term_width - current_llen
+                    filling = textwidth - current_llen
                     # filling shouldn't be negative but just in case.
                     while filling > 0:
                         if i > nwords - 2:
@@ -224,11 +226,11 @@ def wrap_lines(string, term_width=79, gap=0, indent=0):
         return _indent_and_connect(lines)
 
     # Gap is the gap between indexes and strings
-    if len(string) <= term_width - gap:
+    if len(string) <= textwidth - gap:
         return [string]
 
     if config['textwrap'] == 'regular':
-        term_width += 1
+        textwidth += 1
         return trivial_wrap()
     elif config['textwrap'] == 'justify':
         return justification_wrap()

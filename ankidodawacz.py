@@ -146,12 +146,12 @@ def manage_dictionaries(_phrase, dict_flags, filter_flags):
             # If we don't break out of the for loop, we can query multiple
             # dictionaries by specifying more than one dictionary flag
             if dictionary is not None:
-                dictionary.show(filter_flags)
+                dictionary.show(filter_flags, clear_screen=config['top'])
         return dictionary
     else:
         dictionary = first_dicts[config['dict']](_phrase)
         if dictionary is not None:
-            dictionary.show(filter_flags)
+            dictionary.show(filter_flags, clear_screen=config['top'])
             return dictionary
 
     # fallback dictionary section
@@ -166,7 +166,7 @@ def manage_dictionaries(_phrase, dict_flags, filter_flags):
     print(f'{YEX}Querying the fallback dictionary...')
     dictionary = second_dicts[config['dict2']](_phrase)
     if dictionary is not None:
-        dictionary.show(filter_flags)
+        dictionary.show(filter_flags, clear_screen=config['top'])
         return dictionary
     if config['dict'] != 'idioms' and config['dict2'] != 'idioms':
         print(f"{YEX}To ask the idioms dictionary use {R}`{_phrase} -i`")
@@ -272,6 +272,11 @@ def parse_flags(flags):
         else:
             filter_flags.append(flag)
 
+    if config['fnolabel']:
+        filter_flags.append('')
+    if config['fsubdefs']:
+        filter_flags.append('f')
+
     return dict_flags, rec_flags, filter_flags
 
 
@@ -315,7 +320,7 @@ def main_loop(query):
         # e.g. preferred -> prefer
         t = ask_wordnet(dictionary.phrases[0])
         if t is not None:
-            t.show()
+            t.show(clear_screen=config['top'])
         return
 
     if not zdanie and config['pz']:
@@ -334,7 +339,7 @@ def main_loop(query):
             phrase.split()[0] if 'also' in phrase.split() else phrase
         )
         if thesaurus is not None:
-            thesaurus.show()
+            thesaurus.show(clear_screen=config['top'])
             thesaurus_contents = thesaurus.input_cycle()
             if thesaurus_contents is None:
                 return

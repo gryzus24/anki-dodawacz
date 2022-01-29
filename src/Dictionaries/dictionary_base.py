@@ -17,10 +17,12 @@ import sys
 from collections import namedtuple
 from itertools import zip_longest
 
-from src.Dictionaries.utils import wrap_and_pad, get_config_terminal_size, ClearScreen
+from src.Dictionaries.utils import (
+    wrap_and_pad, get_config_terminal_size, ClearScreen
+)
 from src.colors import (
-    R, BOLD, DEFAULT, def1_c, exsen_c, pos_c, etym_c, phrase_c, syngloss_c,
-    delimit_c, def2_c, defsign_c, index_c, phon_c, poslabel_c, inflection_c, syn_c
+    R, BOLD, DEFAULT, def1_c, exsen_c, pos_c, poslabel_c, phrase_c, syngloss_c,
+    delimit_c, def2_c, defsign_c, index_c, phon_c, etym_c, inflection_c, syn_c
 )
 from src.data import config, HORIZONTAL_BAR
 
@@ -398,15 +400,12 @@ class Dictionary:
     def filter_contents(self, flags):
         flags = [x.replace(' ', '').replace('.', '').lower() for x in flags]
 
-        if config['fsubdefs'] or 'f' in flags or 'fsubdefs' in flags:
+        if 'f' in flags or 'fsubdefs' in flags:
             self.contents = [instr for instr in self.contents if instr[0] != 'SUBDEF']
             flags = [flag for flag in flags if flag not in ('f', 'fsubdefs')]
 
-        if config['fnolabel']:
-            flags.append('')
-        else:
-            if not flags:
-                return
+        if not flags:
+            return
 
         # We have to first build the list of [header_skip][label_skip], otherwise we
         # wouldn't be able to tell whether to include HEADER and PHRASE instructions.
@@ -445,10 +444,10 @@ class Dictionary:
 
         self.contents = result
 
-    def show(self, filter_flags=None):
+    def show(self, filter_flags=None, *, clear_screen=True):
         # High level method that:
-        #  - filters dictionary contents based on filter_flags and filter configuration
-        #  - prepares the screen for printing
+        #  - filters dictionary contents based on filter_flags
+        #  - (optionally) clears the screen
         #  - pretty prints dictionary from `self.contents`
 
         if filter_flags is None:
@@ -456,12 +455,12 @@ class Dictionary:
 
         self.filter_contents(filter_flags)
         if not self.contents:
-            return None
+            return
 
         textwidth, ncols, last_col_fill = self._get_term_parameters()
         columns = columnize(self.format_dictionary(textwidth), textwidth, ncols)
 
-        if config['top']:
+        if clear_screen:
             with ClearScreen():
                 self.print_columns(columns, textwidth, last_col_fill)
         else:
