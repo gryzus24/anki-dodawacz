@@ -24,7 +24,7 @@ from urllib3.exceptions import NewConnectionError, ConnectTimeoutError
 from src.colors import err_c
 from src.data import config, USER_AGENT, POSIX, WINDOWS, ON_WINDOWS_CMD
 
-PREPOSITIONS = (
+PREPOSITIONS = {
     'beyond', 'of', 'outside', 'upon', 'with', 'within',
     'behind', 'from', 'like', 'opposite', 'to', 'under',
     'after', 'against', 'around', 'near', 'over', 'via',
@@ -34,7 +34,7 @@ PREPOSITIONS = (
     'across', 'by', 'despite', 'inside', 'off', 'round',
     'at', 'beside', 'between', 'in', 'towards', 'until',
     'above', 'as', 'before', 'down', 'during', 'without'
-)
+}
 
 http = urllib3.PoolManager(timeout=10, headers=USER_AGENT)
 
