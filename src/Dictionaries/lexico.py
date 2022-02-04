@@ -105,7 +105,9 @@ def ask_lexico(query: str) -> Dictionary | None:
 
     #
     # Lexico
-    #
+    ##
+    global _previous_query
+
     query = query.strip(' ?/.#')
     if not query:
         print(f'{err_c}Invalid query')
@@ -123,7 +125,6 @@ def ask_lexico(query: str) -> Dictionary | None:
         time.sleep(2.5)
         raise SystemExit(1)
 
-    global _previous_query
     page_check = main_div.find('div', class_='breadcrumbs layout', recursive=False)
     if page_check.get_text(strip=True) == 'HomeEnglish':
         revive = main_div.find('a', class_='no-transition')

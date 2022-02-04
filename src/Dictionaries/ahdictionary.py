@@ -174,8 +174,8 @@ def ask_ahdictionary(query: str) -> Dictionary | None:
                ' '.join(_phon_spell).strip(' ,')
 
     #
-    #  American Heritage Dictionary
-    #
+    # American Heritage Dictionary
+    ##
     query = query.strip(' \'";')
     if not query:
         print(f'{err_c}Invalid query')

@@ -43,7 +43,7 @@ http = urllib3.PoolManager(timeout=10, headers=USER_AGENT)
 
 
 def handle_connection_exceptions(func: Callable) -> Callable:
-    def wrapper(*args: Any, **kwargs: Any) -> NoReturn | None | Callable:
+    def wrapper(*args: Any, **kwargs: Any) -> NoReturn | Callable | None:
         try:
             return func(*args, **kwargs)
         except Exception as e:

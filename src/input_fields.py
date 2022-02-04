@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from itertools import chain, tee
+from itertools import chain, tee, starmap
 from typing import Any, Iterable, NamedTuple, Sequence
 
 from src.colors import GEX, R, YEX
@@ -13,7 +13,7 @@ class ParsedInput(NamedTuple):
 
 
 # For Python <3.10 compatibility.
-def _pairwise(i: Iterable) -> Iterable:
+def _pairwise(i: Iterable[Any]) -> Iterable[Any]:
     left, right = tee(i)
     next(right, None)
     return zip(left, right)
@@ -23,12 +23,12 @@ def _parse_input(_input: str, _max: int) -> list[ParsedInput]:
     result = []
     for part in _input.split(','):
         choices, _, specifiers = part.partition('.')
-        range_values = tuple(filter(str.isdecimal, choices.split(':')))
-        if not range_values:
-            continue
 
         valid_values = tuple(
-            x if x < _max else _max for x in map(int, range_values) if x)
+            x if x < _max else _max
+            for x in map(int, filter(str.isdecimal, choices.split(':')))
+            if x
+        )
         if not valid_values:
             continue
 
@@ -50,6 +50,8 @@ def _parse_input(_input: str, _max: int) -> list[ParsedInput]:
 
 PUNCTUATION = "!'()*,-./:;<>?[\\]`{|}~"
 
+if __name__ == '__main__':
+    print(_parse_input('1:6:2:2.2', _max=30))
 
 def _add_elements(
         parsed_inputs: Sequence[ParsedInput], content: Sequence[str], _sep: str

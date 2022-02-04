@@ -417,7 +417,9 @@ class Dictionary:
         esc_seq_len = len(BOLD) + len(DEFAULT) + len(delimit_c)
         return f'{delimit_c}{t.center(textwidth + esc_seq_len, HORIZONTAL_BAR)}'
 
-    def print_dictionary(self, columns: list[list], column_width: int, last_col_fill: int) -> None:
+    def print_dictionary(
+            self, columns: list[list[str]], column_width: int, last_col_fill: int
+    ) -> None:
         sys.stdout.write(
             self._format_title(column_width)
             + (len(columns) - 1) * ('┬' + column_width * HORIZONTAL_BAR)
