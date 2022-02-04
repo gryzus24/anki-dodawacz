@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from itertools import chain, tee, starmap
+from itertools import chain, tee
 from typing import Any, Iterable, NamedTuple, Sequence
 
 from src.colors import GEX, R, YEX
@@ -50,8 +50,6 @@ def _parse_input(_input: str, _max: int) -> list[ParsedInput]:
 
 PUNCTUATION = "!'()*,-./:;<>?[\\]`{|}~"
 
-if __name__ == '__main__':
-    print(_parse_input('1:6:2:2.2', _max=30))
 
 def _add_elements(
         parsed_inputs: Sequence[ParsedInput], content: Sequence[str], _sep: str
