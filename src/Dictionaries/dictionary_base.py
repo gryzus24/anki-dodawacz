@@ -17,7 +17,7 @@ from __future__ import annotations
 
 import sys
 from collections import namedtuple
-from itertools import zip_longest, starmap
+from itertools import zip_longest
 from typing import Any, Callable, Iterable, Optional, Sequence
 
 from src.Dictionaries.utils import wrap_and_pad
@@ -225,7 +225,7 @@ class Dictionary:
         if not ntype:
             return '0'
 
-        if 1 < len(choices) <= ntype and all(
+        if ntype > 1 and ntype == len(choices) and all(
                 map(lambda x, y: x == y, choices, range(1, ntype + 1))):
             return '-1'
         else:
