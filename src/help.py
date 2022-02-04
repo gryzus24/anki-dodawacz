@@ -1,7 +1,10 @@
-from src.colors import R, BOLD, DEFAULT, GEX
+from src.colors import BOLD, DEFAULT, GEX, R
 
 
-def quick_help():
+# Help commands shouldn't exceed the width of 79.
+
+
+def quick_help() -> None:  # -h
     print(f"""\
 {R}{BOLD}{'[ Search ]'.center(79, '─')}{DEFAULT}
 USAGE:
@@ -91,7 +94,7 @@ Type command's name to display usage.
 --help-rec       show recording help\n""")
 
 
-def commands_help():
+def commands_help() -> None:  # --help-commands
     print(f"""\
 Type command's name to display usage.
 
@@ -126,7 +129,6 @@ choice for us. This behavior can be changed through the `-cd` command.
 -top                             clear screen before displaying dictionaries
 -cardpreview                     preview the created card
 -showadded                       show added elements' indexes
--showexsen                       show example sentences in a dictionary
 
 -textwrap  {{justify|regular|-}}   text wrapping style
 -textwidth {{n >= 1|auto}}         width of the window
@@ -202,7 +204,7 @@ Hiding a phrase means replacing it with "..." (default)
 --help-rec           show recording help\n""")
 
 
-def bulk_help():
+def bulk_help() -> None:  # --help-define-all
     print(f"""\
 {R}{BOLD}{'[ Input fields and default values ]'.center(79, '─')}{DEFAULT}
 You can create cards from single words or lists of words faster by changing
@@ -256,7 +258,7 @@ formatting options to apply.
       please be reasonable.\n""")
 
 
-def recording_help():
+def recording_help() -> None:  # --help-rec
     print(f"""\
 {R}{BOLD}{'[ Desktop audio recording ]'.center(79, '─')}{DEFAULT}
 The program offers a simple FFmpeg interface to record audio from the desktop.

@@ -13,16 +13,19 @@
 # You should have received a copy of the GNU General Public License
 # along with this program. If not, see <http://www.gnu.org/licenses/>.
 
+from __future__ import annotations
+
 import subprocess
 import sys
 from shutil import get_terminal_size
+from typing import Any, Callable, NoReturn, Optional
 
 import urllib3
-from bs4 import BeautifulSoup
-from urllib3.exceptions import NewConnectionError, ConnectTimeoutError
+from bs4 import BeautifulSoup  # type: ignore
+from urllib3.exceptions import ConnectTimeoutError, NewConnectionError
 
 from src.colors import err_c
-from src.data import config, USER_AGENT, POSIX, WINDOWS, ON_WINDOWS_CMD
+from src.data import ON_WINDOWS_CMD, POSIX, USER_AGENT, WINDOWS
 
 PREPOSITIONS = {
     'beyond', 'of', 'outside', 'upon', 'with', 'within',
@@ -39,24 +42,29 @@ PREPOSITIONS = {
 http = urllib3.PoolManager(timeout=10, headers=USER_AGENT)
 
 
-def handle_connection_exceptions(func):
-    def wrapper(*args, **kwargs):
+def handle_connection_exceptions(func: Callable) -> Callable:
+    def wrapper(*args: Any, **kwargs: Any) -> NoReturn | None | Callable:
         try:
             return func(*args, **kwargs)
         except Exception as e:
             if isinstance(e.__context__, NewConnectionError):
                 print(f'{err_c}Could not establish a connection,\n'
                       'check your Internet connection and try again.')
+                return None
             elif isinstance(e.__context__, ConnectTimeoutError):
                 print(f'{err_c}Connection timed out.')
+                return None
             else:
                 print(f'{err_c}An unexpected error occurred in {func.__qualname__}.')
                 raise
+
     return wrapper
 
 
 @handle_connection_exceptions
-def request_soup(url, fields=None, **kw):
+def request_soup(
+        url: str, fields: Optional[dict[str, str]] = None, **kw: Any
+) -> BeautifulSoup:
     r = http.request_encode_url('GET', url, fields=fields, **kw)
     # At the moment only WordNet uses other than utf-8 encoding (iso-8859-1),
     # so as long as there are no decoding problems we'll use utf-8.
@@ -64,7 +72,7 @@ def request_soup(url, fields=None, **kw):
 
 
 class ClearScreen:
-    def __enter__(self):
+    def __enter__(self) -> None:
         if WINDOWS:
             # There has to exist a less hacky way of doing `clear -x` on Windows.
             # I'm not sure if it works on terminals other than cmd and WT
@@ -86,47 +94,53 @@ class ClearScreen:
         else:
             sys.stdout.write(f'\033[39m`-top on`{err_c} command unavailable on {sys.platform!r}\n')
 
-    def __exit__(self, tp, inst, tb):
+    def __exit__(self, *ignore: Any) -> None:
         if POSIX:
             sys.stdout.write('\033[?25h')  # Show cursor
             sys.stdout.flush()
 
 
-def hide(content, phrase):
-    def case_replace(a, b):
-        nonlocal content
-        content = content.replace(a, b).replace(a.capitalize(), b).replace(a.upper(), b.upper())
+def hide(
+        target: str,
+        r: str,
+        hide_with: str = '...', *,
+        hide_prepositions: bool = False,
+        keep_endings: bool = True
+) -> str:
+    # Hide every occurrence of words from string `r` in `target`.
+    def case_replace(a: str, b: str) -> None:
+        nonlocal target
+        target = target.replace(a, b).replace(a.capitalize(), b).replace(a.upper(), b.upper())
 
-    three_dots = config['hideas']
-    nonoes = (
+    nonoes = {
         'the', 'and', 'a', 'is', 'an', 'it',
         'or', 'be', 'do', 'does', 'not', 'if', 'he'
-    )
+    }
 
-    words_in_phrase = phrase.lower().split()
-    for word in words_in_phrase:
-        if word in nonoes:
+    elements_to_replace = r.lower().split()
+    for elem in elements_to_replace:
+        if elem in nonoes:
             continue
 
-        if not config['upreps']:
-            if word in PREPOSITIONS:
+        if not hide_prepositions:
+            if elem in PREPOSITIONS:
                 continue
 
         # "Ω" is a placeholder
-        case_replace(word, f"{three_dots}Ω")
-        if word.endswith('e'):
-            case_replace(word[:-1] + 'ing', f'{three_dots}Ωing')
-            if word.endswith('ie'):
-                case_replace(word[:-2] + 'ying', f'{three_dots}Ωying')
-        elif word.endswith('y'):
-            case_replace(word[:-1] + 'ies', f'{three_dots}Ωies')
-            case_replace(word[:-1] + 'ied', f'{three_dots}Ωied')
+        case_replace(elem, f"{hide_with}Ω")
+        if elem.endswith('e'):
+            case_replace(elem[:-1] + 'ing', f'{hide_with}Ωing')
+            if elem.endswith('ie'):
+                case_replace(elem[:-2] + 'ying', f'{hide_with}Ωying')
+        elif elem.endswith('y'):
+            case_replace(elem[:-1] + 'ies', f'{hide_with}Ωies')
+            case_replace(elem[:-1] + 'ied', f'{hide_with}Ωied')
 
-    if config['keependings']:
-        return content.replace('Ω', '')
+    if keep_endings:
+        return target.replace('Ω', '')
     else:
         # e.g. from "We weren't ...Ωed for this." -> "We weren't ... for this."
-        split_content = content.split('Ω')
+        split_content = target.split('Ω')
         temp = [split_content[0].strip()]
         for elem in split_content[1:]:
             for letter in elem:
@@ -137,36 +151,26 @@ def hide(content, phrase):
         return ' '.join(temp)
 
 
-def get_config_terminal_size():
-    term_width, term_height = get_terminal_size()
-    config_width, flag = config['textwidth']
-
-    if flag == '* auto' or config_width > term_width:
-        # cmd always reports wrong width by 1 cell.
-        if ON_WINDOWS_CMD:
-            term_width -= 1
-        return term_width, term_height
-    return config_width, term_height
-
-
-def wrap_lines(string, textwidth=79, gap=0, indent=0):
+def wrap_lines(
+        string: str, style: str, textwidth: int, gap: int, indent: int
+) -> list[str]:
     # gap: space left for characters before the start of the
     #        first line and indent for the subsequent lines.
     # indent: additional indent for the remaining lines.
     # This comment is wrapped with `gap=5, indent=2`.
 
-    def _indent_and_connect(_lines):
+    def _indent_and_connect(_lines: list[str]) -> list[str]:
         for i in range(1, len(_lines)):
             _lines[i] = (gap + indent) * ' ' + _lines[i]
         return _lines
 
-    def no_wrap(string_):
+    def no_wrap() -> list[str]:
         line = string[:textwidth - gap]
         if line.endswith(' '):
             line = line.replace(' ', '  ', 1)
 
         lines = [line.strip()]
-        string_ = string_[textwidth - gap:].strip()
+        string_ = string[textwidth - gap:].strip()
         while string_:
             llen = textwidth - indent - gap
             line = string_[:llen]
@@ -177,9 +181,9 @@ def wrap_lines(string, textwidth=79, gap=0, indent=0):
             string_ = string_[llen:].strip()
         return _indent_and_connect(lines)
 
-    def trivial_wrap():
+    def trivial_wrap() -> list[str]:
         lines = []
-        line = []
+        line: list[str] = []
         current_llen = gap
         for word in string.split():
             # >= for one character right-side padding
@@ -195,9 +199,9 @@ def wrap_lines(string, textwidth=79, gap=0, indent=0):
         lines.append(' '.join(line))
         return _indent_and_connect(lines)
 
-    def justification_wrap():
+    def justification_wrap() -> list[str]:
         lines = []
-        line = []
+        line: list[str] = []
         current_llen = gap
         for word in string.split():
             word_len = len(word)
@@ -229,18 +233,22 @@ def wrap_lines(string, textwidth=79, gap=0, indent=0):
     if len(string) <= textwidth - gap:
         return [string]
 
-    if config['textwrap'] == 'regular':
+    if style == 'regular':
         textwidth += 1
         return trivial_wrap()
-    elif config['textwrap'] == 'justify':
+    elif style == 'justify':
         return justification_wrap()
-    return no_wrap(string)
+    return no_wrap()
 
 
-def wrap_and_pad(lines, textwidth, gap=0, indent=0):
+def wrap_and_pad(style: str, textwidth: int) -> Callable[[str, int, int], list[str]]:
     # Wraps and adds right side padding that matches `textwidth`.
-    fl, *rest = wrap_lines(lines, textwidth, gap, indent)
-    result = [fl + (textwidth - len(fl) - gap) * ' ']
-    for line in rest:
-        result.append(line + (textwidth - len(line)) * ' ')
-    return result
+
+    def call(lines: str, gap: int, indent: int) -> list[str]:
+        fl, *rest = wrap_lines(lines, style, textwidth, gap, indent)
+        result = [fl + (textwidth - len(fl) - gap) * ' ']
+        for line in rest:
+            result.append(line + (textwidth - len(line)) * ' ')
+        return result
+
+    return call

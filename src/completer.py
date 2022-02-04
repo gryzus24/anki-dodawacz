@@ -1,15 +1,18 @@
+from __future__ import annotations
+
+import contextlib
 import readline
-from contextlib import contextmanager
+from typing import Callable, ContextManager, Generator, Sequence
 
 
 # Import on Linux (maybe POSIX) only, readline doesn't work on Windows.
-def Completer(completions):
+def Completer(completions: Sequence) -> Callable[[], ContextManager]:
     # Initializes a tab completer and returns a contextmanager,
     # that can be used to limit the scope of tab completion, as
     # it is global by default.
     _matches = []
 
-    def complete(text, state):
+    def complete(text: str, state: int) -> str | None:
         text = text.strip().lower()
         if not text:
             if state == 0:
@@ -25,8 +28,8 @@ def Completer(completions):
         except IndexError:
             return None
 
-    @contextmanager
-    def context():
+    @contextlib.contextmanager
+    def context() -> Generator[None, None, None]:
         readline.parse_and_bind('set disable-completion off')
         try:
             yield

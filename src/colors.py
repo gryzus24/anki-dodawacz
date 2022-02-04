@@ -1,18 +1,18 @@
-from colorama import init
+from colorama import init  # type: ignore
 
-from src.data import str_colors_to_color, config, POSIX
+from src.data import POSIX, config, str_colors_to_color
 
 init(autoreset=True)
 
 
 class Color:
-    def __init__(self, color):
+    def __init__(self, color: str) -> None:
         self.color = color
 
-    def __str__(self):
+    def __str__(self) -> str:
         return str_colors_to_color[config[self.color]]
 
-    def __len__(self):
+    def __len__(self) -> int:
         # For proper formatting
         return len(str_colors_to_color[config[self.color]])
 

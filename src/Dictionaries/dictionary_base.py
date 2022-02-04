@@ -13,55 +13,38 @@
 # You should have received a copy of the GNU General Public License
 # along with this program. If not, see <http://www.gnu.org/licenses/>.
 
+from __future__ import annotations
+
 import sys
 from collections import namedtuple
-from itertools import zip_longest
+from itertools import zip_longest, starmap
+from typing import Any, Callable, Iterable, Optional, Sequence
 
-from src.Dictionaries.utils import (
-    wrap_and_pad, get_config_terminal_size, ClearScreen
-)
-from src.colors import (
-    R, BOLD, DEFAULT, def1_c, exsen_c, pos_c, poslabel_c, phrase_c, syngloss_c,
-    delimit_c, def2_c, defsign_c, index_c, phon_c, etym_c, inflection_c, syn_c
-)
-from src.data import config, HORIZONTAL_BAR
-
-COLOR_FORMATS = {
-    'exsen_c': exsen_c,
-    'defsign_c': defsign_c,
-    'index_c': index_c,
-    'phrase_c': phrase_c,
-    'phon_c': phon_c,
-    'pos_c': pos_c,
-    'poslabel_c': poslabel_c,
-    'inflection_c': inflection_c,
-    'etym_c': etym_c,
-    'syn_c': syn_c,
-    'syngloss_c': syngloss_c,
-    'R': R,
-    'BOLD': BOLD,
-    'DEFAULT': DEFAULT,
-}
+from src.Dictionaries.utils import wrap_and_pad
+from src.colors import (BOLD, DEFAULT, R, def1_c, def2_c, defsign_c, delimit_c, etym_c,
+                        exsen_c, index_c, inflection_c,
+                        phon_c, phrase_c, pos_c, poslabel_c, syn_c, syngloss_c)
+from src.data import HORIZONTAL_BAR
 
 
-def multi_split(string, *split_args):
+def multi_split(string: str, *split_args: str) -> list[str]:
     # Splits a string at multiple places discarding redundancies just like `.split()`.
-    labels_list = []
-    lab = ''
+    result = []
+    elem = ''
     for letter in string.strip():
         if letter in split_args:
-            if lab:
-                labels_list.append(lab)
-                lab = ''
+            if elem:
+                result.append(elem)
+                elem = ''
         else:
-            lab += letter
-    if lab:
-        labels_list.append(lab)
-    return labels_list
+            elem += letter
+    if elem:
+        result.append(elem)
+    return result
 
 
-def should_skip(label_str, flags):
-    labels_list = [x.lower() for x in multi_split(label_str, ' ', '.', '&')]
+def should_skip(label: str, flags: Iterable[str]) -> bool:
+    labels_list = [x.lower() for x in multi_split(label, ' ', '.', '&')]
 
     skip_if_match = False
     for flag in flags:
@@ -78,7 +61,7 @@ def should_skip(label_str, flags):
     return not skip_if_match
 
 
-def columnize(buffer, textwidth, ncols):
+def columnize(buffer: Sequence[str], textwidth: int, ncols: int) -> list[list[str]]:
     blank = textwidth * ' '
     header = 2 * HORIZONTAL_BAR
     buff_len = len(buffer)
@@ -86,7 +69,7 @@ def columnize(buffer, textwidth, ncols):
 
     col_no = lines_to_move = 0
     cbreak = current_col_height = initial_col_height
-    formatted = [[] for _ in range(ncols)]
+    formatted: list[list[str]] = [[] for _ in range(ncols)]
     for li, line in enumerate(buffer):
         control_symbol = line[0]
         line = line.lstrip('$!')
@@ -121,7 +104,12 @@ class FieldFormat(namedtuple('FieldFormat', ('fl_fmt', 'l_fmt', 'gaps'))):
     # Make it truly immutable.
     __slots__ = ()
 
-    def __new__(cls, first_line_format: str, lines_format: str = None, _gaps: int = None):
+    def __new__(
+            cls,
+            first_line_format: str,
+            lines_format: Optional[str] = None,
+            _gaps: Optional[int] = None
+    ) -> FieldFormat:
         if lines_format is None:
             lines_format = first_line_format
         if _gaps is None:
@@ -131,8 +119,28 @@ class FieldFormat(namedtuple('FieldFormat', ('fl_fmt', 'l_fmt', 'gaps'))):
         return super().__new__(cls, first_line_format, lines_format, _gaps)
 
 
+COLOR_FORMATS = {
+    'exsen_c': exsen_c,
+    'defsign_c': defsign_c,
+    'index_c': index_c,
+    'phrase_c': phrase_c,
+    'phon_c': phon_c,
+    'pos_c': pos_c,
+    'poslabel_c': poslabel_c,
+    'inflection_c': inflection_c,
+    'etym_c': etym_c,
+    'syn_c': syn_c,
+    'syngloss_c': syngloss_c,
+    'R': R,
+    'BOLD': BOLD,
+    'DEFAULT': DEFAULT,
+}
+
+
 class Dictionary:
-    title = 'Dictionary'
+    allow_thesaurus: bool
+    name: str
+    title: str
 
     PHRASE = FieldFormat('! {phrase_c}{phrase}  {phon_c}{phon}{padding}')
     LABEL  = FieldFormat('! {poslabel_c}{label}  {inflection_c}{inflections}{padding}')
@@ -141,45 +149,49 @@ class Dictionary:
     POS    = FieldFormat(' {pos_c}{pos}  {phon_c}{phon}{padding}')
     ETYM   = FieldFormat(' {etym_c}{first_line}', '${etym_c}{line}')
 
-    def __init__(self):
-        self.contents = []
+    def __init__(self) -> None:
+        self.contents: list[Sequence[str]] = []
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         for op, *body in self.contents:
             sys.stdout.write(f'{op:7s}{body}\n')
+        return f'{type(self).__name__}(self.contents ^)'
 
-    def add(self, op, body, *args):
+    def input_cycle(self) -> dict[str, str] | None:
+        raise NotImplementedError
+
+    def add(self, op: str, body: str, *args: str) -> None:
         # Add an instruction to the dictionary.
         # Value must be a Sequence containing 2 or more fields:
         # ('OPERATION', 'BODY', ... )
         self.contents.append((op, body, *args))
 
     @property
-    def phrases(self):
+    def phrases(self) -> list[str]:
         r = [b[0] for op, *b in self.contents if op == 'PHRASE']
         return r if r else ['']
 
     @property
-    def audio_urls(self):
+    def audio_urls(self) -> list[str]:
         r = [b[0] for op, *b in self.contents if op == 'AUDIO']
         return r if r else ['']
 
     @property
-    def synonyms(self):
+    def synonyms(self) -> list[str]:
         r = [b[0] for op, *b in self.contents if op == 'SYN']
         return r if r else ['']
 
     @property
-    def definitions(self):
+    def definitions(self) -> list[str]:
         r = [b[0] for op, *b in self.contents if 'DEF' in op]
         return r if r else ['']
 
     @property
-    def example_sentences(self):
+    def example_sentences(self) -> list[str]:
         r = [b[1] for op, *b in self.contents if 'DEF' in op]
         return r if r else ['']
 
-    def _by_header(self, type_, method):
+    def _by_header(self, type_: str, method: Callable[[list[str]], str]) -> list[str]:
         # Return a list of (`type_'s` bodies if `type_` is present within
         # HEADER instructions or empty string if `type_` is not present.)
         result = []
@@ -194,14 +206,16 @@ class Dictionary:
         return result
 
     @property
-    def parts_of_speech(self):
-        return self._by_header('POS', lambda x: '<br>'.join(map(' '.join, x)))
+    def parts_of_speech(self) -> list[str]:
+        # ['pos|phon', 'pos1|phon1'] -> 'pos phon<br>pos1 phon1'
+        return self._by_header(
+            'POS', lambda x: '<br>'.join(map(lambda y: y.replace('|', ' '), x)))
 
     @property
-    def etymologies(self):
+    def etymologies(self) -> list[str]:
         return self._by_header('ETYM', lambda x: x[0])
 
-    def to_auto_choice(self, choices, type_):
+    def to_auto_choice(self, choices: Sequence[int], type_: str) -> str:
         # Convert a list of direct user inputs or inputs already passed through the
         # `get_positions_in_sections` method into a string based on what's in the Dictionary.
         ntype = 0
@@ -211,12 +225,15 @@ class Dictionary:
         if not ntype:
             return '0'
 
-        uniq_choices = sorted(set(choices))
-        if ntype > 1 and ntype == len(uniq_choices) and uniq_choices == choices:
+        if 1 < len(choices) <= ntype and all(
+                map(lambda x, y: x == y, choices, range(1, ntype + 1))):
             return '-1'
-        return ','.join(map(str, choices))
+        else:
+            return ','.join(map(str, choices))
 
-    def get_positions_in_sections(self, choices, from_within='HEADER', choices_of='DEF'):
+    def get_positions_in_sections(
+            self, choices: Sequence[int], from_within: str = 'HEADER', choices_of: str = 'DEF'
+    ) -> list[int]:
         # Returns a list of indexes of sections which contain user's choices.
         # If no `from_within` and `choices_of` instructions present in the dictionary return [1].
         # e.g.  [D1, D2, D3, HEADER, D4, D5, HEADER, D6]
@@ -252,12 +269,17 @@ class Dictionary:
 
         return result if result and result[0] else [1]
 
-    def _get_term_parameters(self):
+    def get_display_parameters(
+            self, width: int, wrap_height: int, columns: Optional[int] = None
+    ) -> tuple[int, int, int]:
+        # width:  screen width in columns.
+        # wrap_height:  wrap into columns when dictionary takes up this many rows.
+        # columns:  number of columns: uint or None (auto).
         # Returns:
-        #   column's text width,
-        #   number of columns,
-        #   division remainder used to fill the last column
-        full_textwidth, height = get_config_terminal_size()
+        #   individual column's width.
+        #   number of columns.
+        #   division remainder used to fill the last column.
+
         # approx_lines initially = 3 to include title and prompt.
         approx_lines = 3 + sum(
             2 if op in ('LABEL', 'ETYM')
@@ -265,52 +287,46 @@ class Dictionary:
             ('DEF' in op and body[1]) else 1
             for op, *body in self.contents
         )
-        if approx_lines < height * 0.01 * config['colviewat'][0]:
-            return full_textwidth, 1, 0
+        if approx_lines < wrap_height:
+            return width, 1, 0
 
-        ncols, state = config['columns']
-        if state == '* auto':
-            ncols = full_textwidth // 39
-            for i in range(2, ncols + 1):
-                if approx_lines // i < height:
-                    ncols = i
+        if columns is None:
+            columns = width // 39
+            for i in range(2, columns + 1):
+                if approx_lines // i < wrap_height:
+                    columns = i
                     break
 
         try:
-            textwidth = full_textwidth // ncols
+            column_width = width // columns
         except ZeroDivisionError:
-            return full_textwidth, 1, 0
+            return width, 1, 0
         else:
-            remainder = full_textwidth % ncols
-            if remainder < ncols - 1:
-                return textwidth - 1, ncols, remainder + 1
-            return textwidth, ncols, 0
+            remainder = width % columns
+            if remainder < columns - 1:
+                return column_width - 1, columns, remainder + 1
+            return column_width, columns, 0
 
-    def format_title(self, textwidth):
-        t = f'[ {BOLD}{self.title}{DEFAULT}{delimit_c} ]'
-        esc_seq_len = len(BOLD) + len(DEFAULT) + len(delimit_c)
-        return f'{delimit_c}{t.center(textwidth + esc_seq_len, HORIZONTAL_BAR)}'
-
-    def format_dictionary(self, textwidth):
+    def format_dictionary(self, textwidth: int, wrap_style: str, indent: int) -> list[str]:
         # Format self.contents' list of (op, body)
         # into wrapped, colored and padded body lines.
         # Available instructions:
-        #  (DEF,    definition, example_sentence)
-        #  (SUBDEF, definition, example_sentence)
-        #  (LABEL,  pos label, additional_info)
-        #  (PHRASE, phrase, phonetic_spelling)
-        #  (HEADER, filling character)
-        #  (POS,    [pos, phonetic_spelling], ...)
-        #  (AUDIO,  audio_url)
-        #  (NOTE,   note)
-
-        blank = textwidth * ' '
-        indent = config['indent'][0]
+        #  (DEF,    'definition', 'example_sentence')
+        #  (SUBDEF, 'definition', 'example_sentence')
+        #  (LABEL,  'pos_label', 'additional_info')
+        #  (PHRASE, 'phrase', 'phonetic_spelling')
+        #  (HEADER, 'filling_character')
+        #  (POS,    'pos|phonetic_spelling', ...)  ## `|` acts as a separator.
+        #  (AUDIO,  'audio_url')
+        #  (NOTE,   'note')
 
         buffer = []
 
-        def _format_push(fmt, **kwargs):
+        def _format_push(fmt: str, **kwargs: Any) -> None:
             buffer.append(fmt.format(**kwargs, **COLOR_FORMATS))
+
+        blank = textwidth * ' '
+        wrap_method = wrap_and_pad(wrap_style, textwidth)
 
         index = 0
         for op, *body in self.contents:
@@ -321,14 +337,14 @@ class Dictionary:
                 sign = ' ' if 'SUB' in op else '>'
                 index_len = len(str(index))
 
-                first_line, *rest = wrap_and_pad(body[0], textwidth, self.DEF.gaps + index_len, indent)
+                first_line, *rest = wrap_method(body[0], self.DEF.gaps + index_len, indent)
                 _format_push(self.DEF.fl_fmt, sign=sign, index=index, def_c=def_c, first_line=first_line)
                 for line in rest:
                     _format_push(self.DEF.l_fmt, def_c=def_c, line=line)
 
-                if config['showexsen'] and body[1]:
+                if body[1]:
                     for exsen in body[1].split('<br>'):
-                        first_line, *rest = wrap_and_pad(exsen, textwidth, self.EXSEN.gaps + index_len, indent + 1)
+                        first_line, *rest = wrap_method(exsen, self.EXSEN.gaps + index_len, indent + 1)
                         _format_push(self.EXSEN.fl_fmt, index_pad=index_len * ' ', first_line=first_line)
                         for line in rest:
                             _format_push(self.EXSEN.l_fmt, line=line)
@@ -350,9 +366,10 @@ class Dictionary:
                 if padding:
                     _format_push(self.PHRASE.fl_fmt, phrase=phrase, phon=phon, padding=padding)
                 else:
-                    wrapped = wrap_and_pad(phrase, textwidth - 1)
-                    for line in wrapped:
-                        buffer.append(f'! {phrase_c}{line}')
+                    first_line, *rest = wrap_method(phrase, 1, 0)
+                    buffer.append(f'! {phrase_c}{first_line}')
+                    for line in rest:
+                        buffer.append(f'!{phrase_c}{line}')
                     if phon:
                         padding = (textwidth - len(phon) - 1) * ' '
                         buffer.append(f'! {phon_c}{phon}{padding}')
@@ -362,14 +379,15 @@ class Dictionary:
                 etym = body[0]
                 if etym:
                     buffer.append(blank)
-                    first_line, *rest = wrap_and_pad(etym, textwidth, self.ETYM.gaps, indent)
+                    first_line, *rest = wrap_method(etym, self.ETYM.gaps, indent)
                     _format_push(self.ETYM.fl_fmt, first_line=first_line)
                     for line in rest:
                         _format_push(self.ETYM.l_fmt, line=line)
             elif op == 'POS':
-                if body[0]:
+                if body[0].strip(' |'):
                     buffer.append(blank)
-                    for pos, phon in body:
+                    for elem in body:
+                        pos, phon = elem.split('|')
                         padding = (textwidth - len(pos) - len(phon) - self.POS.gaps) * ' '
                         _format_push(self.POS.fl_fmt, pos=pos, phon=phon, padding=padding)
             elif op == 'AUDIO':
@@ -383,21 +401,37 @@ class Dictionary:
 
         return buffer
 
-    def print_columns(self, columns, textwidth, last_col_fill):
+    def prepare_to_print(
+            self, colwidth: int, ncols: int, wrap_style: str, indent: int
+    ) -> list[list[str]]:
+        # Prepare content for printing. Return value of this function should be
+        # passed to the `print_dictionary` method.
+        formatted = self.format_dictionary(colwidth, wrap_style, indent)
+        if ncols == 1:
+            return [[line.lstrip('$!') for line in formatted]]
+        else:
+            return columnize(formatted, colwidth, ncols)
+
+    def _format_title(self, textwidth: int) -> str:
+        t = f'[ {BOLD}{self.title}{DEFAULT}{delimit_c} ]'
+        esc_seq_len = len(BOLD) + len(DEFAULT) + len(delimit_c)
+        return f'{delimit_c}{t.center(textwidth + esc_seq_len, HORIZONTAL_BAR)}'
+
+    def print_dictionary(self, columns: list[list], column_width: int, last_col_fill: int) -> None:
         sys.stdout.write(
-            self.format_title(textwidth)
-            + (len(columns) - 1) * ('┬' + textwidth * HORIZONTAL_BAR)
+            self._format_title(column_width)
+            + (len(columns) - 1) * ('┬' + column_width * HORIZONTAL_BAR)
             + last_col_fill * HORIZONTAL_BAR
             + '\n'
         )
-        for line in zip_longest(*columns, fillvalue=textwidth * ' '):
+        for line in zip_longest(*columns, fillvalue=column_width * ' '):
             if line[-1][0] == HORIZONTAL_BAR:
                 sys.stdout.write(f"{delimit_c}│{R}".join(line) + last_col_fill * HORIZONTAL_BAR + '\n')
             else:
                 sys.stdout.write(f"{delimit_c}│{R}".join(line) + '\n')
         sys.stdout.write('\n')
 
-    def filter_contents(self, flags):
+    def filter_contents(self, flags: Sequence[str]) -> None:
         flags = [x.replace(' ', '').replace('.', '').lower() for x in flags]
 
         if 'f' in flags or 'fsubdefs' in flags:
@@ -409,7 +443,7 @@ class Dictionary:
 
         # We have to first build the list of [header_skip][label_skip], otherwise we
         # wouldn't be able to tell whether to include HEADER and PHRASE instructions.
-        skips_in_headers = [[]]
+        skips_in_headers: list[list[bool]] = [[]]
         for op, *body in self.contents:
             if op == 'LABEL':
                 skips_in_headers[-1].append(should_skip(body[0], flags))
@@ -423,7 +457,7 @@ class Dictionary:
         # Change current skip state by moving
         # header cursor and label cursor through these skips.
         skip_state = all(skips_in_headers[0])
-        result = []
+        result: list[Sequence[str]] = []
         header_cur = label_cur = 0
         for op, *body in self.contents:
             if op == 'LABEL':
@@ -443,25 +477,3 @@ class Dictionary:
             result.append((op, *body))
 
         self.contents = result
-
-    def show(self, filter_flags=None, *, clear_screen=True):
-        # High level method that:
-        #  - filters dictionary contents based on filter_flags
-        #  - (optionally) clears the screen
-        #  - pretty prints dictionary from `self.contents`
-
-        if filter_flags is None:
-            filter_flags = []
-
-        self.filter_contents(filter_flags)
-        if not self.contents:
-            return
-
-        textwidth, ncols, last_col_fill = self._get_term_parameters()
-        columns = columnize(self.format_dictionary(textwidth), textwidth, ncols)
-
-        if clear_screen:
-            with ClearScreen():
-                self.print_columns(columns, textwidth, last_col_fill)
-        else:
-            self.print_columns(columns, textwidth, last_col_fill)

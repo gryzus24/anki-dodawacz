@@ -13,24 +13,30 @@
 # You should have received a copy of the GNU General Public License
 # along with this program. If not, see <http://www.gnu.org/licenses/>.
 
+from __future__ import annotations
+
+import binascii
 import os.path
+from itertools import chain
+from shutil import get_terminal_size
+from typing import Generator, NoReturn, Optional, Sequence
 
 import src.anki_interface as anki
 import src.commands as c
 import src.ffmpeg_interface as ffmpeg
 import src.help as h
 from src.Dictionaries.ahdictionary import ask_ahdictionary
-from src.Dictionaries.audio_dictionaries import ahd_audio, lexico_audio, diki_audio, save_audio_url
+from src.Dictionaries.audio_dictionaries import ahd_audio, diki_audio, lexico_audio
+from src.Dictionaries.dictionary_base import Dictionary
 from src.Dictionaries.farlex import ask_farlex
 from src.Dictionaries.lexico import ask_lexico
-from src.Dictionaries.utils import hide, get_config_terminal_size, wrap_lines
-from src.Dictionaries.wordnet import ask_wordnet
+from src.Dictionaries.utils import ClearScreen, hide, http, wrap_lines
+from src.Dictionaries.wordnet import WordNet, ask_wordnet
 from src.__version__ import __version__
-from src.colors import (
-    R, BOLD, DEFAULT, YEX, GEX, def1_c, syn_c,
-    exsen_c, phrase_c, pos_c, etym_c, err_c, delimit_c
-)
-from src.data import config, command_to_help_dict, ROOT_DIR, LINUX, HORIZONTAL_BAR
+from src.colors import (BOLD, DEFAULT, GEX, R, YEX, def1_c, delimit_c, err_c, etym_c,
+                        exsen_c, phrase_c, pos_c, syn_c)
+from src.data import (HORIZONTAL_BAR, LINUX, ON_WINDOWS_CMD, ROOT_DIR, boolean_cmd_to_msg,
+                      cmd_to_msg_usage, config)
 from src.input_fields import sentence_input
 
 required_arg_commands = {
@@ -55,7 +61,7 @@ required_arg_commands = {
     '-recqual': c.set_text_value_commands,
     '--field-order': c.change_field_order, '-fo': c.change_field_order,
     '-color': c.set_colors, '-c': c.set_colors,
-    '-cd': c.config_defaults,
+    '-cd': c.set_input_field_defaults,
 }
 no_arg_commands = {
     '--audio-device': ffmpeg.set_audio_device,
@@ -74,14 +80,14 @@ no_arg_commands = {
 if LINUX:
     from src.completer import Completer
     tab_completion = Completer(
-        [x for x in list(command_to_help_dict) + list(no_arg_commands)]
+        tuple(chain(boolean_cmd_to_msg, cmd_to_msg_usage, no_arg_commands))
     )
 else:
     from contextlib import nullcontext
     tab_completion = nullcontext
 
 
-def search_interface():
+def search_interface() -> str:
     while True:
         with tab_completion():
             word = input('Search $ ').strip()
@@ -96,12 +102,12 @@ def search_interface():
                 print(f'{err_c}{err}')
             continue
 
-        if cmd in tuple(command_to_help_dict)[:25]:
+        if cmd in boolean_cmd_to_msg:
             method = c.boolean_commands
-            message, usage = command_to_help_dict[cmd], '{on|off}'
+            message, usage = boolean_cmd_to_msg[cmd], '{on|off}'
         elif cmd in required_arg_commands:
             method = required_arg_commands[cmd]
-            message, usage = command_to_help_dict[cmd]
+            message, usage = cmd_to_msg_usage[cmd]
         elif cmd in ('-b', '--browse'):
             anki.gui_browse_cards(query=args[1:])
             continue
@@ -132,7 +138,9 @@ def search_interface():
                 print(f'{err_c}{err}')
 
 
-def manage_dictionaries(_phrase, dict_flags, filter_flags):
+def manage_dictionaries(
+        query: str, dict_flags: Sequence[str], filter_flags: Sequence[str]
+) -> Dictionary | None:
     first_dicts = {
         'ahd': ask_ahdictionary,
         'lexico': ask_lexico, 'l': ask_lexico,
@@ -142,16 +150,16 @@ def manage_dictionaries(_phrase, dict_flags, filter_flags):
     if dict_flags:
         dictionary = None
         for flag in dict_flags:
-            dictionary = first_dicts[flag](_phrase)
+            dictionary = first_dicts[flag](query)
             # If we don't break out of the for loop, we can query multiple
             # dictionaries by specifying more than one dictionary flag
             if dictionary is not None:
-                dictionary.show(filter_flags, clear_screen=config['top'])
+                display_dictionary(dictionary, filter_flags)
         return dictionary
     else:
-        dictionary = first_dicts[config['dict']](_phrase)
+        dictionary = first_dicts[config['dict']](query)
         if dictionary is not None:
-            dictionary.show(filter_flags, clear_screen=config['top'])
+            display_dictionary(dictionary, filter_flags)
             return dictionary
 
     # fallback dictionary section
@@ -164,16 +172,63 @@ def manage_dictionaries(_phrase, dict_flags, filter_flags):
         'idioms': ask_farlex
     }
     print(f'{YEX}Querying the fallback dictionary...')
-    dictionary = second_dicts[config['dict2']](_phrase)
+    dictionary = second_dicts[config['dict2']](query)
     if dictionary is not None:
-        dictionary.show(filter_flags, clear_screen=config['top'])
+        display_dictionary(dictionary, filter_flags)
         return dictionary
     if config['dict'] != 'idioms' and config['dict2'] != 'idioms':
-        print(f"{YEX}To ask the idioms dictionary use {R}`{_phrase} -i`")
+        print(f"{YEX}To ask the idioms dictionary use {R}`{query} -i`")
+    return None
 
 
-def manage_audio(dictionary_name, audio_url, phrase, flags):
-    def from_diki():
+def manage_thesauri(query: str) -> dict[str, str] | None:
+    if config['thes'] == '-':
+        # Calling WordNet just for the input_cycle.
+        return WordNet().input_cycle()
+    else:
+        thesaurus = ask_wordnet(
+            query.split()[0] if 'also' in query.split() else query
+        )
+        if thesaurus is None:
+            return None
+
+        display_dictionary(thesaurus)
+        return thesaurus.input_cycle()
+
+
+def save_audio_url(audio_url: str) -> str | NoReturn:
+    filename = audio_url.rsplit('/', 1)[-1]
+    audio_content = http.urlopen('GET', audio_url).data
+    audio_path = config['audio_path']
+
+    # Use AnkiConnect to save audio files if 'collection.media' path isn't given.
+    # However, specifying the audio_path is preferred as it's way faster.
+    if config['ankiconnect'] and os.path.basename(audio_path) != 'collection.media':
+        response = anki.invoke('storeMediaFile',
+                               filename=filename,
+                               data=binascii.b2a_base64(  # convert to base64 string
+                                    audio_content, newline=False).decode())
+        if not response.error:
+            return f'[sound:{filename}]'
+
+    try:
+        with open(os.path.join(audio_path, filename), 'wb') as file:
+            file.write(audio_content)
+        return f'[sound:{filename}]'
+    except FileNotFoundError:
+        print(f"{err_c}Saving audio {R}{filename}{err_c} failed\n"
+              f"Current audio path: {R}{audio_path}\n"
+              f"{err_c}Make sure the directory exists and try again\n")
+        return ''
+    except Exception:
+        print(f'{err_c}Unexpected error occurred while saving audio')
+        raise
+
+
+def manage_audio(
+        dictionary_name: str, audio_url: str, phrase: str, flags: Sequence[str]
+) -> str:
+    def from_diki() -> str:
         flag = ''
         for f in flags:
             if f in ('n', 'v', 'a', 'adj', 'noun', 'verb', 'adjective'):
@@ -209,7 +264,7 @@ def manage_audio(dictionary_name, audio_url, phrase, flags):
     return ''
 
 
-def display_card(field_values):
+def display_card(field_values: dict[str, str]) -> None:
     # field coloring
     color_of = {
         'def': def1_c, 'syn': syn_c, 'exsen': exsen_c,
@@ -227,7 +282,7 @@ def display_card(field_values):
             continue
 
         for line in field_values[field].split('<br>'):
-            for subline in wrap_lines(line, textwidth):
+            for subline in wrap_lines(line, config['textwrap'], textwidth, 0, 0):
                 print(f'{color_of[field]}{padding}{subline}')
 
         if field_number + 1 == config['fieldorder_d']:  # d = delimitation
@@ -236,7 +291,7 @@ def display_card(field_values):
     print(f'{delimit_c}{delimit}')
 
 
-def format_definitions(definitions):
+def format_definitions(definitions: str) -> str:
     styles = (
         ('', ''),
         ('<span style="opacity: .6;">', '</span>'),
@@ -255,13 +310,13 @@ def format_definitions(definitions):
     return '<br>'.join(formatted)
 
 
-def save_card_to_file(field_values):
+def save_card_to_file(field_values: dict[str, str]) -> None:
     with open('cards.txt', 'a', encoding='utf-8') as f:
         f.write('\t'.join(field_values[field] for field in config['fieldorder']) + '\n')
     print(f'{GEX}Card successfully saved to a file\n')
 
 
-def parse_flags(flags):
+def parse_flags(flags: Sequence[str]) -> tuple[list[str], ...]:
     dict_flags, rec_flags, filter_flags = [], [], []
     for flag in flags:
         flag = flag.strip('-')
@@ -280,7 +335,53 @@ def parse_flags(flags):
     return dict_flags, rec_flags, filter_flags
 
 
-def main_loop(query):
+def get_config_terminal_size() -> tuple[int, int]:
+    term_width, term_height = get_terminal_size()
+    config_width, flag = config['textwidth']
+
+    if flag == '* auto' or config_width > term_width:
+        # cmd always reports wrong width by 1 cell.
+        if ON_WINDOWS_CMD:
+            term_width -= 1
+        return term_width, term_height
+    return config_width, term_height
+
+
+def display_dictionary(
+        dictionary: Dictionary, filter_flags: Optional[Sequence[str]] = None
+) -> None:
+    if filter_flags is None:
+        filter_flags = []
+
+    dictionary.filter_contents(filter_flags)
+    if not dictionary.contents:
+        return
+
+    width, height = get_config_terminal_size()
+    ncols, state = config['columns']
+    if state == '* auto':
+        ncols = None
+
+    if ncols == 1:
+        colwidth, last_col_fill = width, 0
+    else:
+        colwidth, ncols, last_col_fill = dictionary.get_display_parameters(
+            width,
+            0.01 * height * config['colviewat'][0],
+            ncols
+        )
+
+    columns = dictionary.prepare_to_print(
+        colwidth, ncols, config['textwrap'], config['indent'][0]
+    )
+    if config['top']:
+        with ClearScreen():
+            dictionary.print_dictionary(columns, colwidth, last_col_fill)
+    else:
+        dictionary.print_dictionary(columns, colwidth, last_col_fill)
+
+
+def main_loop(query: str) -> None:
     field_values = {
         'def': '',
         'syn': '',
@@ -303,9 +404,9 @@ def main_loop(query):
         searched_phrase = dict_query.split('<', 1)[-1].rsplit('>', 1)[0]
         if not searched_phrase:
             return
-        zdanie = dict_query
+        sentence: Optional[str] = dict_query
     else:
-        searched_phrase, zdanie = dict_query, ''
+        searched_phrase, sentence = dict_query, ''
 
     dict_flags, rec_flags, filter_flags = parse_flags(flags)
     if rec_flags:
@@ -316,42 +417,39 @@ def main_loop(query):
         return
 
     if not config['createcards']:
-        # Use the first phrase to always make the correct query.
-        # e.g. preferred -> prefer
-        t = ask_wordnet(dictionary.phrases[0])
-        if t is not None:
-            t.show(clear_screen=config['top'])
+        if config['thes'] == 'wordnet':
+            # Use the first phrase to always make the correct query.
+            # e.g. preferred -> prefer
+            t = ask_wordnet(dictionary.phrases[0])
+            if t is not None:
+                display_dictionary(t)
         return
 
-    if not zdanie and config['pz']:
-        zdanie = sentence_input()
-        if zdanie is None:
+    if not sentence and config['pz']:
+        sentence = sentence_input()
+        if sentence is None:
             return
 
     dictionary_contents = dictionary.input_cycle()
     if dictionary_contents is None:
         return
-    field_values.update(dictionary_contents)
+    else:
+        field_values.update(dictionary_contents)
 
     phrase = field_values['phrase']
     if dictionary.allow_thesaurus:
-        thesaurus = ask_wordnet(
-            phrase.split()[0] if 'also' in phrase.split() else phrase
-        )
-        if thesaurus is not None:
-            thesaurus.show(clear_screen=config['top'])
-            thesaurus_contents = thesaurus.input_cycle()
-            if thesaurus_contents is None:
-                return
-            field_values.update(thesaurus_contents)
+        thesaurus_content = manage_thesauri(phrase)
+        if thesaurus_content is None:
+            return
+        else:
+            field_values.update(thesaurus_content)
 
-    field_values['audio'] = manage_audio(dictionary.name,
-                                         field_values['audio'],
-                                         phrase,
-                                         flags)
+    field_values['audio'] = manage_audio(
+        dictionary.name, field_values['audio'], phrase, flags
+    )
     # Format card content.
-    if zdanie:
-        field_values['pz'] = zdanie
+    if sentence:
+        field_values['pz'] = sentence
     else:
         if config['tsc'] != '-':
             if field_values['exsen']:
@@ -366,7 +464,11 @@ def main_loop(query):
     for elem in ('pz', 'def', 'exsen', 'syn'):
         content = field_values[elem]
         if content and config[f'u{elem}']:
-            field_values[elem] = hide(content, phrase)
+            field_values[elem] = hide(
+                content, phrase, config['hideas'],
+                hide_prepositions=config['upreps'],
+                keep_endings=config['keependings']
+            )
 
     if config['cardpreview']:
         display_card(field_values)
@@ -388,7 +490,7 @@ def main_loop(query):
         save_card_to_file(field_values)
 
 
-def from_define_all_file(users_query):
+def from_define_all_file(_input: str) -> Generator[str, None, None]:
     # Search for the "define_all" like file.
     for file in os.listdir():
         if file.lower().startswith('define') and 'all' in file.lower():
@@ -399,7 +501,7 @@ def from_define_all_file(users_query):
               f'Create one and paste your list of queries there.')
         return None
 
-    _, _, sep = users_query.partition(' ')
+    _, _, sep = _input.partition(' ')
     sep = sep.strip()
     if not sep:
         sep = '\n'
@@ -412,23 +514,23 @@ def from_define_all_file(users_query):
         return None
 
     for line in lines:
-        for query in line.split(sep):
-            query = query.strip()
-            if query:
-                yield query
+        for _input in line.split(sep):
+            _input = _input.strip()
+            if _input:
+                yield _input
 
     print(f'{YEX}** {R}"{define_file}"{YEX} has been exhausted **\n')
 
 
-def main():
+def main() -> NoReturn:
     if config['audio_path'] == 'Cards_audio':
         # Providing the absolute path solves an occasional PermissionError on Windows.
         t = os.path.join(ROOT_DIR, 'Cards_audio')
         if not os.path.exists(t):
             os.mkdir(t)
 
-    print(f'{BOLD}- Anki card generator {__version__.split("-")[0]} -{DEFAULT}\n'
-          'type `-h` for usage and configuration\n\n')
+    print(f'{BOLD}- Ankidodawacz v{__version__} -{DEFAULT}\n'
+          'type -h for usage and configuration\n\n')
 
     while True:
         users_query = search_interface()

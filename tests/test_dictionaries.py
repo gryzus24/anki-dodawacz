@@ -4,7 +4,7 @@ from random import sample
 
 from src.Dictionaries.ahdictionary import ask_ahdictionary
 from src.Dictionaries.lexico import ask_lexico
-from src.colors import R, GEX, err_c
+from src.colors import GEX, R, err_c
 from src.data import config
 
 # SETUP:
@@ -162,7 +162,8 @@ def dictionary_content_check(dictionary):
                 log('!! | len(body) != 2')
                 continue
 
-            if not (phrase := body[0]):
+            phrase = body[0]
+            if not phrase:
                 log('!! | empty phrase')
             elif not phrase.isascii():
                 if is_funny(phrase):
@@ -172,7 +173,8 @@ def dictionary_content_check(dictionary):
                 else:
                     log(f'?? | non-ASCII phrase: {phrase}')
 
-            if not (phon := body[1]):
+            phon = body[1]
+            if not phon:
                 log('OK | no phonetic spelling')
             else:
                 if is_funny(phon):
@@ -184,17 +186,16 @@ def dictionary_content_check(dictionary):
                         log_msg.append('ASCII phonetic spelling')
                     if 'also' in split_phrase or 'or' in split_phrase:
                         log_msg.append(f'phonetic spelling variants ({len(phon.split())})')
-                    log_msg = ' | '.join(log_msg)
-                    log_msg += ': ' + phon
-                    log(log_msg)
+                    log(' | '.join(log_msg) + ': ' + phon)
                 else:
                     log(f'!! | garbage in phonetic spelling: {phon}')
 
         elif op == 'POS':
-            if not body[0]:
+            if not body[0].strip(' |'):
                 log('!! | empty instruction')
             else:
-                for pos, phon in body:
+                for elem in body:
+                    pos, phon = elem.split('|')
                     if '(' in pos or ')' in pos or '/' in pos:
                         log(f'!! | potential phonetic spelling in pos: {pos}')
                     if is_funny(pos):
@@ -241,7 +242,7 @@ def print_logs(logs, word, col_width):
         else:
             if LOG_LEVEL == 'ERROR':
                 return None
-            c = R
+            c = R  # type: ignore
         sys.stdout.write(f'{dname}: {op:8s} {index:2d} {word:{col_width + 1}s}{c}: {msg}\n')
 
 

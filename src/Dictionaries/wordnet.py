@@ -13,22 +13,24 @@
 # You should have received a copy of the GNU General Public License
 # along with this program. If not, see <http://www.gnu.org/licenses/>.
 
+from __future__ import annotations
+
 from src.Dictionaries.dictionary_base import Dictionary
 from src.Dictionaries.utils import request_soup, wrap_and_pad
-from src.colors import R, index_c, syn_c, syngloss_c, poslabel_c, err_c
-from src.data import config
-from src.input_fields import input_field
+from src.colors import R, err_c, index_c, poslabel_c, syn_c, syngloss_c
+from src.input_fields import get_user_input
 
 
 class WordNet(Dictionary):
     title = 'WordNet'
     name = 'wordnet'
 
-    def format_dictionary(self, textwidth):
+    def format_dictionary(self, textwidth: int, wrap_style: str, indent: int) -> list[str]:
         # Available instructions:
         #   (SYN, synonyms, glosses, pos_label)
 
         buffer = []
+        wrap_method = wrap_and_pad(wrap_style, textwidth)
         index = 0
         for op, *body in self.contents:
             if op == 'SYN':
@@ -37,12 +39,12 @@ class WordNet(Dictionary):
 
                 pos = body[2]
                 pos_len = len(pos)
-                first_line, *rest = wrap_and_pad(body[0], textwidth, pos_len + index_len + 2)
+                first_line, *rest = wrap_method(body[0], pos_len + index_len + 2, 0)
                 buffer.append(f'{index_c}{index} {poslabel_c}{pos} {syn_c}{first_line}')
                 for line in rest:
                     buffer.append(f'{syn_c}{line}')
 
-                first_line, *rest = wrap_and_pad(body[1], textwidth, config['indent'][0] + index_len + 1)
+                first_line, *rest = wrap_method(body[1], indent + index_len + 1, 0)
                 buffer.append(f'{index_len * " "} {syngloss_c}{first_line}')
                 for line in rest:
                     buffer.append(f'{syngloss_c}{line}')
@@ -51,19 +53,14 @@ class WordNet(Dictionary):
 
         return buffer
 
-    def input_cycle(self):
-        chosen_synonyms, _ = input_field('syn')(self.synonyms, auto_choice='0')
-        if chosen_synonyms is None:
+    def input_cycle(self) -> dict[str, str] | None:
+        syn_input = get_user_input('syn', self.synonyms, '0')
+        if syn_input is None:
             return None
-        return {'syn': chosen_synonyms}
+        return {'syn': syn_input.content}
 
 
-def ask_wordnet(query):
-    wordnet = WordNet()
-    if config['thes'] == '-':
-        # without skipping
-        return wordnet
-
+def ask_wordnet(query: str) -> Dictionary | None:
     soup = request_soup('http://wordnetweb.princeton.edu/perl/webwn', {'s': query})
     if soup is None:
         return None
@@ -73,6 +70,7 @@ def ask_wordnet(query):
         print(f'{err_c}Could not find {R}"{query}"{err_c} on WordNet')
         return None
 
+    wordnet = WordNet()
     for elem in soup.find_all('li'):
         elem = elem.text.replace('S:', '', 1).strip()
         temp = elem.split(')', 1)

@@ -13,10 +13,12 @@
 # You should have received a copy of the GNU General Public License
 # along with this program. If not, see <http://www.gnu.org/licenses/>.
 
+from __future__ import annotations
+
 from src.Dictionaries.dictionary_base import Dictionary, FieldFormat
 from src.Dictionaries.utils import request_soup
 from src.colors import R, err_c
-from src.input_fields import input_field
+from src.input_fields import get_user_input
 
 
 class FarlexIdioms(Dictionary):
@@ -28,27 +30,27 @@ class FarlexIdioms(Dictionary):
     DEF    = FieldFormat('{index_c}{index} {def_c}{first_line}', '${def_c}{line}',)
     EXSEN  = FieldFormat('${index_pad} {exsen_c}{first_line}', '${exsen_c}{line}',)
 
-    def input_cycle(self):
-        chosen_defs, def_choices = input_field('def')(self.definitions, auto_choice='1')
-        if chosen_defs is None:
+    def input_cycle(self) -> dict[str, str] | None:
+        def_input = get_user_input('def', self.definitions, '1')
+        if def_input is None:
             return None
 
-        phrase_choice = self.get_positions_in_sections(def_choices, from_within='PHRASE')[0]
-        phrase = self.phrases[phrase_choice - 1]
+        phrase = self.phrases[
+            self.get_positions_in_sections(def_input.choices, from_within='PHRASE')[0] - 1]
 
-        auto_choice = self.to_auto_choice(def_choices, 'DEF')
-        chosen_exsen, _ = input_field('exsen')(self.example_sentences, auto_choice)
-        if chosen_exsen is None:
+        exsen_input = get_user_input(
+            'exsen', self.example_sentences, self.to_auto_choice(def_input.choices, 'DEF'))
+        if exsen_input is None:
             return None
 
         return {
             'phrase': phrase,
-            'def': chosen_defs,
-            'exsen': chosen_exsen
+            'def': def_input.content,
+            'exsen': def_input.content
         }
 
 
-def ask_farlex(query):
+def ask_farlex(query: str) -> Dictionary | None:
     soup = request_soup('https://idioms.thefreedictionary.com/' + query)
     if soup is None:
         return None

@@ -5,323 +5,170 @@ import src.input_fields as i
 #   -all on
 
 i.input_field_config['def'] = ('Choose definitions', ';', ',')
-test_list = ['a', 'b', 'c', 'd', '', 'e', '', 'f', 'g']
 
 
-def input_field_testing(tl=None, ac='1', fn='def'):
-    def tested(input_, output_):
-        i.input = lambda _: input_
-        result, choices = i.input_field(fn)(content_list=tl, auto_choice=ac)
-        if output_ is None:
-            assert result is output_
+def input_field_test(field, content, auto_choice):
+    def test_call(_input, _output):
+        i.input = lambda _: _input  # type: ignore
+        user_input = i.get_user_input(field, content, auto_choice)
+        if user_input is None:
+            assert user_input is _output
         else:
-            assert result == output_
+            assert user_input.content == _output
+            assert bool(user_input.choices)
 
-    if tl is None:
-        tl = test_list
-    return tested
+    return test_call
 
 
-def test_basic_functionality():
-    # test_list = ['a', 'b', 'c', 'd', '', 'e', '', 'f', 'g']
-    test = input_field_testing(tl=test_list, ac='1')
+def test_choices():
+    test_list = ['a', 'b', 'c', '', 'd', '', 'e', 'f']
+    test = input_field_test('def', test_list, '1')
 
     test('1', 'a')
-    test('6', 'e')
-    test('0', '')
-    test('5', '')
-
-    test('20', '')
-    test('000020', '')
-    test('00003', 'c')
-    test('-0', '')
-    test('-00000', None)
-    test('--', None)
-
-    test('', 'a')
-    input_field_testing(ac='9')('', 'g')
-    test('    ', 'a')
-
-    test('-s', '')
-    test('-sc', None)
-    test('-se', None)
-
-    test('all', 'a;b;c;d;e;f;g')
-    test('  aLl     ', 'a;b;c;d;e;f;g')
-    test('  a L   l     ', 'a;b;c;d;e;f;g')
-    test('  a L -  l     ', None)
-
-    test('-all', 'g;f;e;d;c;b;a')
-    test('   -aLl ', 'g;f;e;d;c;b;a')
-    test(' -   aL  l ', 'g;f;e;d;c;b;a')
-    test('allall', 'a;b;c;d;e;f;g;g')
-    test(' --   aL  l ', None)
-
-    test('-1', 'a;b;c;d;e;f;g')
-    test('    -1 ', 'a;b;c;d;e;f;g')
-    test('   -   1 ', 'a;b;c;d;e;f;g')
-    test('-1-1', 'a;b;c;d;e;f;g;g')
+    test('6', '')
+    test('  3 ', 'c')
     test('-2', None)
-
-    test('/', '')
-    test('/Kaczakonina', 'Kaczakonina')
-    test('/1,2,3', '1,2,3')
-    test('/"a"', '"a"')
-    test("///'b'", "//'b'")
-    test('  / / leke -  ', None)
-
-    test('d', None)
-    test('aa', None)
+    test('8', 'f')
+    test('9', 'f')
+    test('0', '')
+    test('0000', '')
+    test('  0 0 0 ', '')
+    test('-s', '')
+    test('-0', '')
+    test('0-', '')
+    test('-', '')
+    test('--', None)
+    test('-sc', None)
+    test('¼', None)
+    test('\001\003\033[1m', None)
+    test('/my sentence', 'my sentence')
+    test('/  my sentence  ', '  my sentence')
+    test('    // "my \'sentence""', '/ "my \'sentence""')
+    test('///', '//')
+    test('1/', None)
+    test('000020', 'f')
+    test('00003', 'c')
+    test('-01', None)
+    test('12a34', None)
+    test('-1', 'a;b;c;d;e;f')
+    test('-11', 'a;b;c;d;e;f')
+    test('-all', 'f;e;d;c;b;a')
+    test('all', 'a;b;c;d;e;f')
+    test('AlL', 'a;b;c;d;e;f')
+    test('  aLl', 'a;b;c;d;e;f')
+    test('a ll', 'a;b;c;d;e;f')
+    test('  a L   l     ', 'a;b;c;d;e;f')
+    test('allall', 'a;b;c;d;e;f;f')
+    test('-allall', 'f;f')
+    test('-All', 'f;e;d;c;b;a')
     test('auto', 'a')
+    test('-auto', 'a;b;c;d;e;f')
     test('a', None)
-    input_field_testing(ac='2')('   auto ', 'b')
-    input_field_testing(ac='3')('   aut ', None)
+    test(' AuTo  ', 'a')
+    test('a uto', 'a')
+    test('', 'a')
 
+    test = input_field_test('def', test_list, '3')
+    test('auto', 'c')
+    test('-auto', None)
 
-def test_comma_separated_singles():
-    # test_list = ['a', 'b', 'c', 'd', '', 'e', '', 'f', 'g']
-    test = input_field_testing(tl=test_list, ac='1,3,2')
-
-    test('1,2,3', 'a;b;c')
-    test('1,', 'a')
-    test('', 'a;c;b')
-    test('1,5', 'a')
-    test('1,5,6', 'a;e')
-    test('6,5,4', 'e;d')
-    test('1,10', 'a')
-    test('1,0', 'a')
-    test('0,00', '')
-    test('11,12,13', '')
-    test('2,,,', 'b')
-
-    test('1,1,1', 'a;a;a')
-    test('3,5,5,5,5', 'c')
-    test('3,5,5,5,3,2,1,', 'c;c;b;a')
-    test(',14,14,7', '')
-    test(',14,14,8,', 'f')
-    test('  ,1     4, 1  4 ,  8   ,  ', 'f')
-
-    test('-1,-1', 'a;b;c;d;e;f;g;a;b;c;d;e;f;g')
-    test('all,-1', 'a;b;c;d;e;f;g;a;b;c;d;e;f;g')
-    test('all,-all', 'a;b;c;d;e;f;g;g;f;e;d;c;b;a')
-    test('-all,2', 'g;f;e;d;c;b;a;b')
-    test('1,2,3,4,5,6,7,8,9,10,11,12', 'a;b;c;d;e;f;g')
-
+    test = input_field_test('def', test_list, '1,2')
+    test('1,2', 'a;b')
+    test('0,1', 'a')
+    test('3,2,1', 'c;b;a')
+    test('99,2', 'f;b')
+    test('99,98', 'f;f')
+    test('-all,1', 'f;e;d;c;b;a;a')
+    test('0,0,0', None)
+    test('-1,0,0,0', 'a;b;c;d;e;f')
+    test('', 'a;b')
+    test('2,,', 'b')
+    test(',,,3,', 'c')
+    test('   ,, , ,2, 3 ,, ', 'b;c')
+    test('1,1,1,1', 'a;a;a;a')
+    test(',14,14,7', 'f;f;e')
+    test('-1,-1', 'a;b;c;d;e;f;a;b;c;d;e;f')
     test('a,b,c', None)
-    test(' a , b , c ', None)
-    test(',', None)
-    test(',,,,,,,', None)
-    test(',,,,,,0,', '')
-    test(',,,,,,-0,', None)
-    test(',,,,,,\\,', None)
-    test(' ,-, ,, ,', None)
-    test(',.,.,', None)
-    test('.,.,.', None)
+    test(',,,,', None)
+    test(',,,,,,0,', None)
 
+    test = input_field_test('def', test_list, '2:4')
+    test('1:2', 'a;b')
+    test('auto', 'b;c')
+    test('auto0', 'b;c;d;e;f')
+    test('auto:0', 'b;c')
+    test('1:1', 'a')
+    test('10:10', 'f')
+    test('5:0', 'd')
+    test('0:7', 'e')
+    test('3:10', 'c;d;e;f')
+    test('0:0', None)
+    test('-0:0', None)
+    test('000:000', None)
+    test('4:4:3', 'c')
+    test('   1 :  0:  4 : 0', 'a;b;c')
+    test('454: 4', 'f;e;d')
+    test('-1:1', 'a;b;c;d;e;f;f;e;d;c;b;a')
+    test('1:', 'a')
+    test(':2', 'b')
+    test(':2:', 'b')
 
-def test_double_range_inputs():
-    # test_list = ['a', 'b', 'c', 'd', '', 'e', '', 'f', 'g']
-    test = input_field_testing(tl=test_list, ac='2:4')
-
-    test('1:3', 'a;b;c')
-    test('3:7', 'c;d;e')
-    test('2:10', 'b;c;d;e;f;g')
-    test('1:3423', 'a;b;c;d;e;f;g')
-    test('2:2', 'b')
-    test('3:1', 'c;b;a')
-    test('3824:5', 'g;f;e')
-    test('6453232:14', '')
-
-    test('   1 :  3', 'a;b;c')
-    test('  5  :5  ', '')
-    test('  3 43 1 12  :  4', 'g;f;e;d')
-
-    test('0:4', 'a;b;c;d')
-    test('0:5', 'a;b;c;d')
-    test('-1:4', 'a;b;c;d;e;f;g;g;f;e;d')
-    test('all:-all', 'a;b;c;d;e;f;g;g;g;f;e;d;c;b;a')
-    test('auto', 'b;c;d')
-    test('auto:2', 'b;c;d;d;c;b')
-    test('a ut o', 'b;c;d')
-    test('', 'b;c;d')
-
-    test('0:0', '')
-    test('0:-0', None)
-    test('-s:0', None)
-    test(':0', None)
-    test('1:', None)
-    test(':12:', None)
-    test(':', None)
-    test(': :  :   :', None)
-
-    test(':d', None)
-    test('', 'b;c;d')
-    test('-:-', None)
-    test('asdf:asdf', None)
-    test('ds:4', None)
-    test('600:try*%4\\/\b\n', None)
-
-
-def test_multi_range_inputs():
-    # test_list = ['a', 'b', 'c', 'd', '', 'e', '', 'f', 'g']
-    test = input_field_testing(tl=test_list, ac='1:3:1')
-
-    test('', 'a;b;c;c;b;a')
-    test('auto', 'a;b;c;c;b;a')
-    test('1:2:4', 'a;b;b;c;d')
-    test('1:2:1', 'a;b;b;a')
-    test('0:2:1', 'a;b;b;a')
-    test('1:2:0', 'a;b;b;a')
-    test('1:90:0', 'a;b;c;d;e;f;g;g;f;e;d;c;b;a')
-    test('3:90:90:3', 'c;d;e;f;g;g;f;e;d;c')
-    test('3:90:90:90:3', 'c;d;e;f;g;g;f;e;d;c')
-    test('1:2:3:4:5:6', 'a;b;b;c;c;d;d;e')
-    test('6:2', 'e;d;c;b')
-    test('1:2:0:2:0:3', 'a;b;b;a;a;b;b;a;a;b;c')
-
-    test('-1:', None)
-    test('490:90:-0', None)
-    test(':90:90:', None)
-    test(':2:90:', None)
-    test('0:-1:-0', None)
-    test('1:-99:0', None)
-    test('1as:fdas:kcz', None)
-    test('4:7:2:$,', None)
-
-
-def test_combined_inputs():
-    # test_list = ['a', 'b', 'c', 'd', '', 'e', '', 'f', 'g']
-    test = input_field_testing(tl=test_list, ac='1:3:1')
-
-    test('1,  1:2', 'a;a;b')
-    test('1:2,2', 'a;b;b')
-    test(',2,1:2,2', 'b;a;b;b')
-    test(',2,1:11:,2', 'b;b')
-    test(',2,2:-11,2', 'b;b;a;a;b;c;d;e;f;g;b')
-    test('1;,3', 'c')
-    test('1;,3;', None)
-    test('1;,3,1:3', 'c;a;b;c')
-    test('1;1,  3  ,3 :   0', 'c;c;b;a')
-    test('1;1, 3,  1  0:  0', 'c;g;f;e;d;c;b;a')
-    test(',-1:-all,', 'a;b;c;d;e;f;g;g;g;f;e;d;c;b;a')
-
-    test(',asd.f2-s ,-s,-sc,.1d0: 6.,:m,0 d', None)
-    test(',:,', None)
-    test(',"=:,\v\b,', None)
-
-
-def test_empty_content_list():
-    # test_list = []
-    test = input_field_testing(tl=[], ac='0')
-
-    test('', '')
-    test('-1', '')
-    test('-all,all', '')
-    test('auto', '')
-    test('1,1:2', '')
-    test('1:90:,2', '')
-    test(',2,1:2,2', '')
-    test(' 1;1,  3  ,3 : 0 ', '')
-    test('1,2', '')
-    test(' ,0,1.,', '')
-    test('auto.12', '')
-    test('1.419', '')
-    test(',', None)
-
-    test = input_field_testing(tl=[''], ac='0')
-    test('', '')
-    test('-1', '')
-    test('-all,all', '')
-    test('auto', '')
-    test('1,1:2', '')
-    test('1:90:,2', '')
-    test(',2,1:2,2', '')
-    test(' 1;1,  3  ,3 : 0 ', '')
-    test('1,2', '')
-    test(' ,0,1.,', '')
-    test('auto.12', '')
-    test('1.419', '')
-    test(',', None)
+    test = input_field_test('def', [], '1,2,3')
+    test('auto', None)
+    test('c', None)
+    test('1,2', None)
+    test('0:4:2', None)
+    test('0', '')
+    test('-s', '')
+    test('-', '')
+    test('all', None)
+    test('0,0', None)
 
 
 def test_specifiers():
-    test_list = ['1,2,3.', 'a,b,c,d.', 'single', '-1,  -2,  -3, ,', 'sen1.,sen2.,sen3...']
-    test = input_field_testing(tl=test_list, ac='1.21, 2.36')
+    test = input_field_test('def', ['a, b, c', 'mon, ele? Ka bon.'], '1.21')
+    test('1.1', 'a')
+    test('auto', 'b, a')
+    test('1.1.2.23', 'a, b, b, c')
+    test('1.3.3.3', 'c, c, c')
+    test('1.3.2, 1.3.2', 'c, b;c, b')
+    test('auto.1', 'b, a, a')
+    test('2.1', 'mon')
+    test('2.1a', 'mon')
+    test('2.a', 'mon, ele? Ka bon.')
+    test('2.2', 'ele? Ka bon')
+    test('2.12', 'mon, ele? Ka bon')
+    test('2.21', 'ele? Ka bon, mon')
+    test('2.543', 'mon, ele? Ka bon.')
+    test('2.00200', 'ele? Ka bon')
+    test('2.0', 'mon, ele? Ka bon.')
+    test('2.00600', 'mon, ele? Ka bon.')
+    test('1.32,1.1,2.1', 'c, b;a;mon')
+    test('1.555,2.444,5.555', 'a, b, c;mon, ele? Ka bon.;mon, ele? Ka bon.')
+    test('1:5.21', 'b, a;ele? Ka bon, mon')
+    test('1:5.1', 'a;mon')
+    test('2:0.3', 'mon, ele? Ka bon.')
+    test('2:.3', 'mon, ele? Ka bon.')
 
-    test('1.123', '1, 2, 3.')
-    test('1.321', '3, 2, 1.')
-    test('1.213', '2, 1, 3.')
-    test('1.444', '')
-    test('1.543', '3.')
-    test('1.01020304', '1, 2, 3.')
-    test('1.500203', '2, 3.')
-    test('1.0', '1,2,3.')
-    test('1.0000', '1,2,3.')
-    test('1.-1', None)
-    test('1.', '1,2,3.')
-    test('1...', None)
-
-    test('2.1', 'a.')
-    test('2.12', 'a, b.')
-    test('2.543', 'd, c.')
-    test('2.0', 'a,b,c,d.')
-    test('2.0000', 'a,b,c,d.')
-    test('2.00001', 'a.')
-    test('2.00012000', 'a, b.')
-    test('2.1000123', 'a, a, b, c.')
-    test('2.100333', 'a, c, c, c.')
-    test('2.1 2 3', 'a, b, c.')
-    test('2.444', 'd, d, d.')
-
-    test('3.0', 'single')
-    test('3.123', 'single')
-    test('3.0001023034', 'single')
-    test('3.1:3', None)
-    test('3.1.', None)
-
-    test('4.000', '-1,  -2,  -3, ,')
-    test('4.12', '-1, -2.')
-    test('4.31', '-3, -1.')
-    test('4.87654', ', .')
-    test('4.185', '-1, .')
-
-    test('5.12', 'sen1., sen2..')
-    test('5.0', 'sen1.,sen2.,sen3...')
-    test('5.3', 'sen3.')
-    test('5.432', 'sen3, sen2..')
-
-    test('5.423,4.2', 'sen2., sen3.;-2.')
-
-    test('all.1', '1.;a.;single;-1.;sen1..')
-    test('-all.21', 'sen2., sen1..;-2, -1.;single;b, a.;2, 1.')
-    test('2,all.1', 'a,b,c,d.;1.;a.;single;-1.;sen1..')
-
-    test('', '2, 1.;c.')
-    test('auto', '2, 1.;c.')
-    test('auto.0', '2, 1.')
-    test('auto.1', '2, 1.')
+    test = input_field_test('etym', ['[pic, blink, mid, pid.]', '[are? kah, suni]'], '1.42')
+    test('1.1', '[pic]')
+    test('AUTO', '[pid, blink]')
+    test('1.2', '[blink]')
+    test('1.4', '[pid]')
+    test('1:1:1.2', '[blink]<br>[blink]')
+    test('1:3.', '[pic, blink, mid, pid.]<br>[are? kah, suni]')
+    test('a:3.', '[are? kah, suni]')
+    test('1:2.1', '[pic]<br>[are? kah]')
+    test('1:6.-', '[pic, blink, mid, pid.]<br>[are? kah, suni]')
+    test('1.', '[pic, blink, mid, pid.]')
+    test('1:::', '[pic, blink, mid, pid.]')
+    test('1:99999999999999999', '[pic, blink, mid, pid.]<br>[are? kah, suni]')
     test('.', None)
-    test('a.1', None)
-    test('2.a', None)
-    test('all.a', None)
-    test('-1-1.-1', None)
-
-
-def test_specifiers_etym():
-    test_list = ['[Middle English, from Old English mynet, coin, from Latin monēta; see  MONEY.]',
-                 '[from Latin menta; akin to Greek minthē, mint (both Greek and Latin being of substrate origin).]']
-    test = input_field_testing(tl=test_list, ac='1.12, 2.36', fn='etym')
-
-    test('1.1', '[Middle English.]')
-    test('1.2', '[from Old English mynet.]')
-    test('1.12', '[Middle English, from Old English mynet.]')
+    test('...', None)
+    test('.2.', None)
+    test('0:-0', None)
 
 
 if __name__ == '__main__':
-    test_basic_functionality()
-    test_comma_separated_singles()
-    test_double_range_inputs()
-    test_multi_range_inputs()
-    test_combined_inputs()
-    test_empty_content_list()
+    test_choices()
     test_specifiers()

@@ -13,13 +13,16 @@
 # You should have received a copy of the GNU General Public License
 # along with this program. If not, see <http://www.gnu.org/licenses/>.
 
+from __future__ import annotations
+
 import json
 import os.path
+from typing import Any, NamedTuple, Sequence
 
 from urllib3.exceptions import NewConnectionError
 
 from src.Dictionaries.utils import http
-from src.colors import R, BOLD, DEFAULT, YEX, GEX, index_c, err_c
+from src.colors import BOLD, DEFAULT, GEX, R, YEX, err_c, index_c
 from src.commands import save_command
 from src.data import ROOT_DIR, config
 from src.input_fields import ask_yes_no, choose_item
@@ -98,12 +101,12 @@ AC_BASE_FIELDS = (
 )
 
 
-def save_ac_config(c):
+def save_ac_config(c: dict[str, str | int | tuple[str, int]]) -> None:
     with open(os.path.join(ROOT_DIR, 'config/ankiconnect.json'), 'w') as f:
         json.dump(c, f, indent=2)
 
 
-def refresh_cached_notes():
+def refresh_cached_notes() -> str | None:
     global config_ac
     config_ac = {}
 
@@ -114,9 +117,15 @@ def refresh_cached_notes():
         except FileNotFoundError:
             return f'{R}"ankiconnect.json"{err_c} file does not exist'
     print(f'{YEX}Notes refreshed')
+    return None
 
 
-def invoke(action, **params):
+class AnkiResponse(NamedTuple):
+    body: str
+    error: bool
+
+
+def invoke(action: str, **params: Any) -> AnkiResponse:
     request_json = json.dumps(
         {'action': action, 'params': params, 'version': 6}
     ).encode()
@@ -131,8 +140,10 @@ def invoke(action, **params):
             ).data.decode()
         )
     except NewConnectionError:
-        return None, '  Could not connect with Anki:\n' \
-                     '    Open Anki and try again.'
+        return AnkiResponse(
+            '  Could not connect with Anki:\n'
+            '    Open Anki and try again.',
+            error=True)
 
     if len(response) != 2:
         raise Exception('response has an unexpected number of fields')
@@ -143,7 +154,7 @@ def invoke(action, **params):
 
     err = response['error']
     if err is None:
-        return response['result'], None
+        return AnkiResponse(response['result'], error=False)
 
     err = err.lower()
     if err.startswith('model was not found:'):
@@ -171,17 +182,17 @@ def invoke(action, **params):
     else:
         raise Exception(response['error'])
 
-    return None, msg  # error
+    return AnkiResponse(msg, error=True)
 
 
-def gui_browse_cards(query):
+def gui_browse_cards(query: Sequence[str]) -> None:
     q = ' '.join(query) if query else 'added:1'
-    _, err = invoke('guiBrowse', query=q)
-    if err is not None:
-        print(f'{err_c}Could not open the card browser:\n{err}\n')
+    response = invoke('guiBrowse', query=q)
+    if response.error:
+        print(f'{err_c}Could not open the card browser:\n{response.body}\n')
 
 
-def add_note_to_anki():
+def add_note_to_anki() -> str | None:
     print(f'{BOLD}Available notes:{DEFAULT}')
     for i, note in enumerate(CUSTOM_NOTES, start=1):
         print(f'{index_c}{i} {R}{note[:-5]}')  # strip ".json"
@@ -195,30 +206,31 @@ def add_note_to_anki():
         note_config = json.load(f)
 
     model_name = note_config['modelName']
-    _, err = invoke('createModel',
-                    modelName=model_name,
-                    inOrderFields=note_config['fields'],
-                    css=note_config['css'],
-                    cardTemplates=[{'Name': note_config['cardName'],
-                                    'Front': note_config['front'],
-                                    'Back': note_config['back']}])
-    if err is not None:
-        return f'{err_c}Note could not be added:\n{err}\n'
+    response = invoke('createModel',
+                      modelName=model_name,
+                      inOrderFields=note_config['fields'],
+                      css=note_config['css'],
+                      cardTemplates=[{'Name': note_config['cardName'],
+                                      'Front': note_config['front'],
+                                      'Back': note_config['back']}])
+    if response.error:
+        return f'{err_c}Note could not be added:\n{response.body}\n'
 
     print(f'{GEX}Note added successfully')
     if ask_yes_no(f'Set "{model_name}" as -note?', default=True):
         save_command('note', model_name)
+    return None
 
 
-def cache_current_note(*, refresh=False):
+def cache_current_note(*, refresh: bool = False) -> str | None:
     model_name = config['note']
-    model_fields, err = invoke('modelFieldNames', modelName=model_name)
-    if err is not None:
-        return err
+    response = invoke('modelFieldNames', modelName=model_name)
+    if response.error:
+        return response.body
 
     # tries to recognize familiar fields and arranges them
     organized_fields = {}
-    for mfield in model_fields:
+    for mfield in response.body:
         for scheme, base in AC_BASE_FIELDS:
             if scheme in mfield.lower().split(' ')[0]:
                 organized_fields[mfield] = base
@@ -233,9 +245,10 @@ def cache_current_note(*, refresh=False):
 
     config_ac[model_name] = organized_fields
     save_ac_config(config_ac)
+    return None
 
 
-def add_card_to_anki(field_values):
+def add_card_to_anki(field_values: dict[str, str]) -> None:
     note_name = config['note']
 
     # So that familiar notes aren't reorganized
@@ -259,19 +272,19 @@ def add_card_to_anki(field_values):
         return None
 
     tags = config['tags'].lstrip('-')
-    _, err = invoke('addNote',
-                    note={
-                        'deckName': config['deck'],
-                        'modelName': note_name,
-                        'fields': fields_to_add,
-                        'options': {
-                            'allowDuplicate': config['duplicates'],
-                            'duplicateScope': config['dupescope']
-                        },
-                        'tags': tags.split(', ')
-                    })
-    if err is not None:
-        print(f'{err_c}Card could not be added to Anki:\n{err}\n')
+    response = invoke('addNote',
+                      note={
+                          'deckName': config['deck'],
+                          'modelName': note_name,
+                          'fields': fields_to_add,
+                          'options': {
+                              'allowDuplicate': config['duplicates'],
+                              'duplicateScope': config['dupescope']
+                          },
+                          'tags': tags.split(', ')
+                      })
+    if response.error:
+        print(f'{err_c}Card could not be added to Anki:\n{response.body}\n')
         return None
 
     print(f'{GEX}Card successfully added to Anki\n'

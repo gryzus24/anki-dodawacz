@@ -1,67 +1,77 @@
 #!/usr/bin/env python3
-import json
-import os
-import subprocess
-import sys
-import tempfile
+
+from __future__ import annotations
+
+import contextlib
+from typing import Generator
 
 import urllib3
-from urllib3.exceptions import NewConnectionError, ConnectTimeoutError
+from urllib3.exceptions import ConnectTimeoutError, NewConnectionError
 
 from src.__version__ import __version__
-from src.colors import R, GEX, YEX, err_c
-from src.data import config, ROOT_DIR, USER_AGENT, WINDOWS, LINUX, ON_WINDOWS_CMD
+from src.colors import GEX, R, YEX, err_c
+from src.data import LINUX, ON_WINDOWS_CMD, ROOT_DIR, USER_AGENT, WINDOWS, config
 
 http = urllib3.PoolManager(timeout=10, headers=USER_AGENT)
 
 
-class Exit(Exception):
-    def __init__(self, err_msg):
-        print(f'{err_c}{err_msg}')
-        # Sleep to prevent terminal window from closing instantaneously
-        # when running the script by double clicking the file on Windows
+@contextlib.contextmanager
+def _exit(rc: int) -> Generator[None, None, None]:
+    try:
+        yield
+    finally:
         if ON_WINDOWS_CMD:
             import time
             time.sleep(2)
-        raise SystemExit(1)
+        raise SystemExit(rc)
 
 
-def get_request(url):
+def get_request(url: str) -> urllib3.HTTPResponse:
     try:
         response = http.urlopen('GET', url)
     except Exception as e:
         if isinstance(e.__context__, NewConnectionError):
-            raise Exit('Could not establish a connection,\n'
-                       'check your Internet connection and try again.')
+            with _exit(1):
+                print(f'{err_c}Could not establish a connection,\n'
+                      f'check your Internet connection and try again.')
         elif isinstance(e.__context__, ConnectTimeoutError):
-            raise Exit('Github is not responding')
+            with _exit(1):
+                print(f'{err_c}Github is not responding')
         else:
             print(f'{err_c}An unexpected error occurred.')
-            raise
+        raise
     else:
         if response.status != 200:
-            raise Exit('Could not retrieve the package.\n'
-                       'Non 200 status code.')
+            with _exit(1):
+                print(f'{err_c}Could not retrieve the package.\n'
+                      f'Non 200 status code.')
         return response
 
 
-def main():
-    response = get_request('https://api.github.com/repos/gryzus24/anki-dodawacz/tags')
+def main() -> None:
+    import json
+    import os
+    import subprocess
+    import sys
+    import tempfile
 
-    latest_tag = json.loads(response.data.decode())[0]
+    response_data = get_request('https://api.github.com/repos/gryzus24/anki-dodawacz/tags')
+
+    latest_tag = json.loads(response_data.data.decode())[0]
     if latest_tag['name'] == __version__:
-        print(f'{GEX}You are using the latest version ({__version__}).')
-        return 0
+        with _exit(0):
+            print(f'{GEX}You are using the latest version ({__version__}).')
 
     out_dir_name = f'anki-dodawacz-{latest_tag["name"]}'
     out_dir_path = os.path.join(os.path.dirname(ROOT_DIR), out_dir_name)
     if os.path.exists(out_dir_path):
-        raise Exit(f'Directory {out_dir_name!r} already exists.\n'
-                   f'Exiting...')
+        with _exit(1):
+            print(f'{err_c}Directory {out_dir_name!r} already exists.\nExiting...')
 
     if not LINUX and not WINDOWS:
         # There are too much os calls in this script. I'm not sure if it works on macOS.
-        raise Exit(f'update.py script does not work on {sys.platform!r}.\n')
+        with _exit(1):
+            print(f'{err_c}update.py script does not work on {sys.platform!r}.\n')
 
     print(f'{GEX}:: {R}Downloading the package...')
     archive = get_request(latest_tag['tarball_url'])
@@ -83,7 +93,8 @@ def main():
                 os.rmdir(out_dir_path)
             except OSError:  # In case tar gets interrupted,
                 pass         # otherwise the directory should be empty.
-            raise Exit('Could not extract archive.')
+            with _exit(1):
+                print(f'{err_c}Could not extract archive.')
     finally:
         os.remove(tfile.name)
 
@@ -114,17 +125,13 @@ def main():
     if not config['ankiconnect'] and config['audio_path'] == 'Cards_audio' and os.path.exists('Cards_audio'):
         print(f"{YEX}:: {R}The 'Cards_audio' directory has to be moved manually.")
 
-    print(f'\n{GEX}Updated successfully\n'
-          f'Program saved to {out_dir_path!r}')
+    with _exit(0):
+        print(f'\n{GEX}Updated successfully\n'
+              f'Program saved to {out_dir_path!r}')
 
 
 if __name__ == '__main__':
     try:
-        e = main()
-        if ON_WINDOWS_CMD:
-            import time
-            time.sleep(2)
-        raise SystemExit(e)
+        main()
     except (KeyboardInterrupt, EOFError):
         print()
-        raise SystemExit

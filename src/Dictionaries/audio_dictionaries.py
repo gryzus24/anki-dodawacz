@@ -13,16 +13,11 @@
 # You should have received a copy of the GNU General Public License
 # along with this program. If not, see <http://www.gnu.org/licenses/>.
 
-import binascii
-import os.path
-
-import src.anki_interface as anki
-from src.Dictionaries.utils import request_soup, http
+from src.Dictionaries.utils import http, request_soup
 from src.colors import R, YEX, err_c
-from src.data import config
 
 
-def diki_audio(raw_phrase, flag=''):
+def diki_audio(raw_phrase: str, flag: str = '') -> str:
     diki_phrase = raw_phrase.lower()\
         .replace('(', '').replace(')', '').replace("'", "") \
         .replace(' or something', '')\
@@ -51,14 +46,14 @@ def diki_audio(raw_phrase, flag=''):
     print(f'{err_c}Diki does not have the desired pronunciation\n'
           f'{YEX}Squeezing the last bits out...')
 
-    def shorten_to_possessive(*args):
+    def shorten_to_possessive(*ignore: str) -> str:
         verb, _, rest = diki_phrase.partition('_the_')
         if not rest:
             return verb
         noun, _, sb = rest.partition('_of_')
         return f'{verb}_{sb}s_{noun}'.strip(' _')
 
-    def get_longest_word(*args):
+    def get_longest_word(*ignore: str) -> str:
         # Returning diki_phrase here essentially means diki doesn't have the audio.
         s = max(diki_phrase.split('_'), key=len)
         if len(s) < 4 or s.startswith('some') or s.startswith('onesel'):
@@ -78,7 +73,7 @@ def diki_audio(raw_phrase, flag=''):
 
     last_phrase = ''
     for method in salvage_methods:
-        diki_phrase = method(diki_phrase)
+        diki_phrase = method(diki_phrase)  # type: ignore
         # To avoid making unnecessary requests, continue if nothing in the url has changed.
         if last_phrase == diki_phrase:
             continue
@@ -93,36 +88,7 @@ def diki_audio(raw_phrase, flag=''):
     return ''
 
 
-def save_audio_url(audio_url):
-    filename = audio_url.rsplit('/', 1)[-1]
-    audio_content = http.urlopen('GET', audio_url).data
-    audio_path = config['audio_path']
-
-    # Use AnkiConnect to save audio files if 'collection.media' path isn't given.
-    # However, specifying the audio_path is preferred as it's way faster.
-    if config['ankiconnect'] and os.path.basename(audio_path) != 'collection.media':
-        _, err = anki.invoke('storeMediaFile',
-                             filename=filename,
-                             data=binascii.b2a_base64(  # convert to base64 string
-                                 audio_content, newline=False).decode())
-        if err is None:
-            return f'[sound:{filename}]'
-
-    try:
-        with open(os.path.join(audio_path, filename), 'wb') as file:
-            file.write(audio_content)
-        return f'[sound:{filename}]'
-    except FileNotFoundError:
-        print(f"{err_c}Saving audio {R}{filename}{err_c} failed\n"
-              f"Current audio path: {R}{audio_path}\n"
-              f"{err_c}Make sure the directory exists and try again\n")
-        return ''
-    except Exception:
-        print(f'{err_c}Unexpected error occurred while saving audio')
-        raise
-
-
-def ahd_audio(query):
+def ahd_audio(query: str) -> str:
     soup = request_soup('https://www.ahdictionary.com/word/search.html?q=' + query)
     audio_url = soup.find('a', {'target': '_blank'}).get('href')
     if audio_url == 'http://www.hmhco.com':
@@ -132,7 +98,7 @@ def ahd_audio(query):
     return 'https://www.ahdictionary.com' + audio_url
 
 
-def lexico_audio(query):
+def lexico_audio(query: str) -> str:
     soup = request_soup('https://www.lexico.com/definition/' + query.replace(' ', '_'))
     audio_url = soup.find('audio')
     if audio_url is None:

@@ -1,5 +1,7 @@
 # Large data objects or macros used by more than one module.
 
+from __future__ import annotations
+
 import json
 import os.path
 import sys
@@ -25,8 +27,7 @@ else:
 
 HORIZONTAL_BAR = '─'
 
-command_to_help_dict = {
-    # Boolean commands
+boolean_cmd_to_msg = {
     '-pz': 'Sentence field',
     '-def': 'Definition field',
     '-pos': 'Part of speech field',
@@ -54,13 +55,12 @@ command_to_help_dict = {
     '-top': 'Clear screen before displaying dictionaries',
     '-cardpreview': 'Preview the created card',
     '-showadded': "Show added elements' indexes",
-    '-showexsen': 'Show example sentences in a dictionary',
 
     '-ankiconnect': 'Use AnkiConnect to add cards',
     '-duplicates': 'Allow duplicates',
-    #
-    # Text commands
-    #
+}
+
+cmd_to_msg_usage = {
     '-textwrap': (
         'Text wrapping style',
         '{justify|regular|-}'),
@@ -155,8 +155,6 @@ command_to_help_dict = {
         'Change default field values',
         '{field name} {value}'),
 }
-assert len(command_to_help_dict) == 50, "if you added a boolean command make sure to" \
-                                        " update search_interface's boolean commands slice"
 
 USER_AGENT = {
     'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; rv:91.0) Gecko/20100101 Firefox/91.0'

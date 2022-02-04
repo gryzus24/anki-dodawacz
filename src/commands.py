@@ -13,20 +13,21 @@
 # You should have received a copy of the GNU General Public License
 # along with this program. If not, see <http://www.gnu.org/licenses/>.
 
+from __future__ import annotations
+
 import json
 import os
 import sys
 from itertools import zip_longest
 from shutil import get_terminal_size
+from typing import Any, NoReturn, Sequence
 
-from src.colors import (
-    R, BOLD, DEFAULT, YEX, GEX, def1_c, def2_c, defsign_c, pos_c, etym_c, syn_c, exsen_c,
-    syngloss_c, index_c, phrase_c, phon_c, poslabel_c, inflection_c, err_c, delimit_c
-)
-from src.data import (
-    ROOT_DIR, LINUX, WINDOWS, MAC, command_to_help_dict,
-    str_colors_to_color, bool_values_dict, config
-)
+from src.colors import (BOLD, DEFAULT, GEX, R, YEX, def1_c, def2_c, defsign_c, delimit_c,
+                        err_c, etym_c, exsen_c,
+                        index_c, inflection_c, phon_c, phrase_c, pos_c, poslabel_c, syn_c,
+                        syngloss_c)
+from src.data import (LINUX, MAC, ROOT_DIR, WINDOWS, bool_values_dict, cmd_to_msg_usage,
+                      config, str_colors_to_color)
 from src.input_fields import choose_item
 
 STD_FIELD_ORDER = [
@@ -47,7 +48,7 @@ CONFIG_COLUMNS = tuple(
             '-upz', '-udef', '-uexsen', '-usyn', '-upreps', '-keependings', '-hideas',
         ),
         (
-            '-top', '-cardpreview', '-showadded', '-showexsen',
+            '-top', '-cardpreview', '-showadded',
             '-textwrap', '-textwidth', '-columns', '-colviewat', '-indent',
             '',
             '[filtering config.]',
@@ -94,17 +95,17 @@ BOOL_COLORS_DICT = {
 }
 
 
-def save_config(c):
+def save_config(c: dict[str, bool | str | int | Sequence]) -> None:
     with open(os.path.join(ROOT_DIR, 'config/config.json'), 'w') as f:
         json.dump(c, f, indent=0)
 
 
-def save_command(entry, value):
+def save_command(entry: str, value: bool | str | int | Sequence) -> None:
     config[entry.lstrip('-')] = value
     save_config(config)
 
 
-def delete_cards(*args, **kwargs):
+def delete_cards(*args: str, **ignore: Any) -> NoReturn | None:
     try:
         no_of_deletions = int(args[1])
         if no_of_deletions < 1:
@@ -123,10 +124,13 @@ def delete_cards(*args, **kwargs):
             raise IndexError
     except IndexError:
         print(f'{R}"cards.txt"{YEX} file has been emptied, nothing more to delete')
+        return None
     except FileNotFoundError:
         print(f'{R}"cards.txt"{err_c} does not exist, nothing to delete')
+        return None
     except UnicodeDecodeError:  # wolfram caused this
         print(f'{err_c}Could not decode a character, card deletion failed')
+        return None
     except Exception:
         print(f'{err_c}Something went wrong, cards are {GEX}safe{R} though')
         raise
@@ -140,9 +144,10 @@ def delete_cards(*args, **kwargs):
 
         with open('cards.txt', 'w') as w:
             w.write(''.join(lines))
+        return None
 
 
-def config_defaults(*args, **kwargs):
+def set_input_field_defaults(*args: str, **ignore: Any) -> str | None:
     cmd = args[0]
     bulk_elem = args[1].lower()
 
@@ -170,22 +175,10 @@ def config_defaults(*args, **kwargs):
     else:
         print(f"{YEX}Default value for {R}{bulk_elem}{YEX}: {R}{value}")
         save_command(f'{bulk_elem}_bulk', value)
+    return None
 
 
-# this is prospective
-def print_field_table():
-    p = f'{BOLD}│{DEFAULT}'
-    print(f'{R}{BOLD}╭╴field╶─╴on/off╶─╴show/hide╶─╴default╶╮{DEFAULT}')
-    for e in ('pz', 'def', 'exsen', 'pos', 'etym', 'syn'):
-        on_off = config[e]
-        show_hide = config.get('u'+e, '')
-        default = config.get(e+'_bulk', '')
-        c1, c2 = BOOL_COLORS_DICT.get(on_off, ''), BOOL_COLORS_DICT.get(show_hide, '')
-        print(f'{p} -{e:7s}{c1}{str(on_off):9s}{c2}{str(show_hide):12s}{R}{str(default):8s}{p}')
-    print(f'{BOLD}╰──────────────────────────────────────╯{DEFAULT}')
-
-
-def print_config_representation():
+def print_config_representation() -> None:
     if config['textwidth'][1] == '* auto':
         terminal_width = get_terminal_size().columns
         if terminal_width != config['textwidth'][0]:
@@ -236,7 +229,7 @@ def print_config_representation():
                      'field order configuration: "-fo"\n\n')
 
 
-def set_width_settings(*args, message):
+def set_width_settings(*args: str, **kwargs: str) -> str | None:
     cmd, value = args[0], args[1]
     if cmd in ('-textwidth', '-columns'):
         lower = 1
@@ -252,9 +245,9 @@ def set_width_settings(*args, message):
                 raise ValueError
         except ValueError:
             return f'Invalid value: {R}{value}\n' \
-                   f'{cmd} {command_to_help_dict[cmd][1]}'
+                   f'{cmd} {cmd_to_msg_usage[cmd][1]}'
         else:
-            print(f'{R}{message}: {GEX}{value}')
+            print(f'{R}{kwargs["message"]}: {GEX}{value}')
             save_command(cmd, [val, ''])
             return None
 
@@ -272,11 +265,12 @@ def set_width_settings(*args, message):
     else:
         assert False, 'unreachable in `set_width_settings`'
 
-    print(f'{R}{message}: {GEX}{"".join(map(str, v))}')
+    print(f'{R}{kwargs["message"]}: {GEX}{"".join(map(str, v))}')
     save_command(cmd, v)
+    return None
 
 
-def display_field_order():
+def display_field_order() -> None:
     for field_number, field in enumerate(config['fieldorder'], start=1):
         b = BOLD if field_number == 1 else ''
         print(f' {b}{field_number}: {field}{DEFAULT}')
@@ -285,7 +279,7 @@ def display_field_order():
             print(f' {delimit_c}D: ─────────{R}')
 
 
-def _set_field_order(msg, order, delimit):
+def _set_field_order(msg: str, order: list[str], delimit: int) -> None:
     print(f'{GEX}{msg}')
     # I'm not sure what causes the change of 'order' in
     # STD and TSC changing one of the values manually.
@@ -296,18 +290,20 @@ def _set_field_order(msg, order, delimit):
     display_field_order()
 
 
-def change_field_order(*args, **kwargs):
+def change_field_order(*args: str, **ignore: Any) -> str | None:
     first_arg = args[1].lower()
     if first_arg == 'std':
-        return _set_field_order('STD field order:', STD_FIELD_ORDER, 3)
+        _set_field_order('STD field order:', STD_FIELD_ORDER, 3)
+        return None
     elif first_arg == 'tsc':
-        return _set_field_order('TSC field order:', TSC_FIELD_ORDER, 1)
+        _set_field_order('TSC field order:', TSC_FIELD_ORDER, 1)
+        return None
 
     _1_to_9 = ('1', '2', '3', '4', '5', '6', '7', '8', '9')
     if first_arg not in _1_to_9 and first_arg not in ('d', '-'):
         cmd = args[0]
         return f'Invalid argument: {R}{first_arg}\n' \
-               f'{cmd} {command_to_help_dict[cmd][1]}'
+               f'{cmd} {cmd_to_msg_usage[cmd][1]}'
 
     try:
         field_name = args[2].lower()
@@ -330,25 +326,26 @@ def change_field_order(*args, **kwargs):
             return 'Invalid field number provided'
 
     display_field_order()
+    return None
 
 
-def set_audio_path(*args, message):
+def set_audio_path(*args: str, **kwargs: str) -> str | None:
     arg = args[1]
 
     if arg == 'auto':
         if WINDOWS:
-            initial_path = os.path.join(os.getenv('APPDATA'), 'Anki2')
+            initial_path = os.path.join(os.environ['APPDATA'], 'Anki2')
         elif LINUX:
-            initial_path = os.path.join(os.getenv('HOME'), '.local/share/Anki2')
+            initial_path = os.path.join(os.environ['HOME'], '.local/share/Anki2')
         elif MAC:
-            initial_path = os.path.join(os.getenv('HOME'), 'Library/Application Support/Anki2')
+            initial_path = os.path.join(os.environ['HOME'], 'Library/Application Support/Anki2')
         else:
             return f'Locating {R}"collection.media"{err_c} failed:\n' \
                    f'Unknown path for {R}"collection.media"{err_c} on {sys.platform!r}'
 
         user_dirs = []
-        for i in os.listdir(initial_path):
-            next_ = os.path.join(initial_path, i)
+        for f in os.listdir(initial_path):
+            next_ = os.path.join(initial_path, f)
             if os.path.isdir(next_) and 'collection.media' in os.listdir(next_):
                 user_dirs.append(next_)
 
@@ -361,20 +358,21 @@ def set_audio_path(*args, message):
             for i, user_dir in enumerate(user_dirs, start=1):
                 anki_user = os.path.basename(user_dir)
                 print(f'{index_c}{i} {R}{anki_user}')
-            path = choose_item("\nWhich user's collection do you want to use?", user_dirs)
-            if path is None:
+            col_dir = choose_item("\nWhich user's collection do you want to use?", user_dirs)
+            if col_dir is None:
                 return 'Leaving...'
             else:
-                path = os.path.join(path, 'collection.media')
+                path = os.path.join(col_dir, 'collection.media')
     else:
         path = os.path.expanduser(os.path.normpath(' '.join(args[1:])))
 
-    print(f'{YEX}{message} set to:\n'
+    print(f'{YEX}{kwargs["message"]} set to:\n'
           f'{R}"{path}"')
     save_command('audio_path', path)
+    return None
 
 
-def set_free_value_commands(*args, message):
+def set_free_value_commands(*args: str, **kwargs: str) -> None:
     cmd = args[0]
 
     if cmd == '-tags':
@@ -382,11 +380,11 @@ def set_free_value_commands(*args, message):
     else:
         value = ' '.join(args[1:])
 
-    print(f'{R}{message}: "{value}"')
+    print(f'{R}{kwargs["message"]}: "{value}"')
     save_command(cmd, value)
 
 
-def set_text_value_commands(*args, message):
+def set_text_value_commands(*args: str, **kwargs: str) -> str | None:
     cmd, value = args[0], args[1]
 
     values_dict = {
@@ -401,14 +399,15 @@ def set_text_value_commands(*args, message):
     }
 
     if value in values_dict[cmd]:
-        print(f'{R}{message}: {value}')
+        print(f'{R}{kwargs["message"]}: {value}')
         save_command(cmd, value)
+        return None
     else:
         return f'Invalid value: {R}{value}\n' \
-               f'{cmd} {command_to_help_dict[cmd][1]}'
+               f'{cmd} {cmd_to_msg_usage[cmd][1]}'
 
 
-def set_colors(*args, **kwargs):
+def set_colors(*args: str, **ignore: Any) -> str | None:
     cmd, element = args[0], args[1]
 
     if element not in COLOR_TO_MSG:
@@ -430,9 +429,10 @@ def set_colors(*args, **kwargs):
 
     print(f'{R}{msg} set to: {thiscolor}{color}')
     save_command(f'{element}_c', color)
+    return None
 
 
-def boolean_commands(*args, message):
+def boolean_commands(*args: str, **kwargs: str) -> str | None:
     cmd = args[0]
 
     try:
@@ -441,16 +441,17 @@ def boolean_commands(*args, message):
         return f'{err_c}Invalid value, use:\n' \
                f'{R}{cmd} {{on|off}}'
 
-    print(f'{R}{message}: {BOOL_COLORS_DICT[value]}{value}')
+    print(f'{R}{kwargs["message"]}: {BOOL_COLORS_DICT[value]}{value}')
     if cmd == '-all':
         for cmd in ('pz', 'def', 'pos', 'etym', 'syn', 'exsen'):
             config[cmd] = value
         save_config(config)
     else:
         save_command(cmd, value)
+    return None
 
 
-def show_available_colors():
+def show_available_colors() -> None:
     print(f'{R}{BOLD}Available colors:{DEFAULT}')
     t = tuple(str_colors_to_color.items())
     for i, (name, col, lname, lcol) in enumerate([
@@ -460,7 +461,7 @@ def show_available_colors():
     sys.stdout.write(f'{R}reset                  ██\n\n')
 
 
-def color_command():
+def color_command() -> None:
     print(f"""\
 {R}{BOLD}[Elements]   [Changes the color of]{DEFAULT}
 def1         {def1_c}odd definitions and idiom definitions{R}

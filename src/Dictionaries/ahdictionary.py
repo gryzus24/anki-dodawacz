@@ -13,11 +13,13 @@
 # You should have received a copy of the GNU General Public License
 # along with this program. If not, see <http://www.gnu.org/licenses/>.
 
+from __future__ import annotations
+
 from src.Dictionaries.dictionary_base import Dictionary
 from src.Dictionaries.utils import request_soup
-from src.colors import R, phrase_c, err_c
-from src.data import config, HORIZONTAL_BAR
-from src.input_fields import input_field
+from src.colors import R, err_c, phrase_c
+from src.data import HORIZONTAL_BAR, config
+from src.input_fields import get_user_input
 
 AHD_IPA_translation = str.maketrans({
     'ă': 'æ',   'ā': 'eɪ',  'ä': 'ɑː',
@@ -38,55 +40,55 @@ class AHDictionary(Dictionary):
     name = 'ahd'
     allow_thesaurus = True
 
-    def input_cycle(self):
-        chosen_defs, def_choices = input_field('def')(self.definitions, auto_choice='1')
-        if chosen_defs is None:
+    def input_cycle(self) -> dict[str, str] | None:
+        def_input = get_user_input('def', self.definitions, '1')
+        if def_input is None:
             return None
 
-        choices_by_header = self.get_positions_in_sections(def_choices)
+        choices_by_header = self.get_positions_in_sections(def_input.choices)
         phrase = self.phrases[choices_by_header[0] - 1]
 
-        choices_by_labels = self.get_positions_in_sections(def_choices, from_within='AUDIO')
-        audio = self.audio_urls[choices_by_labels[0] - 1]
+        audio = self.audio_urls[
+            self.get_positions_in_sections(def_input.choices, from_within='AUDIO')[0] - 1]
 
-        auto_choice = self.to_auto_choice(def_choices, 'DEF')
-        chosen_exsen, _ = input_field('exsen')(self.example_sentences, auto_choice)
-        if chosen_exsen is None:
+        exsen_input = get_user_input(
+            'exsen', self.example_sentences, self.to_auto_choice(def_input.choices, 'DEF'))
+        if exsen_input is None:
             return None
 
-        auto_choice = self.to_auto_choice(choices_by_header, 'POS')
-        chosen_pos, _ = input_field('pos')(self.parts_of_speech, auto_choice)
-        if chosen_pos is None:
+        pos_input = get_user_input(
+            'pos', self.parts_of_speech, self.to_auto_choice(choices_by_header, 'POS'))
+        if pos_input is None:
             return None
 
-        auto_choice = self.to_auto_choice(choices_by_header, 'ETYM')
-        chosen_etyms, _ = input_field('etym')(self.etymologies, auto_choice)
-        if chosen_etyms is None:
+        etym_input = get_user_input(
+            'etym', self.etymologies, self.to_auto_choice(choices_by_header, 'ETYM'))
+        if etym_input is None:
             return None
 
         return {
             'phrase': phrase,
-            'def': chosen_defs,
-            'exsen': chosen_exsen,
-            'pos': chosen_pos,
-            'etym': chosen_etyms,
+            'def': def_input.content,
+            'exsen': exsen_input.content,
+            'pos': pos_input.content,
+            'etym': etym_input.content,
             'audio': audio,
         }
 
 
-def ask_ahdictionary(query):
-    def fix_stress_and_remove_private_symbols(string):
-        return string.replace('′', 'ˌ').replace('', 'ˈ')\
+def ask_ahdictionary(query: str) -> Dictionary | None:
+    def fix_stress_and_remove_private_symbols(s: str) -> str:
+        return s.replace('′', 'ˌ').replace('', 'ˈ')\
             .replace('', 'o͞o').replace('', 'o͝o')
 
-    def translate_ahd_to_ipa(ahd_phonetics, th):
+    def translate_ahd_to_ipa(ahd_phonetics: str, _th: str) -> str:
         # AHD has its own phonetic alphabet that can be translated into IPA.
         # diphthongs and combinations of more than one letter.
         ahd_phonetics = ahd_phonetics.replace('ch', 'tʃ') \
             .replace('sh', 'ʃ').replace('îr', 'ɪəɹ') \
             .replace('ng', 'ŋ').replace('ou', 'aʊ') \
             .replace('oi', 'ɔɪ').replace('ər', 'ɚ') \
-            .replace('ûr', 'ɝ').replace('th', th) \
+            .replace('ûr', 'ɝ').replace('th', _th) \
             .replace('âr', 'ɛəɹ').replace('zh', 'ʒ') \
             .replace('l', 'ɫ').replace('n', 'ən') \
             .replace('r', 'ʊəɹ').replace('ôr', 'ɔːr')
@@ -95,7 +97,7 @@ def ask_ahdictionary(query):
         # stress and hyphenation
         return ahd_phonetics.replace('-', '.').replace('′', 'ˌ').replace('', 'ˈ')
 
-    def definition_cleanup(definition):
+    def definition_cleanup(definition: str) -> str:
         rex = definition.lstrip('1234567890. a')
         rex = rex.split(' See Usage Note at')[0]
         for letter in 'abcdefghijklmn':
@@ -107,15 +109,15 @@ def ask_ahdictionary(query):
         rex = fix_stress_and_remove_private_symbols(rex.strip())
         return rex.replace('  ', ' # ')
 
-    def get_phrase_inflections(content_list):
+    def get_phrase_inflections(content: list) -> str:
         parsed_cl = [
-            x.string.strip(', ') for x in content_list
+            x.string.strip(', ') for x in content
             if x.string is not None
             and x.string.strip(', ')
             and ('<b>' in str(x) or x.string.strip(', ') in ('or', 'also'))
         ]
         skip_next = False
-        result = []
+        result: list[str] = []
         for i, elem in enumerate(parsed_cl):
             if elem == 'or' and result:  # `and result` because of "gift-wrap"
                 result.pop()
@@ -135,13 +137,13 @@ def ask_ahdictionary(query):
                 result.append(elem)
         return ' * '.join(result)
 
-    def extract_phrase_and_phonetic_spelling(string):
+    def extract_phrase_and_phonetic_spelling(s: str) -> tuple[str, str]:
         _phrase = []
         _phon_spell = []
 
         _in = False
-        string = string.strip()
-        for elem in string.split():
+        s = s.strip()
+        for elem in s.split():
             e = elem.strip(',').replace('·', '')
             if not e or e.isnumeric():
                 continue
@@ -155,7 +157,7 @@ def ask_ahdictionary(query):
             if e.isascii():
                 # Not every phonetic spelling contains non-ascii characters, e.g. "crowd".
                 # So we have to make an educated guess.
-                if e.startswith('(') and string.endswith(')'):
+                if e.startswith('(') and s.endswith(')'):
                     _phon_spell.append(elem)
                     _in = True
                 else:
@@ -167,7 +169,10 @@ def ask_ahdictionary(query):
                         _in = True
                 else:
                     _phrase.append(elem)
-        return _phrase, _phon_spell
+
+        return ' '.join(_phrase).replace('·', '').replace('•', ''),\
+               ' '.join(_phon_spell).strip(' ,')
+
     #
     #  American Heritage Dictionary
     #
@@ -206,8 +211,6 @@ def ask_ahdictionary(query):
         header = header.text.split('\n', 1)[0].replace('(', ' (').replace(')', ') ')
         phrase, phon_spell = extract_phrase_and_phonetic_spelling(header)
 
-        phrase = ' '.join(phrase).replace('·', '').replace('•', '')
-        phon_spell = ' '.join(phon_spell).strip(' ,')
         if config['toipa']:
             phon_spell = translate_ahd_to_ipa(phon_spell, th)
         else:
@@ -256,9 +259,7 @@ def ask_ahdictionary(query):
             runseg = runseg.text.replace('(', ' (').replace(')', ') ')
             pos, phon_spell = extract_phrase_and_phonetic_spelling(runseg)
 
-            # accentuation and hyphenation
-            pos = fix_stress_and_remove_private_symbols(', '.join(pos))
-            phon_spell = ' '.join(phon_spell).rstrip(',')
+            pos = fix_stress_and_remove_private_symbols(pos)
 
             if config['toipa']:
                 # this is very general, I have no idea how to differentiate these correctly
@@ -267,7 +268,7 @@ def ask_ahdictionary(query):
             else:
                 phon_spell = fix_stress_and_remove_private_symbols(phon_spell)
 
-            td_pos.append((pos, phon_spell))
+            td_pos.append(f'{pos}|{phon_spell}')
         if len(td_pos) > 1:
             ahd.add(*td_pos)
 

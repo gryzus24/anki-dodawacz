@@ -13,25 +13,27 @@
 # You should have received a copy of the GNU General Public License
 # along with this program. If not, see <http://www.gnu.org/licenses/>.
 
+from __future__ import annotations
+
 import datetime
 import os.path
 import subprocess
 import sys
 
-from src.colors import R, YEX, GEX, index_c, err_c
+from src.colors import GEX, R, YEX, err_c, index_c
 from src.commands import save_command
-from src.data import config, WINDOWS, LINUX
+from src.data import LINUX, WINDOWS, config
 from src.input_fields import choose_item
 
 if WINDOWS:
-    def find_devices():
-        audio_devices = subprocess.run('ffmpeg -hide_banner -list_devices true -f dshow -i dummy',
-                                       shell=True, capture_output=True, text=True)
+    def find_devices() -> list[str]:
+        process = subprocess.run('ffmpeg -hide_banner -list_devices true -f dshow -i dummy',
+                                 shell=True, capture_output=True, text=True)
         # not sure whether list_devices can come out as stdout, it's always a stderr
-        if not audio_devices.stdout:
-            audio_devices = audio_devices.stderr.splitlines()[:-1]
+        if not process.stdout:
+            audio_devices = process.stderr.splitlines()[:-1]
         else:
-            audio_devices = audio_devices.stdout.splitlines()[:-1]
+            audio_devices = process.stdout.splitlines()[:-1]
 
         audio_devices = [x.split(']')[-1].strip() for x in audio_devices]
         audio_devices = [x for x in audio_devices if '"' in x and '@' not in x]
@@ -39,21 +41,21 @@ if WINDOWS:
         return audio_devices
 
 elif LINUX:
-    def find_devices():
-        audio_devices = subprocess.run('pactl list sources | grep alsa_output',
-                                       shell=True, capture_output=True, text=True)
-        audio_devices = audio_devices.stdout.splitlines()[:-1]
+    def find_devices() -> list[str]:
+        process = subprocess.run('pactl list sources | grep alsa_output',
+                                 shell=True, capture_output=True, text=True)
+        audio_devices = process.stdout.splitlines()[:-1]
         audio_devices = [x.split(':')[-1].strip()
                          for x in audio_devices if x.endswith('monitor')]
         audio_devices.insert(0, 'default')
         return audio_devices
 
 else:
-    def find_devices():
-        return None
+    def find_devices() -> list[str]:
+        return []
 
 
-def record(filepath):
+def record(filepath: str) -> subprocess.CompletedProcess:
     if LINUX:
         ffmpeg_settings = {
             'format': 'pulse',
@@ -85,11 +87,12 @@ def record(filepath):
     return result
 
 
-def set_audio_device():
+def set_audio_device() -> str | None:
     try:
         audio_devices = find_devices()
-        if audio_devices is None:
-            return f'Audio recording is not available on {sys.platform!r}'
+        if not audio_devices:
+            return f'No devices found\n' \
+                   f'audio recording might not be available on {sys.platform!r}'
     except FileNotFoundError:
         return 'Could not locate FFmpeg\n' \
                "Place the FFmpeg binary alongside the program or in $PATH"
@@ -105,9 +108,10 @@ def set_audio_device():
     save_command('audio_device', audio_device)
     print(f'{GEX}Chosen device:\n'
           f'{R}{audio_device}\n')
+    return None
 
 
-def capture_audio(*args):
+def capture_audio(*args: str) -> str:
     try:
         arg = args[0].lower()
     except IndexError:  # no arguments

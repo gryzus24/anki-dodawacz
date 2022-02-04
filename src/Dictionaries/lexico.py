@@ -13,11 +13,15 @@
 # You should have received a copy of the GNU General Public License
 # along with this program. If not, see <http://www.gnu.org/licenses/>.
 
+from __future__ import annotations
+
+from typing import Any
+
 from src.Dictionaries.dictionary_base import Dictionary
 from src.Dictionaries.utils import request_soup
-from src.colors import R, phrase_c, err_c
+from src.colors import R, err_c, phrase_c
 from src.data import HORIZONTAL_BAR
-from src.input_fields import input_field
+from src.input_fields import get_user_input
 
 
 class Lexico(Dictionary):
@@ -25,72 +29,80 @@ class Lexico(Dictionary):
     name = 'lexico'
     allow_thesaurus = True
 
-    def input_cycle(self):
-        chosen_defs, def_choices = input_field('def')(self.definitions, auto_choice='1')
-        if chosen_defs is None:
+    def input_cycle(self) -> dict[str, str] | None:
+        def_input = get_user_input('def', self.definitions, '1')
+        if def_input is None:
             return None
 
-        choices_by_headers = self.get_positions_in_sections(def_choices)
+        choices_by_headers = self.get_positions_in_sections(def_input.choices)
         phrase = self.phrases[choices_by_headers[0] - 1]
 
-        choices_by_labels = self.get_positions_in_sections(def_choices, from_within='AUDIO')
-        audio = self.audio_urls[choices_by_labels[0] - 1]
+        audio = self.audio_urls[
+            self.get_positions_in_sections(def_input.choices, from_within='AUDIO')[0] - 1]
 
-        auto_choice = self.to_auto_choice(def_choices, 'DEF')
-        chosen_exsen, _ = input_field('exsen')(self.example_sentences, auto_choice)
-        if chosen_exsen is None:
+        exsen_input = get_user_input(
+            'exsen', self.example_sentences, self.to_auto_choice(def_input.choices, 'DEF'))
+        if exsen_input is None:
             return None
 
-        auto_choice = self.to_auto_choice(choices_by_headers, 'ETYM')
-        chosen_etyms, _ = input_field('etym')(self.etymologies, auto_choice)
-        if chosen_etyms is None:
+        etym_input = get_user_input(
+            'etym', self.etymologies, self.to_auto_choice(choices_by_headers, 'ETYM'))
+        if etym_input is None:
             return None
 
         return {
             'phrase': phrase,
-            'def': chosen_defs,
-            'exsen': chosen_exsen,
-            'etym': chosen_etyms,
+            'def': def_input.content,
+            'exsen': exsen_input.content,
+            'etym': etym_input.content,
             'audio': audio,
         }
 
 
-def ask_lexico(query, _previous_query=''):
-    def get_phonetic_spelling(block_):
-        pronunciation_block = block_.find('span', class_='phoneticspelling')
-        if pronunciation_block is not None:
-            return pronunciation_block.text.strip()
+def get_phonetic_spelling(block_: Any) -> str:
+    pronunciation_block = block_.find('span', class_='phoneticspelling')
+    if pronunciation_block is not None:
+        return pronunciation_block.text.strip()
 
-        pronunciation_block = block_.next_sibling.find('div', class_='pron')
-        if pronunciation_block is None:
-            return ''
-
-        pspelling = pronunciation_block.find_all('span', class_='phoneticspelling', recursive=False)
-        if pspelling:
-            return ' '.join([x.text.strip() for x in pspelling])
+    pronunciation_block = block_.next_sibling.find('div', class_='pron')
+    if pronunciation_block is None:
         return ''
 
-    def get_defs(block_, *, recursive=True):
-        d = block_.find('span', class_='ind one-click-content', recursive=recursive)
-        if d is None:
-            return block_.find('div', class_='crossReference').text
-        return d.text
+    pspelling = pronunciation_block.find_all('span', class_='phoneticspelling', recursive=False)
+    if pspelling:
+        return ' '.join([x.text.strip() for x in pspelling])
+    return ''
 
-    def get_exsen(block_):
-        e = block_.find('div', class_='ex')
-        return '' if e is None else e.text
 
-    def get_gram_note(block_):
-        gn = block_.find('span', class_='grammatical_note')
-        return '' if gn is None else '[' + gn.text + '] '
+def get_defs(block_: Any, *, recursive: bool = True) -> str:
+    d = block_.find('span', class_='ind one-click-content', recursive=recursive)
+    if d is None:
+        return block_.find('div', class_='crossReference').text
+    return d.text
 
-    def add_def(definition_, example_='', deftype='DEF'):
+
+def get_exsen(block_: Any) -> str:
+    e = block_.find('div', class_='ex')
+    return '' if e is None else e.text
+
+
+def get_gram_note(block_: Any) -> str:
+    gn = block_.find('span', class_='grammatical_note')
+    return '' if gn is None else '[' + gn.text + '] '
+
+
+_previous_query = None
+
+
+def ask_lexico(query: str) -> Dictionary | None:
+    def add_def(definition_: Any, example_: str = '', deftype: str = 'DEF') -> None:
         # little cleanup to prevent random newlines inside of examples
         # as is the case with "suspicion"
         example_ = example_.replace('‘', '', 1).replace('’', '', 1).strip()
         if example_:
             example_ = '‘' + example_ + '’'
         lexico.add(deftype, definition_.strip(), example_)
+
     #
     # Lexico
     #
@@ -111,6 +123,7 @@ def ask_lexico(query, _previous_query=''):
         time.sleep(2.5)
         raise SystemExit(1)
 
+    global _previous_query
     page_check = main_div.find('div', class_='breadcrumbs layout', recursive=False)
     if page_check.get_text(strip=True) == 'HomeEnglish':
         revive = main_div.find('a', class_='no-transition')
@@ -120,7 +133,8 @@ def ask_lexico(query, _previous_query=''):
         else:
             revive = revive.get('href')
             revive = revive.rsplit('/', 1)[-1]
-            return ask_lexico(revive, _previous_query=query)
+            _previous_query = query  # global
+            return ask_lexico(revive)
 
     lexico = Lexico()
     etym = ''
@@ -133,9 +147,9 @@ def ask_lexico(query, _previous_query=''):
             phrase_ = phrase_.find(recursive=False, text=True)
 
             if before_phrase:
-                before_phrase = False
-                if _previous_query and phrase_ != _previous_query:
+                if _previous_query is not None and _previous_query != query:
                     lexico.add('NOTE', f' Results for {phrase_c}{phrase_}')
+                    _previous_query = None  # global
             else:
                 lexico.add('HEADER', HORIZONTAL_BAR)
 
@@ -156,8 +170,8 @@ def ask_lexico(query, _previous_query=''):
                     # next_sib can be None if the last entry_block is
                     # an etymology div that has no Origin header  e.g. "ad -l"
                     if next_sib is not None:
-                        etym = next_sib.find('div', class_='senseInnerWrapper', recursive=False)
-                        etym = '[' + etym.text.strip() + ']'
+                        t = next_sib.find('div', class_='senseInnerWrapper', recursive=False)
+                        etym = '[' + t.text.strip() + ']'
                     break
                 next_sib = next_sib.next_sibling
 
