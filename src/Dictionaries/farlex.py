@@ -46,7 +46,7 @@ class FarlexIdioms(Dictionary):
         return {
             'phrase': phrase,
             'def': def_input.content,
-            'exsen': def_input.content
+            'exsen': exsen_input.content
         }
 
 
@@ -79,9 +79,9 @@ def ask_farlex(query: str) -> Dictionary | None:
             definition = definition.previous_element.lstrip('1234567890.').strip()
 
         # Gather idiom examples
-        examples = content_block.find_all('span', class_='illustration', recursive=False)
-        if examples:
-            examples = '<br>'.join('‘' + e.text.strip() + '’' for e in examples)
+        found_examples = content_block.find_all('span', class_='illustration', recursive=False)
+        if found_examples:
+            examples = '<br>'.join('‘' + e.text.strip() + '’' for e in found_examples)
         else:
             examples = ''
 

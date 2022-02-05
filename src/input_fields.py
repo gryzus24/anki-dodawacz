@@ -111,11 +111,11 @@ def get_user_input(field: str, content: Sequence[str], auto: str) -> UserInput |
     prompt, connector, specifier_split = input_field_config[field]
 
     default_value = config[field + '_bulk'].strip()
-    if default_value.lower() == 'auto':
-        default_value = auto
+    if not default_value.startswith('/'):
+        default_value = default_value.lower().replace('auto', auto)
 
     if config[field]:
-        _input = input(f'{prompt} [{default_value}]: ').strip()
+        _input = input(f'{prompt} [{default_value}]> ').strip()
         if not _input:
             _input = default_value
     else:

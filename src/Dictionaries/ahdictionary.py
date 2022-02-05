@@ -275,6 +275,6 @@ def ask_ahdictionary(query: str) -> Dictionary | None:
         # Add etymologies
         etymology = td.find('div', class_='etyseg', recursive=False)
         if etymology is not None:
-            ahd.add('ETYM', etymology.text)
+            ahd.add('ETYM', etymology.text.strip())
 
     return ahd
