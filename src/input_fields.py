@@ -49,9 +49,6 @@ def _parse_input(_input: str, _max: int) -> list[ParsedInput]:
     return result
 
 
-PUNCTUATION = "!'()*,-./:;<>?[\\]`{|}~"
-
-
 def _add_elements(
         parsed_inputs: Sequence[ParsedInput], content: Sequence[str], _sep: str
 ) -> list[str]:
@@ -65,9 +62,9 @@ def _add_elements(
             if not content_part:
                 continue
 
-            split_part = content_part.strip(PUNCTUATION).split(_sep)
+            split_part = content_part.strip(',.:;!?[]').split(_sep)
             specifiers = [x for x in specifiers if x <= len(split_part)]
-            if not specifiers:
+            if not specifiers or len(split_part) == 1:
                 result.append(content_part)
                 valid_choices.append(str(choice))
                 continue
@@ -77,7 +74,7 @@ def _add_elements(
                 new_element.append(split_part[spec - 1].strip())
                 valid_choices.append(f'{choice}.{spec}')
 
-            if _sep in PUNCTUATION:
+            if _sep in ',.:;!?':
                 combined = (_sep + ' ').join(new_element)
             else:
                 combined = _sep.join(new_element)

@@ -286,7 +286,7 @@ def ask_ahdictionary(query: str) -> Dictionary | None:
         if etymology is not None:
             etym = etymology.text.strip()
             if config['shortetyms']:
-                ahd.add('ETYM', _format_etymology(etym.strip('[]')))
+                ahd.add('ETYM', _shorten_etymology(etym.strip('[]')))
             else:
                 ahd.add('ETYM', etym)
 
@@ -297,7 +297,7 @@ def _separate(i: Iterable[Any], pred: Callable[[Any], bool]) -> tuple[list, list
     return list(filter(pred, i)), list(filterfalse(pred, i))
 
 
-def _format_etymology(_input: str) -> str:
+def _shorten_etymology(_input: str) -> str:
     if ',' not in _input:
         return _input
 
