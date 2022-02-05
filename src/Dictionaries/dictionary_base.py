@@ -139,7 +139,7 @@ COLOR_FORMATS = {
 
 class Dictionary:
     allow_thesaurus: bool
-    name: str
+    name: str  # config name
     title: str
 
     PHRASE = FieldFormat('! {phrase_c}{phrase}  {phon_c}{phon}{padding}')
@@ -157,6 +157,7 @@ class Dictionary:
             sys.stdout.write(f'{op:7s}{body}\n')
         return f'{type(self).__name__}(self.contents ^)'
 
+    # For subclassing.
     def input_cycle(self) -> dict[str, str] | None:
         raise NotImplementedError
 

@@ -152,6 +152,7 @@ Hiding a phrase means replacing it with "..." (default)
 -fnolabel      filter out unlabelled definitions
 
 -toipa         translate AH Dictionary phonetic spelling into IPA
+-shortetyms    shorten and simplify etymologies in AH Dictionary
 
 {BOLD}{'[ Sources and recording configuration ]'.center(79, '─')}{DEFAULT}
 -dict  {{ahd|lexico|idioms}}        primary dictionary

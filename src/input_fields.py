@@ -8,8 +8,8 @@ from src.data import bool_values_dict, config
 
 
 class ParsedInput(NamedTuple):
-    choices: tuple[int, ...]
-    specifiers: tuple[int, ...]
+    choices: list[int]
+    specifiers: list[int]
 
 
 # For Python <3.10 compatibility.
@@ -24,16 +24,17 @@ def _parse_input(_input: str, _max: int) -> list[ParsedInput]:
     for part in _input.split(','):
         choices, _, specifiers = part.partition('.')
 
-        valid_values = tuple(
+        valid_values = [
             x if x < _max else _max
             for x in map(int, filter(str.isdecimal, choices.split(':')))
             if x
-        )
+        ]
         if not valid_values:
             continue
 
-        valid_specifiers = tuple(
-            x for x in map(int, filter(str.isdecimal, specifiers)) if x)
+        valid_specifiers = [
+            x for x in map(int, filter(str.isdecimal, specifiers)) if x
+        ]
         if len(valid_values) == 1:
             result.append(ParsedInput(valid_values, valid_specifiers))
             continue
@@ -43,7 +44,7 @@ def _parse_input(_input: str, _max: int) -> list[ParsedInput]:
             step = 1 if right > left else -1
             t.extend(range(left, right + step, step))
 
-        result.append(ParsedInput(tuple(t), valid_specifiers))
+        result.append(ParsedInput(t, valid_specifiers))
 
     return result
 
@@ -65,7 +66,7 @@ def _add_elements(
                 continue
 
             split_part = content_part.strip(PUNCTUATION).split(_sep)
-            specifiers = tuple(x for x in specifiers if x <= len(split_part))
+            specifiers = [x for x in specifiers if x <= len(split_part)]
             if not specifiers:
                 result.append(content_part)
                 valid_choices.append(str(choice))

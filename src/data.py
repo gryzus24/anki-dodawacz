@@ -44,6 +44,7 @@ boolean_cmd_to_msg = {
     '-fsubdefs': 'Filter out subdefinitions (definitions without ">")',
     '-fnolabel': 'Filter out unlabelled definitions',
     '-toipa': 'Translate AH Dictionary phonetic spelling into IPA',
+    '-shortetyms': 'Shorten and simplify etymologies in AH Dictionary',
 
     '-upz': 'Hide phrase in sentence',
     '-udef': 'Hide phrase in definitions',

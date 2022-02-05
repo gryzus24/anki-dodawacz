@@ -15,24 +15,14 @@
 
 from __future__ import annotations
 
+from itertools import filterfalse
+from typing import Any, Callable, Iterable
+
 from src.Dictionaries.dictionary_base import Dictionary
 from src.Dictionaries.utils import request_soup
 from src.colors import R, err_c, phrase_c
 from src.data import HORIZONTAL_BAR, config
 from src.input_fields import get_user_input
-
-AHD_IPA_translation = str.maketrans({
-    'ă': 'æ',   'ā': 'eɪ',  'ä': 'ɑː',
-    'â': 'eə',  'ĕ': 'ɛ',   'ē': 'iː',  # There are some private symbols here
-    'ĭ': 'ɪ',   'î': 'ɪ',   'ī': 'aɪ',  # that AHD claims to be using, but
-    'i': 'aɪ',  'ŏ': 'ɒ',   'ō': 'oʊ',  # I haven't found any usages yet.
-    'ô': 'ɔː',   '': 'ʊ',   '': 'ʊ',
-    '': 'u',   '': 'u:', '': 'ð',
-    'ŭ': 'ʌ',   'û': 'ɔ:',  'y': 'j',
-    'j': 'dʒ',  'ü': 'y',   '': 'ç',
-    '': 'x',   '': 'bõ',  'ɴ': 'ⁿ',
-    '(': '/',   ')': '/'
-})
 
 
 class AHDictionary(Dictionary):
@@ -76,103 +66,122 @@ class AHDictionary(Dictionary):
         }
 
 
-def ask_ahdictionary(query: str) -> Dictionary | None:
-    def fix_stress_and_remove_private_symbols(s: str) -> str:
-        return s.replace('′', 'ˌ').replace('', 'ˈ')\
-            .replace('', 'o͞o').replace('', 'o͝o')
+AHD_IPA_translation = str.maketrans({
+    'ă': 'æ',   'ā': 'eɪ',  'ä': 'ɑː',
+    'â': 'eə',  'ĕ': 'ɛ',   'ē': 'iː',  # There are some private symbols here
+    'ĭ': 'ɪ',   'î': 'ɪ',   'ī': 'aɪ',  # that AHD claims to be using, but
+    'i': 'aɪ',  'ŏ': 'ɒ',   'ō': 'oʊ',  # I haven't found any usages yet.
+    'ô': 'ɔː',   '': 'ʊ',   '': 'ʊ',
+    '': 'u',   '': 'u:', '': 'ð',
+    'ŭ': 'ʌ',   'û': 'ɔ:',  'y': 'j',
+    'j': 'dʒ',  'ü': 'y',   '': 'ç',
+    '': 'x',   '': 'bõ',  'ɴ': 'ⁿ',
+    '(': '/',   ')': '/'
+})
 
-    def translate_ahd_to_ipa(ahd_phonetics: str, _th: str) -> str:
-        # AHD has its own phonetic alphabet that can be translated into IPA.
-        # diphthongs and combinations of more than one letter.
-        ahd_phonetics = ahd_phonetics.replace('ch', 'tʃ') \
-            .replace('sh', 'ʃ').replace('îr', 'ɪəɹ') \
-            .replace('ng', 'ŋ').replace('ou', 'aʊ') \
-            .replace('oi', 'ɔɪ').replace('ər', 'ɚ') \
-            .replace('ûr', 'ɝ').replace('th', _th) \
-            .replace('âr', 'ɛəɹ').replace('zh', 'ʒ') \
-            .replace('l', 'ɫ').replace('n', 'ən') \
-            .replace('r', 'ʊəɹ').replace('ôr', 'ɔːr')
-        # consonants, vowels, and single chars.
-        ahd_phonetics = ahd_phonetics.translate(AHD_IPA_translation)
-        # stress and hyphenation
-        return ahd_phonetics.replace('-', '.').replace('′', 'ˌ').replace('', 'ˈ')
 
-    def definition_cleanup(definition: str) -> str:
-        rex = definition.lstrip('1234567890. a')
-        rex = rex.split(' See Usage Note at')[0]
-        for letter in 'abcdefghijklmn':
-            rex = rex.replace(f":{letter}. ", ": *")
-            rex = rex.replace(f".{letter}. ", ". *")
-            rex = rex.replace(f". {letter}. ", ".* ")
-            # when definition has an example with a '?' there's no space in between
-            rex = rex.replace(f"?{letter}. ", "? *")
-        rex = fix_stress_and_remove_private_symbols(rex.strip())
-        return rex.replace('  ', ' # ')
+def _translate_ahd_to_ipa(ahd_phonetics: str, _th: str) -> str:
+    # AHD has its own phonetic alphabet that can be translated into IPA.
+    # diphthongs and combinations of more than one letter.
+    ahd_phonetics = ahd_phonetics.replace('ch', 'tʃ') \
+        .replace('sh', 'ʃ').replace('îr', 'ɪəɹ') \
+        .replace('ng', 'ŋ').replace('ou', 'aʊ') \
+        .replace('oi', 'ɔɪ').replace('ər', 'ɚ') \
+        .replace('ûr', 'ɝ').replace('th', _th) \
+        .replace('âr', 'ɛəɹ').replace('zh', 'ʒ') \
+        .replace('l', 'ɫ').replace('n', 'ən') \
+        .replace('r', 'ʊəɹ').replace('ôr', 'ɔːr')
+    # consonants, vowels, and single chars.
+    ahd_phonetics = ahd_phonetics.translate(AHD_IPA_translation)
+    # stress and hyphenation
+    return ahd_phonetics.replace('-', '.').replace('′', 'ˌ').replace('', 'ˈ')
 
-    def get_phrase_inflections(content: list) -> str:
-        parsed_cl = [
-            x.string.strip(', ') for x in content
-            if x.string is not None
-            and x.string.strip(', ')
-            and ('<b>' in str(x) or x.string.strip(', ') in ('or', 'also'))
-        ]
-        skip_next = False
-        result: list[str] = []
-        for i, elem in enumerate(parsed_cl):
-            if elem == 'or' and result:  # `and result` because of "gift-wrap"
-                result.pop()
-                result.append(' '.join((parsed_cl[i-1], parsed_cl[i], parsed_cl[i+1])))
-                skip_next = True
-            elif elem == 'also':
-                try:
-                    result.append(' '.join((parsed_cl[i], parsed_cl[i+1])))
-                except IndexError:  # "decerebrate"
-                    pass
-                else:
-                    skip_next = True
-            else:
-                if skip_next:
-                    skip_next = False
-                    continue
-                result.append(elem)
-        return ' * '.join(result)
 
-    def extract_phrase_and_phonetic_spelling(s: str) -> tuple[str, str]:
-        _phrase = []
-        _phon_spell = []
+def _fix_stress_and_remove_private_symbols(s: str) -> str:
+    return s.replace('′', 'ˌ').replace('', 'ˈ')\
+        .replace('', 'o͞o').replace('', 'o͝o')
 
-        _in = False
-        s = s.strip()
-        for elem in s.split():
-            e = elem.strip(',').replace('·', '')
-            if not e or e.isnumeric():
-                continue
 
-            if _in:
+def _definition_cleanup(definition: str) -> str:
+    rex = definition.lstrip('1234567890. a')
+    rex = rex.split(' See Usage Note at')[0]
+    for letter in 'abcdefghijklmn':
+        rex = rex.replace(f":{letter}. ", ": *")
+        rex = rex.replace(f".{letter}. ", ". *")
+        rex = rex.replace(f". {letter}. ", ".* ")
+        # when definition has an example with a '?' there's no space in between
+        rex = rex.replace(f"?{letter}. ", "? *")
+    rex = _fix_stress_and_remove_private_symbols(rex.strip())
+    return rex.replace('  ', ' # ')
+
+
+def _extract_phrase_and_phonetic_spelling(s: str) -> tuple[str, str]:
+    _phrase = []
+    _phon_spell = []
+
+    _in = False
+    s = s.strip()
+    for elem in s.split():
+        e = elem.strip(',').replace('·', '')
+        if not e or e.isnumeric():
+            continue
+
+        if _in:
+            _phon_spell.append(elem)
+            if e.endswith(')'):
+                _in = False
+            continue
+
+        if e.isascii():
+            # Not every phonetic spelling contains non-ascii characters, e.g. "crowd".
+            # So we have to make an educated guess.
+            if e.startswith('(') and s.endswith(')'):
                 _phon_spell.append(elem)
-                if e.endswith(')'):
-                    _in = False
-                continue
-
-            if e.isascii():
-                # Not every phonetic spelling contains non-ascii characters, e.g. "crowd".
-                # So we have to make an educated guess.
-                if e.startswith('(') and s.endswith(')'):
-                    _phon_spell.append(elem)
-                    _in = True
-                else:
-                    _phrase.append(elem)
+                _in = True
             else:
-                if e.startswith('('):
-                    _phon_spell.append(elem)
-                    if not e.endswith(')'):
-                        _in = True
-                else:
-                    _phrase.append(elem)
+                _phrase.append(elem)
+        else:
+            if e.startswith('('):
+                _phon_spell.append(elem)
+                if not e.endswith(')'):
+                    _in = True
+            else:
+                _phrase.append(elem)
 
-        return ' '.join(_phrase).replace('·', '').replace('•', ''),\
-               ' '.join(_phon_spell).strip(' ,')
+    return ' '.join(_phrase).replace('·', '').replace('•', ''),\
+           ' '.join(_phon_spell).strip(' ,')
 
+
+def _get_phrase_inflections(content: list) -> str:
+    parsed_cl = [
+        x.string.strip(', ') for x in content
+        if x.string is not None
+        and x.string.strip(', ')
+        and ('<b>' in str(x) or x.string.strip(', ') in ('or', 'also'))
+    ]
+    skip_next = False
+    result: list[str] = []
+    for i, elem in enumerate(parsed_cl):
+        if elem == 'or' and result:  # `and result` because of "gift-wrap"
+            result.pop()
+            result.append(' '.join((parsed_cl[i-1], parsed_cl[i], parsed_cl[i+1])))
+            skip_next = True
+        elif elem == 'also':
+            try:
+                result.append(' '.join((parsed_cl[i], parsed_cl[i+1])))
+            except IndexError:  # "decerebrate"
+                pass
+            else:
+                skip_next = True
+        else:
+            if skip_next:
+                skip_next = False
+                continue
+            result.append(elem)
+    return ' * '.join(result)
+
+
+def ask_ahdictionary(query: str) -> Dictionary | None:
     #
     # American Heritage Dictionary
     ##
@@ -209,12 +218,12 @@ def ask_ahdictionary(query: str) -> Dictionary | None:
         # distinction is important if we want to translate AHD to IPA somewhat accurately.
         th = 'ð' if header.find('i') else 'θ'
         header = header.text.split('\n', 1)[0].replace('(', ' (').replace(')', ') ')
-        phrase, phon_spell = extract_phrase_and_phonetic_spelling(header)
+        phrase, phon_spell = _extract_phrase_and_phonetic_spelling(header)
 
         if config['toipa']:
-            phon_spell = translate_ahd_to_ipa(phon_spell, th)
+            phon_spell = _translate_ahd_to_ipa(phon_spell, th)
         else:
-            phon_spell = fix_stress_and_remove_private_symbols(phon_spell)
+            phon_spell = _fix_stress_and_remove_private_symbols(phon_spell)
 
         if before_phrase:
             before_phrase = False
@@ -232,13 +241,13 @@ def ask_ahdictionary(query: str) -> Dictionary | None:
             pos_labels.discard('th')
 
             # Gather phrase tenses
-            inflections = get_phrase_inflections(block.contents[1:])
+            inflections = _get_phrase_inflections(block.contents[1:])
             # ' '.joining an empty set gives an empty string ''.
             ahd.add('LABEL', ' '.join(pos_labels), inflections)
 
             # Add definitions and their corresponding elements
             for def_root in block.find_all('div', class_=('ds-list', 'ds-single'), recursive=False):
-                def_root = definition_cleanup(def_root.text)
+                def_root = _definition_cleanup(def_root.text)
                 for i, subdefinition in enumerate(def_root.split('*')):
                     def_type = 'DEF' if not i else 'SUBDEF'
                     # strip an occasional leftover octothorpe
@@ -257,16 +266,16 @@ def ask_ahdictionary(query: str) -> Dictionary | None:
             # removing ',' makes parts of speech with multiple spelling variants get
             # their phonetic spelling correctly detected
             runseg = runseg.text.replace('(', ' (').replace(')', ') ')
-            pos, phon_spell = extract_phrase_and_phonetic_spelling(runseg)
+            pos, phon_spell = _extract_phrase_and_phonetic_spelling(runseg)
 
-            pos = fix_stress_and_remove_private_symbols(pos)
+            pos = _fix_stress_and_remove_private_symbols(pos)
 
             if config['toipa']:
                 # this is very general, I have no idea how to differentiate these correctly
                 th = 'ð' if pos.startswith('th') else 'θ'
-                phon_spell = translate_ahd_to_ipa(phon_spell, th)
+                phon_spell = _translate_ahd_to_ipa(phon_spell, th)
             else:
-                phon_spell = fix_stress_and_remove_private_symbols(phon_spell)
+                phon_spell = _fix_stress_and_remove_private_symbols(phon_spell)
 
             td_pos.append(f'{pos}|{phon_spell}')
         if len(td_pos) > 1:
@@ -275,6 +284,41 @@ def ask_ahdictionary(query: str) -> Dictionary | None:
         # Add etymologies
         etymology = td.find('div', class_='etyseg', recursive=False)
         if etymology is not None:
-            ahd.add('ETYM', etymology.text.strip())
+            etym = etymology.text.strip()
+            if config['shortetyms']:
+                ahd.add('ETYM', _format_etymology(etym.strip('[]')))
+            else:
+                ahd.add('ETYM', etym)
 
     return ahd
+
+
+def _separate(i: Iterable[Any], pred: Callable[[Any], bool]) -> tuple[list, list]:
+    return list(filter(pred, i)), list(filterfalse(pred, i))
+
+
+def _format_etymology(_input: str) -> str:
+    if ',' not in _input:
+        return _input
+
+    etymology = _input.rstrip('.').split(';', 1)[0]
+    etymology, _, _ = etymology.partition(':')
+
+    first_part, *parts = etymology.split(',')
+    lang, _word = _separate(first_part.split(), str.istitle)
+    result = [
+        (
+            ' '.join(lang) + (f' ({" ".join(_word)})' if _word else '')
+        ).strip()
+    ]
+    for part in parts:
+        _from, *rest = part.split()
+        if _from == 'from':
+            lang, _word = _separate(rest, str.istitle)
+            result.append(
+                (
+                    ' '.join(lang) + (f' ({" ".join(_word)})' if _word else '')
+                ).strip()
+            )
+
+    return ' <- '.join(result)

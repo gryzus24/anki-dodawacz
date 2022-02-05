@@ -52,7 +52,7 @@ CONFIG_COLUMNS = tuple(
             '-textwrap', '-textwidth', '-columns', '-colviewat', '-indent',
             '',
             '[filtering config.]',
-            '-fsubdefs', '-fnolabel', '-toipa',
+            '-fsubdefs', '-fnolabel', '-toipa', '-shortetyms',
             '',
             '[ankiconnect conf.]',
             '-ankiconnect', '-duplicates', '-dupescope', '-note', '-deck', '-tags',
