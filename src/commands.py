@@ -17,9 +17,9 @@ from __future__ import annotations
 
 import json
 import os
+import shutil
 import sys
 from itertools import zip_longest
-from shutil import get_terminal_size
 from typing import Any, NoReturn, Sequence
 
 from src.colors import (BOLD, DEFAULT, GEX, R, YEX, def1_c, def2_c, defsign_c, delimit_c,
@@ -180,7 +180,7 @@ def set_input_field_defaults(*args: str, **ignore: Any) -> str | None:
 
 def print_config_representation() -> None:
     if config['textwidth'][1] == '* auto':
-        terminal_width = get_terminal_size().columns
+        terminal_width = shutil.get_terminal_size().columns
         if terminal_width != config['textwidth'][0]:
             save_command('textwidth', [terminal_width, '* auto'])
     if config['columns'][1] == '* auto':
@@ -252,7 +252,7 @@ def set_width_settings(*args: str, **kwargs: str) -> str | None:
             return None
 
     if cmd == '-textwidth':
-        v = [get_terminal_size().columns, '* auto']
+        v = [shutil.get_terminal_size().columns, '* auto']
     elif cmd == '-colviewat':
         v = [67, '']
     elif cmd == '-columns':

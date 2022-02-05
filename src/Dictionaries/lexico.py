@@ -148,6 +148,7 @@ def ask_lexico(query: str) -> Dictionary | None:
             phrase_ = phrase_.find(recursive=False, text=True)
 
             if before_phrase:
+                before_phrase = False
                 if _previous_query is not None and _previous_query != query:
                     lexico.add('NOTE', f' Results for {phrase_c}{phrase_}')
                     _previous_query = None  # global

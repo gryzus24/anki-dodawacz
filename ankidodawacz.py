@@ -17,8 +17,8 @@ from __future__ import annotations
 
 import binascii
 import os.path
+import shutil
 from itertools import chain
-from shutil import get_terminal_size
 from typing import Generator, NoReturn, Optional, Sequence
 
 import src.anki_interface as anki
@@ -336,7 +336,7 @@ def parse_flags(flags: Sequence[str]) -> tuple[list[str], ...]:
 
 
 def get_config_terminal_size() -> tuple[int, int]:
-    term_width, term_height = get_terminal_size()
+    term_width, term_height = shutil.get_terminal_size()
     config_width, flag = config['textwidth']
 
     if flag == '* auto' or config_width > term_width:
