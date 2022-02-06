@@ -301,24 +301,24 @@ def _shorten_etymology(_input: str) -> str:
     if ',' not in _input:
         return _input
 
-    etymology = _input.rstrip('.').split(';', 1)[0]
+    etymology, _, _ = _input.rstrip('.').partition(';')
     etymology, _, _ = etymology.partition(':')
 
     first_part, *parts = etymology.split(',')
-    lang, _word = _separate(first_part.split(), str.istitle)
+    lang, word = _separate(first_part.split(), str.istitle)
     result = [
         (
-            ' '.join(lang) + (f' ({" ".join(_word)})' if _word else '')
+            ' '.join(lang) + (f' ({" ".join(word)})' if word else '')
         ).strip()
     ]
     for part in parts:
         _from, *rest = part.split()
         if _from == 'from':
-            lang, _word = _separate(rest, str.istitle)
+            lang, word = _separate(rest, str.istitle)
             result.append(
                 (
-                    ' '.join(lang) + (f' ({" ".join(_word)})' if _word else '')
+                    ' '.join(lang) + (f' ({" ".join(word)})' if word else '')
                 ).strip()
             )
 
-    return ' <- '.join(result)
+    return ' ← '.join(result)
