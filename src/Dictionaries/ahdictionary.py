@@ -237,32 +237,40 @@ def ask_ahdictionary(query: str) -> Dictionary | None:
 
         for block in td.find_all('div', class_='pseg', recursive=False):
             # Gather part of speech labels
-            pos_labels = block.find_all('i', recursive=False)
-            pos_labels = {x.text.strip() for x in pos_labels if x.text.strip()}
-            pos_labels.discard('th')
-
-            # Gather phrase tenses
+            label_tags = block.find_all('i', recursive=False)
+            labels = ' '.join(
+                x for x in map(lambda y: y.text.strip(), label_tags)
+                if x and x != 'th'
+            )
+            # Gather phrase tense inflections
             inflections = _get_phrase_inflections(block.contents[1:])
-            # ' '.joining an empty set gives an empty string ''.
-            ahd.add('LABEL', ' '.join(pos_labels), inflections)
+            ahd.add('LABEL', labels, inflections)
 
             # Add definitions and their corresponding elements
             for def_root in block.find_all('div', class_=('ds-list', 'ds-single'), recursive=False):
-                def_root = _definition_cleanup(def_root.text)
-                for i, subdefinition in enumerate(def_root.split('*')):
-                    def_type = 'DEF' if not i else 'SUBDEF'
-                    # strip an occasional leftover octothorpe
-                    subdef, _, exsen = subdefinition.strip('# ').partition(':')
-                    subdef = subdef.strip(' .') + '.'
+                first_def, *rest = _definition_cleanup(def_root.text).split('*')
+                # strip an occasional leftover octothorpe
+                first_def, _, first_exsen = first_def.strip('# ').partition(':')
+                first_exsen = first_exsen.strip()
+                if first_exsen:
+                    # Separate examples with '<br>' to avoid
+                    # semicolon conflicts in other dictionaries
+                    first_exsen = '<br>'.join(
+                        f"‘{x.strip()}’" for x in first_exsen.split(';')
+                    )
+                ahd.add('DEF', first_def.strip(' .') + '.', first_exsen)
+
+                for subdef in rest:
+                    subdef, _, exsen = subdef.strip('# ').partition(':')
                     exsen = exsen.strip()
                     if exsen:
-                        # Separate examples with '<br>' to avoid
-                        # semicolon conflicts in other dictionaries
-                        exsen = '<br>'.join('‘' + e.strip() + '’' for e in exsen.split(';'))
-                    ahd.add(def_type, subdef, exsen)
+                        exsen = '<br>'.join(
+                            f"‘{x.strip()}’" for x in exsen.split(';')
+                        )
+                    ahd.add('SUBDEF', subdef.strip(' .') + '.', exsen)
 
         # Add parts of speech
-        td_pos = ['POS']
+        td_pos = []
         for runseg in td.find_all('div', class_='runseg', recursive=False):
             # removing ',' makes parts of speech with multiple spelling variants get
             # their phonetic spelling correctly detected
@@ -279,8 +287,8 @@ def ask_ahdictionary(query: str) -> Dictionary | None:
                 phon_spell = _fix_stress_and_remove_private_symbols(phon_spell)
 
             td_pos.append(f'{pos}|{phon_spell}')
-        if len(td_pos) > 1:
-            ahd.add(*td_pos)
+        if td_pos:
+            ahd.add('POS', *td_pos)
 
         # Add etymologies
         etymology = td.find('div', class_='etyseg', recursive=False)

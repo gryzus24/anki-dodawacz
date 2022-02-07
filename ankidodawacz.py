@@ -257,7 +257,7 @@ def manage_audio(
     elif server == 'lexico':
         audio_url = lexico_audio(phrase)
     else:
-        assert False, 'unreachable'
+        raise AssertionError('unreachable')
 
     if audio_url:
         return save_audio_url(audio_url)

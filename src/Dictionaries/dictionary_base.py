@@ -398,7 +398,7 @@ class Dictionary:
                 padding = (textwidth + len(phrase_c) - len(note)) * ' '
                 buffer.append(f'{R}{BOLD}{note}{DEFAULT}{padding}')
             else:
-                assert False, f'unreachable dictionary operation: {op!r}'
+                raise AssertionError(f'unreachable dictionary operation: {op!r}')
 
         return buffer
 

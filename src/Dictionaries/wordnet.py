@@ -49,7 +49,7 @@ class WordNet(Dictionary):
                 for line in rest:
                     buffer.append(f'{syngloss_c}{line}')
             else:
-                assert False, f'unreachable wordnet operation: {op!r}'
+                raise AssertionError(f'unreachable wordnet operation: {op!r}')
 
         return buffer
 

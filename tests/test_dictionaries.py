@@ -14,6 +14,17 @@ from src.data import config
 #   run with `python` or `pytest -sv (--full-trace if looking for crashes)`
 #
 #   `rm test_dictionaries.py && cp tests/test_dictionaries.py . && pytest -sv --full-trace test_dictionaries.py`
+#
+# PROBLEMATIC AHD QUERIES:
+#   gift-wrap : 'or' in inflections
+#   anaphylaxis : phonetic spelling in parts of speech
+#   decerebrate : 'also' in labels
+#   warehouse : 'also' in labels and inflections
+#   sutra : broken definition
+#   gymnasium : definition label in labels? Actually I like this behavior TODO
+#   short : broken definition (breaks column alignment)
+#   desiccate : 'also' in labels
+#   redress : 'also' in labels
 
 WORDS_FILE_PATH = None
 SAMPLE_SIZE = 80
@@ -22,6 +33,11 @@ SAMPLE_SIZE = 80
 LOG_LEVEL = 'ALL'
 SAVE_TESTED_WORDS_TO_FILE = True
 BUFFER_SIZE = SAMPLE_SIZE // 4
+
+# test_words = {
+#     'gift-wrap', 'anaphylaxis', 'decerebrate', 'warehouse', 'sutra', 'gymnasium',
+#     'shortness', 'desiccate', 'redress',
+# }
 
 test_words = {
     'batches', 'beach', 'like', 'tombac', 'tombacs',
@@ -57,38 +73,41 @@ def load_words(filepath=None):
 
 class Setup:
     def __init__(self):
-        self.words = load_words(WORDS_FILE_PATH)
-        sys.stdout.write(f'\nTotal words loaded : {GEX}{len(self.words)}\n')
-
+        self.words = {}
         self.tested_words = {}
+        self.buffer = {}
+
+        words = load_words(WORDS_FILE_PATH)
+        sys.stdout.write(f'\nTotal words loaded : {GEX}{len(words)}\n')
+
         if SAVE_TESTED_WORDS_TO_FILE:
             try:
                 with open('_tested_words.json') as f:
-                    tested_words = json.load(f)
+                    tested_words: dict[str, list] = json.load(f)
             except (FileNotFoundError, json.JSONDecodeError):
                 with open('_tested_words.json', 'w') as f:
                     f.write('{}')
             else:
                 sys.stdout.write(f'Total words tested : {GEX}{len(tested_words)}\n')
+
+                words.difference_update(set(tested_words))
+                if not words:
+                    sys.stdout.write('\n* * *  No words to test  * * *\n')
+                    if tested_words:
+                        sys.stdout.write('Rerunning already tested words\n\n')
+                        words = tested_words
+                    else:
+                        sys.stdout.write('Exiting...\n')
+                        raise SystemExit
+
+                sys.stdout.write(f'Words left to test : {GEX}{len(words)}\n')
                 self.tested_words = tested_words
 
-                self.words.difference_update(set(tested_words))
-                if not self.words:
-                    sys.stdout.write('\n* * *  No words to test  * * *\n')
-                if self.tested_words:
-                    sys.stdout.write('Rerunning already tested words\n\n')
-                    self.words = tested_words
-                else:
-                    sys.stdout.write('Exiting...\n')
-                    raise SystemExit
+        if SAMPLE_SIZE < len(words):
+            words = sample(tuple(self.words), SAMPLE_SIZE)
 
-                sys.stdout.write(f'Words left to test : {GEX}{len(self.words)}\n')
-
-        if SAMPLE_SIZE < len(self.words):
-            self.words = sample(tuple(self.words), k=SAMPLE_SIZE)
-
-        sys.stdout.write(f'Testing now        : {GEX}{len(self.words)}\n\n')
-        self.buffer = {}
+        sys.stdout.write(f'Testing now        : {GEX}{len(words)}\n\n')
+        self.words = words
 
     @property
     def longest_word_len(self):
@@ -123,10 +142,6 @@ def is_funny(string):
     if om > 1023 and chr(om) not in '′“”‘’—––•…':
         return True
     return False
-
-# Currently problematic AHD words:
-#   gift-wrap, anaphylaxis, decerebrate, warehouse, sutra, gymnasium,
-#   shortness, desiccate, redress
 
 
 def dictionary_content_check(dictionary):

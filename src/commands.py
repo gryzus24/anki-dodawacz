@@ -236,7 +236,7 @@ def set_width_settings(*args: str, **kwargs: str) -> str | None:
     elif cmd in ('-colviewat', '-indent'):
         lower = 0
     else:
-        assert False, 'unreachable in `set_width_settings`'
+        raise AssertionError('unreachable in `set_width_settings`')
 
     if value != 'auto':
         try:
@@ -263,7 +263,7 @@ def set_width_settings(*args: str, **kwargs: str) -> str | None:
     elif cmd == '-indent':
         v = [0, '']
     else:
-        assert False, 'unreachable in `set_width_settings`'
+        raise AssertionError('unreachable in `set_width_settings`')
 
     print(f'{R}{kwargs["message"]}: {GEX}{"".join(map(str, v))}')
     save_command(cmd, v)
