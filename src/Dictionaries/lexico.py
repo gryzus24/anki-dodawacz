@@ -98,7 +98,7 @@ def ask_lexico(query: str) -> Dictionary | None:
     def add_def(definition_: Any, example_: str = '', deftype: str = 'DEF') -> None:
         # little cleanup to prevent random newlines inside of examples
         # as is the case with "suspicion"
-        example_ = example_.replace('‘', '', 1).replace('’', '', 1).strip()
+        example_ = example_[1:-1].strip()
         if example_:
             example_ = '‘' + example_ + '’'
         lexico.add(deftype, definition_.strip(), example_)
@@ -127,14 +127,13 @@ def ask_lexico(query: str) -> Dictionary | None:
 
     page_check = main_div.find('div', class_='breadcrumbs layout', recursive=False)
     if page_check.get_text(strip=True) == 'HomeEnglish':
-        revive = main_div.find('a', class_='no-transition')
-        if revive is None:
+        new_query_tag = main_div.find('a', class_='no-transition')
+        if new_query_tag is None:
             print(f'{err_c}Could not find {R}"{query}"{err_c} in Lexico')
             return None
         else:
-            revive = revive.get('href')
-            revive = revive.rsplit('/', 1)[-1]
             _previous_query = query  # global
+            _, _, revive = new_query_tag.get('href').rpartition('/')
             return ask_lexico(revive)
 
     lexico = Lexico()

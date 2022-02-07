@@ -27,8 +27,8 @@ class FarlexIdioms(Dictionary):
     allow_thesaurus = False
 
     PHRASE = FieldFormat('! {phrase_c}{phrase}{padding}',)
-    DEF    = FieldFormat('{index_c}{index} {def_c}{first_line}', '${def_c}{line}',)
-    EXSEN  = FieldFormat('${index_pad} {exsen_c}{first_line}', '${exsen_c}{line}',)
+    DEF = FieldFormat('{index_c}{index} {def_c}{first_line}', '${def_c}{line}',)
+    EXSEN = FieldFormat('${index_pad} {exsen_c}{first_line}', '${exsen_c}{line}',)
 
     def input_cycle(self) -> dict[str, str] | None:
         def_input = get_user_input('def', self.definitions, '1')

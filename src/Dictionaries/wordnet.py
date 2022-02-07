@@ -72,12 +72,11 @@ def ask_wordnet(query: str) -> Dictionary | None:
 
     wordnet = WordNet()
     for elem in soup.find_all('li'):
-        elem = elem.text.replace('S:', '', 1).strip()
-        temp = elem.split(')', 1)
-        pos, temp = temp[0] + ')', temp[1].split('(', 1)
-        syn = temp[0].strip()
-        gloss = '(' + temp[1].rsplit(')', 1)[0].strip() + ')'
+        _, _, body = elem.text.partition('(')
+        pos, _, body = body.partition(')')
+        syn, _, body = body.partition('(')
+        gloss, _, _ = body.rpartition(')')
 
-        wordnet.add('SYN', syn, gloss, pos)
+        wordnet.add('SYN', syn.strip(), f'({gloss.strip()})', f'({pos})')
 
     return wordnet

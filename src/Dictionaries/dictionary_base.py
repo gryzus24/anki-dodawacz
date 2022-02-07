@@ -139,15 +139,15 @@ COLOR_FORMATS = {
 
 class Dictionary:
     allow_thesaurus: bool
-    name: str  # config name
+    name: str  # name in config
     title: str
 
     PHRASE = FieldFormat('! {phrase_c}{phrase}  {phon_c}{phon}{padding}')
-    LABEL  = FieldFormat('! {poslabel_c}{label}  {inflection_c}{inflections}{padding}')
-    DEF    = FieldFormat('{defsign_c}{sign}{index_c}{index} {def_c}{first_line}', '${def_c}{line}')
-    EXSEN  = FieldFormat('${index_pad}  {exsen_c}{first_line}', '${exsen_c}{line}')
-    POS    = FieldFormat(' {pos_c}{pos}  {phon_c}{phon}{padding}')
-    ETYM   = FieldFormat(' {etym_c}{first_line}', '${etym_c}{line}')
+    LABEL = FieldFormat('! {poslabel_c}{label}  {inflection_c}{inflections}{padding}')
+    DEF = FieldFormat('{defsign_c}{sign}{index_c}{index} {def_c}{first_line}', '${def_c}{line}')
+    EXSEN = FieldFormat('${index_pad}  {exsen_c}{first_line}', '${exsen_c}{line}')
+    POS = FieldFormat(' {pos_c}{pos}  {phon_c}{phon}{padding}')
+    ETYM = FieldFormat(' {etym_c}{first_line}', '${etym_c}{line}')
 
     def __init__(self) -> None:
         self.contents: list[Sequence[str]] = []

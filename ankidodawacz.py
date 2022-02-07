@@ -197,7 +197,7 @@ def manage_thesauri(query: str) -> dict[str, str] | None:
 
 
 def save_audio_url(audio_url: str) -> str | NoReturn:
-    filename = audio_url.rsplit('/', 1)[-1]
+    _, _, filename = audio_url.rpartition('/')
     audio_content = http.urlopen('GET', audio_url).data
     audio_path = config['audio_path']
 

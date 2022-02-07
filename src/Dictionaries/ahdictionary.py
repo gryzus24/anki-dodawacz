@@ -217,7 +217,8 @@ def ask_ahdictionary(query: str) -> Dictionary | None:
         # AHD uses italicized "th" to represent 'ð' and normal "th" to represent 'θ',
         # distinction is important if we want to translate AHD to IPA somewhat accurately.
         th = 'ð' if header.find('i') else 'θ'
-        header = header.text.split('\n', 1)[0].replace('(', ' (').replace(')', ') ')
+        header, _, _ = header.text.partition('\n')
+        header = header.replace('(', ' (').replace(')', ') ')
         phrase, phon_spell = _extract_phrase_and_phonetic_spelling(header)
 
         if config['toipa']:
