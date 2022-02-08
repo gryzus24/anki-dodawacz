@@ -1,10 +1,12 @@
+from __future__ import annotations
+
 import json
 import sys
 from random import sample
 
 from src.Dictionaries.ahdictionary import ask_ahdictionary
 from src.Dictionaries.lexico import ask_lexico
-from src.colors import GEX, R, err_c
+from src.colors import GEX, YEX, R, err_c
 from src.data import config
 
 # SETUP:
@@ -21,7 +23,7 @@ from src.data import config
 #   decerebrate : 'also' in labels
 #   warehouse : 'also' in labels and inflections
 #   sutra : broken definition
-#   gymnasium : definition label in labels? Actually I like this behavior TODO
+#   gymnasium : definition label in labels?
 #   short : broken definition (breaks column alignment)
 #   desiccate : 'also' in labels
 #   redress : 'also' in labels
@@ -63,17 +65,17 @@ def load_words(filepath=None):
 
     if filepath.endswith('.json'):
         with open(filepath) as f:
-            return {x.strip() for x in json.load(f) if x.strip()}
+            return set(filter(None, map(str.strip, json.load(f))))
     elif filepath.endswith('.txt'):
         with open(filepath) as f:
-            return {x.strip() for x in f if x.strip()}
+            return set(filter(None, map(str.strip, f)))
     else:
         return test_words
 
 
 class Setup:
     def __init__(self):
-        self.words = {}
+        self.words = set()
         self.tested_words = {}
         self.buffer = {}
 
@@ -92,9 +94,9 @@ class Setup:
 
                 words.difference_update(set(tested_words))
                 if not words:
-                    sys.stdout.write('\n* * *  No words to test  * * *\n')
+                    sys.stdout.write(f'{YEX}\n* * *  No words to test  * * *\n')
                     if tested_words:
-                        sys.stdout.write('Rerunning already tested words\n\n')
+                        sys.stdout.write(f'{YEX}Rerunning already tested words\n\n')
                         words = tested_words
                     else:
                         sys.stdout.write('Exiting...\n')
@@ -104,7 +106,7 @@ class Setup:
                 self.tested_words = tested_words
 
         if SAMPLE_SIZE < len(words):
-            words = sample(tuple(self.words), SAMPLE_SIZE)
+            words = sample(tuple(words), SAMPLE_SIZE)
 
         sys.stdout.write(f'Testing now        : {GEX}{len(words)}\n\n')
         self.words = words

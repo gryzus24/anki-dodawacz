@@ -66,7 +66,7 @@ def ask_wordnet(query: str) -> Dictionary | None:
         return None
 
     header = soup.find('h3').text
-    if header.startswith('Your') or header.startswith('Sorry'):
+    if header.startswith(('Your', 'Sorry')):
         print(f'{err_c}Could not find {R}"{query}"{err_c} on WordNet')
         return None
 

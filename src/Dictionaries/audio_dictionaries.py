@@ -56,7 +56,7 @@ def diki_audio(raw_phrase: str, flag: str = '') -> str:
     def get_longest_word(*ignore: str) -> str:
         # Returning diki_phrase here essentially means diki doesn't have the audio.
         s = max(diki_phrase.split('_'), key=len)
-        if len(s) < 4 or s.startswith('some') or s.startswith('onesel'):
+        if len(s) < 4 or s.startswith(('some', 'onesel')):
             return diki_phrase
         return s
 

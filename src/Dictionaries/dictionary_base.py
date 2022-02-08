@@ -44,7 +44,7 @@ def multi_split(string: str, *split_args: str) -> list[str]:
 
 
 def should_skip(label: str, flags: Iterable[str]) -> bool:
-    labels_list = [x.lower() for x in multi_split(label, ' ', '.', '&')]
+    labels = tuple(map(str.lower, multi_split(label, ' ', '.', '&')))
 
     skip_if_match = False
     for flag in flags:
@@ -54,7 +54,7 @@ def should_skip(label: str, flags: Iterable[str]) -> bool:
         else:
             skip_if_match = False
 
-        for label in labels_list:
+        for label in labels:
             if label.startswith(flag) or flag.startswith(label):
                 return skip_if_match
 
