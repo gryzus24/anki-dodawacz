@@ -102,19 +102,6 @@ def _fix_stress_and_remove_private_symbols(s: str) -> str:
         .replace('', 'o͞o').replace('', 'o͝o')
 
 
-def _definition_cleanup(definition: str) -> str:
-    rex = definition.lstrip('1234567890. a')
-    rex = rex.split(' See Usage Note at')[0]
-    for letter in 'abcdefghijklmn':
-        rex = rex.replace(f":{letter}. ", ": *")
-        rex = rex.replace(f".{letter}. ", ". *")
-        rex = rex.replace(f". {letter}. ", ".* ")
-        # when definition has an example with a '?' there's no space in between
-        rex = rex.replace(f"?{letter}. ", "? *")
-    rex = _fix_stress_and_remove_private_symbols(rex.strip())
-    return rex.replace('  ', ' # ')
-
-
 def _extract_phrase_and_phonetic_spelling(s: str) -> tuple[str, str]:
     _phrase = []
     _phon_spell = []
@@ -181,10 +168,57 @@ def _get_phrase_inflections(content: list) -> str:
     return ' * '.join(result)
 
 
+def _get_def_and_exsen(s: str) -> tuple[str, str]:
+    _def, _, _exsen = s.partition(':')
+    _def, _, _ = _def.partition('See Synonyms')
+    _def, _, _ = _def.partition('See Usage Note')
+    _def, _, _ = _def.partition('See Table')
+    _def = _def.strip(' .') + '.'
+
+    _exsen, _, _ = _exsen.partition('See Synonyms')
+    _exsen, _, _ = _exsen.partition('See Usage Note')
+    _exsen = _exsen.strip()
+    if _exsen:
+        _exsen = '<br>'.join(f"‘{x.strip()}’" for x in _exsen.split(';'))
+
+    return _def, _exsen
+
+
+def _separate(i: Iterable[Any], pred: Callable[[Any], bool]) -> tuple[list, list]:
+    return list(filter(pred, i)), list(filterfalse(pred, i))
+
+
+def _shorten_etymology(_input: str) -> str:
+    if ',' not in _input:
+        return _input
+
+    etymology, _, _ = _input.rstrip('.').partition(';')
+    etymology, _, _ = etymology.partition(':')
+
+    first_part, *parts = etymology.split(',')
+    lang, word = _separate(first_part.split(), str.istitle)
+    result = [
+        (
+            ' '.join(lang) + (f' ({" ".join(word)})' if word else '')
+        ).strip()
+    ]
+    for part in parts:
+        _from, *rest = part.split()
+        if _from == 'from':
+            lang, word = _separate(rest, str.istitle)
+            result.append(
+                (
+                    ' '.join(lang) + (f' ({" ".join(word)})' if word else '')
+                ).strip()
+            )
+
+    return ' ← '.join(result)
+
+
+#
+# American Heritage Dictionary
+##
 def ask_ahdictionary(query: str) -> Dictionary | None:
-    #
-    # American Heritage Dictionary
-    ##
     query = query.strip(' \'";')
     if not query:
         print(f'{err_c}Invalid query')
@@ -235,39 +269,46 @@ def ask_ahdictionary(query: str) -> Dictionary | None:
 
         ahd.add('PHRASE', phrase, phon_spell)
 
-        for block in td.find_all('div', class_='pseg', recursive=False):
+        for labeled_block in td.find_all('div', class_='pseg', recursive=False):
             # Gather part of speech labels
-            label_tags = block.find_all('i', recursive=False)
+            label_tags = labeled_block.find_all('i', recursive=False)
             labels = ' '.join(
                 x for x in map(lambda y: y.text.strip(), label_tags)
                 if x and x != 'th'
             )
             # Gather phrase tense inflections
-            inflections = _get_phrase_inflections(block.contents[1:])
+            inflections = _get_phrase_inflections(labeled_block.contents[1:])
             ahd.add('LABEL', labels, inflections)
 
-            # Add definitions and their corresponding elements
-            for def_root in block.find_all('div', class_=('ds-list', 'ds-single'), recursive=False):
-                first_def, *rest = _definition_cleanup(def_root.text).split('*')
-                # strip an occasional leftover octothorpe
-                first_def, _, first_exsen = first_def.strip('# ').partition(':')
-                first_exsen = first_exsen.strip()
-                if first_exsen:
-                    # Separate examples with '<br>' to avoid
-                    # semicolon conflicts in other dictionaries
-                    first_exsen = '<br>'.join(
-                        f"‘{x.strip()}’" for x in first_exsen.split(';')
-                    )
-                ahd.add('DEF', first_def.strip(' .') + '.', first_exsen)
+            # Add definitions and labels
+            for def_block in labeled_block.find_all(
+                'div', class_=('ds-list', 'ds-single'), recursive=False
+            ):
+                subdefs = def_block.find_all('div', class_='sds-list', recursive=False)
+                if not subdefs:
+                    temp = def_block.text.strip().lstrip('1234567890. ')
+                    def_label, _, rest = temp.rpartition('   ')
+                    if f'{phrase}s ' in def_label:
+                        def_label = def_label.replace(f'{phrase}s ', f'{phrase}s ~ ')
 
-                for subdef in rest:
-                    subdef, _, exsen = subdef.strip('# ').partition(':')
-                    exsen = exsen.strip()
-                    if exsen:
-                        exsen = '<br>'.join(
-                            f"‘{x.strip()}’" for x in exsen.split(';')
-                        )
-                    ahd.add('SUBDEF', subdef.strip(' .') + '.', exsen)
+                    ahd.add('DEF', *_get_def_and_exsen(rest), def_label.strip())
+                else:
+                    label_tag = def_block.find('i', recursive=False)
+                    def_label = '' if label_tag is None else label_tag.text.strip()
+
+                    def_type = 'DEF'
+                    for subdef in subdefs:
+                        _, _, rest = subdef.text.strip().partition(' ')
+                        if not def_label:
+                            def_label, _, rest = rest.rpartition('   ')
+                        if f'{phrase}s ' in def_label:
+                            def_label = def_label.replace(f'{phrase}s ', f'{phrase}s ~ ')
+
+                        ahd.add(def_type, *_get_def_and_exsen(rest), def_label.strip())
+
+                        # exhausted
+                        def_type = 'SUBDEF'
+                        def_label = ''
 
         # Add parts of speech
         td_pos = []
@@ -299,35 +340,32 @@ def ask_ahdictionary(query: str) -> Dictionary | None:
             else:
                 ahd.add('ETYM', etym)
 
+        # Add idioms
+        for idiom_block in td.find_all('div', class_='idmseg', recursive=False):
+            b_tags = idiom_block.find_all('b', recursive=False)
+            phrase = ' '.join(filter(None, map(lambda x: x.text.strip(), b_tags)))
+            phrase = '/'.join(map(str.strip, phrase.split('/')))
+
+            ahd.add('HEADER', HORIZONTAL_BAR)
+            ahd.add('PHRASE', phrase, '')
+
+            for def_block in idiom_block.find_all(
+                'div', class_=('ds-list', 'ds-single'), recursive=False
+            ):
+                subdefs = def_block.find_all('div', class_='sds-list', recursive=False)
+                if not subdefs:
+                    _, _, rest = def_block.text.strip().lstrip('1234567890. ').rpartition('   ')
+                    ahd.add('DEF', *_get_def_and_exsen(rest), '')
+                else:
+                    def_type = 'DEF'
+                    for subdef in subdefs:
+                        _, _, rest = subdef.text.strip().partition(' ')
+                        ahd.add(def_type, *_get_def_and_exsen(rest), '')
+
+                        # exhausted
+                        def_type = 'SUBDEF'
+
+        # for syn_block in td.find_all('div', class_='syntx', recursive=False):
+        #     print(syn_block.text)
+
     return ahd
-
-
-def _separate(i: Iterable[Any], pred: Callable[[Any], bool]) -> tuple[list, list]:
-    return list(filter(pred, i)), list(filterfalse(pred, i))
-
-
-def _shorten_etymology(_input: str) -> str:
-    if ',' not in _input:
-        return _input
-
-    etymology, _, _ = _input.rstrip('.').partition(';')
-    etymology, _, _ = etymology.partition(':')
-
-    first_part, *parts = etymology.split(',')
-    lang, word = _separate(first_part.split(), str.istitle)
-    result = [
-        (
-            ' '.join(lang) + (f' ({" ".join(word)})' if word else '')
-        ).strip()
-    ]
-    for part in parts:
-        _from, *rest = part.split()
-        if _from == 'from':
-            lang, word = _separate(rest, str.istitle)
-            result.append(
-                (
-                    ' '.join(lang) + (f' ({" ".join(word)})' if word else '')
-                ).strip()
-            )
-
-    return ' ← '.join(result)

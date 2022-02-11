@@ -85,7 +85,7 @@ def ask_farlex(query: str) -> Dictionary | None:
         else:
             examples = ''
 
-        farlex.add('DEF', definition, examples)
+        farlex.add('DEF', definition, examples, '')
         farlex.add('HEADER', ' ')
 
     return farlex

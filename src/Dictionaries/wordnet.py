@@ -17,7 +17,7 @@ from __future__ import annotations
 
 from src.Dictionaries.dictionary_base import Dictionary
 from src.Dictionaries.utils import request_soup, wrap_and_pad
-from src.colors import R, err_c, index_c, poslabel_c, syn_c, syngloss_c
+from src.colors import R, err_c, index_c, label_c, syn_c, syngloss_c
 from src.input_fields import get_user_input
 
 
@@ -40,7 +40,7 @@ class WordNet(Dictionary):
                 pos = body[2]
                 pos_len = len(pos)
                 first_line, *rest = wrap_method(body[0], pos_len + index_len + 2, 0)
-                buffer.append(f'{index_c}{index} {poslabel_c}{pos} {syn_c}{first_line}')
+                buffer.append(f'{index_c}{index} {label_c}{pos} {syn_c}{first_line}')
                 for line in rest:
                     buffer.append(f'{syn_c}{line}')
 

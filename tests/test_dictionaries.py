@@ -27,6 +27,8 @@ from src.data import config
 #   short : broken definition (breaks column alignment)
 #   desiccate : 'also' in labels
 #   redress : 'also' in labels
+#   better : '.' in inflections
+#   flagellate: 'also' in labels
 
 WORDS_FILE_PATH = None
 SAMPLE_SIZE = 80
@@ -38,7 +40,7 @@ BUFFER_SIZE = SAMPLE_SIZE // 4
 
 # test_words = {
 #     'gift-wrap', 'anaphylaxis', 'decerebrate', 'warehouse', 'sutra', 'gymnasium',
-#     'shortness', 'desiccate', 'redress',
+#     'shortness', 'desiccate', 'redress', better, flagellate,
 # }
 
 test_words = {
@@ -156,7 +158,7 @@ def dictionary_content_check(dictionary):
         right_paren, left_paren = '/', '/'
 
     def log(msg):
-        log_buffer.append((dictionary_name, '['+op+']', phrase_index, msg))
+        log_buffer.append((dictionary_name, f'[{op}]', phrase_index, msg))
 
     phrase_index = 1
     def_index = 0
@@ -166,13 +168,26 @@ def dictionary_content_check(dictionary):
 
         elif 'DEF' in op:
             def_index += 1
-            if len(body) != 2:
-                log(f'!! | len(body != 2')
+            if len(body) != 3:
+                log(f'!! | len(body != 3')
                 continue
-            if is_funny(body[0]):
+            _def, _exsen, _label = body
+            if is_funny(_def):
                 log(f'?? | potential funny characters in definitions ({def_index})')
-            if body[1] and is_funny(body[1]):
+            if _exsen and is_funny(_exsen):
                 log(f'?? | potential funny characters in example sentences ({def_index})')
+            if _label and is_funny(_label):
+                log(f'?? | potential funny characters in labels ({def_index})')
+
+            # Extra checks
+            if '  ' in _def:
+                log(f'?? | double spaces in definitions ({def_index})')
+            if '  ' in _exsen:
+                log(f'?? | double spaces in examples ({def_index})')
+            if 'See ' in _exsen:
+                log(f'?? | `See` in examples ({def_index})')
+            if 'See ' in _def:
+                log(f'?? | `See` in definitions ({def_index})')
 
         elif op == 'PHRASE':
             if len(body) != 2:
@@ -197,13 +212,16 @@ def dictionary_content_check(dictionary):
                 if is_funny(phon):
                     log(f'?? | potential funny characters in phonetic spelling: {phon}')
                 if phon.startswith(left_paren) and phon.endswith(right_paren):
-                    log_msg = ['OK']
+                    log_msg = []
                     split_phrase = phrase.lower().split()
                     if phon.isascii():
                         log_msg.append('ASCII phonetic spelling')
                     if 'also' in split_phrase or 'or' in split_phrase:
                         log_msg.append(f'phonetic spelling variants ({len(phon.split())})')
-                    log(' | '.join(log_msg) + ': ' + phon)
+                    if log_msg:
+                        log('OK ' + ' | '.join(log_msg) + ': ' + phon)
+                    else:
+                        log(f'OK {phon}')
                 else:
                     log(f'!! | garbage in phonetic spelling: {phon}')
 
@@ -221,7 +239,7 @@ def dictionary_content_check(dictionary):
                         if is_funny(phon):
                             log(f'?? | potential funny characters in phonetic spelling: {phon}')
                         if phon.startswith(left_paren) and phon.endswith(right_paren):
-                            log(f'OK: {phon}')
+                            log(f'OK {phon}')
                         else:
                             log(f'!! | garbage in phonetic spelling: {phon}')
 
@@ -260,7 +278,7 @@ def print_logs(logs, word, col_width):
             if LOG_LEVEL == 'ERROR':
                 return None
             c = R  # type: ignore
-        sys.stdout.write(f'{dname}: {op:8s} {index:2d} {word:{col_width + 1}s}{c}: {msg}\n')
+        sys.stdout.write(f'{dname} {op:8s} {index:2d} {word:{col_width}s} : {c}{msg}\n')
 
 
 def test_main():
@@ -268,9 +286,9 @@ def test_main():
         longest_word_len = test.longest_word_len
         for word in test.words:
             ahd_logs = ahdictionary_test(word)
-            lex_logs = lexico_test(word)
+            # lex_logs = lexico_test(word)
 
-            logs = ahd_logs + lex_logs
+            logs = ahd_logs  # + lex_logs
             print_logs(logs, word, longest_word_len)
 
             if SAVE_TESTED_WORDS_TO_FILE:

@@ -74,7 +74,7 @@ def get_phonetic_spelling(block_: Any) -> str:
     return ''
 
 
-def get_defs(block_: Any, *, recursive: bool = True) -> str:
+def get_def(block_: Any, *, recursive: bool = True) -> str:
     d = block_.find('span', class_='ind one-click-content', recursive=recursive)
     if d is None:
         return block_.find('div', class_='crossReference').text
@@ -86,26 +86,31 @@ def get_exsen(block_: Any) -> str:
     return '' if e is None else e.text
 
 
-def get_gram_note(block_: Any) -> str:
+def get_label(block_: Any) -> str:
     gn = block_.find('span', class_='grammatical_note')
-    return '' if gn is None else '[' + gn.text + '] '
+    if gn is None:
+        return ''
+    return gn.text.strip()\
+        .replace('with object', 'tr.')\
+        .replace('no object', 'intr.')
 
 
+#
+# Lexico
+##
 _previous_query = None
 
-
 def ask_lexico(query: str) -> Dictionary | None:
-    def add_def(definition_: Any, example_: str = '', deftype: str = 'DEF') -> None:
+    def add_def(
+            definition_: Any, example_: str = '', label_: str = '', deftype: str = 'DEF'
+    ) -> None:
         # little cleanup to prevent random newlines inside of examples
         # as is the case with "suspicion"
         example_ = example_[1:-1].strip()
         if example_:
-            example_ = '‘' + example_ + '’'
-        lexico.add(deftype, definition_.strip(), example_)
+            example_ = f"‘{example_}’"
+        lexico.add(deftype, definition_.strip(), example_, label_)
 
-    #
-    # Lexico
-    ##
     global _previous_query
 
     query = query.strip(' ?/.#')
@@ -180,39 +185,46 @@ def ask_lexico(query: str) -> Dictionary | None:
             pos_label = block.find('span', class_='pos').text.strip()
             if pos_label:
                 trans_note = block.find('span', class_='transitivity').text.strip()
-                lexico.add('LABEL', pos_label, trans_note)
+                if trans_note == '[with object]':
+                    lexico.add('LABEL', 'tr. ' + pos_label, '')
+                elif trans_note == '[no object]':
+                    lexico.add('LABEL', 'intr. ' + pos_label, '')
+                else:
+                    lexico.add('LABEL', pos_label, trans_note)
 
             semb = block.find('ul', class_='semb', recursive=False)
             if semb is None:
                 semb = block.find('div', class_='empty_sense', recursive=False)
                 if not semb.text.strip():
-                    def_ = block.find('div', class_='variant', recursive=False)
-                    add_def(def_.text)
+                    _def = block.find('div', class_='variant', recursive=False)
+                    add_def(_def.text)
                 else:
-                    def_ = semb.find('p', class_='derivative_of', recursive=False)
-                    if def_ is not None:
-                        add_def(def_.text, get_exsen(semb))
+                    _def = semb.find('p', class_='derivative_of', recursive=False)
+                    if _def is not None:
+                        add_def(_def.text, get_exsen(semb))
                     else:
-                        def_ = semb.find('div', class_='crossReference', recursive=False)
-                        if def_ is not None:
-                            add_def(def_.text, get_exsen(semb))
+                        _def = semb.find('div', class_='crossReference', recursive=False)
+                        if _def is not None:
+                            add_def(_def.text, get_exsen(semb))
                         else:  # boot
-                            def_ = semb.find('div', class_='exg', recursive=False)
-                            add_def('Definition is missing! *_*', def_.text)
+                            _def = semb.find('div', class_='exg', recursive=False)
+                            add_def('Definition is missing! *_*', _def.text)
             else:
-                definition_list = semb.find_all('li', recursive=False)
-                for dlist in definition_list:
-                    def_ = get_gram_note(dlist) + get_defs(dlist)
-                    exsen = get_exsen(dlist)
-                    add_def(def_, exsen)
-
+                for dlist in semb.find_all('li', recursive=False):
+                    add_def(
+                        get_def(dlist),
+                        get_exsen(dlist),
+                        get_label(dlist)
+                    )
                     subdef_semb = dlist.find('ol', class_='subSenses')
                     if subdef_semb is not None:
-                        subdefinition_list = subdef_semb.find_all('li', recursive=False)
-                        for sdlist in subdefinition_list:
-                            def_ = get_gram_note(sdlist) + get_defs(sdlist, recursive=False)
-                            exsen = get_exsen(sdlist)
-                            add_def(def_, exsen, deftype='SUBDEF')
+                        for sdlist in subdef_semb.find_all('li', recursive=False):
+                            add_def(
+                                get_def(sdlist, recursive=False),
+                                get_exsen(sdlist),
+                                get_label(sdlist),
+                                'SUBDEF'
+                            )
 
             # Gather audio urls
             previous_blocks = block.find_previous_siblings()[:-1]  # without the breadcrumbs

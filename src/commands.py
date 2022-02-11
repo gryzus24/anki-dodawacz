@@ -24,7 +24,7 @@ from typing import Any, NoReturn, Sequence
 
 from src.colors import (BOLD, DEFAULT, GEX, R, YEX, def1_c, def2_c, defsign_c, delimit_c,
                         err_c, etym_c, exsen_c,
-                        index_c, inflection_c, phon_c, phrase_c, pos_c, poslabel_c, syn_c,
+                        index_c, inflection_c, phon_c, phrase_c, pos_c, label_c, syn_c,
                         syngloss_c)
 from src.data import (LINUX, MAC, ROOT_DIR, WINDOWS, bool_values_dict, cmd_to_msg_usage,
                       config, str_colors_to_color)
@@ -79,7 +79,7 @@ COLOR_TO_MSG = {
     'index': 'Indexes color',
     'phrase': 'Phrase color',
     'phon': 'Phonetic spelling color',
-    'poslabel': 'Part of speech labels color',
+    'label': 'Label color',
     'inflection': 'Inflections and additional label info color',
     'error': 'Errors color',
     'attention': 'Attention drawing color',
@@ -475,7 +475,7 @@ syngloss     {syngloss_c}synonym definitions{R}
 index        {index_c}indexes{R}
 phrase       {phrase_c}phrase{R}
 phon         {phon_c}phonetic spelling{R}
-poslabel     {poslabel_c}part of speech labels{R}
+label     {label_c}part of speech labels{R}
 inflection   {inflection_c}inflections and additional label info{R}
 error        {err_c}errors{R}
 attention    {YEX}attention drawing{R}

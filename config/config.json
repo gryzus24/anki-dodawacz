@@ -52,7 +52,7 @@
 "pos": false,
 "pos_bulk": "auto",
 "pos_c": "yellow",
-"poslabel_c": "lightwhite",
+"label_c": "lightwhite",
 "pz": true,
 "recqual": "4",
 "savecards": true,

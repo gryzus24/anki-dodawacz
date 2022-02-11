@@ -23,7 +23,7 @@ from typing import Any, Callable, Iterable, Optional, Sequence
 from src.Dictionaries.utils import wrap_and_pad
 from src.colors import (BOLD, DEFAULT, R, def1_c, def2_c, defsign_c, delimit_c, etym_c,
                         exsen_c, index_c, inflection_c,
-                        phon_c, phrase_c, pos_c, poslabel_c, syn_c, syngloss_c)
+                        phon_c, phrase_c, pos_c, label_c, syn_c, syngloss_c)
 from src.data import HORIZONTAL_BAR
 
 
@@ -126,7 +126,7 @@ COLOR_FORMATS = {
     'phrase_c': phrase_c,
     'phon_c': phon_c,
     'pos_c': pos_c,
-    'poslabel_c': poslabel_c,
+    'label_c': label_c,
     'inflection_c': inflection_c,
     'etym_c': etym_c,
     'syn_c': syn_c,
@@ -143,8 +143,10 @@ class Dictionary:
     title: str
 
     PHRASE = FieldFormat('! {phrase_c}{phrase}  {phon_c}{phon}{padding}')
-    LABEL = FieldFormat('! {poslabel_c}{label}  {inflection_c}{inflections}{padding}')
-    DEF = FieldFormat('{defsign_c}{sign}{index_c}{index} {def_c}{first_line}', '${def_c}{line}')
+    LABEL = FieldFormat('! {label_c}{label}  {inflection_c}{inflections}{padding}')
+    DEF = FieldFormat(
+        '{defsign_c}{sign}{index_c}{index} {label_c}{label}{def_c}{first_line}', '${def_c}{line}'
+    )
     EXSEN = FieldFormat('${index_pad}  {exsen_c}{first_line}', '${exsen_c}{line}')
     POS = FieldFormat(' {pos_c}{pos}  {phon_c}{phon}{padding}')
     ETYM = FieldFormat(' {etym_c}{first_line}', '${etym_c}{line}')
@@ -312,7 +314,7 @@ class Dictionary:
         # Format self.contents' list of (op, body)
         # into wrapped, colored and padded body lines.
         # Available instructions:
-        #  (DEF,    'definition', 'example_sentence')
+        #  (DEF,    'definition', 'example_sentence', 'label')
         #  (SUBDEF, 'definition', 'example_sentence')
         #  (LABEL,  'pos_label', 'additional_info')
         #  (PHRASE, 'phrase', 'phonetic_spelling')
@@ -334,18 +336,34 @@ class Dictionary:
             # sys.stdout.write(f'{op}\n{body}\n'); continue  # DEBUG
             if 'DEF' in op:
                 index += 1
-                def_c = def1_c if index % 2 else def2_c
-                sign = ' ' if 'SUB' in op else '>'
                 index_len = len(str(index))
 
-                first_line, *rest = wrap_method(body[0], self.DEF.gaps + index_len, indent)
-                _format_push(self.DEF.fl_fmt, sign=sign, index=index, def_c=def_c, first_line=first_line)
+                _def, _exsen, _label = body
+                if _label:
+                    _label = '{' + _label + '} '
+                    label_len = len(_label)
+                else:
+                    label_len = 0
+
+                def_c = def1_c if index % 2 else def2_c
+
+                first_line, *rest = wrap_method(
+                    _def, self.DEF.gaps + index_len + label_len, indent - label_len
+                )
+                _format_push(
+                    self.DEF.fl_fmt,
+                    sign=' ' if 'SUB' in op else '>',
+                    index=index,
+                    label=_label,
+                    def_c=def_c,
+                    first_line=first_line
+                )
                 for line in rest:
                     _format_push(self.DEF.l_fmt, def_c=def_c, line=line)
 
-                if body[1]:
-                    for exsen in body[1].split('<br>'):
-                        first_line, *rest = wrap_method(exsen, self.EXSEN.gaps + index_len, indent + 1)
+                if _exsen:
+                    for ex in _exsen.split('<br>'):
+                        first_line, *rest = wrap_method(ex, self.EXSEN.gaps + index_len, indent + 1)
                         _format_push(self.EXSEN.fl_fmt, index_pad=index_len * ' ', first_line=first_line)
                         for line in rest:
                             _format_push(self.EXSEN.l_fmt, line=line)
@@ -358,7 +376,7 @@ class Dictionary:
                         _format_push(self.LABEL.fl_fmt, label=label, inflections=inflections, padding=padding)
                     else:
                         padding = (textwidth - len(label) - 1) * ' '
-                        buffer.append(f'! {poslabel_c}{label}{padding}')
+                        buffer.append(f'! {label_c}{label}{padding}')
                         padding = (textwidth - len(inflections) - 1) * ' '
                         buffer.append(f'! {inflection_c}{inflections}{padding}')
             elif op == 'PHRASE':
