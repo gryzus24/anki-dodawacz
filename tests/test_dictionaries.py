@@ -6,7 +6,7 @@ from random import sample
 
 from src.Dictionaries.ahdictionary import ask_ahdictionary
 from src.Dictionaries.lexico import ask_lexico
-from src.colors import GEX, YEX, R, err_c
+from src.colors import GEX, R, YEX, err_c
 from src.data import config
 
 # SETUP:

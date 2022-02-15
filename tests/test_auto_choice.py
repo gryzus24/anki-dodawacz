@@ -26,7 +26,7 @@ def test_get_positions_in_sections():
         ('AUDIO', ''),
         ('ETYM', ''),
 
-        ('HEADER', ''),
+        ('HEADER', '', ''),
         ('PHRASE', '', ''),
 
         ('LABEL', '', ''),

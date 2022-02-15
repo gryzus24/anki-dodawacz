@@ -26,7 +26,6 @@ from src.input_fields import get_user_input
 
 
 class AHDictionary(Dictionary):
-    title = 'AH Dictionary'
     name = 'ahd'
     allow_thesaurus = True
 
@@ -94,11 +93,11 @@ def _translate_ahd_to_ipa(ahd_phonetics: str, _th: str) -> str:
     # consonants, vowels, and single chars.
     ahd_phonetics = ahd_phonetics.translate(AHD_IPA_translation)
     # stress and hyphenation
-    return ahd_phonetics.replace('-', '.').replace('′', 'ˌ').replace('', 'ˈ')
+    return ahd_phonetics.replace('', '.').replace('′', 'ˌ').replace('-', 'ˈ')
 
 
 def _fix_stress_and_remove_private_symbols(s: str) -> str:
-    return s.replace('′', 'ˌ').replace('', 'ˈ')\
+    return s.replace('′', 'ˌ').replace('', '.')\
         .replace('', 'o͞o').replace('', 'o͝o')
 
 
@@ -239,11 +238,6 @@ def ask_ahdictionary(query: str) -> Dictionary | None:
     ahd = AHDictionary()
     before_phrase = True
     for td in soup.find_all('td'):
-        # Gather audio urls
-        audio_url = td.find('a', {'target': '_blank'})
-        if audio_url is not None:
-            ahd.add('AUDIO', 'https://www.ahdictionary.com' + audio_url.get('href').strip())
-
         header = td.find('div', class_='rtseg', recursive=False)
         if header is None:  # if there are more tables present, e.g. Bible
             continue
@@ -262,10 +256,16 @@ def ask_ahdictionary(query: str) -> Dictionary | None:
 
         if before_phrase:
             before_phrase = False
+            ahd.add('HEADER', HORIZONTAL_BAR, 'AH Dictionary')
             if phrase.lower() != query.lower():
                 ahd.add('NOTE', f' Results for {phrase_c}{phrase}')
         else:
-            ahd.add('HEADER', HORIZONTAL_BAR)
+            ahd.add('HEADER', HORIZONTAL_BAR, '')
+
+        # Gather audio urls
+        audio_url = td.find('a', {'target': '_blank'})
+        if audio_url is not None:
+            ahd.add('AUDIO', 'https://www.ahdictionary.com' + audio_url['href'].strip())
 
         ahd.add('PHRASE', phrase, phon_spell)
 
@@ -341,12 +341,14 @@ def ask_ahdictionary(query: str) -> Dictionary | None:
                 ahd.add('ETYM', etym)
 
         # Add idioms
-        for idiom_block in td.find_all('div', class_='idmseg', recursive=False):
+        filling, title = HORIZONTAL_BAR, 'Idioms'
+        idioms = td.find_all('div', class_='idmseg', recursive=False)
+        for idiom_block in idioms:
             b_tags = idiom_block.find_all('b', recursive=False)
             phrase = ' '.join(filter(None, map(lambda x: x.text.strip(), b_tags)))
             phrase = '/'.join(map(str.strip, phrase.split('/')))
 
-            ahd.add('HEADER', HORIZONTAL_BAR)
+            ahd.add('HEADER', filling, title)
             ahd.add('PHRASE', phrase, '')
 
             for def_block in idiom_block.find_all(
@@ -364,6 +366,8 @@ def ask_ahdictionary(query: str) -> Dictionary | None:
 
                         # exhausted
                         def_type = 'SUBDEF'
+            # exhausted
+            filling, title = ' ', ''
 
         # for syn_block in td.find_all('div', class_='syntx', recursive=False):
         #     print(syn_block.text)

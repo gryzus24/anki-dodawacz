@@ -31,8 +31,6 @@ OPTIONS:
                                with "tr" and "intr"
 
   Other options:
-  -               search for labelled definitions
-  -!              search for unlabelled definitions
   -f, -fsubdefs   filter out subdefinitions
 
 For more options and commands see `--help-config` or `-config`.
@@ -149,8 +147,6 @@ Hiding a phrase means replacing it with "..." (default)
 -hideas        hide with (default "...")
 
 -fsubdefs      filter out subdefinitions (definitions without ">")
--fnolabel      filter out unlabelled definitions
-
 -toipa         translate AH Dictionary phonetic spelling into IPA
 -shortetyms    shorten and simplify etymologies in AH Dictionary
 

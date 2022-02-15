@@ -23,9 +23,8 @@ from itertools import zip_longest
 from typing import Any, NoReturn, Sequence
 
 from src.colors import (BOLD, DEFAULT, GEX, R, YEX, def1_c, def2_c, defsign_c, delimit_c,
-                        err_c, etym_c, exsen_c,
-                        index_c, inflection_c, phon_c, phrase_c, pos_c, label_c, syn_c,
-                        syngloss_c)
+                        err_c, etym_c, exsen_c, index_c, inflection_c, label_c, phon_c,
+                        phrase_c, pos_c, syn_c, syngloss_c)
 from src.data import (LINUX, MAC, ROOT_DIR, WINDOWS, bool_values_dict, cmd_to_msg_usage,
                       config, str_colors_to_color)
 from src.input_fields import choose_item
@@ -52,7 +51,7 @@ CONFIG_COLUMNS = tuple(
             '-textwrap', '-textwidth', '-columns', '-colviewat', '-indent',
             '',
             '[filtering config.]',
-            '-fsubdefs', '-fnolabel', '-toipa', '-shortetyms',
+            '-fsubdefs', '-toipa', '-shortetyms',
             '',
             '[ankiconnect conf.]',
             '-ankiconnect', '-duplicates', '-dupescope', '-note', '-deck', '-tags',

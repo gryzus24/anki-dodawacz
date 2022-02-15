@@ -25,7 +25,6 @@ from src.input_fields import get_user_input
 
 
 class Lexico(Dictionary):
-    title = 'Lexico'
     name = 'lexico'
     allow_thesaurus = True
 
@@ -153,11 +152,12 @@ def ask_lexico(query: str) -> Dictionary | None:
 
             if before_phrase:
                 before_phrase = False
+                lexico.add('HEADER', HORIZONTAL_BAR, 'Lexico')
                 if _previous_query is not None and _previous_query != query:
                     lexico.add('NOTE', f' Results for {phrase_c}{phrase_}')
                     _previous_query = None  # global
             else:
-                lexico.add('HEADER', HORIZONTAL_BAR)
+                lexico.add('HEADER', HORIZONTAL_BAR, '')
 
             lexico.add('PHRASE', phrase_, get_phonetic_spelling(block))
 

@@ -189,9 +189,6 @@ def manage_thesauri(query: str) -> dict[str, str] | None:
         thesaurus = ask_wordnet(
             query.split()[0] if 'also' in query.split() else query
         )
-        if thesaurus is None:
-            return None
-
         display_dictionary(thesaurus)
         return thesaurus.input_cycle()
 
@@ -327,8 +324,6 @@ def parse_flags(flags: Sequence[str]) -> tuple[list[str], ...]:
         else:
             filter_flags.append(flag)
 
-    if config['fnolabel']:
-        filter_flags.append('')
     if config['fsubdefs']:
         filter_flags.append('f')
 
@@ -362,23 +357,18 @@ def display_dictionary(
     if state == '* auto':
         ncols = None
 
-    if ncols == 1:
-        colwidth, last_col_fill = width, 0
-    else:
-        colwidth, ncols, last_col_fill = dictionary.get_display_parameters(
-            width,
-            0.01 * height * config['colviewat'][0],
-            ncols
+    columns, last_col_fill =\
+        dictionary.prepare_to_print(
+            ncols, width, height - 3,
+            config['colviewat'][0],
+            config['textwrap'],
+            config['indent'][0]
         )
-
-    columns = dictionary.prepare_to_print(
-        colwidth, ncols, config['textwrap'], config['indent'][0]
-    )
     if config['top']:
         with ClearScreen():
-            dictionary.print_dictionary(columns, colwidth, last_col_fill)
+            dictionary.print_dictionary(columns, last_col_fill)
     else:
-        dictionary.print_dictionary(columns, colwidth, last_col_fill)
+        dictionary.print_dictionary(columns, last_col_fill)
 
 
 def main_loop(query: str) -> None:
