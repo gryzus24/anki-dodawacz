@@ -373,7 +373,7 @@ class Dictionary:
         def _push(fmt: str, **kwargs: Any) -> None:
             buffer.append(fmt.format(**kwargs, **COLOR_FORMATS))
 
-        def _multi_push(*format_content):
+        def _multi_push(*format_content: tuple[FieldFormat, str]) -> None:
             for _fmt, _c in format_content:
                 if _c:
                     _fl, *_r = wrap_method(_c, _fmt.gaps, 0)
