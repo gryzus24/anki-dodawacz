@@ -284,31 +284,45 @@ def ask_ahdictionary(query: str) -> Dictionary | None:
             for def_block in labeled_block.find_all(
                 'div', class_=('ds-list', 'ds-single'), recursive=False
             ):
-                subdefs = def_block.find_all('div', class_='sds-list', recursive=False)
-                if not subdefs:
-                    temp = def_block.text.strip().lstrip('1234567890. ')
-                    def_label, _, rest = temp.rpartition('   ')
-                    if f'{phrase}s ' in def_label:
-                        def_label = def_label.replace(f'{phrase}s ', f'{phrase}s ~ ')
-
-                    ahd.add('DEF', *_get_def_and_exsen(rest), def_label.strip())
+                sd_tags = def_block.find_all('div', class_='sds-list', recursive=False)
+                if not sd_tags:
+                    sd_tags.append(def_block)
+                    def_label = ''
                 else:
                     label_tag = def_block.find('i', recursive=False)
                     def_label = '' if label_tag is None else label_tag.text.strip()
 
-                    def_type = 'DEF'
-                    for subdef in subdefs:
-                        _, _, rest = subdef.text.strip().partition(' ')
-                        if not def_label:
-                            def_label, _, rest = rest.rpartition('   ')
-                        if f'{phrase}s ' in def_label:
-                            def_label = def_label.replace(f'{phrase}s ', f'{phrase}s ~ ')
+                def_type = 'DEF'
+                for subdef in sd_tags:
+                    text = subdef.text.strip()
+                    if text.find('.') < 3:
+                        text = text.lstrip('abcdefghijklmnop1234567890').lstrip('. ')
+                    if not def_label:
+                        sentinel_tag = subdef.find('b', recursive=False)
+                        if sentinel_tag is not None:
+                            while True:
+                                # Order of if statements matters.
+                                sentinel_tag = sentinel_tag.next_sibling
+                                if sentinel_tag is None:
+                                    def_label, _, text = text.rpartition('   ')
+                                    break
+                                elif sentinel_tag.name == 'i':
+                                    _, def_label, text = text.partition(sentinel_tag.text.strip())
+                                    text = text.strip()
+                                    break
+                                elif sentinel_tag.text.strip():
+                                    def_label, _, text = text.rpartition('   ')
+                                    break
+                        else:
+                            def_label, _, text = text.rpartition('   ')
 
-                        ahd.add(def_type, *_get_def_and_exsen(rest), def_label.strip())
+                    def_label = def_label.replace(f'{phrase}s ', f'{phrase}s ~ ')
 
-                        # exhausted
-                        def_type = 'SUBDEF'
-                        def_label = ''
+                    ahd.add(def_type, *_get_def_and_exsen(text), def_label.strip())
+
+                    # exhausted
+                    def_type = 'SUBDEF'
+                    def_label = ''
 
         # Add parts of speech
         td_pos = []
@@ -354,15 +368,15 @@ def ask_ahdictionary(query: str) -> Dictionary | None:
             for def_block in idiom_block.find_all(
                 'div', class_=('ds-list', 'ds-single'), recursive=False
             ):
-                subdefs = def_block.find_all('div', class_='sds-list', recursive=False)
-                if not subdefs:
-                    _, _, rest = def_block.text.strip().lstrip('1234567890. ').rpartition('   ')
-                    ahd.add('DEF', *_get_def_and_exsen(rest), '')
+                sd_tags = def_block.find_all('div', class_='sds-list', recursive=False)
+                if not sd_tags:
+                    _, _, text = def_block.text.strip().lstrip('1234567890. ').rpartition('   ')
+                    ahd.add('DEF', *_get_def_and_exsen(text), '')
                 else:
                     def_type = 'DEF'
-                    for subdef in subdefs:
-                        _, _, rest = subdef.text.strip().partition(' ')
-                        ahd.add(def_type, *_get_def_and_exsen(rest), '')
+                    for subdef in sd_tags:
+                        _, _, text = subdef.text.strip().partition(' ')
+                        ahd.add(def_type, *_get_def_and_exsen(text), '')
 
                         # exhausted
                         def_type = 'SUBDEF'

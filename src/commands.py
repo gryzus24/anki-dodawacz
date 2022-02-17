@@ -474,7 +474,7 @@ syngloss     {syngloss_c}synonym definitions{R}
 index        {index_c}indexes{R}
 phrase       {phrase_c}phrase{R}
 phon         {phon_c}phonetic spelling{R}
-label     {label_c}part of speech labels{R}
+label        {label_c}part of speech labels{R}
 inflection   {inflection_c}inflections and additional label info{R}
 error        {err_c}errors{R}
 attention    {YEX}attention drawing{R}

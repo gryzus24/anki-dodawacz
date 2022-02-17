@@ -15,7 +15,7 @@ from src.data import config
 #   specify a reasonable sample size.
 #   run with `python` or `pytest -sv (--full-trace if looking for crashes)`
 #
-#   `rm test_dictionaries.py && cp tests/test_dictionaries.py . && pytest -sv --full-trace test_dictionaries.py`
+#   `rm test_dictionaries.py; cp tests/test_dictionaries.py . && pytest -sv --full-trace test_dictionaries.py`
 #
 # PROBLEMATIC AHD QUERIES:
 #   gift-wrap : 'or' in inflections
@@ -180,6 +180,8 @@ def dictionary_content_check(dictionary):
                 log(f'?? | potential funny characters in labels ({def_index})')
 
             # Extra checks
+            if _def[0].islower():
+                log(f'?? | definition starts with lowercase ({def_index})')
             if '  ' in _def:
                 log(f'?? | double spaces in definitions ({def_index})')
             if '  ' in _exsen:
@@ -188,6 +190,9 @@ def dictionary_content_check(dictionary):
                 log(f'?? | `See` in examples ({def_index})')
             if 'See ' in _def:
                 log(f'?? | `See` in definitions ({def_index})')
+            lls = len(_label.split())
+            if lls > 1:
+                log(f'?? | {lls} words in definition label ({def_index})')
 
         elif op == 'PHRASE':
             if len(body) != 2:
@@ -245,9 +250,10 @@ def dictionary_content_check(dictionary):
 
         elif op == 'LABEL':
             label_split = body[0].split()
-            if 'also' in label_split or \
-                    ('or' in label_split and 'with' not in label_split) \
-                    or not body[0].isascii():
+            if ('also' in label_split
+                or ('or' in label_split and 'with' not in label_split)
+                or not body[0].isascii()
+            ):
                 log(f'!! | potential garbage in labels: {body[0]}')
     return log_buffer
 
@@ -269,15 +275,16 @@ def lexico_test(word):
 def print_logs(logs, word, col_width):
     for dname, op, index, msg in logs:
         if msg.startswith('OK'):
-            if LOG_LEVEL != 'ALL':
-                return None
+            if LOG_LEVEL in {'ERROR', 'INFO'}:
+                continue
             c = GEX
-        elif msg.startswith('!!'):
-            c = err_c
-        else:
+        elif msg.startswith('??'):
             if LOG_LEVEL == 'ERROR':
-                return None
+                continue
             c = R  # type: ignore
+        else:
+            c = err_c
+
         sys.stdout.write(f'{dname} {op:8s} {index:2d} {word:{col_width}s} : {c}{msg}\n')
 
 
