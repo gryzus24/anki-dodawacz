@@ -4,7 +4,7 @@
 
 A command line dictionary look-up tool with Anki integration.<br>
 
-![image](https://user-images.githubusercontent.com/82805891/147771954-d4eda99e-0265-46ca-8ad3-564669368845.png)
+![image](https://user-images.githubusercontent.com/82805891/154151435-3c45caeb-0698-4e24-b874-449ef7ae0a5f.png)
 
 ## Usage
 
