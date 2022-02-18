@@ -27,6 +27,10 @@ else:
 
 HORIZONTAL_BAR = '─'
 
+USER_AGENT = {
+    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; rv:97.0) Gecko/20100101 Firefox/97.0'
+}
+
 boolean_cmd_to_msg = {
     '-pz': 'Sentence field',
     '-def': 'Definition field',
@@ -156,11 +160,7 @@ cmd_to_msg_usage = {
         '{field name} {value}'),
 }
 
-USER_AGENT = {
-    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; rv:91.0) Gecko/20100101 Firefox/91.0'
-}
-
-str_colors_to_color = {
+color_name_to_ansi = {
     'black': '\033[30m',
     'red': '\033[31m',
     'green': '\033[32m',

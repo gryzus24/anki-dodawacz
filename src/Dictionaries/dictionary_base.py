@@ -115,8 +115,13 @@ def columnize(buffer: Sequence[str], textwidth: int, height: int, ncols: int) ->
             formatted[col_no].append(line)
 
             if not formatted[col_no] or HORIZONTAL_BAR not in formatted[col_no][0]:
+                # Remove an empty header.
+                if formatted[col_no][0].strip() == str(delimit_c):
+                    del formatted[col_no][0]
+                    li = -1
+                else:
+                    li = 0
                 formatted[col_no].insert(0, f'{delimit_c}{textwidth * HORIZONTAL_BAR}')
-                li = 0
             else:
                 li = -1
 
@@ -124,7 +129,7 @@ def columnize(buffer: Sequence[str], textwidth: int, height: int, ncols: int) ->
     # uniform height and should be easily printable with the help of zip_longest.
     r = [[line for line in column if line] for column in formatted if column]
     if not r[0]:
-        r.pop(0)
+        del r[0]
     return r
 
 
@@ -139,8 +144,7 @@ class FieldFormat(namedtuple('FieldFormat', ('fl_fmt', 'l_fmt', 'gaps'))):
     __slots__ = ()
 
     def __new__(
-            cls,
-            first_line_format: str,
+            cls, first_line_format: str,
             lines_format: Optional[str] = None,
             _gaps: Optional[int] = None
     ) -> FieldFormat:
@@ -243,7 +247,7 @@ class Dictionary:
             elif op == 'HEADER':
                 result.append(t)
                 t = ''
-        result.pop(0)
+        del result[0]
         result.append(t)
         return result
 
@@ -324,9 +328,7 @@ class Dictionary:
         #   division remainder used to fill the last column.
 
         approx_lines = sum(
-            2 if op in ('LABEL', 'ETYM')
-            or
-            ('DEF' in op and body[1]) else 1
+            2 if op in ('LABEL', 'ETYM') or ('DEF' in op and body[1]) else 1
             for op, *body in self.contents
         )
         if approx_lines < 0.01 * fold_at * height:

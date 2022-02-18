@@ -26,7 +26,7 @@ from src.colors import (BOLD, DEFAULT, GEX, R, YEX, def1_c, def2_c, defsign_c, d
                         err_c, etym_c, exsen_c, index_c, inflection_c, label_c, phon_c,
                         phrase_c, pos_c, syn_c, syngloss_c)
 from src.data import (LINUX, MAC, ROOT_DIR, WINDOWS, bool_values_dict, cmd_to_msg_usage,
-                      config, str_colors_to_color)
+                      config, color_name_to_ansi)
 from src.input_fields import choose_item
 
 STD_FIELD_ORDER = [
@@ -419,14 +419,11 @@ def set_colors(*args: str, **ignore: Any) -> str | None:
         return f'{YEX}No color provided\n' \
                f'{R}{cmd} {element} {{color}}'
 
-    if color not in str_colors_to_color:
+    if color not in color_name_to_ansi:
         return f'Unknown color: {R}{color}\n' \
                f'To display available colors use `{cmd}`'
 
-    msg = COLOR_TO_MSG[element]
-    thiscolor = str_colors_to_color[color]
-
-    print(f'{R}{msg} set to: {thiscolor}{color}')
+    print(f'{R}{COLOR_TO_MSG[element]} set to: {color_name_to_ansi[color]}{color}')
     save_command(f'{element}_c', color)
     return None
 
@@ -452,10 +449,10 @@ def boolean_commands(*args: str, **kwargs: str) -> str | None:
 
 def show_available_colors() -> None:
     print(f'{R}{BOLD}Available colors:{DEFAULT}')
-    t = tuple(str_colors_to_color.items())
-    for i, (name, col, lname, lcol) in enumerate([
+    t = tuple(color_name_to_ansi.items())
+    for i, (name, col, lname, lcol) in enumerate(
         (*t[0 + i], *t[len(t) // 2 + i]) for i in range(len(t) // 2)
-    ]):
+    ):
         sys.stdout.write(f'{col}{name:9s}{lcol}{lname:14s}{col}██{lcol}██ {BOLD}{i}{DEFAULT}\n')
     sys.stdout.write(f'{R}reset                  ██\n\n')
 

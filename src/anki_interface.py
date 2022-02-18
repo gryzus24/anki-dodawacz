@@ -36,7 +36,7 @@ try:
 except (FileNotFoundError, json.JSONDecodeError):
     with open(os.path.join(ROOT_DIR, 'config/ankiconnect.json'), 'w') as af:
         af.write('{}')
-    config_ac = json.loads('{}')
+    config_ac = {}
 
 CUSTOM_NOTES = sorted(os.listdir(os.path.join(ROOT_DIR, 'notes')))
 

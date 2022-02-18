@@ -1,20 +1,23 @@
 from colorama import init  # type: ignore
 
-from src.data import POSIX, config, str_colors_to_color
+from src.data import POSIX, config, color_name_to_ansi
 
 init(autoreset=True)
 
 
+# This class provides quick and dynamic access to config colors.
 class Color:
+    __slots__ = 'color',
+
     def __init__(self, color: str) -> None:
         self.color = color
 
     def __str__(self) -> str:
-        return str_colors_to_color[config[self.color]]
+        return color_name_to_ansi[config[self.color]]
 
     def __len__(self) -> int:
         # For proper formatting
-        return len(str_colors_to_color[config[self.color]])
+        return len(color_name_to_ansi[config[self.color]])
 
 
 if POSIX:
