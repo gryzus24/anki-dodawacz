@@ -32,10 +32,10 @@ from src.data import config
 #   roughhouse: 'also' in labels
 
 WORDS_FILE_PATH = None
-SAMPLE_SIZE = 3600
+SAMPLE_SIZE = 80
 
 # 'ALL', 'INFO', 'ERROR'
-LOG_LEVEL = 'INFO'
+LOG_LEVEL = 'ALL'
 SAVE_TESTED_WORDS_TO_FILE = True
 BUFFER_SIZE = SAMPLE_SIZE // 4
 
