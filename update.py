@@ -58,7 +58,7 @@ def main() -> None:
     response_data = get_request('https://api.github.com/repos/gryzus24/anki-dodawacz/tags')
 
     latest_tag = json.loads(response_data.data.decode())[0]
-    if latest_tag['name'] == __version__:
+    if latest_tag['name'].lstrip('v') == __version__:
         with _exit(0):
             print(f'{GEX}You are using the latest version ({__version__}).')
 
@@ -86,7 +86,7 @@ def main() -> None:
         tfile.close()
         os.mkdir(out_dir_path)
         process = subprocess.run(
-            ['tar', '-xvf', tfile.name, '--strip-components=1', '-C', out_dir_path]
+            ['tar', '-xf', tfile.name, '--strip-components=1', '-C', out_dir_path]
         )
         if process.returncode != 0:
             try:
