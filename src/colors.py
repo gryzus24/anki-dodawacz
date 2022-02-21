@@ -1,6 +1,6 @@
 from colorama import init  # type: ignore
 
-from src.data import POSIX, config, color_name_to_ansi
+from src.data import POSIX, color_name_to_ansi, config
 
 init(autoreset=True)
 
@@ -34,7 +34,7 @@ syn_c = Color('syn_c')
 exsen_c = Color('exsen_c')
 def1_c = Color('def1_c')
 def2_c = Color('def2_c')
-defsign_c = Color('defsign_c')
+sign_c = Color('sign_c')
 index_c = Color('index_c')
 phrase_c = Color('phrase_c')
 phon_c = Color('phon_c')

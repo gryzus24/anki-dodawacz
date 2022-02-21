@@ -10,7 +10,7 @@
 "def1_c": "reset",
 "def2_c": "reset",
 "def_bulk": "auto",
-"defsign_c": "cyan",
+"sign_c": "cyan",
 "delimit_c": "reset",
 "dict": "ahd",
 "dict2": "lexico",

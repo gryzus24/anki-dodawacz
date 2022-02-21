@@ -22,11 +22,11 @@ import sys
 from itertools import zip_longest
 from typing import Any, NoReturn, Sequence
 
-from src.colors import (BOLD, DEFAULT, GEX, R, YEX, def1_c, def2_c, defsign_c, delimit_c,
-                        err_c, etym_c, exsen_c, index_c, inflection_c, label_c, phon_c,
-                        phrase_c, pos_c, syn_c, syngloss_c)
+from src.colors import (BOLD, DEFAULT, GEX, R, YEX, def1_c, def2_c, delimit_c, err_c,
+                        etym_c, exsen_c, index_c, inflection_c, label_c, phon_c, phrase_c,
+                        pos_c, sign_c, syn_c, syngloss_c)
 from src.data import (LINUX, MAC, ROOT_DIR, WINDOWS, bool_values_dict, cmd_to_msg_usage,
-                      config, color_name_to_ansi)
+                      color_name_to_ansi, config)
 from src.input_fields import choose_item
 
 STD_FIELD_ORDER = [
@@ -69,7 +69,7 @@ CONFIG_COLUMNS = tuple(
 COLOR_TO_MSG = {
     'def1': 'Odd definitions and idiom definitions color',
     'def2': 'Even definitions color',
-    'defsign': 'Definition sign (>) color',
+    'sign': 'Main definition sign',
     'exsen': 'Example sentences color',
     'pos': 'Parts of speech color',
     'etym': 'Etymologies color',
@@ -462,7 +462,7 @@ def color_command() -> None:
 {R}{BOLD}[Elements]   [Changes the color of]{DEFAULT}
 def1         {def1_c}odd definitions and idiom definitions{R}
 def2         {def2_c}even definitions{R}
-defsign      {defsign_c}definition sign (>){R}
+sign         {sign_c}main definition sign{R}
 exsen        {exsen_c}example sentences{R}
 pos          {pos_c}parts of speech{R}
 etym         {etym_c}etymologies{R}

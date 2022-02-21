@@ -101,41 +101,45 @@ def _fix_stress_and_remove_private_symbols(s: str) -> str:
         .replace('', 'o͞o').replace('', 'o͝o')
 
 
-def _extract_phrase_and_phonetic_spelling(s: str) -> tuple[str, str]:
+def _extract_phrase_and_phonetic_spelling(raw_string: str) -> tuple[str, str]:
     _phrase = []
     _phon_spell = []
 
+    # in phonetic spelling
     _in = False
-    s = s.strip()
-    for elem in s.split():
-        e = elem.strip(',').replace('·', '')
-        if not e or e.isnumeric():
+    raw_string = raw_string.strip()
+    # print(raw_string)
+    for elem in raw_string.split():
+        _elem = elem.strip(',').replace('·', '')
+        if not _elem or _elem.isnumeric():
             continue
 
         if _in:
             _phon_spell.append(elem)
-            if e.endswith(')'):
+            if _elem.endswith(')'):
                 _in = False
             continue
 
-        if e.isascii():
+        if _elem.isascii():
             # Not every phonetic spelling contains non-ascii characters, e.g. "crowd".
             # So we have to make an educated guess.
-            if e.startswith('(') and s.endswith(')'):
+            if _elem.startswith('(') and raw_string.endswith(')'):
                 _phon_spell.append(elem)
                 _in = True
             else:
                 _phrase.append(elem)
         else:
-            if e.startswith('('):
+            if _elem.startswith('('):
                 _phon_spell.append(elem)
-                if not e.endswith(')'):
+                if not _elem.endswith(')'):
                     _in = True
             else:
                 _phrase.append(elem)
 
-    return ' '.join(_phrase).replace('·', '').replace('•', ''),\
-           ' '.join(_phon_spell).strip(' ,')
+    return (
+        ' '.join(_phrase).replace('·', '').replace('•', ''),
+        ' '.join(_phon_spell).strip(' ,')
+    )
 
 
 def _get_phrase_inflections(content: list) -> str:
@@ -169,11 +173,11 @@ def _get_phrase_inflections(content: list) -> str:
 
 def _get_def_and_exsen(s: str) -> tuple[str, str]:
     _def, _, _exsen = s.partition(':')
-    _def, _, _ = _def.partition('See Synonyms')
     _def, _, _ = _def.partition('See Usage Note')
     _def, _, _ = _def.partition('See Table')
     _def = _def.strip(' .') + '.'
 
+    # TODO: Move `See Synonyms...` from examples to definitions.
     _exsen, _, _ = _exsen.partition('See Synonyms')
     _exsen, _, _ = _exsen.partition('See Usage Note')
     _exsen = _exsen.strip()
@@ -294,9 +298,9 @@ def ask_ahdictionary(query: str) -> Dictionary | None:
 
                 def_type = 'DEF'
                 for subdef in sd_tags:
-                    text = subdef.text.strip()
-                    if text.find('.') < 3:
-                        text = text.lstrip('abcdefghijklmnop1234567890').lstrip('. ')
+                    tag_text = subdef.text.strip()
+                    if tag_text.find('.') < 3:
+                        tag_text = tag_text.lstrip('abcdefghijklmnop1234567890').lstrip('. ')
                     if not def_label:
                         sentinel_tag = subdef.find('b', recursive=False)
                         if sentinel_tag is not None:
@@ -304,21 +308,21 @@ def ask_ahdictionary(query: str) -> Dictionary | None:
                                 # Order of if statements matters.
                                 sentinel_tag = sentinel_tag.next_sibling
                                 if sentinel_tag is None:
-                                    def_label, _, text = text.rpartition('   ')
+                                    def_label, _, tag_text = tag_text.rpartition('   ')
                                     break
                                 elif sentinel_tag.name == 'i':
-                                    _, def_label, text = text.partition(sentinel_tag.text.strip())
-                                    text = text.strip()
+                                    _, def_label, tag_text = tag_text.partition(sentinel_tag.text.strip())
+                                    tag_text = tag_text.strip()
                                     break
                                 elif sentinel_tag.text.strip():
-                                    def_label, _, text = text.rpartition('   ')
+                                    def_label, _, tag_text = tag_text.rpartition('   ')
                                     break
                         else:
-                            def_label, _, text = text.rpartition('   ')
+                            def_label, _, tag_text = tag_text.rpartition('   ')
 
                     def_label = def_label.replace(f'{phrase}s ', f'{phrase}s ~ ')
 
-                    ahd.add(def_type, *_get_def_and_exsen(text), def_label.strip())
+                    ahd.add(def_type, *_get_def_and_exsen(tag_text), def_label.strip())
 
                     # exhausted
                     def_type = 'SUBDEF'
@@ -356,8 +360,7 @@ def ask_ahdictionary(query: str) -> Dictionary | None:
 
         # Add idioms
         filling, title = HORIZONTAL_BAR, 'Idioms'
-        idioms = td.find_all('div', class_='idmseg', recursive=False)
-        for idiom_block in idioms:
+        for idiom_block in td.find_all('div', class_='idmseg', recursive=False):
             b_tags = idiom_block.find_all('b', recursive=False)
             phrase = ' '.join(filter(None, map(lambda x: x.text.strip(), b_tags)))
             phrase = '/'.join(map(str.strip, phrase.split('/')))
@@ -370,20 +373,110 @@ def ask_ahdictionary(query: str) -> Dictionary | None:
             ):
                 sd_tags = def_block.find_all('div', class_='sds-list', recursive=False)
                 if not sd_tags:
-                    _, _, text = def_block.text.strip().lstrip('1234567890. ').rpartition('   ')
-                    ahd.add('DEF', *_get_def_and_exsen(text), '')
+                    _, _, tag_text = def_block.text.strip().lstrip('1234567890. ').rpartition('   ')
+                    ahd.add('DEF', *_get_def_and_exsen(tag_text), '')
                 else:
                     def_type = 'DEF'
                     for subdef in sd_tags:
-                        _, _, text = subdef.text.strip().partition(' ')
-                        ahd.add(def_type, *_get_def_and_exsen(text), '')
+                        _, _, tag_text = subdef.text.strip().partition(' ')
+                        ahd.add(def_type, *_get_def_and_exsen(tag_text), '')
 
                         # exhausted
                         def_type = 'SUBDEF'
             # exhausted
             filling, title = ' ', ''
 
-        # for syn_block in td.find_all('div', class_='syntx', recursive=False):
-        #     print(syn_block.text)
+        # Add synonyms
+        ##
+        syn_block = td.find('div', class_='syntx', recursive=False)
+        if syn_block is None:
+            continue
+
+        _tag = syn_block.find('b', recursive=False)
+        if _tag is None or 'Synonyms' not in _tag.text.strip():
+            continue
+
+        gloss = ''
+        provided_synonyms, other_tags = [], []
+        getting_synonyms = True
+        while True:
+            _tag = _tag.next_sibling
+            if _tag is None or _tag.name == 'div':
+                break
+            tag_text = _tag.text.strip()
+            if getting_synonyms:
+                tn = _tag.name
+                if tn == 'b' or tn == 'a':
+                    tag_text = tag_text.strip(' ,')
+                    if tag_text:
+                        provided_synonyms.append(tag_text.lower())
+                elif tn is None:
+                    gloss = tag_text
+                    getting_synonyms = False
+            else:
+                if tag_text:
+                    other_tags.append(_tag)
+
+        ahd.add('HEADER', HORIZONTAL_BAR, 'Synonyms')
+        # Let it fail if `other_tags` is empty for now.
+        temp_examples = other_tags[0].text.split(';')
+        if len(temp_examples) == len(provided_synonyms):
+            _examples = '<br>'.join(f"‘{x.strip()}’" for x in temp_examples)
+            ahd.add('SYN', ', '.join(provided_synonyms), gloss, _examples)
+            continue
+
+        # TODO:
+        #  - Correctly differentiate between authors and `See Also Synonyms at`
+        #    whilst extracting the latter
+        #  - Extract antonyms
+        #  - Make it less messy?  Thanks AHD.
+        gloss = ''
+        synonyms: list[str] = []
+        examples: list[str] = []
+        force_synonym = False
+        for tag in other_tags:
+            tag_text = tag.text.strip()
+            tn = tag.name
+            if (tn is None or tn == 'a') and tag_text[0] == '(' and tag_text.endswith(').'):
+                examples[-1] += ' ' + tag_text
+                continue
+            if tn != 'i':
+                if tag_text == 'and':
+                    force_synonym = True
+                elif not gloss:
+                    gloss = tag_text
+                continue
+
+            if tag_text.strip(',').lower() in provided_synonyms or force_synonym:
+                if synonyms and (gloss or examples):
+                    ahd.add('SYN', ', '.join(synonyms), gloss, '<br>'.join(examples))
+                    gloss, synonyms, examples = '', [], []
+                synonyms.append(tag_text.strip(',').lower())
+                force_synonym = False
+            else:
+                sentence, _, word = tag_text.rpartition(' ')
+                word = word.strip().lower()
+                if (  # if word.isalpha(), consider it a synonym
+                    word in provided_synonyms or
+                    (word.isalpha() and tag_text.rpartition('.')[2].strip().lower() == word)
+                ):
+                    if sentence:
+                        if sentence[0].isalpha():
+                            sentence = f"‘{sentence.strip()}’"
+                        examples.append(sentence)
+                    if synonyms and (gloss or examples):
+                        ahd.add('SYN', ', '.join(synonyms), gloss, '<br>'.join(examples))
+                    gloss, synonyms, examples = '', [word.lower()], []
+                elif word.endswith(','):
+                    if synonyms and (gloss or examples):
+                        ahd.add('SYN', ', '.join(synonyms), gloss, '<br>'.join(examples))
+                    gloss, synonyms, examples = '', [tag_text.strip(',').lower()], []
+                else:
+                    if tag_text[0].isalpha():
+                        tag_text = f"‘{tag_text.strip()}’"
+                    examples.append(tag_text)
+
+        if synonyms and (gloss or examples):
+            ahd.add('SYN', ', '.join(synonyms), gloss, '<br>'.join(examples))
 
     return ahd

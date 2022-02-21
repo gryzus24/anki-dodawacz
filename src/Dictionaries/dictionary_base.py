@@ -21,8 +21,8 @@ from itertools import chain, zip_longest
 from typing import Any, Callable, Iterable, Optional, Sequence
 
 from src.Dictionaries.utils import wrap_and_pad
-from src.colors import (BOLD, DEFAULT, R, def1_c, def2_c, defsign_c, delimit_c, etym_c,
-                        exsen_c, index_c, inflection_c, label_c, phon_c, phrase_c, pos_c,
+from src.colors import (BOLD, DEFAULT, R, def1_c, def2_c, delimit_c, etym_c, exsen_c,
+                        index_c, inflection_c, label_c, phon_c, phrase_c, pos_c, sign_c,
                         syn_c, syngloss_c)
 from src.data import HORIZONTAL_BAR
 
@@ -145,21 +145,26 @@ class FieldFormat(namedtuple('FieldFormat', ('fl_fmt', 'l_fmt', 'gaps'))):
 
     def __new__(
             cls, first_line_format: str,
-            lines_format: Optional[str] = None,
+            line_format: Optional[str] = None,
             _gaps: Optional[int] = None
     ) -> FieldFormat:
-        if lines_format is None:
-            lines_format = first_line_format
+        if line_format is None:
+            line_format = first_line_format
+        else:
+            if not first_line_format.endswith('{first_line}'):
+                first_line_format += '{first_line}'
+            if not line_format.endswith('{line}'):
+                line_format += '{line}'
         if _gaps is None:
             _gaps = first_line_format.count(' ')
             if '{sign}' in first_line_format:
                 _gaps += 1
-        return super().__new__(cls, first_line_format, lines_format, _gaps)
+        return super().__new__(cls, first_line_format, line_format, _gaps)
 
 
 COLOR_FORMATS = {
     'exsen_c': exsen_c,
-    'defsign_c': defsign_c,
+    'sign_c': sign_c,
     'index_c': index_c,
     'phrase_c': phrase_c,
     'phon_c': phon_c,
@@ -180,17 +185,20 @@ class Dictionary:
     name: str  # name in config
 
     PHRASE = FieldFormat('! {phrase_c}{phrase}  {phon_c}{phon}')
-    PHRASE_S = FieldFormat('! {phrase_c}{first_line}', '!{phrase_c}{line}')
-    PHON_S = FieldFormat('! {phon_c}{first_line}', '!{phon_c}{line}')
+    PHRASE_S = FieldFormat('! {phrase_c}', '!{phrase_c}')
+    PHON_S = FieldFormat('! {phon_c}', '!{phon_c}')
     LABEL = FieldFormat('! {label_c}{label}  {inflection_c}{inflections}')
-    LABEL_S = FieldFormat('! {label_c}{first_line}', '!{label_c}{line}')
-    INFLECTIONS_S = FieldFormat('! {inflection_c}{first_line}', '!{inflection_c}{line}')
+    LABEL_S = FieldFormat('! {label_c}', '!{label_c}')
+    INFLECTIONS_S = FieldFormat('! {inflection_c}', '!{inflection_c}')
     DEF = FieldFormat(
-        '{defsign_c}{sign}{index_c}{index} {label_c}{label}{def_c}{first_line}', '${def_c}{line}'
+        '{sign_c}{sign}{index_c}{index} {label_c}{label}{def_c}', '${def_c}'
     )
-    EXSEN = FieldFormat('${index_pad}  {exsen_c}{first_line}', '${exsen_c}{line}')
+    EXSEN = FieldFormat('${index_pad}  {exsen_c}', '${exsen_c}')
     POS = FieldFormat(' {pos_c}{pos}  {phon_c}{phon}{padding}')
-    ETYM = FieldFormat(' {etym_c}{first_line}', '${etym_c}{line}')
+    ETYM = FieldFormat(' {etym_c}', '${etym_c}')
+    SYN_SYN = FieldFormat('! {syn_c}', '!{syn_c}')
+    SYN_GLOSS = FieldFormat('!{sign_c}{sign} {syngloss_c}', '!{syngloss_c}')
+    SYN_EXSEN = FieldFormat('  {exsen_c}', '${exsen_c}')
 
     def __init__(self) -> None:
         self.contents: list[Sequence[str]] = []
@@ -328,7 +336,9 @@ class Dictionary:
         #   division remainder used to fill the last column.
 
         approx_lines = sum(
-            2 if op in ('LABEL', 'ETYM') or ('DEF' in op and body[1]) else 1
+            3 if op == 'SYN' else
+            2 if op in ('LABEL', 'ETYM') or ('DEF' in op and body[1])
+            else 1
             for op, *body in self.contents
         )
         if approx_lines < 0.01 * fold_at * height:
@@ -341,7 +351,7 @@ class Dictionary:
                 ncolumns = nheaders if nheaders < max_columns else max_columns
             else:
                 for i in range(2, max_columns + 1):
-                    if approx_lines // i < height:
+                    if approx_lines // i < 0.8 * height:
                         ncolumns = i
                         break
                 else:
@@ -368,6 +378,7 @@ class Dictionary:
         #  (HEADER, 'filling_character', 'header_title')
         #  (POS,    'pos|phonetic_spelling', ...)  ## `|` acts as a separator.
         #  (AUDIO,  'audio_url')
+        #  (SYN,    'synonyms', 'gloss', 'examples')
         #  (NOTE,   'note')
 
         buffer = []
@@ -375,13 +386,13 @@ class Dictionary:
         def _push(fmt: str, **kwargs: Any) -> None:
             buffer.append(fmt.format(**kwargs, **COLOR_FORMATS))
 
-        def _multi_push(*format_content: tuple[FieldFormat, str]) -> None:
+        def _push_many(*format_content: tuple[FieldFormat, str], _indent: int = 0, **kwargs: str) -> None:
             for _fmt, _c in format_content:
                 if _c:
-                    _fl, *_r = wrap_method(_c, _fmt.gaps, 0)
-                    buffer.append(_fmt.fl_fmt.format(first_line=_fl, **COLOR_FORMATS))
+                    _fl, *_r = wrap_method(_c, _fmt.gaps, _indent)
+                    buffer.append(_fmt.fl_fmt.format(first_line=_fl, **COLOR_FORMATS, **kwargs))
                     for _l in _r:
-                        buffer.append(_fmt.l_fmt.format(line=_l, **COLOR_FORMATS))
+                        buffer.append(_fmt.l_fmt.format(line=_l, **COLOR_FORMATS, **kwargs))
 
         blank = textwidth * ' '
         wrap_method = wrap_and_pad(wrap_style, textwidth)
@@ -433,7 +444,7 @@ class Dictionary:
                         for line in rest:
                             _push(self.INFLECTIONS_S.l_fmt, line=line)
                     else:
-                        _multi_push((self.LABEL_S, label), (self.INFLECTIONS_S, inflections))
+                        _push_many((self.LABEL_S, label), (self.INFLECTIONS_S, inflections))
             elif op == 'PHRASE':
                 phrase, phon = body
                 phrase_len = len(phrase) + self.PHRASE.gaps
@@ -443,7 +454,7 @@ class Dictionary:
                     for line in rest:
                         _push(self.PHON_S.l_fmt, line=line)
                 else:
-                    _multi_push((self.PHRASE_S, phrase), (self.PHON_S, phon))
+                    _push_many((self.PHRASE_S, phrase), (self.PHON_S, phon))
             elif op == 'HEADER':
                 filling, title = body
                 if title:
@@ -454,10 +465,7 @@ class Dictionary:
                 etym = body[0]
                 if etym:
                     buffer.append(blank)
-                    first_line, *rest = wrap_method(etym, self.ETYM.gaps, indent)
-                    _push(self.ETYM.fl_fmt, first_line=first_line)
-                    for line in rest:
-                        _push(self.ETYM.l_fmt, line=line)
+                    _push_many((self.ETYM, etym), _indent=indent)
             elif op == 'POS':
                 if body[0].strip(' |'):
                     buffer.append(blank)
@@ -467,6 +475,14 @@ class Dictionary:
                         _push(self.POS.fl_fmt, pos=pos, phon=phon, padding=padding)
             elif op == 'AUDIO':
                 pass
+            elif op == 'SYN':
+                _push_many(
+                    (self.SYN_SYN, body[0]),
+                    (self.SYN_GLOSS, body[1]),
+                    sign=':'
+                )
+                for ex in body[2].split('<br>'):
+                    _push_many((self.SYN_EXSEN, ex), _indent=1)
             elif op == 'NOTE':
                 note = body[0]
                 padding = (textwidth + len(phrase_c) - len(note)) * ' '

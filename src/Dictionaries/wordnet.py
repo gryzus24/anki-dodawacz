@@ -17,7 +17,7 @@ from __future__ import annotations
 
 from src.Dictionaries.dictionary_base import Dictionary, format_title
 from src.Dictionaries.utils import request_soup, wrap_and_pad
-from src.colors import R, err_c, index_c, label_c, syn_c, syngloss_c
+from src.colors import R, err_c, exsen_c, index_c, label_c, syn_c, syngloss_c
 from src.data import HORIZONTAL_BAR
 from src.input_fields import get_user_input
 
@@ -25,6 +25,7 @@ from src.input_fields import get_user_input
 class WordNet(Dictionary):
     name = 'wordnet'
 
+    # TODO: Merge WordNet's formatting logic with AH Dictionary's synonyms.
     def format_dictionary(self, textwidth: int, wrap_style: str, indent: int) -> list[str]:
         # Available instructions:
         #   (SYN, synonyms, glosses, pos_label)
@@ -37,17 +38,22 @@ class WordNet(Dictionary):
                 index += 1
                 index_len = len(str(index))
 
-                pos = body[2]
-                pos_len = len(pos)
-                first_line, *rest = wrap_method(body[0], pos_len + index_len + 2, 0)
+                synonyms, gloss, examples, pos = body
+                first_line, *rest = wrap_method(synonyms, len(pos) + index_len + 2, 0)
                 buffer.append(f'{index_c}{index} {label_c}{pos} {syn_c}{first_line}')
                 for line in rest:
                     buffer.append(f'{syn_c}{line}')
 
-                first_line, *rest = wrap_method(body[1], indent + index_len + 1, 0)
+                first_line, *rest = wrap_method(gloss, index_len + 1, 0)
                 buffer.append(f'{index_len * " "} {syngloss_c}{first_line}')
                 for line in rest:
                     buffer.append(f'{syngloss_c}{line}')
+
+                for ex in examples.split('<br>'):
+                    first_line, *rest = wrap_method(ex, index_len + 1, 1)
+                    buffer.append(f'{index_len * " "} {exsen_c}{first_line}')
+                    for line in rest:
+                        buffer.append(f'{exsen_c}{line}')
             elif op == 'HEADER':
                 buffer.append(format_title(textwidth, body[0], body[1]))
             else:
@@ -67,19 +73,23 @@ def ask_wordnet(query: str) -> Dictionary:
     if soup is None:
         return WordNet()
 
-    header = soup.find('h3').text
-    if header.startswith(('Your', 'Sorry')):
+    if soup.h3.text.startswith(('Your', 'Sorry')):
         print(f'{err_c}Could not find {R}"{query}"{err_c} on WordNet')
         return WordNet()
 
     wordnet = WordNet()
     wordnet.add('HEADER', HORIZONTAL_BAR, 'WordNet')
-    for elem in soup.find_all('li'):
-        _, _, body = elem.text.partition('(')
+    for t in soup.find_all('li'):
+        _, _, body = t.text.partition('(')
         pos, _, body = body.partition(')')
         syn, _, body = body.partition('(')
-        gloss, _, _ = body.rpartition(')')
+        gloss, _, examples = body.rpartition(')')
 
-        wordnet.add('SYN', syn.strip(), f'({gloss.strip()})', f'({pos})')
+        wordnet.add(
+            'SYN', syn.strip(),
+            f'({gloss.strip()})',
+            '<br>'.join(map(str.strip, examples.split(';'))),
+            f'({pos})'
+        )
 
     return wordnet
