@@ -29,19 +29,21 @@ from src.data import config
 #   redress : 'also' in labels
 #   better : '.' in inflections
 #   flagellate: 'also' in labels
+#   roughhouse: 'also' in labels
 
 WORDS_FILE_PATH = None
-SAMPLE_SIZE = 80
+SAMPLE_SIZE = 3600
 
 # 'ALL', 'INFO', 'ERROR'
-LOG_LEVEL = 'ALL'
+LOG_LEVEL = 'INFO'
 SAVE_TESTED_WORDS_TO_FILE = True
 BUFFER_SIZE = SAMPLE_SIZE // 4
 
-# test_words = {
-#     'gift-wrap', 'anaphylaxis', 'decerebrate', 'warehouse', 'sutra', 'gymnasium',
-#     'shortness', 'desiccate', 'redress', better, flagellate,
-# }
+# Problematic queries.
+test_words = {
+    'gift-wrap', 'anaphylaxis', 'decerebrate', 'warehouse', 'sutra', 'gymnasium',
+    'shortness', 'desiccate', 'redress', 'better', 'flagellate', 'roughhouse',
+}
 
 test_words = {
     'batches', 'beach', 'like', 'tombac', 'tombacs',
@@ -58,6 +60,37 @@ test_words = {
     'eliot', 'ford', 'frazzle', 'lac', 'ret', 'was',
     'claudius', 'erastus', 'fitzgerald', 'richards',
     'arafat', 'coconut', 'hill', 'lawrence', 'wolf',
+}
+
+# Some known synonym queries.
+test_words = {
+    'containing', 'disposition', 'fats', 'prevents',
+    'chiefship', 'perfected', 'steepest', 'swerved',
+    'ambushes', 'charms', 'heavy', 'thoughtfulness',
+    'discouraging', 'endangered', 'souring', 'wile',
+    'described', 'establisher', 'indispensableness',
+    "belief's", 'blasting', 'disparager', 'promise',
+    'bodily', 'expected', 'hobbled', 'overthrowing',
+    'barraging', 'established', 'flowingly', 'form',
+    'excessive', 'practices', 'regretter', 'repeat',
+    'appointing', 'defeated', 'defendable', 'slows',
+    'clearest', 'colds', 'defying', 'preliminaries',
+    'loose', 'produces', 'stainer', 'voluntariness',
+    'allocates', 'discover', 'evoking', 'strangely',
+    'ideas', 'lying', 'mangled', 'pamper', 'regard',
+    'existence', 'fashionably', 'forbids', 'showed',
+    'appropriated', 'objected', 'reales', 'reaping',
+    'active', 'bloomed', 'fat', 'grieves', 'vainly',
+    'chronically', 'gather', 'separating', 'yelled',
+    'moral', 'offend', 'richly', 'steeply', 'think',
+    'abstinence', 'bitterness', 'figure', 'pulling',
+    'begged', 'enclose', 'indicatory', 'spaciously',
+    'blemish', 'comfort', 'meticulosity', 'righter',
+    'advances', 'happen', 'perplexes', 'substances',
+    'benevolent', 'biassed', 'relieving', 'tightly',
+    'guiding', 'oldness', 'recklessness', 'shorten',
+    'flirts', 'indicates', 'introducible', 'polite',
+    'attributed', 'garish', 'regarded',
 }
 
 
@@ -148,7 +181,7 @@ def is_funny(string):
     return False
 
 
-def dictionary_content_check(dictionary):
+def dictionary_content_check(dictionary, _word):
     log_buffer = []
 
     dictionary_name = dictionary.name.upper()[:3]
@@ -255,6 +288,12 @@ def dictionary_content_check(dictionary):
                 or not body[0].isascii()
             ):
                 log(f'!! | potential garbage in labels: {body[0]}')
+
+        elif op == 'SYN':
+            synoynms, gloss, examples = body
+            if not gloss.endswith((':', '.')):
+                log(f'!! | partial gloss in synonyms ({synoynms})')
+
     return log_buffer
 
 
@@ -262,14 +301,14 @@ def ahdictionary_test(word):
     ahd = ask_ahdictionary(word)
     if ahd is None:
         return [('AHD', '', 0, 'Word not found')]
-    return dictionary_content_check(ahd)
+    return dictionary_content_check(ahd, word)
 
 
 def lexico_test(word):
     lexico = ask_lexico(word)
     if lexico is None:
         return [('LEX', '', 0, 'Word not found')]
-    return dictionary_content_check(lexico)
+    return dictionary_content_check(lexico, word)
 
 
 def print_logs(logs, word, col_width):

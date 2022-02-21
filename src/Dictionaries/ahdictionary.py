@@ -177,9 +177,9 @@ def _get_def_and_exsen(s: str) -> tuple[str, str]:
     _def, _, _ = _def.partition('See Table')
     _def = _def.strip(' .') + '.'
 
-    # TODO: Move `See Synonyms...` from examples to definitions.
-    _exsen, _, _ = _exsen.partition('See Synonyms')
     _exsen, _, _ = _exsen.partition('See Usage Note')
+    _exsen, sep, tail = _exsen.partition('See Synonyms')
+    _def += f' {sep.strip()}{tail}'
     _exsen = _exsen.strip()
     if _exsen:
         _exsen = '<br>'.join(f"‘{x.strip()}’" for x in _exsen.split(';'))
@@ -440,11 +440,11 @@ def ask_ahdictionary(query: str) -> Dictionary | None:
             if (tn is None or tn == 'a') and tag_text[0] == '(' and tag_text.endswith(').'):
                 examples[-1] += ' ' + tag_text
                 continue
-            if tn != 'i':
+            elif tn != 'i':
                 if tag_text == 'and':
                     force_synonym = True
-                elif not gloss:
-                    gloss = tag_text
+                elif tn is None and not gloss.endswith((':', '.')):
+                    gloss = gloss.strip() + tag_text.strip('()')
                 continue
 
             if tag_text.strip(',').lower() in provided_synonyms or force_synonym:
