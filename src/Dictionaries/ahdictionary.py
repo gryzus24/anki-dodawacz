@@ -367,33 +367,31 @@ def ask_ahdictionary(query: str) -> Dictionary | None:
 
         # Add idioms
         idioms = td.find_all('div', class_='idmseg', recursive=False)
-        if not idioms:
-            continue
+        if idioms:
+            ahd.add('HEADER', 'Idioms')
+            for i, idiom_block in enumerate(idioms):
+                b_tags = idiom_block.find_all('b', recursive=False)
+                phrase = ' '.join(filter(None, map(lambda x: x.text.strip(), b_tags)))
+                phrase = '/'.join(map(str.strip, phrase.split('/')))
 
-        ahd.add('HEADER', 'Idioms')
-        for i, idiom_block in enumerate(idioms):
-            b_tags = idiom_block.find_all('b', recursive=False)
-            phrase = ' '.join(filter(None, map(lambda x: x.text.strip(), b_tags)))
-            phrase = '/'.join(map(str.strip, phrase.split('/')))
+                if i:
+                    ahd.add('LABEL', '', '')
+                ahd.add('PHRASE', phrase, '')
+                for def_block in idiom_block.find_all(
+                    'div', class_=('ds-list', 'ds-single'), recursive=False
+                ):
+                    sd_tags = def_block.find_all('div', class_='sds-list', recursive=False)
+                    if not sd_tags:
+                        _, _, tag_text = def_block.text.strip().lstrip('1234567890. ').rpartition('   ')
+                        ahd.add('DEF', *_get_def_and_exsen(tag_text), '')
+                    else:
+                        def_type = 'DEF'
+                        for subdef in sd_tags:
+                            _, _, tag_text = subdef.text.strip().partition(' ')
+                            ahd.add(def_type, *_get_def_and_exsen(tag_text), '')
 
-            if i:
-                ahd.add('LABEL', '', '')
-            ahd.add('PHRASE', phrase, '')
-            for def_block in idiom_block.find_all(
-                'div', class_=('ds-list', 'ds-single'), recursive=False
-            ):
-                sd_tags = def_block.find_all('div', class_='sds-list', recursive=False)
-                if not sd_tags:
-                    _, _, tag_text = def_block.text.strip().lstrip('1234567890. ').rpartition('   ')
-                    ahd.add('DEF', *_get_def_and_exsen(tag_text), '')
-                else:
-                    def_type = 'DEF'
-                    for subdef in sd_tags:
-                        _, _, tag_text = subdef.text.strip().partition(' ')
-                        ahd.add(def_type, *_get_def_and_exsen(tag_text), '')
-
-                        # exhausted
-                        def_type = 'SUBDEF'
+                            # exhausted
+                            def_type = 'SUBDEF'
 
         # Add synonyms
         ##
