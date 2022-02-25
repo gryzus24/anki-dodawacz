@@ -90,7 +90,7 @@ def diki_audio(raw_phrase: str, flag: str = '') -> str:
 
 def ahd_audio(query: str) -> str:
     soup = request_soup('https://www.ahdictionary.com/word/search.html?q=' + query)
-    audio_url = soup.find('a', {'target': '_blank'}).get('href')
+    audio_url = soup.find('a', {'target': '_blank'})['href']
     if audio_url == 'http://www.hmhco.com':
         print(f'{err_c}AHD does not have the pronunciation for {R}{query}\n'
               f'{YEX}Querying diki...')
@@ -105,4 +105,4 @@ def lexico_audio(query: str) -> str:
         print(f'{err_c}Lexico does not have the pronunciation for {R}{query}\n'
               f'{YEX}Querying diki...')
         return diki_audio(query)
-    return audio_url.get('src')
+    return audio_url['src']

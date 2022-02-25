@@ -2,11 +2,10 @@ from src.colors import BOLD, DEFAULT, GEX, R
 
 
 # Help commands shouldn't exceed the width of 79.
-
-
+##
 def quick_help() -> None:  # -h
     print(f"""\
-{R}{BOLD}{'[ Search ]'.center(79, '─')}{DEFAULT}
+{R}{BOLD}{'─[ Search ]'.ljust(79, '─')}{DEFAULT}
 USAGE:
   Search $ QUERY [OPTIONS...]
 
@@ -26,10 +25,6 @@ OPTIONS:
   e.g.  [QUERY] -noun        : searches for labels starting with "noun"
         [QUERY] -adj -slang  : starting with "adj" and "slang"
 
-  To search for everything except some label use an "!" before an option.
-  e.g.  [QUERY] -!tr -!intr  : searches for everything except labels starting
-                               with "tr" and "intr"
-
   Other options:
   -f, -fsubdefs   filter out subdefinitions
 
@@ -39,15 +34,14 @@ To escape the query or embed it inside a sentence use <QUERY>, this will also
 make the word {BOLD}{GEX}Emphasized{R}{DEFAULT}.
 e.g. >> Search $ This is a sentence with a word <embedded> inside.
 
-{BOLD}{'[ Dictionary and fields ]'.center(79, '─')}{DEFAULT}
-">" next to a definition means it's the main definition and definitions below
-are its subdefinitions.
+{BOLD}{'─[ Dictionary and fields ]'.ljust(79, '─')}{DEFAULT}
+">" next to a definition means it's the main definition.
 
 To add an element (definition, part of speech, synonym) type its index or
 position within a header.
   3         add third element
   2,5       add second and third element
-  2:5       add second, third, fourth and fifth element
+  :5 or 1:5 add second, third, fourth and fifth element
   -1, all   add all elements
   -all      add all elements in a reverse order
   0 or -s   skip element
@@ -74,7 +68,7 @@ Or not less valid:
 
 To add your own text to the field precede it with a "/".
 
-{BOLD}{'[ Audio and Anki configuration ]'.center(79, '─')}{DEFAULT}
+{BOLD}{'─[ Audio and Anki configuration ]'.ljust(79, '─')}{DEFAULT}
 {BOLD}1.{DEFAULT} open Anki and install the AnkiConnect add-on (2055492159)
 {BOLD}2.{DEFAULT} use `-ap auto` or `-ap {{path}}` to add "collection.media" path so that the
    program knows where to save audio files
@@ -96,7 +90,7 @@ def commands_help() -> None:  # --help-commands
     print(f"""\
 Type command's name to display usage.
 
-{R}{BOLD}{'[ Field configuration ]'.center(79, '─')}{DEFAULT}
+{R}{BOLD}{'─[ Field configuration ]'.ljust(79, '─')}{DEFAULT}
 Disabling a field means we won't be asked for input, the program will make the
 choice for us. This behavior can be changed through the `-cd` command.
 
@@ -123,7 +117,7 @@ choice for us. This behavior can be changed through the `-cd` command.
 
 -ap, --audio-path {{path|auto}}   audio save location (default "Cards_audio")
 
-{BOLD}{'[ Display configuration ]'.center(79, '─')}{DEFAULT}
+{BOLD}{'─[ Display configuration ]'.ljust(79, '─')}{DEFAULT}
 -top                             clear screen before displaying dictionaries
 -cardpreview                     preview the created card
 -showadded                       show added elements' indexes
@@ -135,7 +129,7 @@ choice for us. This behavior can be changed through the `-cd` command.
                                  more than n% of the screen
 -indent    {{n >= 0}}              width of wrapped lines' indent
 
-{BOLD}{'[ Hide and filter configuration ]'.center(79, '─')}{DEFAULT}
+{BOLD}{'─[ Hide and filter configuration ]'.ljust(79, '─')}{DEFAULT}
 Hiding a phrase means replacing it with "..." (default)
 
 -upz           hide in sentences
@@ -150,7 +144,7 @@ Hiding a phrase means replacing it with "..." (default)
 -toipa         translate AH Dictionary phonetic spelling into IPA
 -shortetyms    shorten and simplify etymologies in AH Dictionary
 
-{BOLD}{'[ Sources and recording configuration ]'.center(79, '─')}{DEFAULT}
+{BOLD}{'─[ Sources and recording configuration ]'.ljust(79, '─')}{DEFAULT}
 -dict  {{ahd|lexico|idioms}}        primary dictionary
 -dict2 {{ahd|lexico|idioms|-}}      fallback dictionary
 -thes  {{wordnet|-}}                thesaurus
@@ -167,7 +161,7 @@ Hiding a phrase means replacing it with "..." (default)
                            9 : worst
                            4 : recommended
 
-{BOLD}{'[ AnkiConnect configuration ]'.center(79, '─')}{DEFAULT}
+{BOLD}{'─[ AnkiConnect configuration ]'.ljust(79, '─')}{DEFAULT}
 -ankiconnect           use AnkiConnect to add cards
 -duplicates            allow duplicates
 -dupescope             look for duplicates in:
@@ -183,10 +177,10 @@ Hiding a phrase means replacing it with "..." (default)
 
 -b, --browse [query]   open the card browser with "added:1" or [query]
 
-{BOLD}{'[ Misc. commands ]'.center(79, '─')}{DEFAULT}
+{BOLD}{'─[ Misc. commands ]'.ljust(79, '─')}{DEFAULT}
 --define-all [sep]   load content from a "define_all.txt" file and feed it as
-                     search queries, use new lines as query separators unless
-                     a different separator is provided.
+                     search queries, use commas as query separators unless
+                     provided otherwise.
 
 --delete-last,
 --delete-recent      remove the last card from the "cards.txt" file
@@ -203,7 +197,7 @@ Hiding a phrase means replacing it with "..." (default)
 
 def bulk_help() -> None:  # --help-define-all
     print(f"""\
-{R}{BOLD}{'[ Input fields and default values ]'.center(79, '─')}{DEFAULT}
+{R}{BOLD}{'─[ Input fields and default values ]'.ljust(79, '─')}{DEFAULT}
 You can create cards from single words or lists of words faster by changing
 default field values and disabling input fields.
 
@@ -219,7 +213,7 @@ e.g. `-cd def 1:5`  - add first five definitions
      `-cd etym 0`   - don't add etymologies
      `-cd all auto` - restore everything to "auto"
 
-{BOLD}{'[ Creating cards from lists of words ]'.center(79, '─')}{DEFAULT}
+{BOLD}{'─[ Creating cards from lists of words ]'.ljust(79, '─')}{DEFAULT}
 By disabling every input field (`-all off`) the only thing you need to do is
 enter the desired word to create a card, thereby to add multiple words you
 need a list of words which you can enter into the program.
@@ -230,7 +224,7 @@ example list:
   glen
   goal
 
-{BOLD}{'[ `--define-all` command ]'.center(79, '─')}{DEFAULT}
+{BOLD}{'─[ `--define-all` command ]'.ljust(79, '─')}{DEFAULT}
 If you have a ready list of words (like the one with "gush, glib, gunk") and
 want to pass them only into the Search field giving you the whole control over
 the card creation process (no need for `-all off`), you can use the
@@ -257,7 +251,7 @@ formatting options to apply.
 
 def recording_help() -> None:  # --help-rec
     print(f"""\
-{R}{BOLD}{'[ Desktop audio recording ]'.center(79, '─')}{DEFAULT}
+{R}{BOLD}{'─[ Desktop audio recording ]'.ljust(79, '─')}{DEFAULT}
 The program offers a simple FFmpeg interface to record audio from the desktop.
 
 Currently supported configurations:

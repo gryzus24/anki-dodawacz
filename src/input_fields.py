@@ -1,7 +1,7 @@
 from __future__ import annotations
 
-from itertools import chain, tee
-from typing import Any, Iterable, NamedTuple, Sequence
+from itertools import islice
+from typing import Any, NamedTuple, Sequence
 
 from src.colors import GEX, R, YEX
 from src.data import bool_values_dict, config
@@ -12,67 +12,94 @@ class ParsedInput(NamedTuple):
     specifiers: list[int]
 
 
-# For Python <3.10 compatibility.
-def _pairwise(i: Iterable[Any]) -> Iterable[Any]:
-    left, right = tee(i)
-    next(right, None)
-    return zip(left, right)
-
-
 def _parse_input(_input: str, _max: int) -> list[ParsedInput]:
     result = []
     for part in _input.split(','):
-        choices, _, specifiers = part.partition('.')
+        choices, _, specifiers_str = part.partition('.')
+        if not choices:
+            continue
+
+        range_values = choices.split(':')
+        if len(range_values) > 1:
+            # Expand: `2:` -> `2:_max` | `:6` -> `1:6` | `:` -> `1:_max`
+            if not range_values[0]:
+                range_values[0] = '1'
+            if not range_values[-1]:
+                range_values[-1] = str(_max)
 
         valid_values = [
             x if x < _max else _max
-            for x in map(int, filter(str.isdecimal, choices.split(':')))
+            for x in map(int, filter(str.isdecimal, range_values))
             if x
         ]
         if not valid_values:
             continue
 
-        valid_specifiers = [
-            x for x in map(int, filter(str.isdecimal, specifiers)) if x
-        ]
         if len(valid_values) == 1:
-            result.append(ParsedInput(valid_values, valid_specifiers))
-            continue
-
-        t: list[int] = []
-        for left, right in [map(int, t) for t in _pairwise(valid_values)]:
+            values = valid_values
+        elif len(valid_values) == 2:
+            left, right = valid_values
             step = 1 if right > left else -1
-            t.extend(range(left, right + step, step))
+            values = list(range(left, right + step, step))
+        else:
+            # Handle funny inputs with care to not cause any memory errors,
+            # inasmuch as any duplicates are handled in `_add_elements` function.
+            # This is implemented only for the sake of completeness,
+            # it is hardly practical to use this functionality.
+            max_val = min_val = valid_values[0]
+            values = [max_val]
+            for next_ in islice(valid_values, 1, None):
+                if next_ > max_val:
+                    values += range(max_val + (max_val in values), next_ + 1)
+                    #                          ^^^^^^^^^^^^^^^^^
+                    # to avoid adding the same value, start from the next one if in values.
+                    max_val = next_
+                elif next_ < min_val:
+                    values += range(min_val - (min_val in values), next_ - 1, -1)
+                    min_val = next_
 
-        result.append(ParsedInput(t, valid_specifiers))
+        specifiers = [
+            int(x) for x in specifiers_str if x != '0' and x.isdecimal()
+        ]
+
+        result.append(ParsedInput(values, specifiers))
 
     return result
 
 
 def _add_elements(
         parsed_inputs: Sequence[ParsedInput], content: Sequence[str], _sep: str
-) -> list[str]:
+) -> tuple[list[str], list[int]]:
     result = []
     valid_choices = []
-    for parsed_input in parsed_inputs:
-        choices, specifiers = parsed_input
-
+    not_really_added = set()
+    for choices, specifiers in parsed_inputs:
         for choice in choices:
             content_part = content[choice - 1]
             if not content_part:
+                c = str(choice)
+                not_really_added.add(c)
+                valid_choices.append(c)
                 continue
 
             split_part = content_part.strip(',.:;!?[]').split(_sep)
             specifiers = [x for x in specifiers if x <= len(split_part)]
             if not specifiers or len(split_part) == 1:
-                result.append(content_part)
-                valid_choices.append(str(choice))
+                c = str(choice)
+                if c not in valid_choices:
+                    result.append(content_part)
+                    valid_choices.append(c)
                 continue
 
             new_element = []
             for spec in specifiers:
-                new_element.append(split_part[spec - 1].strip())
-                valid_choices.append(f'{choice}.{spec}')
+                c = f'{choice}.{spec}'
+                if c not in valid_choices:
+                    new_element.append(split_part[spec - 1].strip())
+                    valid_choices.append(c)
+
+            if not new_element:
+                continue
 
             if _sep in ',.:;!?':
                 combined = (_sep + ' ').join(new_element)
@@ -86,9 +113,18 @@ def _add_elements(
             result.append(combined)
 
     if config['showadded']:
-        print(f'{YEX}Added: {R}{", ".join(valid_choices)}')
+        added = filter(lambda x: x not in not_really_added, valid_choices)
+        print(f'{YEX}Added: {R}{", ".join(added)}')
 
-    return result
+    major_choices = []
+    for elem in valid_choices:
+        ch = int(elem.partition('.')[0])
+        if ch not in major_choices:
+            major_choices.append(ch)
+
+    assert major_choices, "This shouldn't have happend."
+
+    return result, major_choices
 
 
 input_field_config = {
@@ -141,11 +177,10 @@ def get_user_input(field: str, content: Sequence[str], auto: str) -> UserInput |
         print(f'{GEX}Card skipped')
         return None
 
-    content = _add_elements(parsed_inputs, content, specifier_split)
-    return UserInput(
-        connector.join(content),
-        tuple(chain(*map(lambda x: x.choices, parsed_inputs)))
+    content, major_choices = _add_elements(
+        parsed_inputs, content, specifier_split
     )
+    return UserInput(connector.join(content), major_choices)
 
 
 def ask_yes_no(prompt: str, *, default: bool) -> bool:

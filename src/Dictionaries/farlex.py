@@ -15,10 +15,9 @@
 
 from __future__ import annotations
 
-from src.Dictionaries.dictionary_base import Dictionary, FieldFormat
+from src.Dictionaries.dictionary_base import Dictionary
 from src.Dictionaries.utils import request_soup
 from src.colors import R, err_c
-from src.data import HORIZONTAL_BAR
 from src.input_fields import get_user_input
 
 
@@ -26,9 +25,7 @@ class FarlexIdioms(Dictionary):
     name = 'farlex'
     allow_thesaurus = False
 
-    PHRASE = FieldFormat('! {phrase_c}{phrase}{padding}',)
-    DEF = FieldFormat('{index_c}{index} {def_c}{first_line}', '${def_c}{line}',)
-    EXSEN = FieldFormat('${index_pad} {exsen_c}{first_line}', '${exsen_c}{line}',)
+    DEF_with_sign = False
 
     def input_cycle(self) -> dict[str, str] | None:
         def_input = get_user_input('def', self.definitions, '1')
@@ -63,7 +60,7 @@ def ask_farlex(query: str) -> Dictionary | None:
     farlex = FarlexIdioms()
     last_phrase = ''
     content_blocks = relevant_content.find_all('div', class_=('ds-single', 'ds-list'), recursive=False)
-    farlex.add('HEADER', HORIZONTAL_BAR, 'Farlex Idioms')
+    farlex.add('HEADER', 'Farlex Idioms')
     for content_block in content_blocks:
         # Gather idiom phrases
         idiom_phrase = content_block.find_previous_sibling('h2').text.strip()
@@ -87,6 +84,6 @@ def ask_farlex(query: str) -> Dictionary | None:
             examples = ''
 
         farlex.add('DEF', definition, examples, '')
-        farlex.add('HEADER', ' ', '')
+        farlex.add('LABEL', '', '')
 
     return farlex

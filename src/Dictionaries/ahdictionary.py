@@ -21,7 +21,7 @@ from typing import Any, Callable, Iterable
 from src.Dictionaries.dictionary_base import Dictionary
 from src.Dictionaries.utils import request_soup
 from src.colors import R, err_c, phrase_c
-from src.data import HORIZONTAL_BAR, config
+from src.data import config
 from src.input_fields import get_user_input
 
 
@@ -34,8 +34,8 @@ class AHDictionary(Dictionary):
         if def_input is None:
             return None
 
-        choices_by_header = self.get_positions_in_sections(def_input.choices)
-        phrase = self.phrases[choices_by_header[0] - 1]
+        phrase = self.phrases[
+            self.get_positions_in_sections(def_input.choices, from_within='PHRASE')[0] - 1]
 
         audio = self.audio_urls[
             self.get_positions_in_sections(def_input.choices, from_within='AUDIO')[0] - 1]
@@ -45,13 +45,14 @@ class AHDictionary(Dictionary):
         if exsen_input is None:
             return None
 
+        choices_by_headers = self.get_positions_in_sections(def_input.choices)
         pos_input = get_user_input(
-            'pos', self.parts_of_speech, self.to_auto_choice(choices_by_header, 'POS'))
+            'pos', self.parts_of_speech, self.to_auto_choice(choices_by_headers, 'POS'))
         if pos_input is None:
             return None
 
         etym_input = get_user_input(
-            'etym', self.etymologies, self.to_auto_choice(choices_by_header, 'ETYM'))
+            'etym', self.etymologies, self.to_auto_choice(choices_by_headers, 'ETYM'))
         if etym_input is None:
             return None
 
@@ -179,7 +180,7 @@ def _get_def_and_exsen(s: str) -> tuple[str, str]:
 
     _exsen, _, _ = _exsen.partition('See Usage Note')
     _exsen, sep, tail = _exsen.partition('See Synonyms')
-    _def += f' {sep.strip()}{tail}'
+    _def += f' {sep.strip()}{tail}'.strip()
     _exsen = _exsen.strip()
     if _exsen:
         _exsen = '<br>'.join(f"‘{x.strip()}’" for x in _exsen.split(';'))
@@ -260,16 +261,18 @@ def ask_ahdictionary(query: str) -> Dictionary | None:
 
         if before_phrase:
             before_phrase = False
-            ahd.add('HEADER', HORIZONTAL_BAR, 'AH Dictionary')
+            ahd.add('HEADER', 'AH Dictionary')
             if phrase.lower() != query.lower():
                 ahd.add('NOTE', f' Results for {phrase_c}{phrase}')
         else:
-            ahd.add('HEADER', HORIZONTAL_BAR, '')
+            ahd.add('HEADER', '')
 
         # Gather audio urls
         audio_url = td.find('a', {'target': '_blank'})
         if audio_url is not None:
             ahd.add('AUDIO', 'https://www.ahdictionary.com' + audio_url['href'].strip())
+        else:
+            ahd.add('AUDIO', '')
 
         ahd.add('PHRASE', phrase, phon_spell)
 
@@ -348,6 +351,8 @@ def ask_ahdictionary(query: str) -> Dictionary | None:
             td_pos.append(f'{pos}|{phon_spell}')
         if td_pos:
             ahd.add('POS', *td_pos)
+        else:
+            ahd.add('POS', '')
 
         # Add etymologies
         etymology = td.find('div', class_='etyseg', recursive=False)
@@ -357,17 +362,23 @@ def ask_ahdictionary(query: str) -> Dictionary | None:
                 ahd.add('ETYM', _shorten_etymology(etym.strip('[]')))
             else:
                 ahd.add('ETYM', etym)
+        else:
+            ahd.add('ETYM', '')
 
         # Add idioms
-        filling, title = HORIZONTAL_BAR, 'Idioms'
-        for idiom_block in td.find_all('div', class_='idmseg', recursive=False):
+        idioms = td.find_all('div', class_='idmseg', recursive=False)
+        if not idioms:
+            continue
+
+        ahd.add('HEADER', 'Idioms')
+        for i, idiom_block in enumerate(idioms):
             b_tags = idiom_block.find_all('b', recursive=False)
             phrase = ' '.join(filter(None, map(lambda x: x.text.strip(), b_tags)))
             phrase = '/'.join(map(str.strip, phrase.split('/')))
 
-            ahd.add('HEADER', filling, title)
+            if i:
+                ahd.add('LABEL', '', '')
             ahd.add('PHRASE', phrase, '')
-
             for def_block in idiom_block.find_all(
                 'div', class_=('ds-list', 'ds-single'), recursive=False
             ):
@@ -383,8 +394,6 @@ def ask_ahdictionary(query: str) -> Dictionary | None:
 
                         # exhausted
                         def_type = 'SUBDEF'
-            # exhausted
-            filling, title = ' ', ''
 
         # Add synonyms
         ##
@@ -417,7 +426,7 @@ def ask_ahdictionary(query: str) -> Dictionary | None:
                 if tag_text:
                     other_tags.append(_tag)
 
-        ahd.add('HEADER', HORIZONTAL_BAR, 'Synonyms')
+        ahd.add('HEADER', 'Synonyms')
         # Let it fail if `other_tags` is empty for now.
         temp_examples = other_tags[0].text.split(';')
         if len(temp_examples) == len(provided_synonyms):

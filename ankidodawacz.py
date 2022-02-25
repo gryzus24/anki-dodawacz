@@ -80,7 +80,12 @@ no_arg_commands = {
 if LINUX:
     from src.completer import Completer
     tab_completion = Completer(
-        tuple(chain(boolean_cmd_to_msg, cmd_to_msg_usage, no_arg_commands))
+        tuple(chain(
+            boolean_cmd_to_msg,
+            cmd_to_msg_usage,
+            no_arg_commands,
+            ['--define-all']
+        ))
     )
 else:
     from contextlib import nullcontext
@@ -222,32 +227,34 @@ def save_audio_url(audio_url: str) -> str | NoReturn:
         raise
 
 
+def _from_diki(phrase: str, flags: Sequence[str]) -> str:
+    flag = ''
+    for f in flags:
+        if f in {'n', 'v', 'a', 'adj', 'noun', 'verb', 'adjective'}:
+            flag = '-' + f[0]
+            break
+    url = diki_audio(phrase, flag)
+    return save_audio_url(url) if url else ''
+
+
 def manage_audio(
         dictionary_name: str, audio_url: str, phrase: str, flags: Sequence[str]
 ) -> str:
-    def from_diki() -> str:
-        flag = ''
-        for f in flags:
-            if f in ('n', 'v', 'a', 'adj', 'noun', 'verb', 'adjective'):
-                flag = '-' + f[0]
-                break
-        url = diki_audio(phrase, flag)
-        return save_audio_url(url) if url else ''
-
     server = config['audio']
     if server == '-':
         return ''
 
     # Farlex has no audio, so we try to get it from diki.
     if server == 'diki' or dictionary_name == 'farlex':
-        return from_diki()
+        return _from_diki(phrase, flags)
 
     if server == 'auto' or dictionary_name == server:
         if audio_url:
             return save_audio_url(audio_url)
-        print(f'{err_c}The dictionary does not have the pronunciation for {R}{phrase}\n'
-              f'{YEX}Querying diki...')
-        return from_diki()
+        else:
+            print(f'{err_c}This dictionary does not have the pronunciation for {R}{phrase}\n'
+                  f'{YEX}Querying diki...')
+            return _from_diki(phrase, flags)
 
     if server == 'ahd':
         audio_url = ahd_audio(phrase)
@@ -256,9 +263,7 @@ def manage_audio(
     else:
         raise AssertionError('unreachable')
 
-    if audio_url:
-        return save_audio_url(audio_url)
-    return ''
+    return save_audio_url(audio_url) if audio_url else ''
 
 
 def display_card(field_values: dict[str, str]) -> None:
@@ -494,7 +499,7 @@ def from_define_all_file(_input: str) -> Generator[str, None, None]:
     _, _, sep = _input.partition(' ')
     sep = sep.strip()
     if not sep:
-        sep = '\n'
+        sep = ','
 
     with open(define_file) as f:
         lines = [x.strip().strip(sep) for x in f if x.strip().strip(sep)]

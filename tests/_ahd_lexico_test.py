@@ -15,7 +15,7 @@ from src.data import config
 #   specify a reasonable sample size.
 #   run with `python` or `pytest -sv (--full-trace if looking for crashes)`
 #
-#   `rm test_dictionaries.py; cp tests/test_dictionaries.py . && pytest -sv --full-trace test_dictionaries.py`
+#   `rm _ahd_lexico_test.py; cp tests/_ahd_lexico_test.py . && pytest -sv --full-trace _ahd_lexico_test.py`
 #
 # PROBLEMATIC AHD QUERIES:
 #   gift-wrap : 'or' in inflections

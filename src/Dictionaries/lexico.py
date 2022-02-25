@@ -20,13 +20,29 @@ from typing import Any
 from src.Dictionaries.dictionary_base import Dictionary
 from src.Dictionaries.utils import request_soup
 from src.colors import R, err_c, phrase_c
-from src.data import HORIZONTAL_BAR
 from src.input_fields import get_user_input
 
 
 class Lexico(Dictionary):
     name = 'lexico'
     allow_thesaurus = True
+
+    @property
+    def etymologies(self) -> list[str]:
+        # Because of Lexico's HTML structure it's hard to add blank etymologies
+        # and as etymologies are bound to HEADERs we can use them to keep track
+        # of the position.
+        result = []
+        t = ''
+        for x in self.contents:
+            if x[0] == 'ETYM':
+                t = x[1]
+            elif x[0] == 'HEADER':
+                result.append(t)
+                t = ''
+        del result[0]
+        result.append(t)
+        return result
 
     def input_cycle(self) -> dict[str, str] | None:
         def_input = get_user_input('def', self.definitions, '1')
@@ -152,12 +168,12 @@ def ask_lexico(query: str) -> Dictionary | None:
 
             if before_phrase:
                 before_phrase = False
-                lexico.add('HEADER', HORIZONTAL_BAR, 'Lexico')
+                lexico.add('HEADER', 'Lexico')
                 if _previous_query is not None and _previous_query != query:
                     lexico.add('NOTE', f' Results for {phrase_c}{phrase_}')
                     _previous_query = None  # global
             else:
-                lexico.add('HEADER', HORIZONTAL_BAR, '')
+                lexico.add('HEADER', '')
 
             lexico.add('PHRASE', phrase_, get_phonetic_spelling(block))
 
@@ -243,9 +259,13 @@ def ask_lexico(query: str) -> Dictionary | None:
                 if gramb_audio is not None:
                     gram_urls = gramb_audio.find_all('audio')
                     if gram_urls:
-                        lexico.add('AUDIO', gram_urls[-1].get('src'))
+                        lexico.add('AUDIO', gram_urls[-1]['src'])
+                    else:
+                        lexico.add('AUDIO', '')
+                else:
+                    lexico.add('AUDIO', '')
 
-        elif block.get('class')[0] == 'etymology' and block.h3.text == 'Origin' and etym:
+        elif block['class'][0] == 'etymology' and block.h3.text == 'Origin' and etym:
             lexico.add('ETYM', etym)
 
     return lexico

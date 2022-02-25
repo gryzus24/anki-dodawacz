@@ -21,11 +21,19 @@ from shutil import get_terminal_size
 from typing import Any, Callable, NoReturn, Optional
 
 import urllib3
-from bs4 import BeautifulSoup  # type: ignore
 from urllib3.exceptions import ConnectTimeoutError, NewConnectionError
 
 from src.colors import err_c
 from src.data import ON_WINDOWS_CMD, POSIX, USER_AGENT, WINDOWS
+
+# Silence warnings if soupsieve is not installed, which is good
+# because its bloated `css parse` slows down import time a lot.
+try:
+    sys.stderr = None  # type: ignore
+    from bs4 import BeautifulSoup  # type: ignore
+finally:
+    sys.stderr = sys.__stderr__
+
 
 PREPOSITIONS = {
     'beyond', 'of', 'outside', 'upon', 'with', 'within',

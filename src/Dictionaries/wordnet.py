@@ -18,7 +18,6 @@ from __future__ import annotations
 from src.Dictionaries.dictionary_base import Dictionary, format_title
 from src.Dictionaries.utils import request_soup, wrap_and_pad
 from src.colors import R, err_c, exsen_c, index_c, label_c, syn_c, syngloss_c
-from src.data import HORIZONTAL_BAR
 from src.input_fields import get_user_input
 
 
@@ -55,7 +54,7 @@ class WordNet(Dictionary):
                     for line in rest:
                         buffer.append(f'{exsen_c}{line}')
             elif op == 'HEADER':
-                buffer.append(format_title(textwidth, body[0], body[1]))
+                buffer.append(format_title(textwidth, body[0]))
             else:
                 raise AssertionError(f'unreachable wordnet operation: {op!r}')
 
@@ -78,7 +77,7 @@ def ask_wordnet(query: str) -> Dictionary:
         return WordNet()
 
     wordnet = WordNet()
-    wordnet.add('HEADER', HORIZONTAL_BAR, 'WordNet')
+    wordnet.add('HEADER', 'WordNet')
     for t in soup.find_all('li'):
         _, _, body = t.text.partition('(')
         pos, _, body = body.partition(')')
