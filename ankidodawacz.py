@@ -84,12 +84,11 @@ if LINUX:
             boolean_cmd_to_msg,
             cmd_to_msg_usage,
             no_arg_commands,
-            ['--define-all']
+            ['-b', '--browse', '--define-all']
         ))
     )
 else:
-    from contextlib import nullcontext
-    tab_completion = nullcontext
+    from contextlib import nullcontext as tab_completion
 
 
 def search_interface() -> str:

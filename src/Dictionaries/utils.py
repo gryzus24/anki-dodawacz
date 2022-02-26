@@ -28,6 +28,7 @@ from src.data import ON_WINDOWS_CMD, POSIX, USER_AGENT, WINDOWS
 
 # Silence warnings if soupsieve is not installed, which is good
 # because its bloated `css parse` slows down import time a lot.
+# ~70ms on my desktop and ~200ms on an android phone.
 try:
     sys.stderr = None  # type: ignore
     from bs4 import BeautifulSoup  # type: ignore
