@@ -40,7 +40,7 @@ Po zainstalowaniu Pythona:<br>
 #### Za pomocą jednej komendy:
 Wciśnij Win+R, wpisz "cmd" i użyj komendy:
 ```
-mkdir %HOMEPATH%\Downloads\Ankidodawacz && cd %HOMEPATH%\Downloads\Ankidodawacz && curl https://api.github.com/repos/gryzus24/anki-dodawacz/tags | python -c"import json,sys;sys.stdout.write('url '+json.load(sys.stdin)[0]['tarball_url'])" | curl -L -K- -o a && tar -xvzf a --strip-components=1 && del a && pip install --disable-pip-version-check beautifulsoup4 colorama lxml urllib3 && python ankidodawacz.py
+mkdir %HOMEPATH%\Downloads\Ankidodawacz && cd %HOMEPATH%\Downloads\Ankidodawacz && curl https://api.github.com/repos/gryzus24/anki-dodawacz/tags | python -c"import json,sys;sys.stdout.write('url '+json.load(sys.stdin)[0]['tarball_url'])" | curl -L -K- -o a && tar -xvzf a --strip-components=1 && del a && pip install --disable-pip-version-check --no-deps beautifulsoup4 colorama lxml urllib3 && python ankidodawacz.py
 ```
 Program zostanie pobrany do folderu Pobrane\Ankidodawacz.
 
@@ -49,7 +49,7 @@ Wejdź w Releases (tags) -> Tags<br>
 pobierz i wypakuj .zip archiwum.
 
 Wciśnij Win+R, wpisz "cmd" i użyj komendy, aby zainstalować wymagane biblioteki:<br>
-`pip install beautifulsoup4 colorama lxml urllib3`
+`pip install --no-deps beautifulsoup4 colorama lxml urllib3`
 
 Pójdź do folderu z programem:<br>
 `cd <ścieżka do folderu>`<br>
@@ -65,7 +65,7 @@ błędu, okno zamknie się natychmiastowo.
 
 Większość dystrybucji GNU/Linuxa ma już zainstalowaną odpowiednią wersję Pythona, więc pójdź do folderu w którym chcesz pobrać program i wpisz:<br>
 ```
-mkdir Ankidodawacz && cd $_ && curl https://api.github.com/repos/gryzus24/anki-dodawacz/tags | python -c"import json,sys;sys.stdout.write('url '+json.load(sys.stdin)[0]['tarball_url'])" | curl -L -K- -o a && tar -xvzf a --strip-components=1 && rm a && pip install --disable-pip-version-check beautifulsoup4 colorama lxml urllib3 && python ankidodawacz.py
+mkdir Ankidodawacz && cd $_ && curl https://api.github.com/repos/gryzus24/anki-dodawacz/tags | python -c"import json,sys;sys.stdout.write('url '+json.load(sys.stdin)[0]['tarball_url'])" | curl -L -K- -o a && tar -xvzf a --strip-components=1 && rm a && pip install --disable-pip-version-check --no-deps beautifulsoup4 colorama lxml urllib3 && python ankidodawacz.py
 ```
 
 ### MacOS
