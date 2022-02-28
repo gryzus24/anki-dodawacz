@@ -258,13 +258,12 @@ def add_card_to_anki(field_values: dict[str, str]) -> None:
             print(f'{err_c}Could not recognize note:\n{err}\n')
             return None
 
-    # When note is not found return an empty dict so that
-    # there's no attribute error in the try block below
-    fields_to_add = {}
     note_from_config = config_ac.get(note_name, {})
     try:
-        for anki_field_name, base in note_from_config.items():
-            fields_to_add[anki_field_name] = field_values[base]
+        fields_to_add = {
+            anki_field_name: field_values[base]
+            for anki_field_name, base in note_from_config.items()
+        }
     except KeyError:  # shouldn't happen if ankiconnect.json isn't tampered with
         print(f'{err_c}Card could not be added to Anki:\n'
               f'  Check if note {R}{note_name}{err_c} contains required fields\n'
@@ -287,13 +286,10 @@ def add_card_to_anki(field_values: dict[str, str]) -> None:
         print(f'{err_c}Card could not be added to Anki:\n{response.body}\n')
         return None
 
-    print(f'{GEX}Card successfully added to Anki\n'
-          f'{YEX}Deck: {R}{config["deck"]}\n'
-          f'{YEX}Note: {R}{note_name}\n'
-          f'{YEX}Used fields:')
-
-    for anki_field_name, content in fields_to_add.items():
-        if content.strip():
-            print(f'- {anki_field_name}')
-    print(f'{YEX}Tags: {R}{tags}\n'
-          f'> open card browser: `-b`\n')
+    print(
+        f'{GEX}Card successfully added to Anki\n'
+        f'{YEX}Deck: {R}{config["deck"]}\n'
+        f'{YEX}Note: {R}{note_name}\n'
+        f'{YEX}Tags: {R}{tags}\n'
+        f'> open card browser: `-b`\n'
+    )

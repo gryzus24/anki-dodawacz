@@ -180,7 +180,7 @@ def _get_def_and_exsen(s: str) -> tuple[str, str]:
 
     _exsen, _, _ = _exsen.partition('See Usage Note')
     _exsen, sep, tail = _exsen.partition('See Synonyms')
-    _def += f' {sep.strip()}{tail}'.strip()
+    _def += f' {sep.strip()}{tail}'.rstrip()
     _exsen = _exsen.strip()
     if _exsen:
         _exsen = '<br>'.join(f"‘{x.strip()}’" for x in _exsen.split(';'))

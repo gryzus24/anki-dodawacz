@@ -336,9 +336,12 @@ class Dictionary:
 
         def _push_chain(_s1: str, _c1: str, _s2: str, _c2: str) -> None:
             _first_line, *_rest = wrap_method(f'{_s1} \0{_s2}', 1, 0)
-            _first_line = _first_line.replace('\0', ' ' + _c2)
-            current_color = _c1
-            buffer.append(f'! {current_color}{_first_line}')
+            if '\0' in _first_line:
+                _first_line = _first_line.replace('\0', ' ' + _c2)
+                current_color = _c2
+            else:
+                current_color = _c1
+            buffer.append(f'! {_c1}{_first_line}')
             for _line in _rest:
                 if '\0' in _line:
                     _line = _line.replace('\0', ' ' + _c2)
