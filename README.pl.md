@@ -114,7 +114,7 @@ Aktualnie obsługiwane systemy operacyjne i konfiguracja audio:
 Oficjalna strona FFmpeg: https://www.ffmpeg.org/download.html
 
 Aby nagrywać audio musisz dodać program _ffmpeg_ do $PATH albo umieścić go w folderze z Ankidodawaczem.<br>
-Aby wybrać preferowane użądzenie audio użyj komendy `--audio-device`
+Aby wybrać preferowane urządzenie audio użyj komendy `--audio-device`
 
 Jeżeli nagrywanie nie działa na Windowsie:
 - włącz "Miks stereo" w ustawieniach dźwięku
@@ -125,7 +125,7 @@ Na GNU/Linuxie jest duża szansa, że _ffmpeg_ jest już zainstalowany i dostęp
 Więc jedyne co trzeba zrobić to:
 - wpisz `-rec` w Ankidodawaczu
 - podczas nagrywania wejdź w mikser dźwięku pulseaudio -> Nagrywanie
-- zmień urządzenie monitorujące dla Lavf na preferowane użądzenie wyjściowe, głośniki, DAC, itd.
+- zmień urządzenie monitorujące dla Lavf na preferowane urządzenie wyjściowe, głośniki, DAC, itd.
 
 Aby rozpocząć nagrywanie dodaj `-rec` po wyszukiwanej frazie.
 
