@@ -25,8 +25,6 @@ class FarlexIdioms(Dictionary):
     name = 'farlex'
     allow_thesaurus = False
 
-    DEF_with_sign = False
-
     def input_cycle(self) -> dict[str, str] | None:
         def_input = get_user_input('def', self.definitions, '1')
         if def_input is None:

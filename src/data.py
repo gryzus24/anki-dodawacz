@@ -59,6 +59,7 @@ boolean_cmd_to_msg = {
     '-top': 'Clear screen before displaying dictionaries',
     '-cardpreview': 'Preview the created card',
     '-showadded': "Show added elements' indexes",
+    '-showsign': 'Show a ">" before the main definition',
 
     '-ankiconnect': 'Use AnkiConnect to add cards',
     '-duplicates': 'Allow duplicates',

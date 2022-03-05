@@ -138,10 +138,6 @@ class Dictionary:
     allow_thesaurus: bool
     name: str  # name in config
 
-    # Formatter options for subclasses to customize. Will add more if need be.
-    # For the moment it is only used by Farlex to hide the definition sign.
-    DEF_with_sign = True
-
     def __init__(self, contents: Optional[list[Sequence[str]]] = None) -> None:
         self.contents: list[Sequence[str]] = []
         if contents is not None:
@@ -316,7 +312,9 @@ class Dictionary:
                 return column_width - 1, ncolumns, remainder + 1
             return column_width, ncolumns, 0
 
-    def format_dictionary(self, textwidth: int, wrap_style: str, indent: int) -> list[str]:
+    def format_dictionary(
+            self, textwidth: int, wrap_style: str, indent: int, signed: bool
+    ) -> list[str]:
         # Format self.contents' list of (op, body)
         # into wrapped, colored and padded body lines.
         # Available instructions:
@@ -364,11 +362,8 @@ class Dictionary:
                 else:
                     label_len = 0
 
-                def_c = def1_c if index % 2 else def2_c
-                sign = ' ' if 'SUB' in op else '>'
-
-                if self.DEF_with_sign:
-                    _def_s = f'{sign_c}{sign}'
+                if signed:
+                    _def_s = f"{sign_c}{' ' if 'SUB' in op else '>'}"
                     gaps = 2
                 else:
                     _def_s = ''
@@ -377,15 +372,15 @@ class Dictionary:
                 first_line, *rest = wrap_method(
                     _def, gaps + index_len + label_len, indent - label_len
                 )
-                _def_s += f'{index_c}{index} {label_c}{_label}{def_c}{first_line}'
-                buffer.append(_def_s)
+                def_c = def1_c if index % 2 else def2_c
+                buffer.append(f'{_def_s}{index_c}{index} {label_c}{_label}{def_c}{first_line}')
                 for line in rest:
                     buffer.append(f'${def_c}{line}')
 
                 if _exsen:
                     for ex in _exsen.split('<br>'):
-                        first_line, *rest = wrap_method(ex, gaps + index_len, 1 + indent)
-                        buffer.append(f'${index_len * " "}{gaps * " "}{exsen_c}{first_line}')
+                        first_line, *rest = wrap_method(ex, gaps + index_len - 1, 1 + indent)
+                        buffer.append(f'${index_len * " "}{(gaps - 1) * " "}{exsen_c}{first_line}')
                         for line in rest:
                             buffer.append(f'${exsen_c}{line}')
             elif op == 'LABEL':
@@ -443,8 +438,8 @@ class Dictionary:
                     buffer.append(f'!{syngloss_c}{line}')
 
                 for ex in body[2].split('<br>'):
-                    first_line, *rest = wrap_method(ex, 2, 1)
-                    buffer.append(f'  {exsen_c}{first_line}')
+                    first_line, *rest = wrap_method(ex, 1, 1)
+                    buffer.append(f' {exsen_c}{first_line}')
                     for line in rest:
                         buffer.append(f'${exsen_c}{line}')
             elif op == 'NOTE':
@@ -458,13 +453,13 @@ class Dictionary:
 
     def prepare_to_print(
             self, ncols: Optional[int], width: int, height: int,
-            fold_at: float, wrap_style: str, indent: int
+            fold_at: float, wrap_style: str, indent: int, signed: bool
     ) -> tuple[zip_longest, int]:
         # Return value of this method should be passed to the `print_dictionary` method.
         column_width, ncols, last_col_fill = self.get_display_parameters(
             width, height, fold_at, ncols
         )
-        formatted = self.format_dictionary(column_width, wrap_style, indent)
+        formatted = self.format_dictionary(column_width, wrap_style, indent, signed)
         if ncols == 1:
             columns = [[line.lstrip('$!') for line in formatted]]
         else:

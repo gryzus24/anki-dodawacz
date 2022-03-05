@@ -276,8 +276,8 @@ def display_card(field_values: dict[str, str]) -> None:
     }
     textwidth, _ = get_config_terminal_size()
     delimit = textwidth * HORIZONTAL_BAR
-    textwidth, padding = round((textwidth - 1) * 0.92) + 1,\
-                         round((textwidth - 1) * 0.04) * " "
+    adjusted_textwidth = int(0.95 * textwidth)
+    padding = (textwidth - adjusted_textwidth) // 2 * " "
 
     print(f'\n{delimit_c}{delimit}')
     for field_number, field in enumerate(config['fieldorder']):
@@ -285,7 +285,7 @@ def display_card(field_values: dict[str, str]) -> None:
             continue
 
         for line in field_values[field].split('<br>'):
-            for subline in wrap_lines(line, config['textwrap'], textwidth, 0, 0):
+            for subline in wrap_lines(line, config['textwrap'], adjusted_textwidth, 0, 0):
                 print(f'{color_of[field]}{padding}{subline}')
 
         if field_number + 1 == config['fieldorder_d']:  # d = delimitation
@@ -368,7 +368,8 @@ def display_dictionary(
             ncols, width, height - 3,
             config['colviewat'][0],
             config['textwrap'],
-            config['indent'][0]
+            config['indent'][0],
+            config['showsign']
         )
     if config['top']:
         with ClearScreen():

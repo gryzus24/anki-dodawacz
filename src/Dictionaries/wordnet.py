@@ -25,7 +25,9 @@ class WordNet(Dictionary):
     name = 'wordnet'
 
     # TODO: Merge WordNet's formatting logic with AH Dictionary's synonyms.
-    def format_dictionary(self, textwidth: int, wrap_style: str, indent: int) -> list[str]:
+    def format_dictionary(
+            self, textwidth: int, wrap_style: str, indent: int, signed: bool
+    ) -> list[str]:
         # Available instructions:
         #   (SYN, synonyms, glosses, pos_label)
 
