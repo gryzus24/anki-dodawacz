@@ -40,8 +40,8 @@ from src.Dictionaries.wordnet import WordNet, ask_wordnet
 from src.__version__ import __version__
 from src.colors import (BOLD, DEFAULT, GEX, R, YEX, def1_c, delimit_c, err_c, etym_c,
                         exsen_c, phrase_c, pos_c, syn_c)
-from src.data import (HORIZONTAL_BAR, LINUX, ON_WINDOWS_CMD, ROOT_DIR, boolean_cmd_to_msg,
-                      cmd_to_msg_usage, config)
+from src.data import (HORIZONTAL_BAR, LINUX, ON_WINDOWS_CMD, ROOT_DIR, WINDOWS,
+                      boolean_cmd_to_msg, cmd_to_msg_usage, config)
 from src.input_fields import sentence_input
 
 required_arg_commands = {
@@ -304,22 +304,39 @@ def get_config_terminal_size() -> tuple[int, int]:
 
 
 def _display_in_less(s: str) -> None:
+    executable = shutil.which('less')
+    if executable is None:
+        if WINDOWS:
+            print(
+                f"'less'{err_c} is not available in %PATH% or in the current directory.\n"
+                f"You can grab the latest Windows executable from:\n"
+                f"{R}https://github.com/jftuga/less-Windows/releases\n"
+            )
+        else:
+            print(f"{err_c}Could not find the 'less' executable.\n")
+        return
+
+    # r - accept escape sequences. `-R` does not produce desirable results on Windows.
     # F - do not open the pager if output fits on the screen.
     # K - exit on SIGINT. *This is important not to break keyboard input.
     # Q - be quiet.
-    # R - accept ANSI escape sequences.
     # X - do not clear the screen after exiting from the pager.
-    options = '-FKQRX'
-    with Popen(('less', options), stdin=PIPE, stderr=DEVNULL, encoding='utf-8') as process:
+    if WINDOWS:
+        env = {'LESSCHARSET': 'UTF-8'}
+        options = '-rFKQX'
+    else:
+        env = None
+        options = '-RFKQX'
+    with Popen((executable, options), stdin=PIPE, stderr=DEVNULL, env=env) as process:
         try:
-            process.communicate(s)
+            process.communicate(s.encode())
         except:
             process.kill()
 
         # less returns 2 on SIGINT.
         return_code = process.poll()
         if return_code and return_code != 2:
-            sys.stdout.write(f"{err_c}Could not open the pager as: 'less {options}'\n")
+            print(f"{err_c}Could not open the pager as: 'less {options}'\n")
 
 
 def _display(s: str) -> None:
