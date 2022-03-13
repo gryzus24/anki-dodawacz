@@ -128,6 +128,8 @@ choice for us. This behavior can be changed through the `-cd` command.
 
 {_title('Display configuration')}
 -top                             clear screen before displaying dictionaries
+-less                            use a pager -- `less` -- to display
+                                 dictionaries (with `-FKRQX` options)
 -cardpreview                     preview the created card
 -showadded                       show added elements' indexes
 

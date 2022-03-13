@@ -47,7 +47,7 @@ CONFIG_COLUMNS = tuple(
             '-upz', '-udef', '-uexsen', '-usyn', '-upreps', '-keependings', '-hideas',
         ),
         (
-            '-top', '-cardpreview', '-showadded', '-showsign',
+            '-top', '-less', '-cardpreview', '-showadded', '-showsign',
             '-textwrap', '-textwidth', '-columns', '-colviewat', '-indent',
             '',
             '[filtering config.]',

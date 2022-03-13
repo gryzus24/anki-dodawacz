@@ -20,7 +20,9 @@ from __future__ import annotations
 import binascii
 import os.path
 import shutil
+import sys
 from itertools import chain, repeat
+from subprocess import DEVNULL, PIPE, Popen
 from typing import Generator, Iterable, NoReturn, Optional, Sequence
 
 import src.anki_interface as anki
@@ -29,7 +31,7 @@ import src.ffmpeg_interface as ffmpeg
 import src.help as h
 from src.Dictionaries.ahdictionary import ask_ahdictionary
 from src.Dictionaries.audio_dictionaries import ahd_audio, diki_audio, lexico_audio
-from src.Dictionaries.dictionary_base import Dictionary, print_columns
+from src.Dictionaries.dictionary_base import Dictionary, stringify_columns
 from src.Dictionaries.farlex import ask_farlex
 from src.Dictionaries.lexico import ask_lexico
 from src.Dictionaries.utils import (ClearScreen, get_width_per_column, hide, http,
@@ -148,10 +150,10 @@ def search_interface() -> str:
 
 
 DICT_DISPATCH = {
-        'ahd': ask_ahdictionary,
-        'lexico': ask_lexico, 'l': ask_lexico,
-        'idioms': ask_farlex, 'idiom': ask_farlex, 'i': ask_farlex,
-        '-': lambda _: None
+    'ahd': ask_ahdictionary,
+    'lexico': ask_lexico, 'l': ask_lexico,
+    'idioms': ask_farlex, 'idiom': ask_farlex, 'i': ask_farlex,
+    '-': lambda _: None
 }
 def get_dictionaries(
         query: str, dict_flags: Optional[Sequence[str]] = None
@@ -301,6 +303,39 @@ def get_config_terminal_size() -> tuple[int, int]:
     return config_width, term_height
 
 
+def _display_in_less(s: str) -> None:
+    # F - do not open the pager if output fits on the screen.
+    # K - exit on SIGINT. *This is important not to break keyboard input.
+    # Q - be quiet.
+    # R - accept ANSI escape sequences.
+    # X - do not clear the screen after exiting from the pager.
+    options = '-FKQRX'
+    with Popen(('less', options), stdin=PIPE, stderr=DEVNULL, encoding='utf-8') as process:
+        try:
+            process.communicate(s)
+        except:
+            process.kill()
+
+        # less returns 2 on SIGINT.
+        return_code = process.poll()
+        if return_code and return_code != 2:
+            sys.stdout.write(f"{err_c}Could not open the pager as: 'less {options}'\n")
+
+
+def _display(s: str) -> None:
+    if config['less']:
+        if config['top']:
+            with ClearScreen():
+                _display_in_less(s)
+        else:
+            _display_in_less(s)
+    elif config['top']:
+        with ClearScreen():
+            sys.stdout.write(s)
+    else:
+        sys.stdout.write(s)
+
+
 def display_dictionary(dictionary: Dictionary) -> None:
     if not dictionary.contents:
         return
@@ -318,11 +353,8 @@ def display_dictionary(dictionary: Dictionary) -> None:
             config['indent'][0],
             config['showsign']
         )
-    if config['top']:
-        with ClearScreen():
-            print_columns(columns, col_width, last_col_fill)
-    else:
-        print_columns(columns, col_width, last_col_fill)
+    raw_str = stringify_columns(columns, col_width, last_col_fill)
+    _display(raw_str + '\n')
 
 
 def display_many_dictionaries(dictionaries: list[Dictionary]) -> None:
@@ -336,11 +368,8 @@ def display_many_dictionaries(dictionaries: list[Dictionary]) -> None:
         )
         columns.append([line.lstrip('$!') for line in formatted])
 
-    if config['top']:
-        with ClearScreen():
-            print_columns(columns, col_width, last_col_fill, delimiters=('║', '╥'))
-    else:
-        print_columns(columns, col_width, last_col_fill, delimiters=('║', '╥'))
+    raw_str = stringify_columns(columns, col_width, last_col_fill, ('║', '╥'))
+    _display(raw_str + '\n')
 
 
 def display_card(field_values: dict[str, str]) -> None:
@@ -372,30 +401,30 @@ def display_card(field_values: dict[str, str]) -> None:
 
 QUERY_SEPARATORS = (',', ';', '==')
 
-def parse_query(query: str) -> tuple[list[tuple[str, str]],  str]:
+def parse_query(full_query: str) -> tuple[list[tuple[str, str]], str]:
     # Returns:
     #   - list of queries and not-parsed flags,
     #   - sentence (if provided)
 
     _strip_chars = ' ' + ''.join(QUERY_SEPARATORS)
-    query = query.strip(_strip_chars)
-    if not query:
+    full_query = full_query.strip(_strip_chars)
+    if not full_query:
         return [('', '')], ''
 
-    if '<' in query and '>' in query:
-        _query, _, flag_str = query.partition(' -')
-        left, _, temp = query.partition('<')
+    if '<' in full_query and '>' in full_query:
+        _query, _, flag_str = full_query.partition(' -')
+        left, _, temp = full_query.partition('<')
         _query, _, right = temp.rpartition('>')
         return (
             [(_query.strip(), flag_str.strip())], left + _query + right
         )
 
     queries_flags = []
-    for q in max(map(str.split, repeat(query), QUERY_SEPARATORS), key=len):
-        q = q.strip(_strip_chars)
-        if q:
-            q, _, flag_str = q.partition(' -')
-            queries_flags.append((q.strip(), flag_str.strip()))
+    for field in max(map(str.split, repeat(full_query), QUERY_SEPARATORS), key=len):
+        field = field.strip(_strip_chars)
+        if field:
+            _query, _, flag_str = field.partition(' -')
+            queries_flags.append((_query.strip(), flag_str.strip()))
 
     return queries_flags, ''
 

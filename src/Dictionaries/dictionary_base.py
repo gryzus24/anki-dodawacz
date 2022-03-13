@@ -21,8 +21,8 @@ from typing import Callable, Optional, Sequence
 
 from src.Dictionaries.utils import get_width_per_column, wrap_and_pad
 from src.colors import (
-    BOLD, DEFAULT, R, def1_c, def2_c, delimit_c, etym_c, exsen_c,
-    index_c, inflection_c, label_c, phon_c, phrase_c, pos_c, sign_c,
+    BOLD, DEFAULT, R, def1_c, def2_c, delimit_c, etym_c, exsen_c, index_c, inflection_c,
+    label_c, phon_c, phrase_c, pos_c, sign_c,
     syn_c, syngloss_c
 )
 from src.data import HORIZONTAL_BAR
@@ -134,27 +134,29 @@ def format_title(textwidth: int, title: str) -> str:
     return f'{delimit_c}{title.ljust(textwidth + esc_seq_len, HORIZONTAL_BAR)}'
 
 
-def print_columns(
+def stringify_columns(
         columns: list[list[str]],
         width: int,
         last_col_fill: int,
-        *, delimiters: tuple[str, str] = ('│', '┬')
-) -> None:
+        delimiters: tuple[str, str] = ('│', '┬')
+) -> str:
     hbfill = last_col_fill * HORIZONTAL_BAR
     vert_bar, tee_ = delimiters
     zipped_columns = zip_longest(*columns, fillvalue=width * ' ')
 
     try:
-        sys.stdout.write(f"{tee_.join(next(zipped_columns))}{hbfill}\n")
+        header = f"{tee_.join(next(zipped_columns))}{hbfill}\n"
     except StopIteration:
         raise ValueError(f'empty columns: {columns!r}')
 
-    for line in zipped_columns:
-        if line[-1][-1] == HORIZONTAL_BAR:
-            sys.stdout.write(f"{delimit_c}{vert_bar}{R}".join(line) + hbfill + '\n')
-        else:
-            sys.stdout.write(f"{delimit_c}{vert_bar}{R}".join(line) + '\n')
-    sys.stdout.write('\n')
+    result = header + '\n'.join(
+        f"{delimit_c}{vert_bar}{R}".join(line) + hbfill
+        if line[-1][-1] == HORIZONTAL_BAR else
+        f"{delimit_c}{vert_bar}{R}".join(line)
+        for line in zipped_columns
+    ) + '\n'
+
+    return result
 
 
 class Dictionary:
