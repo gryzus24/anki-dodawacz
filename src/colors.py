@@ -25,7 +25,7 @@ if POSIX:
 else:
     BOLD = DEFAULT = ''
 
-# Reset all color attributes except BOLD
+# `R` resets all color attributes except BOLD
 R = '\033[39m'
 GEX = Color('success_c')
 YEX = Color('attention_c')

@@ -11,7 +11,7 @@ def quick_help() -> None:  # -h
     print(f"""\
 {_title('Search')}
 USAGE:
-  Search $ QUERY [OPTIONS...]
+  Search $ QUERY [OPTIONS...] [separator] [QUERY2] [OPTIONS...] ...
 
 Enter your queries into the search box or save them to the "define_all" file.
 See `--help-define-all` for more information.
@@ -29,8 +29,15 @@ OPTIONS:
   e.g.  [QUERY] -noun        : searches for labels starting with "noun"
         [QUERY] -adj -slang  : starting with "adj" and "slang"
 
+  To make multiple queries at once separate them with a separator or use
+  multiple dictionary flags.  Available separators: ',' ';' '=='.
+  e.g.  [QUERY] -n, [QUERY2] -n -l, ...
+        [QUERY] -ahd -l -i
+
   Other options:
   -f, -fsubdefs   filter out subdefinitions
+  -c, -compare    query `-dict` and `-dict2` simultaneously, possibly
+                  expands to `-ahd -l`
 
 For more options and commands see `--help-config` or `-config`.
 

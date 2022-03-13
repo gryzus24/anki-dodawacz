@@ -175,9 +175,7 @@ def invoke(action: str, **params: Any) -> AnkiResponse:
               f'  or change the scope of checking for them {R}`-dupescope {{deck|collection}}`'
     elif err.startswith('model name already exists'):
         msg = '  Note with this name already exists.'
-    elif err.startswith('collection is not available'):
-        msg = '  Check if Anki is fully open.'
-    elif err.startswith("'nonetype' object has no attribute"):
+    elif err.startswith(('collection is not available', "'nonetype' object has no attribute")):
         msg = '  Check if Anki is fully open.'
     else:
         raise Exception(response['error'])
@@ -185,11 +183,12 @@ def invoke(action: str, **params: Any) -> AnkiResponse:
     return AnkiResponse(msg, error=True)
 
 
-def gui_browse_cards(query: Sequence[str]) -> None:
+def gui_browse_cards(query: Sequence[str]) -> str | None:
     q = ' '.join(query) if query else 'added:1'
     response = invoke('guiBrowse', query=q)
     if response.error:
-        print(f'{err_c}Could not open the card browser:\n{response.body}\n')
+        return f'Could not open the card browser:\n{response.body}\n'
+    return None
 
 
 def add_note_to_anki() -> str | None:

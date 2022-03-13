@@ -19,7 +19,7 @@ import sys
 from itertools import chain, zip_longest
 from typing import Callable, Optional, Sequence
 
-from src.Dictionaries.utils import wrap_and_pad
+from src.Dictionaries.utils import get_width_per_column, wrap_and_pad
 from src.colors import (
     BOLD, DEFAULT, R, def1_c, def2_c, delimit_c, etym_c, exsen_c,
     index_c, inflection_c, label_c, phon_c, phrase_c, pos_c, sign_c,
@@ -132,6 +132,29 @@ def format_title(textwidth: int, title: str) -> str:
     title = f'{HORIZONTAL_BAR}[ {BOLD}{title}{DEFAULT}{delimit_c} ]'
     esc_seq_len = len(BOLD) + len(DEFAULT) + len(delimit_c)
     return f'{delimit_c}{title.ljust(textwidth + esc_seq_len, HORIZONTAL_BAR)}'
+
+
+def print_columns(
+        columns: list[list[str]],
+        width: int,
+        last_col_fill: int,
+        *, delimiters: tuple[str, str] = ('│', '┬')
+) -> None:
+    hbfill = last_col_fill * HORIZONTAL_BAR
+    vert_bar, tee_ = delimiters
+    zipped_columns = zip_longest(*columns, fillvalue=width * ' ')
+
+    try:
+        sys.stdout.write(f"{tee_.join(next(zipped_columns))}{hbfill}\n")
+    except StopIteration:
+        raise ValueError(f'empty columns: {columns!r}')
+
+    for line in zipped_columns:
+        if line[-1][-1] == HORIZONTAL_BAR:
+            sys.stdout.write(f"{delimit_c}{vert_bar}{R}".join(line) + hbfill + '\n')
+        else:
+            sys.stdout.write(f"{delimit_c}{vert_bar}{R}".join(line) + '\n')
+    sys.stdout.write('\n')
 
 
 class Dictionary:
@@ -302,15 +325,11 @@ class Dictionary:
                 else:
                     ncolumns = max_columns
 
-        try:
-            column_width = width // ncolumns
-        except ZeroDivisionError:
+        if ncolumns < 1:
             return width, 1, 0
-        else:
-            remainder = width % ncolumns
-            if remainder < ncolumns - 1:
-                return column_width - 1, ncolumns, remainder + 1
-            return column_width, ncolumns, 0
+
+        col_width, remainder = get_width_per_column(width, ncolumns)
+        return col_width, ncolumns, remainder
 
     def format_dictionary(
             self, textwidth: int, wrap_style: str, indent: int, signed: bool
@@ -454,7 +473,7 @@ class Dictionary:
     def prepare_to_print(
             self, ncols: Optional[int], width: int, height: int,
             fold_at: float, wrap_style: str, indent: int, signed: bool
-    ) -> tuple[zip_longest, int]:
+    ) -> tuple[list[list[str]], int, int]:
         # Return value of this method should be passed to the `print_dictionary` method.
         column_width, ncols, last_col_fill = self.get_display_parameters(
             width, height, fold_at, ncols
@@ -465,20 +484,7 @@ class Dictionary:
         else:
             columns = columnize(formatted, column_width, height, ncols)
 
-        return zip_longest(*columns, fillvalue=column_width * ' '), last_col_fill
-
-    @staticmethod
-    def print_dictionary(zipped_columns: zip_longest, last_col_fill: int) -> None:
-        hbfill = last_col_fill * HORIZONTAL_BAR
-        sys.stdout.write(
-            f"{'┬'.join(next(zipped_columns))}{hbfill}\n"
-        )
-        for line in zipped_columns:
-            if line[-1][-1] == HORIZONTAL_BAR:
-                sys.stdout.write(f"{delimit_c}│{R}".join(line) + hbfill + '\n')
-            else:
-                sys.stdout.write(f"{delimit_c}│{R}".join(line) + '\n')
-        sys.stdout.write('\n')
+        return columns, column_width, last_col_fill
 
     def filter_contents(self, flags: Sequence[str]) -> None:
         flags = [x.replace(' ', '').replace('.', '').lower() for x in flags]

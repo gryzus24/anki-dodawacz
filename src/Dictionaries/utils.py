@@ -95,11 +95,11 @@ class ClearScreen:
                 sys.stdout.write((height - 1) * '\n' + '\033[2J')
             sys.stdout.flush()
         elif POSIX:
-            # Even though `clear -x` is slower than using
-            # ANSI escapes it doesn't have flickering issues.
+            # Even though `clear -x` is slower than directly using ANSI escapes
+            # it doesn't have flickering issues, and it's more robust.
             sys.stdout.write('\033[?25l')  # Hide cursor
             sys.stdout.flush()
-            subprocess.run(['clear', '-x'])  # I hope the `-x` option works on macOS.
+            subprocess.call(('clear', '-x'))  # I hope the `-x` option works on macOS.
         else:
             sys.stdout.write(f'\033[39m`-top on`{err_c} command unavailable on {sys.platform!r}\n')
 
@@ -261,3 +261,14 @@ def wrap_and_pad(style: str, textwidth: int) -> Callable[[str, int, int], list[s
         return result
 
     return call
+
+
+def get_width_per_column(width: int, columns: int) -> tuple[int, int]:
+    if columns < 1:
+        return width, 0
+
+    column_width = width // columns
+    remainder = width % columns
+    if remainder < columns - 1:
+        return column_width - 1, remainder + 1
+    return column_width, 0
