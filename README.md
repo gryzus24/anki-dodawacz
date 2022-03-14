@@ -23,7 +23,7 @@ You can also connect it directly to Anki via AnkiConnect to streamline the proce
 To configure the program further use the `-conf` or `-config` command.<br>
 To display usage information for a command just type its name.
 
-![image](https://user-images.githubusercontent.com/82805891/147773917-6d070933-9e4c-4744-b7f0-9e4c9271bc07.png)
+![image](https://user-images.githubusercontent.com/82805891/158180355-2e23e404-783a-44ee-83e4-bdf59062af20.png)
 
 If you are using Windows install Windows Terminal or any other than cmd terminal emulator for better user experience.
 
