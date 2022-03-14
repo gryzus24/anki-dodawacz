@@ -23,7 +23,7 @@ Możesz także połączyć program z Anki poprzez AnkiConnect co znacznie uproś
 Aby wyświetlić więcej opcji konfiguracji wpisz `-conf` lub `-config`<br>
 Aby wyświetlić użycie dla danej komendy po prostu wpisz jej nazwę.
 
-![image](https://user-images.githubusercontent.com/82805891/147773917-6d070933-9e4c-4744-b7f0-9e4c9271bc07.png)
+![image](https://user-images.githubusercontent.com/82805891/158180638-d20524e6-29aa-4e24-a54f-79713dd6e043.png)
 
 Jeżeli używasz Windowsa polecam zainstalować Windows Terminal lub jakikolwiek inny niż cmd emulator terminala, aby zwiększyć wygodę użytkowania.
 
