@@ -416,15 +416,15 @@ def display_card(field_values: dict[str, str]) -> None:
     print(f'{delimit_c}{delimit}')
 
 
-QUERY_SEPARATORS = (',', ';', '==')
-
 def parse_query(full_query: str) -> tuple[list[tuple[str, str]], str]:
     # Returns:
     #   - list of queries and not-parsed flags,
     #   - sentence (if provided)
 
-    _strip_chars = ' ' + ''.join(QUERY_SEPARATORS)
-    full_query = full_query.strip(_strip_chars)
+    query_separators = (',', ';', '==')
+    chars_to_strip = ' ' + ''.join(query_separators)
+
+    full_query = full_query.strip(chars_to_strip)
     if not full_query:
         return [('', '')], ''
 
@@ -437,8 +437,8 @@ def parse_query(full_query: str) -> tuple[list[tuple[str, str]], str]:
         )
 
     queries_flags = []
-    for field in max(map(str.split, repeat(full_query), QUERY_SEPARATORS), key=len):
-        field = field.strip(_strip_chars)
+    for field in max(map(str.split, repeat(full_query), query_separators), key=len):
+        field = field.strip(chars_to_strip)
         if field:
             _query, _, flag_str = field.partition(' -')
             queries_flags.append((_query.strip(), flag_str.strip()))
@@ -652,3 +652,5 @@ if __name__ == '__main__':
         raise SystemExit(main())
     except (KeyboardInterrupt, EOFError):
         print()
+    finally:
+        http.pools.clear()

@@ -101,7 +101,7 @@ class ClearScreen:
             sys.stdout.flush()
             subprocess.call(('clear', '-x'))  # I hope the `-x` option works on macOS.
         else:
-            sys.stdout.write(f'\033[39m`-top on`{err_c} command unavailable on {sys.platform!r}\n')
+            sys.stdout.write(f'`-top on`{err_c} command unavailable on {sys.platform!r}\n')
 
     def __exit__(self, *ignore: Any) -> None:
         if POSIX:
