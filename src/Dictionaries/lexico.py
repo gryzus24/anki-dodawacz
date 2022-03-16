@@ -19,7 +19,7 @@ from typing import Any
 
 from src.Dictionaries.dictionary_base import Dictionary
 from src.Dictionaries.utils import request_soup
-from src.colors import R, err_c, phrase_c
+from src.colors import R, err_c
 from src.input_fields import get_user_input
 
 
@@ -170,7 +170,7 @@ def ask_lexico(query: str) -> Dictionary | None:
                 before_phrase = False
                 lexico.add('HEADER', 'Lexico')
                 if _previous_query is not None and _previous_query != query:
-                    lexico.add('NOTE', f' Results for {phrase_c}{phrase_}')
+                    lexico.add('NOTE', 'Showing results for:')
                     _previous_query = None  # global
             else:
                 lexico.add('HEADER', '')

@@ -20,7 +20,7 @@ from typing import Any, Callable, Iterable
 
 from src.Dictionaries.dictionary_base import Dictionary
 from src.Dictionaries.utils import request_soup
-from src.colors import R, err_c, phrase_c
+from src.colors import R, err_c
 from src.data import config
 from src.input_fields import get_user_input
 
@@ -263,7 +263,7 @@ def ask_ahdictionary(query: str) -> Dictionary | None:
             before_phrase = False
             ahd.add('HEADER', 'AH Dictionary')
             if phrase.lower() != query.lower():
-                ahd.add('NOTE', f' Results for {phrase_c}{phrase}')
+                ahd.add('NOTE', 'Showing results for:')
         else:
             ahd.add('HEADER', '')
 

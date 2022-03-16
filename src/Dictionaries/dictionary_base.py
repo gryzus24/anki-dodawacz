@@ -21,9 +21,8 @@ from typing import Callable, Optional, Sequence
 
 from src.Dictionaries.utils import get_width_per_column, wrap_and_pad
 from src.colors import (
-    BOLD, DEFAULT, R, def1_c, def2_c, delimit_c, etym_c, exsen_c, index_c, inflection_c,
-    label_c, phon_c, phrase_c, pos_c, sign_c,
-    syn_c, syngloss_c
+    BOLD, DEFAULT, R, YEX, def1_c, def2_c, delimit_c, etym_c, exsen_c, index_c,
+    inflection_c, label_c, phon_c, phrase_c, pos_c, sign_c, syn_c, syngloss_c
 )
 from src.data import HORIZONTAL_BAR
 
@@ -464,9 +463,10 @@ class Dictionary:
                     for line in rest:
                         buffer.append(f'${exsen_c}{line}')
             elif op == 'NOTE':
-                note = body[0]
-                padding = (textwidth + len(phrase_c) - len(note)) * ' '
-                buffer.append(f'!{R}{BOLD}{note}{DEFAULT}{padding}')
+                first_line, *rest = wrap_method(body[0], 2, 0)
+                buffer.append(f'!{BOLD}{YEX}> {R}{first_line}{DEFAULT}')
+                for line in rest:
+                    buffer.append(f'!{BOLD}{line}{DEFAULT}')
             else:
                 raise AssertionError(f'unreachable dictionary operation: {op!r}')
 
