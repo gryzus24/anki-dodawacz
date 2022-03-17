@@ -24,7 +24,7 @@ import urllib3
 from urllib3.exceptions import ConnectTimeoutError, NewConnectionError
 
 from src.colors import err_c
-from src.data import ON_WINDOWS_CMD, POSIX, USER_AGENT, WINDOWS
+from src.data import ON_WINDOWS_CMD, ON_TERMUX, POSIX, USER_AGENT, WINDOWS
 
 # Silence warnings if soupsieve is not installed, which is good
 # because its bloated `css parse` slows down import time a lot.
@@ -80,33 +80,54 @@ def request_soup(
     return BeautifulSoup(r.data.decode(), 'lxml')
 
 
-class ClearScreen:
-    def __enter__(self) -> None:
-        if WINDOWS:
-            # There has to exist a less hacky way of doing `clear -x` on Windows.
-            # I'm not sure if it works on terminals other than cmd and WT
+if WINDOWS:
+    # There has to exist a less hacky way of doing `clear -x` on Windows.
+    # I'm not sure if it works on terminals other than cmd and WT
+    if ON_WINDOWS_CMD:
+        def _clear_screen() -> None:
             height = get_terminal_size().lines
-            if ON_WINDOWS_CMD:
-                # Move cursor up and down
-                h = height * '\n'
-                sys.stdout.write(f'{h}\033[{height}A')
-            else:
-                # Use Windows ANSI sequence to clear the screen
-                sys.stdout.write((height - 1) * '\n' + '\033[2J')
+            # Move cursor up and down
+            sys.stdout.write(height * '\n' + f'\033[{height}A')
             sys.stdout.flush()
-        elif POSIX:
+    else:
+        def _clear_screen() -> None:
+            height = get_terminal_size().lines
+            # Use Windows ANSI sequence to clear the screen
+            sys.stdout.write((height - 1) * '\n' + '\033[2J')
+            sys.stdout.flush()
+
+elif POSIX:
+    if ON_TERMUX:
+        def _clear_screen() -> None:
+            sys.stdout.write('\033[?25l')  # Hide cursor
+            sys.stdout.flush()
+            # Termux's terminal dimensions depend on the on-screen keyboard size
+            # Termux can't correctly preserve the buffer, so we'll do full clear.
+            subprocess.call(('clear',))
+    else:
+        def _clear_screen() -> None:
             # Even though `clear -x` is slower than directly using ANSI escapes
             # it doesn't have flickering issues, and it's more robust.
             sys.stdout.write('\033[?25l')  # Hide cursor
             sys.stdout.flush()
             subprocess.call(('clear', '-x'))  # I hope the `-x` option works on macOS.
-        else:
-            sys.stdout.write(f'`-top on`{err_c} command unavailable on {sys.platform!r}\n')
 
-    def __exit__(self, *ignore: Any) -> None:
-        if POSIX:
+else:
+    def _clear_screen() -> None:
+        sys.stdout.write(f'`-top on`{err_c} command unavailable on {sys.platform!r}\n')
+
+
+class ClearScreen:
+    def __enter__(self) -> None:
+        _clear_screen()
+
+    if POSIX:
+        def __exit__(self, tp: Any, v: Any, tb: Any) -> None:
             sys.stdout.write('\033[?25h')  # Show cursor
             sys.stdout.flush()
+    else:
+        def __exit__(self, tp: Any, v: Any, tb: Any) -> None:
+            pass
 
 
 def hide(

@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import json
-import os.path
+import os
 import sys
 
 # abspath(__file__) for <=3.8 compatibility
@@ -20,10 +20,8 @@ LINUX = sys.platform.startswith('linux')
 MAC = sys.platform.startswith('darwin')
 POSIX = os.name == 'posix'
 WINDOWS = os.name == 'nt'
-if WINDOWS:
-    ON_WINDOWS_CMD = os.getenv('SESSIONNAME') == 'Console'
-else:
-    ON_WINDOWS_CMD = False
+ON_WINDOWS_CMD = WINDOWS and os.environ.get('SESSIONNAME') == 'Console'
+ON_TERMUX = os.environ.get('TERMUX_VERSION') is not None
 
 HORIZONTAL_BAR = '─'
 

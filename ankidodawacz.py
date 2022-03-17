@@ -18,7 +18,7 @@
 from __future__ import annotations
 
 import binascii
-import os.path
+import os
 import shutil
 import sys
 from itertools import chain, repeat
