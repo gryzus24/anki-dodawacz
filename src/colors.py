@@ -13,11 +13,11 @@ class Color:
         self.color = color
 
     def __str__(self) -> str:
-        return color_name_to_ansi[config[self.color]]
+        return config[self.color]
 
     def __len__(self) -> int:
         # For proper formatting
-        return len(color_name_to_ansi[config[self.color]])
+        return len(config[self.color])
 
 
 if POSIX:

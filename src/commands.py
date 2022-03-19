@@ -424,7 +424,7 @@ def set_colors(*args: str, **ignore: Any) -> str | None:
                f'To display available colors use `{cmd}`'
 
     print(f'{R}{COLOR_TO_MSG[element]} set to: {color_name_to_ansi[color]}{color}')
-    save_command(f'{element}_c', color)
+    save_command(f'{element}_c', color_name_to_ansi[color])
     return None
 
 
