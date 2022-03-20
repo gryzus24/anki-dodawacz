@@ -4,11 +4,11 @@ from __future__ import annotations
 import curses
 
 from src.Dictionaries.ahdictionary import ask_ahdictionary
-from src.Dictionaries.utils import wrap_lines, wrap_and_pad
+from src.Dictionaries.utils import wrap_and_pad
 from src.colors import *
 from src.data import HORIZONTAL_BAR, config
-from typing import NamedTuple
 
+from itertools import islice
 
 
 COLOR_RESET = -1
@@ -57,6 +57,7 @@ def color(c):
 def format_title(window: curses._CursesWindow, title: str) -> curses.window:
     window.addstr(HORIZONTAL_BAR + '[ ', color('delimit_c'))
     # TODO: add BOLD color. Fix window overflow on small textwidth.
+
     window.addstr(title)
     window.addstr(' ]', color('delimit_c'))
     while True:
@@ -66,32 +67,33 @@ def format_title(window: curses._CursesWindow, title: str) -> curses.window:
             break
     return window
 
+
 class Box:
-    def __init__(self, this_box, *, toggleable=True):
+    def __init__(self, this_box, *, is_toggled):
         self.this_box = this_box
-        self.toggleable = toggleable
-        self._toggled = False
+        self.is_toggled = is_toggled
 
     def toggle(self):
-        if not self.toggleable:
-            return
-
-        if self._toggled:
+        if self.is_toggled:
             self.this_box.bkgd(0, curses.A_NORMAL)
-            self._toggled = False
+            self.is_toggled = False
         else:
             self.this_box.bkgd(0, curses.A_STANDOUT)
-            self._toggled = True
-
-        self.this_box.refresh()
+            self.is_toggled = True
 
 
-class DictionaryEntry(NamedTuple):
-    box: curses.window
-    toggleable: bool
+def log(msg):
+    with open('log.log', 'a', encoding='UTF-8') as f:
+        f.write(repr(msg) + '\n')
 
 
-def format_dictionary(dictionary, stdscr: curses._CursesWindow) -> list[curses._CursesWindow.box]:
+def format_dictionary(
+        dictionary,
+        column_width: int,
+        wrap_style: str = 'regular',
+        indent: int = 0,
+        signed: bool = False
+) -> tuple[list[curses._CursesWindow], int]:
     # Format self.contents' list of (op, body)
     # into wrapped, colored and padded body lines.
     # Available instructions:
@@ -105,29 +107,21 @@ def format_dictionary(dictionary, stdscr: curses._CursesWindow) -> list[curses._
     #  (SYN,    'synonyms', 'gloss', 'examples')
     #  (NOTE,   'note')
 
-    textwidth = 47
-    wrap_style = 'regular'
-    signed = False
-    indent = 0
-
-    y = x = 0
-    buffer = []
-    blank = textwidth * ' '
-    wrap_method = wrap_and_pad(wrap_style, textwidth)
+    wrap_method = wrap_and_pad(wrap_style, column_width - 1)
     boxes = []
+    lines_total = 0
 
     def _new_window(height):
-        nonlocal y, x
-        _new_win = curses.newwin(height, textwidth + 1, y, x)
-        y += height
-        if y > 40:
-            x += textwidth + 1
-            y = 0
+        nonlocal lines_total
+        lines_total += height
+        _new_win = curses.newwin(height, column_width)
         return _new_win
+
+    def _add_box(_box):
+        boxes.append(_box)
 
     def _push_chain(_s1: str, _c1: int, _s2: str, _c2: int) -> None:
         # TODO: fix color chaining.
-        nonlocal y
         _first_line, *_rest = wrap_method(f'{_s1} {_s2}', 1, 0)
         chain_box = _new_window(1 + len(_rest))
         # if '\0' in _first_line:
@@ -144,9 +138,10 @@ def format_dictionary(dictionary, stdscr: curses._CursesWindow) -> list[curses._
                 current_color = _c2
             else:
                 chain_box.addstr('\n' + _line, current_color)
-        boxes.append(Box(chain_box))
+        _add_box(chain_box)
 
     index = 0
+
     for op, *body in dictionary.contents:
         # sys.stdout.write(f'{op}\n{body}\n'); continue  # DEBUG
 
@@ -180,7 +175,7 @@ def format_dictionary(dictionary, stdscr: curses._CursesWindow) -> list[curses._
             for line in rest:
                 box.addstr('\n' + line, color('def1_c'))
 
-            boxes.append(Box(box))
+            _add_box(box)
 
             if _exsen:
                 for ex in _exsen.split('<br>'):
@@ -190,10 +185,11 @@ def format_dictionary(dictionary, stdscr: curses._CursesWindow) -> list[curses._
                     exsen_box.addstr(first_line, color('exsen_c'))
                     for line in rest:
                         exsen_box.addstr('\n' + line, color('exsen_c'))
-                    boxes.append(Box(exsen_box))
+                    _add_box(exsen_box)
         elif op == 'LABEL':
-            buffer.append(blank)
             label, inflections = body
+            blank = _new_window(1)
+            _add_box(blank)
             if label:
                 if inflections:
                     _push_chain(label, color('label_c'), inflections, color('inflection_c'))
@@ -204,7 +200,7 @@ def format_dictionary(dictionary, stdscr: curses._CursesWindow) -> list[curses._
                     for line in rest:
                         label_box.addstr('\n' + line, color('label_c'))
 
-                    boxes.append(Box(label_box))
+                    _add_box(label_box)
         elif op == 'PHRASE':
             phrase, phon = body
             if phon:
@@ -216,7 +212,7 @@ def format_dictionary(dictionary, stdscr: curses._CursesWindow) -> list[curses._
                 for line in rest:
                     phrase_box.addstr('\n' + line, color('phrase_c'))
 
-                boxes.append(Box(phrase_box))
+                _add_box(phrase_box)
         elif op == 'HEADER':
             title = body[0]
             header_box = _new_window(1)
@@ -228,131 +224,211 @@ def format_dictionary(dictionary, stdscr: curses._CursesWindow) -> list[curses._
                         header_box.addstr(HORIZONTAL_BAR, color('delimit_c'))
                     except curses.error:
                         break
-            boxes.append(Box(header_box))
+            _add_box(header_box)
         elif op == 'ETYM':
             etym = body[0]
             if etym:
-                buffer.append(blank)
+                blank = _new_window(1)
+                _add_box(blank)
                 first_line, *rest = wrap_method(etym, 1, indent)
-                buffer.append(f' {etym_c}{first_line}')
+                etym_box = _new_window(1 + len(rest))
+                etym_box.addstr(' ' + first_line, color('etym_c'))
                 for line in rest:
-                    buffer.append(f'${etym_c}{line}')
+                    etym_box.addstr(line, color('etym_c'))
+                _add_box(etym_box)
         elif op == 'POS':
             if body[0].strip(' |'):
-                buffer.append(blank)
+                blank = _new_window(1)
+                _add_box(blank)
+                # TODO: Fix overflow.
                 for elem in body:
                     pos, phon = elem.split('|')
-                    padding = (textwidth - len(pos) - len(phon) - 3) * ' '
-                    buffer.append(f' {pos_c}{pos}  {phon_c}{phon}{padding}')
+                    # padding = (textwidth - len(pos) - len(phon) - 3) * ' '
+                    pos_box = _new_window(1)
+                    pos_box.addstr(' ' + pos, color('pos_c'))
+                    pos_box.addstr('  ' + phon, color('phon_c'))
+                    _add_box(pos_box)
         elif op == 'AUDIO':
             pass
         elif op == 'SYN':
             first_line, *rest = wrap_method(body[0], 1, 0)
-            buffer.append(f'! {syn_c}{first_line}')
+            syn_box = _new_window(1 + len(rest))
+            syn_box.addstr(' ' + first_line, color('syn_c'))
             for line in rest:
-                buffer.append(f'!{syn_c}{line}')
+                syn_box.addstr(line, color('syn_c'))
+            _add_box(syn_box)
 
             first_line, *rest = wrap_method(body[1], 2, 0)
-            buffer.append(f'!{sign_c}: {syngloss_c}{first_line}')
+            syngloss_box = _new_window(1 + len(rest))
+            syngloss_box.addstr(': ', color('sign_c'))
+            syngloss_box.addstr(first_line, color('syngloss_c'))
             for line in rest:
-                buffer.append(f'!{syngloss_c}{line}')
+                syngloss_box.addstr(line, color('syngloss_c'))
+            _add_box(syngloss_box)
 
             for ex in body[2].split('<br>'):
                 first_line, *rest = wrap_method(ex, 1, 1)
-                buffer.append(f' {exsen_c}{first_line}')
+                synex_box = _new_window(1 + len(rest))
+                synex_box.addstr(' ' + first_line, color('exsen_c'))
                 for line in rest:
-                    buffer.append(f'${exsen_c}{line}')
+                    synex_box.addstr(line, color('exsen_c'))
+                _add_box(synex_box)
         elif op == 'NOTE':
             first_line, *rest = wrap_method(body[0], 2, 0)
-            buffer.append(f'!{BOLD}{YEX}> {R}{first_line}{DEFAULT}')
+            note_box = _new_window(1 + len(rest))
+            note_box.addstr('> ', color('attention_c'))
+            note_box.addstr(first_line, color('reset'))
+            # buffer.append(f'!{BOLD}{YEX}> {R}{first_line}{DEFAULT}')
             for line in rest:
-                buffer.append(f'!{BOLD}{line}{DEFAULT}')
+                note_box.addstr(line, color('reset'))
+                # buffer.append(f'!{BOLD}{line}{DEFAULT}')
+            _add_box(note_box)
         else:
             raise AssertionError(f'unreachable dictionary operation: {op!r}')
 
-    return boxes
+    return boxes, lines_total
 
 
-def c_main(stdscr: curses._CursesWindow) -> int:
+def prepare_columns(boxes, lines_total, ncols):
+    col_height = int(lines_total / ncols + 1)
+    result = [[]]
+    ty = 0
+    for box in boxes:
+        box_y, _ = box.this_box.getmaxyx()
+        result[-1].append(box)
+        ty += box_y
+        if ty > col_height:
+            result.append([])
+            ty = 0
+
+    return result
+
+
+def box_contents(dictionary):
+    width_per_column, ncols = get_column_parameters()
+    boxes, lines_total = format_dictionary(dictionary, width_per_column)
+    return boxes, lines_total
+
+
+def get_column_parameters():
+    width = curses.COLS
+
+    ncols = width // 40
+    r = width % 40
+    if not r:
+        return 39, ncols
+
+    fill = r // ncols
+    col_width = 39 + fill
+    return col_width, ncols
+
+
+class Screen:
+    def __init__(self, stdscr, dictionary):
+        self.stdscr = stdscr
+        self.dictionary = dictionary
+        self._curses_boxes, self._lines_total = box_contents(dictionary)
+        self.boxes = [Box(box, is_toggled=False) for box in self._curses_boxes]
+        self.columns = self.prepare_columns()
+        self.scroll_pos = 0
+
+    @property
+    def col_width(self):
+        return self._curses_boxes[0].getmaxyx()[1]
+
+    def prepare_columns(self):
+        _, ncols = get_column_parameters()
+        max_col_height = int(self._lines_total / ncols + 1)
+        result = [[]]
+        current_height = 0
+        for box in self.boxes:
+            box_y, _ = box.this_box.getmaxyx()
+            result[-1].append(box)
+            current_height += box_y
+            if current_height > max_col_height:
+                result.append([])
+                current_height = 0
+
+        return result
+
+    def update_columns(self):
+        curses.update_lines_cols()
+        self._curses_boxes, self._lines_total = box_contents(self.dictionary)
+        for box, curses_box in zip(self.boxes, self._curses_boxes):
+            if box.is_toggled:
+                curses_box.bkgd(0, curses.A_STANDOUT)
+            box.this_box = curses_box
+        self.columns = self.prepare_columns()
+
+    def draw(self):
+        self.stdscr.erase()
+        self.stdscr.noutrefresh()
+        tx = 0
+        col_width = self.col_width
+        for column in self.columns:
+            ty = 0
+            for box in islice(column, self.scroll_pos, None):
+                try:
+                    box.this_box.mvwin(ty, tx)
+                except curses.error:
+                    break
+                box.this_box.noutrefresh()
+                ty += box.this_box.getmaxyx()[0]
+            tx += col_width
+        curses.doupdate()
+
+    def mark_box_at(self, y, x):
+        # This is fast enough, ~100_000ns worst case scenario.
+        # Bisection won't help because of the language overhead.
+        for box in self.boxes:
+            if box.this_box.enclose(y, x):
+                box.toggle()
+                return
+
+    def scroll_up(self, n=1):
+        self.scroll_pos += n
+        if self.scroll_pos > self._lines_total:
+            self.scroll_pos = self._lines_total
+
+    def scroll_down(self, n=1):
+        self.scroll_pos -= n
+        if self.scroll_pos < 0:
+            self.scroll_pos = 0
+
+
+def c_main(stdscr: curses._CursesWindow, dictionary) -> int:
     curses.mousemask(-1)
     curses.mouseinterval(0)
     curses.curs_set(0)
 
     if curses.has_colors():
         curses.use_default_colors()
-
         for i in range(16):
             curses.init_pair(i + 1, i, -1)
 
-    dictionary = ask_ahdictionary('get')
-    boxes = format_dictionary(dictionary, stdscr)
-
-    max_y, max_x = stdscr.getmaxyx()
-
-    stdscr.noutrefresh()
-    for box in boxes:
-        box.this_box.noutrefresh()
-
-    curses.doupdate()
-    max_cur = len(boxes)
-    cur = 0
+    screen = Screen(stdscr, dictionary)
+    screen.draw()
     while True:
+        if curses.is_term_resized(curses.LINES, curses.COLS):
+            screen.update_columns()
+            log('term resized!')
 
+        screen.draw()
         c = stdscr.get_wch()
         if c == 'q':
             break
         elif c == curses.KEY_MOUSE:
             _, x, y, _, bstate = curses.getmouse()
             if bstate & curses.BUTTON1_PRESSED:
-                for i in range(cur, len(boxes)):
-                    box = boxes[i]
-                    if box.this_box.enclose(y, x):
-                        box.toggle()
-                        break
+                screen.mark_box_at(y, x)
             elif bstate & curses.BUTTON4_PRESSED:
-                cur -= 2
-                if cur < 1:
-                    cur = 0
+                screen.scroll_down()
             elif bstate & curses.BUTTON5_PRESSED:
-                cur += 2
-                if cur > max_cur - 1:
-                    cur = max_cur - 1
-            else:
-                pass
-                # for i in range(9):
-                #     stdscr.delch(0, i)
-                # stdscr.addstr(0, 100, str(boxes[cur].this_box.getyx()) + ' ' + str(cur))
-
-            i = cur
-            ty = tx = 0
-            while ty < max_y:
-                try:
-                    box = boxes[i]
-                except IndexError:
-                    stdscr.move(ty, 0)
-                    stdscr.deleteln()
-                    stdscr.addstr('(END)')
-                    break
-
-                # ty, tx = box.this_box.getbegyx()
-                # stdscr.addstr(0, 0, f'{b} {z}')
-
-                try:
-                    box.this_box.mvwin(ty, 0)
-                except curses.error:
-                    stdscr.move(ty, 0)
-                    stdscr.deleteln()
-
-                box.this_box.noutrefresh()
-                box_y, _ = box.this_box.getmaxyx()
-                ty += box_y
-
-                i += 1
-
-            if ty >= max_y:
-                curses.doupdate()
-            else:
-                max_cur = cur
+                screen.scroll_up()
+        elif c == curses.KEY_DOWN:
+            screen.scroll_up()
+        elif c == curses.KEY_UP:
+            screen.scroll_down()
         else:
             #raise AssertionError(repr(c))
             pass
@@ -361,7 +437,8 @@ def c_main(stdscr: curses._CursesWindow) -> int:
 
 
 def main():
-    curses.wrapper(c_main)
+    dictionary = ask_ahdictionary('get')
+    curses.wrapper(c_main, dictionary)
 
 
 if __name__ == '__main__':
