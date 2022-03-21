@@ -8,7 +8,7 @@ from src.Dictionaries.utils import wrap_and_pad
 from src.colors import *
 from src.data import HORIZONTAL_BAR, config
 
-from itertools import islice
+from itertools import compress, islice
 
 
 COLOR_RESET = -1
@@ -68,20 +68,6 @@ def format_title(window: curses._CursesWindow, title: str) -> curses.window:
     return window
 
 
-class Box:
-    def __init__(self, this_box, *, is_toggled):
-        self.this_box = this_box
-        self.is_toggled = is_toggled
-
-    def toggle(self):
-        if self.is_toggled:
-            self.this_box.bkgd(0, curses.A_NORMAL)
-            self.is_toggled = False
-        else:
-            self.this_box.bkgd(0, curses.A_STANDOUT)
-            self.is_toggled = True
-
-
 def log(msg):
     with open('log.log', 'a', encoding='UTF-8') as f:
         f.write(repr(msg) + '\n')
@@ -110,6 +96,7 @@ def format_dictionary(
     wrap_method = wrap_and_pad(wrap_style, column_width - 1)
     boxes = []
     lines_total = 0
+
 
     def _new_window(height):
         nonlocal lines_total
@@ -289,21 +276,6 @@ def format_dictionary(
     return boxes, lines_total
 
 
-def prepare_columns(boxes, lines_total, ncols):
-    col_height = int(lines_total / ncols + 1)
-    result = [[]]
-    ty = 0
-    for box in boxes:
-        box_y, _ = box.this_box.getmaxyx()
-        result[-1].append(box)
-        ty += box_y
-        if ty > col_height:
-            result.append([])
-            ty = 0
-
-    return result
-
-
 def box_contents(dictionary):
     width_per_column, ncols = get_column_parameters()
     boxes, lines_total = format_dictionary(dictionary, width_per_column)
@@ -323,74 +295,89 @@ def get_column_parameters():
     return col_width, ncols
 
 
+def toggle_box(box: curses._CursesWindow, is_toggled: bool) -> bool:
+    # Highlights the box and returns its current state.
+    if is_toggled:
+        box.bkgd(0, curses.A_NORMAL)
+    else:
+        box.bkgd(0, curses.A_STANDOUT)
+
+    return not is_toggled
+
+
 class Screen:
     def __init__(self, stdscr, dictionary):
         self.stdscr = stdscr
         self.dictionary = dictionary
-        self._curses_boxes, self._lines_total = box_contents(dictionary)
-        self.boxes = [Box(box, is_toggled=False) for box in self._curses_boxes]
+
+        _boxes, self.lines_total = box_contents(dictionary)
+        self.box_toggles = [False] * len(_boxes)
+        self.boxes = _boxes
+        self.col_width = _boxes[0].getmaxyx()[1]
         self.columns = self.prepare_columns()
         self.scroll_pos = 0
 
-    @property
-    def col_width(self):
-        return self._curses_boxes[0].getmaxyx()[1]
-
-    def prepare_columns(self):
+    def prepare_columns(self) -> list[list[curses._CursesWindow]]:
         _, ncols = get_column_parameters()
-        max_col_height = int(self._lines_total / ncols + 1)
+        max_col_height = int(self.lines_total / ncols + 1)
         result = [[]]
         current_height = 0
         for box in self.boxes:
-            box_y, _ = box.this_box.getmaxyx()
             result[-1].append(box)
-            current_height += box_y
+            current_height += box.getmaxyx()[0]
             if current_height > max_col_height:
                 result.append([])
                 current_height = 0
 
         return result
 
-    def update_columns(self):
+    def update_for_redraw(self) -> None:
         curses.update_lines_cols()
-        self._curses_boxes, self._lines_total = box_contents(self.dictionary)
-        for box, curses_box in zip(self.boxes, self._curses_boxes):
-            if box.is_toggled:
-                curses_box.bkgd(0, curses.A_STANDOUT)
-            box.this_box = curses_box
+
+        _boxes, self.lines_total = box_contents(self.dictionary)
+        # Keep toggled boxes toggled.
+        for box in compress(_boxes, self.box_toggles):
+            box.bkgd(0, curses.A_STANDOUT)
+
+        self.boxes = _boxes
+        self.col_width = _boxes[0].getmaxyx()[1]
         self.columns = self.prepare_columns()
 
-    def draw(self):
+    def draw(self) -> None:
         self.stdscr.erase()
         self.stdscr.noutrefresh()
+
         tx = 0
         col_width = self.col_width
+        scroll_pos = self.scroll_pos
         for column in self.columns:
             ty = 0
-            for box in islice(column, self.scroll_pos, None):
+            for box in islice(column, scroll_pos, None):
                 try:
-                    box.this_box.mvwin(ty, tx)
+                    box.mvwin(ty, tx)
                 except curses.error:
                     break
-                box.this_box.noutrefresh()
-                ty += box.this_box.getmaxyx()[0]
+                box.noutrefresh()
+                ty += box.getmaxyx()[0]
             tx += col_width
+
         curses.doupdate()
 
-    def mark_box_at(self, y, x):
+    def mark_box_at(self, y: int, x: int) -> None:
         # This is fast enough, ~100_000ns worst case scenario.
         # Bisection won't help because of the language overhead.
-        for box in self.boxes:
-            if box.this_box.enclose(y, x):
-                box.toggle()
+        for i, (toggle, box) in enumerate(zip(self.box_toggles, self.boxes)):
+            if box.enclose(y, x):
+                self.box_toggles[i] = toggle_box(box, toggle)
                 return
 
-    def scroll_up(self, n=1):
+    def scroll_up(self, n: int = 1) -> None:
+        max_boxes_in_column = max(map(len, self.columns))
         self.scroll_pos += n
-        if self.scroll_pos > self._lines_total:
-            self.scroll_pos = self._lines_total
+        if self.scroll_pos > max_boxes_in_column:
+            self.scroll_pos = max_boxes_in_column
 
-    def scroll_down(self, n=1):
+    def scroll_down(self, n: int = 1) -> None:
         self.scroll_pos -= n
         if self.scroll_pos < 0:
             self.scroll_pos = 0
@@ -407,10 +394,9 @@ def c_main(stdscr: curses._CursesWindow, dictionary) -> int:
             curses.init_pair(i + 1, i, -1)
 
     screen = Screen(stdscr, dictionary)
-    screen.draw()
     while True:
         if curses.is_term_resized(curses.LINES, curses.COLS):
-            screen.update_columns()
+            screen.update_for_redraw()
             log('term resized!')
 
         screen.draw()
