@@ -109,28 +109,38 @@ def format_dictionary(
 
     def _push_chain(_s1: str, _c1: int, _s2: str, _c2: int) -> None:
         # TODO: fix color chaining.
-        _first_line, *_rest = wrap_method(f'{_s1} {_s2}', 1, 0)
-        chain_box = _new_window(1 + len(_rest))
-        # if '\0' in _first_line:
-        #     _first_line = _first_line.replace('\0', ' ' + _c2)
-        #     current_color = _c2
-        # else:
-        #     current_color = _c1
-        current_color = _c1
-        chain_box.addstr(' ' + _first_line, _c1)
+        _first_line, *_rest = wrap_method(f'{_s1} \0{_s2}', 1, 0)
+        left, _, right = _first_line.partition('\0')
+        _box = _create_box(left, _c1)
+        if right:
+            _box.addstr(right, _c2)
+            if not _rest:
+                temp_boxes.append(_box)
+                return
+            current_color = _c2
+        else:
+            current_color = _c1
+
+        temp_boxes.append(_box)
         for _line in _rest:
-            if '\0' in _line:
-                #_line = _line.replace('\0', ' ' + _c2)
-                chain_box.addstr(_line, current_color)
+            left, _, right = _line.partition('\0')
+            _box = _create_box(left, current_color)
+            if right:
+                _box.addstr(right, _c2)
                 current_color = _c2
-            else:
-                chain_box.addstr('\n' + _line, current_color)
-        _add_box(chain_box)
+            temp_boxes.append(_box)
+
+    def _create_box(_s: str, _c: int = 0):
+        _box = curses.newwin(1, column_width)
+        _box.addstr(_s, _c)
+        return _box
+
 
     index = 0
 
     for op, *body in dictionary.contents:
         # sys.stdout.write(f'{op}\n{body}\n'); continue  # DEBUG
+        temp_boxes = []
 
         if 'DEF' in op:
             index += 1
@@ -153,88 +163,72 @@ def format_dictionary(
             first_line, *rest = wrap_method(
                 _def, gaps + index_len + label_len, indent - label_len
             )
-            box = _new_window(1 + len(rest))
-            box.addstr(str(index) + ' ', color('index_c'))
+            box = _create_box(str(index) + ' ', color('index_c'))
             if _label:
                 box.addstr(_label, color('label_c'))
             box.addstr(first_line, color('def1_c'))
-
+            temp_boxes.append(box)
             for line in rest:
-                box.addstr('\n' + line, color('def1_c'))
-
-            _add_box(box)
+                temp_boxes.append(_create_box(line, color('def1_c')))
 
             if _exsen:
                 for ex in _exsen.split('<br>'):
                     first_line, *rest = wrap_method(ex, gaps + index_len - 1, 1 + indent)
-                    exsen_box = _new_window(1 + len(rest))
-                    exsen_box.addstr((index_len + gaps - 1) * ' ')
-                    exsen_box.addstr(first_line, color('exsen_c'))
+                    box = _create_box((index_len + gaps - 1) * ' ')
+                    box.addstr(first_line, color('exsen_c'))
+                    temp_boxes.append(box)
                     for line in rest:
-                        exsen_box.addstr('\n' + line, color('exsen_c'))
-                    _add_box(exsen_box)
+                        temp_boxes.append(_create_box(line, color('exsen_c')))
         elif op == 'LABEL':
             label, inflections = body
-            blank = _new_window(1)
-            _add_box(blank)
+            temp_boxes.append(_create_box(''))
             if label:
                 if inflections:
                     _push_chain(label, color('label_c'), inflections, color('inflection_c'))
                 else:
                     first_line, *rest = wrap_method(label, 1, 0)
-                    label_box = _new_window(1 + len(rest))
-                    label_box.addstr(' ' + first_line, color('label_c'))
+                    temp_boxes.append(_create_box(' ' + first_line, color('label_c')))
                     for line in rest:
-                        label_box.addstr('\n' + line, color('label_c'))
-
-                    _add_box(label_box)
+                        temp_boxes.append(_create_box(line, color('label_c')))
         elif op == 'PHRASE':
             phrase, phon = body
             if phon:
                 _push_chain(phrase, color('phrase_c'), phon, color('phon_c'))
             else:
                 first_line, *rest = wrap_method(phrase, 1, 0)
-                phrase_box = _new_window(1 + len(rest))
-                phrase_box.addstr(' ' + first_line, color('phrase_c'))
+                temp_boxes.append(_create_box(' ' + first_line, color('phrase_c')))
                 for line in rest:
-                    phrase_box.addstr('\n' + line, color('phrase_c'))
-
-                _add_box(phrase_box)
+                    temp_boxes.append(_create_box(line, color('phrase_c')))
         elif op == 'HEADER':
             title = body[0]
-            header_box = _new_window(1)
+            box = _create_box('')
             if title:
-                header_box = format_title(header_box, title)
+                temp_boxes.append(format_title(box, title))
             else:
                 while True:
                     try:
-                        header_box.addstr(HORIZONTAL_BAR, color('delimit_c'))
+                        box.addstr(HORIZONTAL_BAR, color('delimit_c'))
                     except curses.error:
                         break
-            _add_box(header_box)
+                temp_boxes.append(box)
         elif op == 'ETYM':
             etym = body[0]
             if etym:
-                blank = _new_window(1)
-                _add_box(blank)
+                temp_boxes.append(_create_box(''))
                 first_line, *rest = wrap_method(etym, 1, indent)
-                etym_box = _new_window(1 + len(rest))
-                etym_box.addstr(' ' + first_line, color('etym_c'))
+                temp_boxes.append(_create_box(' ' + first_line, color('etym_c')))
                 for line in rest:
-                    etym_box.addstr(line, color('etym_c'))
-                _add_box(etym_box)
+                    temp_boxes.append(_create_box(line, color('etym_c')))
         elif op == 'POS':
             if body[0].strip(' |'):
-                blank = _new_window(1)
-                _add_box(blank)
+                temp_boxes.append(_create_box(''))
                 # TODO: Fix overflow.
                 for elem in body:
                     pos, phon = elem.split('|')
                     # padding = (textwidth - len(pos) - len(phon) - 3) * ' '
-                    pos_box = _new_window(1)
-                    pos_box.addstr(' ' + pos, color('pos_c'))
-                    pos_box.addstr('  ' + phon, color('phon_c'))
-                    _add_box(pos_box)
+                    box = _create_box(' ' + pos, color('pos_c'))
+                    box.addstr('  ' + phon, color('phon_c'))
+                    temp_boxes.append(box)
         elif op == 'AUDIO':
             pass
         elif op == 'SYN':
@@ -273,6 +267,9 @@ def format_dictionary(
         else:
             raise AssertionError(f'unreachable dictionary operation: {op!r}')
 
+        boxes.append(temp_boxes)
+        lines_total += len(temp_boxes)
+
     return boxes, lines_total
 
 
@@ -290,41 +287,45 @@ def get_column_parameters():
     if not r:
         return 39, ncols
 
-    fill = r // ncols
+    try:
+        fill = r // ncols
+    except ZeroDivisionError:
+        return width, 1
+
     col_width = 39 + fill
     return col_width, ncols
 
 
-def toggle_box(box: curses._CursesWindow, is_toggled: bool) -> bool:
-    # Highlights the box and returns its current state.
-    if is_toggled:
-        box.bkgd(0, curses.A_NORMAL)
-    else:
-        box.bkgd(0, curses.A_STANDOUT)
-
-    return not is_toggled
-
-
 class Screen:
     def __init__(self, stdscr, dictionary):
+        # Static.
         self.stdscr = stdscr
         self.dictionary = dictionary
 
+        # Updated every redraw.
         _boxes, self.lines_total = box_contents(dictionary)
-        self.box_toggles = [False] * len(_boxes)
         self.boxes = _boxes
-        self.col_width = _boxes[0].getmaxyx()[1]
-        self.columns = self.prepare_columns()
+        self.columns = self.split_into_columns()
+        self.col_width = _boxes[0][0].getmaxyx()[1]
+
+        # User facing state.
+        self.box_toggles = [False] * len(_boxes)
         self.scroll_pos = 0
 
-    def prepare_columns(self) -> list[list[curses._CursesWindow]]:
+    def _draw_header(self):
+        self.stdscr.insstr(
+            0, 0, '  ' + self.dictionary.contents[0][1].ljust(curses.COLS),
+            curses.color_pair(17)
+        )
+
+    def split_into_columns(self) -> list[curses._CursesWindow]:
         _, ncols = get_column_parameters()
-        max_col_height = int(self.lines_total / ncols + 1)
+        max_col_height = self.lines_total // ncols
         result = [[]]
         current_height = 0
-        for box in self.boxes:
-            result[-1].append(box)
-            current_height += box.getmaxyx()[0]
+        for lines in self.boxes:
+            current_height += len(lines)
+            result[-1].extend(lines)
             if current_height > max_col_height:
                 result.append([])
                 current_height = 0
@@ -336,43 +337,78 @@ class Screen:
 
         _boxes, self.lines_total = box_contents(self.dictionary)
         # Keep toggled boxes toggled.
-        for box in compress(_boxes, self.box_toggles):
-            box.bkgd(0, curses.A_STANDOUT)
+        for lines in compress(_boxes, self.box_toggles):
+            for line in lines:
+                line.bkgd(0, curses.A_STANDOUT)
 
         self.boxes = _boxes
-        self.col_width = _boxes[0].getmaxyx()[1]
-        self.columns = self.prepare_columns()
+        self.columns = self.split_into_columns()
+        self.col_width = _boxes[0][0].getmaxyx()[1]
 
     def draw(self) -> None:
-        self.stdscr.erase()
+        try:
+            self.stdscr.move(1, 0)  # (0, 0) is reserved for the header.
+        except curses.error:
+            pass
+        self.stdscr.clrtobot()
         self.stdscr.noutrefresh()
 
         tx = 0
         col_width = self.col_width
         scroll_pos = self.scroll_pos
-        for column in self.columns:
-            ty = 0
-            for box in islice(column, scroll_pos, None):
+        columns = self.columns
+
+        # reset window positions up until the scroll position.
+        for column in columns:
+            for box in islice(column, None, scroll_pos):
+                box.mvwin(0, 0)
+
+        for column in columns:
+            for y, box in enumerate(
+                islice(column, scroll_pos, None), 1
+            ):
                 try:
-                    box.mvwin(ty, tx)
+                    box.mvwin(y, tx)
                 except curses.error:
                     break
                 box.noutrefresh()
-                ty += box.getmaxyx()[0]
             tx += col_width
 
+        self._draw_header()
         curses.doupdate()
 
     def mark_box_at(self, y: int, x: int) -> None:
-        # This is fast enough, ~100_000ns worst case scenario.
-        # Bisection won't help because of the language overhead.
-        for i, (toggle, box) in enumerate(zip(self.box_toggles, self.boxes)):
-            if box.enclose(y, x):
-                self.box_toggles[i] = toggle_box(box, toggle)
-                return
+        if not y:  # header clicked.
+            return
+
+        # Because scrolling is implemented by moving windows around, these that
+        # are not in view are tucked under the header to not interfere with box
+        # toggling.  We should consider decoupling the scrolling functionality
+        # from box toggling and maybe use a class to represent a Box if more
+        # tightly coupled functionality is needed.  It is impossible to have
+        # a pointer to an immutable type like a `bool` and as far as I know you
+        # cannot remove/reset the top-left corner position from the curses window.
+        not_in_view = {
+            column[i]
+            for column in self.columns
+            for i in range(self.scroll_pos)
+        }
+        for i, (toggle, lines) in enumerate(zip(self.box_toggles, self.boxes)):
+            for line in lines:
+                if id(line) not in not_in_view and line.enclose(y, x):
+                    break
+            else:
+                continue
+
+            highlight = curses.A_NORMAL if toggle else curses.A_STANDOUT
+            for line in lines:
+                line.bkgd(0, highlight)
+
+            self.box_toggles[i] = not toggle
+            return
 
     def scroll_up(self, n: int = 1) -> None:
-        max_boxes_in_column = max(map(len, self.columns))
+        max_boxes_in_column = 2 + max(map(len, self.columns)) - curses.LINES
         self.scroll_pos += n
         if self.scroll_pos > max_boxes_in_column:
             self.scroll_pos = max_boxes_in_column
@@ -392,6 +428,7 @@ def c_main(stdscr: curses._CursesWindow, dictionary) -> int:
         curses.use_default_colors()
         for i in range(16):
             curses.init_pair(i + 1, i, -1)
+        curses.init_pair(17, -1, 235)
 
     screen = Screen(stdscr, dictionary)
     while True:
@@ -408,13 +445,13 @@ def c_main(stdscr: curses._CursesWindow, dictionary) -> int:
             if bstate & curses.BUTTON1_PRESSED:
                 screen.mark_box_at(y, x)
             elif bstate & curses.BUTTON4_PRESSED:
-                screen.scroll_down()
+                screen.scroll_down(2)
             elif bstate & curses.BUTTON5_PRESSED:
-                screen.scroll_up()
+                screen.scroll_up(2)
         elif c == curses.KEY_DOWN:
-            screen.scroll_up()
+            screen.scroll_up(2)
         elif c == curses.KEY_UP:
-            screen.scroll_down()
+            screen.scroll_down(2)
         else:
             #raise AssertionError(repr(c))
             pass
