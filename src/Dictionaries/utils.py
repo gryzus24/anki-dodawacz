@@ -23,7 +23,7 @@ from typing import Any, Callable, NoReturn, Optional
 import urllib3
 from urllib3.exceptions import ConnectTimeoutError, NewConnectionError
 
-from src.colors import err_c
+from src.colors import Color
 from src.data import ON_WINDOWS_CMD, ON_TERMUX, POSIX, USER_AGENT, WINDOWS
 
 # Silence warnings if soupsieve is not installed, which is good
@@ -57,14 +57,14 @@ def handle_connection_exceptions(func: Callable) -> Callable:
             return func(*args, **kwargs)
         except Exception as e:
             if isinstance(e.__context__, NewConnectionError):
-                print(f'{err_c}Could not establish a connection,\n'
+                print(f'{Color.err}Could not establish a connection,\n'
                       'check your Internet connection and try again.')
                 return None
             elif isinstance(e.__context__, ConnectTimeoutError):
-                print(f'{err_c}Connection timed out.')
+                print(f'{Color.err}Connection timed out.')
                 return None
             else:
-                print(f'{err_c}An unexpected error occurred in {func.__qualname__}.')
+                print(f'{Color.err}An unexpected error occurred in {func.__qualname__}.')
                 raise
 
     return wrapper
@@ -114,7 +114,7 @@ elif POSIX:
 
 else:
     def _clear_screen() -> None:
-        sys.stdout.write(f'`-top on`{err_c} command unavailable on {sys.platform!r}\n')
+        sys.stdout.write(f'`-top on`{Color.err} command unavailable on {sys.platform!r}\n')
 
 
 class ClearScreen:
@@ -271,15 +271,14 @@ def wrap_lines(
     return no_wrap()
 
 
-def wrap_and_pad(style: str, textwidth: int) -> Callable[[str, int, int], list[str]]:
+def wrap_and_pad(style: str, textwidth: int) -> Callable[[str, int, int], tuple[str, list[str]]]:
     # Wraps and adds right side padding that matches `textwidth`.
 
-    def call(lines: str, gap: int, indent: int) -> list[str]:
+    def call(lines: str, gap: int, indent: int) -> tuple[str, list[str]]:
         fl, *rest = wrap_lines(lines, style, textwidth, gap, indent)
-        result = [fl + (textwidth - len(fl) - gap) * ' ']
-        for line in rest:
-            result.append(line + (textwidth - len(line)) * ' ')
-        return result
+        first_line = fl + (textwidth - len(fl) - gap) * ' '
+        rest = [line + (textwidth - len(line)) * ' ' for line in rest]
+        return first_line, rest
 
     return call
 

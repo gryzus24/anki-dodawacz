@@ -62,6 +62,7 @@ boolean_cmd_to_msg = {
 
     '-ankiconnect': 'Use AnkiConnect to add cards',
     '-duplicates': 'Allow duplicates',
+    '-curses': 'Use the ncurses backend to interact with dictionaries (requires restart)',
 }
 
 cmd_to_msg_usage = {

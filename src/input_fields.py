@@ -3,7 +3,7 @@ from __future__ import annotations
 from itertools import islice
 from typing import Any, NamedTuple, Sequence
 
-from src.colors import GEX, R, YEX
+from src.colors import R, Color
 from src.data import bool_values_dict, config
 
 
@@ -114,7 +114,7 @@ def _add_elements(
 
     if config['showadded']:
         added = filter(lambda x: x not in not_really_added, valid_choices)
-        print(f'{YEX}Added: {R}{", ".join(added)}')
+        print(f'{Color.YEX}Added: {R}{", ".join(added)}')
 
     major_choices = []
     for elem in valid_choices:
@@ -158,7 +158,7 @@ def get_user_input(field: str, content: Sequence[str], auto: str) -> UserInput |
     if _input.startswith('/'):
         _input = _input[1:]
         if config['showadded']:
-            print(f'{YEX}Added: {R}{_input!r}')
+            print(f'{Color.YEX}Added: {R}{_input!r}')
         return UserInput(_input, (1,))
 
     _input = _input.replace(' ', '').lower()
@@ -174,7 +174,7 @@ def get_user_input(field: str, content: Sequence[str], auto: str) -> UserInput |
 
     parsed_inputs = _parse_input(_input, _max_len)
     if not parsed_inputs or not content:
-        print(f'{GEX}Card skipped')
+        print(f'{Color.GEX}Card skipped')
         return None
 
     content, major_choices = _add_elements(
@@ -203,10 +203,10 @@ def choose_item(prompt: str, seq: Sequence[Any], *, default: int = 1) -> Any | N
 def sentence_input() -> str | None:
     sentence = input('Add a sentence: ')
     if sentence.lower() == '-sc':
-        print(f'{GEX}Card skipped')
+        print(f'{Color.GEX}Card skipped')
         return None
     elif sentence.lower() == '-s':
-        print(f'{GEX}Sentence skipped')
+        print(f'{Color.GEX}Sentence skipped')
         return ''
     else:
         return sentence

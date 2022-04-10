@@ -22,7 +22,7 @@ from typing import Any, NamedTuple, Sequence
 from urllib3.exceptions import NewConnectionError
 
 from src.Dictionaries.utils import http
-from src.colors import BOLD, DEFAULT, GEX, R, YEX, err_c, index_c
+from src.colors import BOLD, DEFAULT, R, Color
 from src.commands import save_command
 from src.data import ROOT_DIR, config
 from src.input_fields import ask_yes_no, choose_item
@@ -115,8 +115,8 @@ def refresh_cached_notes() -> str | None:
         try:
             save_ac_config(config_ac)
         except FileNotFoundError:
-            return f'{R}"ankiconnect.json"{err_c} file does not exist'
-    print(f'{YEX}Notes refreshed')
+            return f'{R}"ankiconnect.json"{Color.err} file does not exist'
+    print(f'{Color.YEX}Notes refreshed')
     return None
 
 
@@ -158,20 +158,20 @@ def invoke(action: str, **params: Any) -> AnkiResponse:
 
     err = err.lower()
     if err.startswith('model was not found:'):
-        msg = f'  Could not find note: {R}{config["note"]}{err_c}\n' \
+        msg = f'  Could not find note: {R}{config["note"]}{Color.err}\n' \
               f'  To change the note use {R}`-note {{note name}}`'
     elif err.startswith('deck was not found'):
-        msg = f'  Could not find deck: {R}{config["deck"]}{err_c}\n' \
+        msg = f'  Could not find deck: {R}{config["deck"]}{Color.err}\n' \
               f'  To change the deck use {R}`-deck {{deck name}}`\n' \
-              f'  {err_c}If deck name seems correct, change its name in Anki\n' \
+              f'  {Color.err}If deck name seems correct, change its name in Anki\n' \
               f'  to use single spaces.'
     elif err.startswith('cannot create note because it is empty'):
         msg = f'  First field empty.\n' \
-              f'  Check if {R}{config["note"]}{err_c} contains required fields\n' \
+              f'  Check if {R}{config["note"]}{Color.err} contains required fields\n' \
               f'  or if field names have been changed, use {R}`-refresh`'
     elif err.startswith('cannot create note because it is a duplicate'):
         msg = f'  Duplicate.\n' \
-              f'  To allow duplicates use {R}`-duplicates {{on|off}}`{err_c}\n' \
+              f'  To allow duplicates use {R}`-duplicates {{on|off}}`{Color.err}\n' \
               f'  or change the scope of checking for them {R}`-dupescope {{deck|collection}}`'
     elif err.startswith('model name already exists'):
         msg = '  Note with this name already exists.'
@@ -194,7 +194,7 @@ def gui_browse_cards(query: Sequence[str]) -> str | None:
 def add_note_to_anki() -> str | None:
     print(f'{BOLD}Available notes:{DEFAULT}')
     for i, note in enumerate(CUSTOM_NOTES, start=1):
-        print(f'{index_c}{i} {R}{note[:-5]}')  # strip ".json"
+        print(f'{Color.index}{i} {R}{note[:-5]}')  # strip ".json"
     print()
 
     note_name = choose_item('Choose a note to add', CUSTOM_NOTES, default=0)
@@ -213,9 +213,9 @@ def add_note_to_anki() -> str | None:
                                       'Front': note_config['front'],
                                       'Back': note_config['back']}])
     if response.error:
-        return f'{err_c}Note could not be added:\n{response.body}\n'
+        return f'{Color.err}Note could not be added:\n{response.body}\n'
 
-    print(f'{GEX}Note added successfully')
+    print(f'{Color.GEX}Note added successfully')
     if ask_yes_no(f'Set "{model_name}" as -note?', default=True):
         save_command('note', model_name)
     return None
@@ -239,7 +239,7 @@ def cache_current_note(*, refresh: bool = False) -> str | None:
     if not organized_fields:
         if refresh:
             return None
-        return f'  Check if note {R}{model_name}{err_c} contains required fields\n' \
+        return f'  Check if note {R}{model_name}{Color.err} contains required fields\n' \
                f'  or if field names have been changed, use {R}`-refresh`'
 
     config_ac[model_name] = organized_fields
@@ -254,7 +254,7 @@ def add_card_to_anki(field_values: dict[str, str]) -> None:
     if note_name not in config_ac:
         err = cache_current_note()
         if err is not None:
-            print(f'{err_c}Could not recognize note:\n{err}\n')
+            print(f'{Color.err}Could not recognize note:\n{err}\n')
             return None
 
     note_from_config = config_ac.get(note_name, {})
@@ -264,8 +264,8 @@ def add_card_to_anki(field_values: dict[str, str]) -> None:
             for anki_field_name, base in note_from_config.items()
         }
     except KeyError:  # shouldn't happen if ankiconnect.json isn't tampered with
-        print(f'{err_c}Card could not be added to Anki:\n'
-              f'  Check if note {R}{note_name}{err_c} contains required fields\n'
+        print(f'{Color.err}Card could not be added to Anki:\n'
+              f'  Check if note {R}{note_name}{Color.err} contains required fields\n'
               f'  or if field names have been changed, use {R}`-refresh`\n')
         return None
 
@@ -282,13 +282,13 @@ def add_card_to_anki(field_values: dict[str, str]) -> None:
                           'tags': tags.split(', ')
                       })
     if response.error:
-        print(f'{err_c}Card could not be added to Anki:\n{response.body}\n')
+        print(f'{Color.err}Card could not be added to Anki:\n{response.body}\n')
         return None
 
     print(
-        f'{GEX}Card successfully added to Anki\n'
-        f'{YEX}Deck: {R}{config["deck"]}\n'
-        f'{YEX}Note: {R}{note_name}\n'
-        f'{YEX}Tags: {R}{tags}\n'
+        f'{Color.GEX}Card successfully added to Anki\n'
+        f'{Color.YEX}Deck: {R}{config["deck"]}\n'
+        f'{Color.YEX}Note: {R}{note_name}\n'
+        f'{Color.YEX}Tags: {R}{tags}\n'
         f'> open card browser: `-b`\n'
     )

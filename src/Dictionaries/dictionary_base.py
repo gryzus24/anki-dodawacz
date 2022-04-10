@@ -20,10 +20,7 @@ from itertools import chain, zip_longest
 from typing import Callable, Optional, Sequence
 
 from src.Dictionaries.utils import get_width_per_column, wrap_and_pad
-from src.colors import (
-    BOLD, DEFAULT, R, YEX, def1_c, def2_c, delimit_c, etym_c, exsen_c, index_c,
-    inflection_c, label_c, phon_c, phrase_c, pos_c, sign_c, syn_c, syngloss_c
-)
+from src.colors import Color, BOLD, DEFAULT, R
 from src.data import HORIZONTAL_BAR
 
 
@@ -110,12 +107,12 @@ def columnize(buffer: Sequence[str], textwidth: int, height: int, ncols: int) ->
 
             if not formatted[col_no] or HORIZONTAL_BAR not in formatted[col_no][0]:
                 # Remove an empty header.
-                if formatted[col_no][0].strip() == str(delimit_c):
+                if formatted[col_no][0].strip() == Color.delimit:
                     del formatted[col_no][0]
                     li = -1
                 else:
                     li = 0
-                formatted[col_no].insert(0, f'{delimit_c}{textwidth * HORIZONTAL_BAR}')
+                formatted[col_no].insert(0, f'{Color.delimit}{textwidth * HORIZONTAL_BAR}')
             else:
                 li = -1
 
@@ -128,9 +125,9 @@ def columnize(buffer: Sequence[str], textwidth: int, height: int, ncols: int) ->
 
 
 def format_title(textwidth: int, title: str) -> str:
-    title = f'{HORIZONTAL_BAR}[ {BOLD}{title}{DEFAULT}{delimit_c} ]'
-    esc_seq_len = len(BOLD) + len(DEFAULT) + len(delimit_c)
-    return f'{delimit_c}{title.ljust(textwidth + esc_seq_len, HORIZONTAL_BAR)}'
+    title = f'{HORIZONTAL_BAR}[ {BOLD}{title}{DEFAULT}{Color.delimit} ]'
+    esc_seq_len = len(BOLD) + len(DEFAULT) + len(Color.delimit)
+    return f'{Color.delimit}{title.ljust(textwidth + esc_seq_len, HORIZONTAL_BAR)}'
 
 
 def stringify_columns(
@@ -149,9 +146,9 @@ def stringify_columns(
         raise ValueError(f'empty columns: {columns!r}')
 
     result = header + '\n'.join(
-        f"{delimit_c}{vert_bar}{R}".join(line) + hbfill
+        f"{Color.delimit}{vert_bar}{R}".join(line) + hbfill
         if line[-1][-1] == HORIZONTAL_BAR else
-        f"{delimit_c}{vert_bar}{R}".join(line)
+        f"{Color.delimit}{vert_bar}{R}".join(line)
         for line in zipped_columns
     ) + '\n'
 
@@ -353,7 +350,7 @@ class Dictionary:
         wrap_method = wrap_and_pad(wrap_style, textwidth)
 
         def _push_chain(_s1: str, _c1: str, _s2: str, _c2: str) -> None:
-            _first_line, *_rest = wrap_method(f'{_s1} \0{_s2}', 1, 0)
+            _first_line, _rest = wrap_method(f'{_s1} \0{_s2}', 1, 0)
             if '\0' in _first_line:
                 _first_line = _first_line.replace('\0', ' ' + _c2)
                 current_color = _c2
@@ -383,88 +380,88 @@ class Dictionary:
                     label_len = 0
 
                 if signed:
-                    _def_s = f"{sign_c}{' ' if 'SUB' in op else '>'}"
+                    _def_s = f"{Color.sign}{' ' if 'SUB' in op else '>'}"
                     gaps = 2
                 else:
                     _def_s = ''
                     gaps = 1
 
-                first_line, *rest = wrap_method(
+                first_line, rest = wrap_method(
                     _def, gaps + index_len + label_len, indent - label_len
                 )
-                def_c = def1_c if index % 2 else def2_c
-                buffer.append(f'{_def_s}{index_c}{index} {label_c}{_label}{def_c}{first_line}')
+                def_c = Color.def1 if index % 2 else Color.def2
+                buffer.append(f'{_def_s}{Color.index}{index} {Color.label}{_label}{def_c}{first_line}')
                 for line in rest:
                     buffer.append(f'${def_c}{line}')
 
                 if _exsen:
                     for ex in _exsen.split('<br>'):
-                        first_line, *rest = wrap_method(ex, gaps + index_len - 1, 1 + indent)
-                        buffer.append(f'${index_len * " "}{(gaps - 1) * " "}{exsen_c}{first_line}')
+                        first_line, rest = wrap_method(ex, gaps + index_len - 1, 1 + indent)
+                        buffer.append(f'${index_len * " "}{(gaps - 1) * " "}{Color.exsen}{first_line}')
                         for line in rest:
-                            buffer.append(f'${exsen_c}{line}')
+                            buffer.append(f'${Color.exsen}{line}')
             elif op == 'LABEL':
                 buffer.append(blank)
                 label, inflections = body
                 if label:
                     if inflections:
-                        _push_chain(label, str(label_c), inflections, str(inflection_c))
+                        _push_chain(label, Color.label, inflections, Color.inflection)
                     else:
-                        first_line, *rest = wrap_method(label, 1, 0)
-                        buffer.append(f'! {label_c}{first_line}')
+                        first_line, rest = wrap_method(label, 1, 0)
+                        buffer.append(f'! {Color.label}{first_line}')
                         for line in rest:
-                            buffer.append(f'!{label_c}{line}')
+                            buffer.append(f'!{Color.label}{line}')
             elif op == 'PHRASE':
                 phrase, phon = body
                 if phon:
-                    _push_chain(phrase, str(phrase_c), phon, str(phon_c))
+                    _push_chain(phrase, Color.phrase, phon, Color.phon)
                 else:
-                    first_line, *rest = wrap_method(phrase, 1, 0)
-                    buffer.append(f'! {phrase_c}{first_line}')
+                    first_line, rest = wrap_method(phrase, 1, 0)
+                    buffer.append(f'! {Color.phrase}{first_line}')
                     for line in rest:
-                        buffer.append(f'!{phrase_c}{line}')
+                        buffer.append(f'!{Color.phrase}{line}')
             elif op == 'HEADER':
                 title = body[0]
                 if title:
                     buffer.append(format_title(textwidth, title))
                 else:
-                    buffer.append(f'{delimit_c}{textwidth * HORIZONTAL_BAR}')
+                    buffer.append(f'{Color.delimit}{textwidth * HORIZONTAL_BAR}')
             elif op == 'ETYM':
                 etym = body[0]
                 if etym:
                     buffer.append(blank)
-                    first_line, *rest = wrap_method(etym, 1, indent)
-                    buffer.append(f' {etym_c}{first_line}')
+                    first_line, rest = wrap_method(etym, 1, indent)
+                    buffer.append(f' {Color.etym}{first_line}')
                     for line in rest:
-                        buffer.append(f'${etym_c}{line}')
+                        buffer.append(f'${Color.etym}{line}')
             elif op == 'POS':
                 if body[0].strip(' |'):
                     buffer.append(blank)
                     for elem in body:
                         pos, phon = elem.split('|')
                         padding = (textwidth - len(pos) - len(phon) - 3) * ' '
-                        buffer.append(f' {pos_c}{pos}  {phon_c}{phon}{padding}')
+                        buffer.append(f' {Color.pos}{pos}  {Color.phon}{phon}{padding}')
             elif op == 'AUDIO':
                 pass
             elif op == 'SYN':
-                first_line, *rest = wrap_method(body[0], 1, 0)
-                buffer.append(f'! {syn_c}{first_line}')
+                first_line, rest = wrap_method(body[0], 1, 0)
+                buffer.append(f'! {Color.syn}{first_line}')
                 for line in rest:
-                    buffer.append(f'!{syn_c}{line}')
+                    buffer.append(f'!{Color.syn}{line}')
 
-                first_line, *rest = wrap_method(body[1], 2, 0)
-                buffer.append(f'!{sign_c}: {syngloss_c}{first_line}')
+                first_line, rest = wrap_method(body[1], 2, 0)
+                buffer.append(f'!{Color.sign}: {Color.syngloss}{first_line}')
                 for line in rest:
-                    buffer.append(f'!{syngloss_c}{line}')
+                    buffer.append(f'!{Color.syngloss}{line}')
 
                 for ex in body[2].split('<br>'):
-                    first_line, *rest = wrap_method(ex, 1, 1)
-                    buffer.append(f' {exsen_c}{first_line}')
+                    first_line, rest = wrap_method(ex, 1, 1)
+                    buffer.append(f' {Color.exsen}{first_line}')
                     for line in rest:
-                        buffer.append(f'${exsen_c}{line}')
+                        buffer.append(f'${Color.exsen}{line}')
             elif op == 'NOTE':
-                first_line, *rest = wrap_method(body[0], 2, 0)
-                buffer.append(f'!{BOLD}{YEX}> {R}{first_line}{DEFAULT}')
+                first_line, rest = wrap_method(body[0], 2, 0)
+                buffer.append(f'!{BOLD}{Color.YEX}> {R}{first_line}{DEFAULT}')
                 for line in rest:
                     buffer.append(f'!{BOLD}{line}{DEFAULT}')
             else:

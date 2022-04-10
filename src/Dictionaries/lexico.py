@@ -19,7 +19,7 @@ from typing import Any
 
 from src.Dictionaries.dictionary_base import Dictionary
 from src.Dictionaries.utils import request_soup
-from src.colors import R, err_c
+from src.colors import R, Color
 from src.input_fields import get_user_input
 
 
@@ -130,7 +130,7 @@ def ask_lexico(query: str) -> Dictionary | None:
 
     query = query.strip(' ?/.#')
     if not query:
-        print(f'{err_c}Invalid query')
+        print(f'{Color.err}Invalid query')
         return None
 
     soup = request_soup('https://www.lexico.com/definition/' + query)
@@ -140,7 +140,7 @@ def ask_lexico(query: str) -> Dictionary | None:
     main_div = soup.find('div', class_='entryWrapper')
     if main_div is None:  # lexico probably denied access
         import time
-        print(f'{err_c}Lexico could not handle this many requests...\n'
+        print(f'{Color.err}Lexico could not handle this many requests...\n'
               f'Try again in 1-5 minutes')
         time.sleep(2.5)
         raise SystemExit(1)
@@ -149,7 +149,7 @@ def ask_lexico(query: str) -> Dictionary | None:
     if page_check.get_text(strip=True) == 'HomeEnglish':
         new_query_tag = main_div.find('a', class_='no-transition')
         if new_query_tag is None:
-            print(f'{err_c}Could not find {R}"{query}"{err_c} in Lexico')
+            print(f'{Color.err}Could not find {R}"{query}"{Color.err} in Lexico')
             return None
         else:
             _previous_query = query  # global

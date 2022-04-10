@@ -20,7 +20,7 @@ from typing import Any, Callable, Iterable
 
 from src.Dictionaries.dictionary_base import Dictionary
 from src.Dictionaries.utils import request_soup
-from src.colors import R, err_c
+from src.colors import R, Color
 from src.data import config
 from src.input_fields import get_user_input
 
@@ -225,7 +225,7 @@ def _shorten_etymology(_input: str) -> str:
 def ask_ahdictionary(query: str) -> Dictionary | None:
     query = query.strip(' \'";')
     if not query:
-        print(f'{err_c}Invalid query')
+        print(f'{Color.err}Invalid query')
         return None
 
     soup = request_soup('https://www.ahdictionary.com/word/search.html', {'q': query})
@@ -234,10 +234,10 @@ def ask_ahdictionary(query: str) -> Dictionary | None:
 
     try:
         if soup.find('div', {'id': 'results'}).text == 'No word definition found':
-            print(f'{err_c}Could not find {R}"{query}"{err_c} in AH Dictionary')
+            print(f'{Color.err}Could not find {R}"{query}"{Color.err} in AH Dictionary')
             return None
     except AttributeError:
-        print(f'{err_c}AH Dictionary is probably down:\n{R}{soup.prettify()}')
+        print(f'{Color.err}AH Dictionary is probably down:\n{R}{soup.prettify()}')
         return None
 
     ahd = AHDictionary()

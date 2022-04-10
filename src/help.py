@@ -1,4 +1,4 @@
-from src.colors import BOLD, DEFAULT, GEX, R
+from src.colors import BOLD, DEFAULT, R, Color
 
 
 def _title(s: str) -> str:
@@ -42,7 +42,7 @@ OPTIONS:
 For more options and commands see `--help-config` or `-config`.
 
 To escape the query or embed it inside a sentence use <QUERY>, this will also
-make the word {BOLD}{GEX}Emphasized{R}{DEFAULT}.
+make the word {BOLD}{Color.GEX}Emphasized{R}{DEFAULT}.
 e.g. >> Search $ This is a sentence with a word <embedded> inside.
 
 {_title('Dictionary and fields')}

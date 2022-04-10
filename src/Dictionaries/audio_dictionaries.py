@@ -14,7 +14,7 @@
 # along with this program. If not, see <http://www.gnu.org/licenses/>.
 
 from src.Dictionaries.utils import http, request_soup
-from src.colors import R, YEX, err_c
+from src.colors import R, Color
 
 
 def diki_audio(raw_phrase: str, flag: str = '') -> str:
@@ -43,8 +43,8 @@ def diki_audio(raw_phrase: str, flag: str = '') -> str:
         if http.urlopen('HEAD', url_ame).status == 200:
             return url_ame
 
-    print(f'{err_c}Diki does not have the desired pronunciation\n'
-          f'{YEX}Squeezing the last bits out...')
+    print(f'{Color.err}Diki does not have the desired pronunciation\n'
+          f'{Color.YEX}Squeezing the last bits out...')
 
     def shorten_to_possessive(*ignore: str) -> str:
         verb, _, rest = diki_phrase.partition('_the_')
@@ -84,7 +84,7 @@ def diki_audio(raw_phrase: str, flag: str = '') -> str:
         if http.urlopen('HEAD', url).status == 200:
             return url
 
-    print(f"{err_c}Diki does not have the pronunciation for {R}{raw_phrase}")
+    print(f"{Color.err}Diki does not have the pronunciation for {R}{raw_phrase}")
     return ''
 
 
@@ -92,8 +92,8 @@ def ahd_audio(query: str) -> str:
     soup = request_soup('https://www.ahdictionary.com/word/search.html?q=' + query)
     audio_url = soup.find('a', {'target': '_blank'})['href']
     if audio_url == 'http://www.hmhco.com':
-        print(f'{err_c}AHD does not have the pronunciation for {R}{query}\n'
-              f'{YEX}Querying diki...')
+        print(f'{Color.err}AHD does not have the pronunciation for {R}{query}\n'
+              f'{Color.YEX}Querying diki...')
         return diki_audio(query)
     return 'https://www.ahdictionary.com' + audio_url
 
@@ -102,7 +102,7 @@ def lexico_audio(query: str) -> str:
     soup = request_soup('https://www.lexico.com/definition/' + query.replace(' ', '_'))
     audio_url = soup.find('audio')
     if audio_url is None:
-        print(f'{err_c}Lexico does not have the pronunciation for {R}{query}\n'
-              f'{YEX}Querying diki...')
+        print(f'{Color.err}Lexico does not have the pronunciation for {R}{query}\n'
+              f'{Color.YEX}Querying diki...')
         return diki_audio(query)
     return audio_url['src']

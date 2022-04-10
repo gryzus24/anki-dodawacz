@@ -17,7 +17,7 @@ from __future__ import annotations
 
 from src.Dictionaries.dictionary_base import Dictionary, format_title
 from src.Dictionaries.utils import request_soup, wrap_and_pad
-from src.colors import R, err_c, exsen_c, index_c, label_c, syn_c, syngloss_c
+from src.colors import R, Color
 from src.input_fields import get_user_input
 
 
@@ -41,20 +41,20 @@ class WordNet(Dictionary):
 
                 synonyms, gloss, examples, pos = body
                 first_line, *rest = wrap_method(synonyms, len(pos) + index_len + 2, 0)
-                buffer.append(f'{index_c}{index} {label_c}{pos} {syn_c}{first_line}')
+                buffer.append(f'{Color.index}{index} {Color.label}{pos} {Color.syn}{first_line}')
                 for line in rest:
-                    buffer.append(f'{syn_c}{line}')
+                    buffer.append(f'{Color.syn}{line}')
 
                 first_line, *rest = wrap_method(gloss, index_len + 1, 0)
-                buffer.append(f'{index_len * " "} {syngloss_c}{first_line}')
+                buffer.append(f'{index_len * " "} {Color.syngloss}{first_line}')
                 for line in rest:
-                    buffer.append(f'{syngloss_c}{line}')
+                    buffer.append(f'{Color.syngloss}{line}')
 
                 for ex in examples.split('<br>'):
                     first_line, *rest = wrap_method(ex, index_len + 1, 1)
-                    buffer.append(f'{index_len * " "} {exsen_c}{first_line}')
+                    buffer.append(f'{index_len * " "} {Color.exsen}{first_line}')
                     for line in rest:
-                        buffer.append(f'{exsen_c}{line}')
+                        buffer.append(f'{Color.exsen}{line}')
             elif op == 'HEADER':
                 buffer.append(format_title(textwidth, body[0]))
             else:
@@ -75,7 +75,7 @@ def ask_wordnet(query: str) -> Dictionary:
         return WordNet()
 
     if soup.h3.text.startswith(('Your', 'Sorry')):
-        print(f'{err_c}Could not find {R}"{query}"{err_c} on WordNet')
+        print(f'{Color.err}Could not find {R}"{query}"{Color.err} on WordNet')
         return WordNet()
 
     wordnet = WordNet()

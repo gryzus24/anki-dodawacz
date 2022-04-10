@@ -38,11 +38,15 @@ from src.Dictionaries.utils import (ClearScreen, get_width_per_column, hide, htt
                                     wrap_lines)
 from src.Dictionaries.wordnet import WordNet, ask_wordnet
 from src.__version__ import __version__
-from src.colors import (BOLD, DEFAULT, GEX, R, YEX, def1_c, delimit_c, err_c, etym_c,
-                        exsen_c, phrase_c, pos_c, syn_c)
+from src.colors import BOLD, DEFAULT, R, Color
 from src.data import (HORIZONTAL_BAR, LINUX, ON_WINDOWS_CMD, ROOT_DIR, WINDOWS,
                       boolean_cmd_to_msg, cmd_to_msg_usage, config)
 from src.input_fields import sentence_input
+
+if config['curses']:
+    from src.curses_interface import curses_init
+else:
+    curses_init = lambda _: 0
 
 required_arg_commands = {
     # commands that take arguments
@@ -82,9 +86,16 @@ no_arg_commands = {
 
 # Completer doesn't work on Windows.
 # It should work on macOS, but I haven't tested it yet.
-if LINUX:
-    from src.completer import Completer
-    tab_completion = Completer(
+# ---
+# `readline` prevents `curses` from updating the `curses.LINES` and `curses.COLS`
+# variables and causes `window.get*` throw a `no input` error on terminal resize.
+# I don't know  how to reconcile these two as the mere import of readline is the cause.
+# Possible workarounds include using ctypes and somehow unloading `readline` when
+# `curses_init` is called or calling the curses code in a subprocess which is far
+# from ideal.
+if LINUX and not config['curses']:
+    import src.completer as completer
+    tab_completion = completer.Completer(
         tuple(chain(
             boolean_cmd_to_msg,
             cmd_to_msg_usage,
@@ -108,12 +119,12 @@ def search_interface() -> str:
         if cmd in no_arg_commands:
             err = no_arg_commands[cmd]()
             if err is not None:
-                print(f'{err_c}{err}')
+                print(f'{Color.err}{err}')
             continue
         elif cmd in ('-b', '--browse'):
             err = anki.gui_browse_cards(query=args[1:])
             if err is not None:
-                print(f'{err_c}{err}')
+                print(f'{Color.err}{err}')
             continue
 
         if cmd in boolean_cmd_to_msg:
@@ -129,7 +140,7 @@ def search_interface() -> str:
             if args[1].strip('-').lower() in ('h', 'help'):
                 raise IndexError
         except IndexError:  # Print help
-            print(f'{YEX}{message}\n'
+            print(f'{Color.YEX}{message}\n'
                   f'{R}{cmd} {usage}')
 
             # Print additional information
@@ -146,7 +157,7 @@ def search_interface() -> str:
         else:
             err = method(*args, message=message)
             if err is not None:
-                print(f'{err_c}{err}')
+                print(f'{Color.err}{err}')
 
 
 DICT_DISPATCH = {
@@ -173,13 +184,13 @@ def get_dictionaries(
     if config['dict2'] == '-':
         return None
 
-    print(f'{YEX}Querying the fallback dictionary...')
+    print(f'{Color.YEX}Querying the fallback dictionary...')
     fallback_dict = DICT_DISPATCH[config['dict2']](query)
     if fallback_dict is not None:
         return [fallback_dict]
 
     if config['dict'] != 'idioms' and config['dict2'] != 'idioms':
-        print(f"{YEX}To ask the idioms dictionary use {R}`{query} -i`")
+        print(f"{Color.YEX}To ask the idioms dictionary use {R}`{query} -i`")
     return None
 
 
@@ -213,12 +224,12 @@ def save_audio_url(audio_url: str) -> str | NoReturn:
             file.write(audio_content)
         return f'[sound:{filename}]'
     except FileNotFoundError:
-        print(f"{err_c}Saving audio {R}{filename}{err_c} failed\n"
+        print(f"{Color.err}Saving audio {R}{filename}{Color.err} failed\n"
               f"Current audio path: {R}{audio_path}\n"
-              f"{err_c}Make sure the directory exists and try again\n")
+              f"{Color.err}Make sure the directory exists and try again\n")
         return ''
     except Exception:
-        print(f'{err_c}Unexpected error occurred while saving audio')
+        print(f'{Color.err}Unexpected error occurred while saving audio')
         raise
 
 
@@ -252,8 +263,8 @@ def save_audio(
         if audio_url:
             return save_audio_url(audio_url)
         else:
-            print(f'{err_c}This dictionary does not have the pronunciation for {R}{phrase}\n'
-                  f'{YEX}Querying diki...')
+            print(f'{Color.err}This dictionary does not have the pronunciation for {R}{phrase}\n'
+                  f'{Color.YEX}Querying diki...')
             return _from_diki(phrase, flags)
 
     if server == 'ahd':
@@ -288,7 +299,7 @@ def format_definitions(definitions: str) -> str:
 def save_card_to_file(field_values: dict[str, str]) -> None:
     with open('cards.txt', 'a', encoding='utf-8') as f:
         f.write('\t'.join(field_values[field] for field in config['fieldorder']) + '\n')
-    print(f'{GEX}Card successfully saved to a file\n')
+    print(f'{Color.GEX}Card successfully saved to a file\n')
 
 
 def get_config_terminal_size() -> tuple[int, int]:
@@ -308,12 +319,12 @@ def _display_in_less(s: str) -> None:
     if executable is None:
         if WINDOWS:
             print(
-                f"'less'{err_c} is not available in %PATH% or in the current directory.\n"
+                f"'less'{Color.err} is not available in %PATH% or in the current directory.\n"
                 f"You can grab the latest Windows executable from:\n"
                 f"{R}https://github.com/jftuga/less-Windows/releases\n"
             )
         else:
-            print(f"{err_c}Could not find the 'less' executable.\n")
+            print(f"{Color.err}Could not find the 'less' executable.\n")
         return
 
     # r - accept escape sequences. `-R` does not produce desirable results on Windows.
@@ -336,27 +347,10 @@ def _display_in_less(s: str) -> None:
         # less returns 2 on SIGINT.
         return_code = process.poll()
         if return_code and return_code != 2:
-            print(f"{err_c}Could not open the pager as: 'less {options}'\n")
-
-
-def _display(s: str) -> None:
-    if config['less']:
-        if config['top']:
-            with ClearScreen():
-                _display_in_less(s)
-        else:
-            _display_in_less(s)
-    elif config['top']:
-        with ClearScreen():
-            sys.stdout.write(s)
-    else:
-        sys.stdout.write(s)
+            print(f"{Color.err}Could not open the pager as: 'less {options}'\n")
 
 
 def display_dictionary(dictionary: Dictionary) -> None:
-    if not dictionary.contents:
-        return
-
     width, height = get_config_terminal_size()
     ncols, state = config['columns']
     if state == '* auto':
@@ -371,7 +365,12 @@ def display_dictionary(dictionary: Dictionary) -> None:
             config['showsign']
         )
     raw_str = stringify_columns(columns, col_width, last_col_fill)
-    _display(raw_str + '\n')
+    if config['less']:
+        with ClearScreen():
+            _display_in_less(raw_str + '\n')
+    else:
+        with ClearScreen():
+            sys.stdout.write(raw_str + '\n')
 
 
 def display_many_dictionaries(dictionaries: list[Dictionary]) -> None:
@@ -386,22 +385,27 @@ def display_many_dictionaries(dictionaries: list[Dictionary]) -> None:
         columns.append([line.lstrip('$!') for line in formatted])
 
     raw_str = stringify_columns(columns, col_width, last_col_fill, ('║', '╥'))
-    _display(raw_str + '\n')
+    if config['less']:
+        with ClearScreen():
+            _display_in_less(raw_str + '\n')
+    else:
+        with ClearScreen():
+            sys.stdout.write(raw_str + '\n')
 
 
 def display_card(field_values: dict[str, str]) -> None:
     # field coloring
     color_of = {
-        'def': def1_c, 'syn': syn_c, 'exsen': exsen_c,
-        'phrase': phrase_c, 'pz': '', 'pos': pos_c,
-        'etym': etym_c, 'audio': '', 'recording': '',
+        'def': Color.def1, 'syn': Color.syn, 'exsen': Color.exsen,
+        'phrase': Color.phrase, 'pz': '', 'pos': Color.pos,
+        'etym': Color.etym, 'audio': '', 'recording': '',
     }
     textwidth, _ = get_config_terminal_size()
     delimit = textwidth * HORIZONTAL_BAR
     adjusted_textwidth = int(0.95 * textwidth)
     padding = (textwidth - adjusted_textwidth) // 2 * " "
 
-    print(f'\n{delimit_c}{delimit}')
+    print(f'\n{Color.delimit}{delimit}')
     for field_number, field in enumerate(config['fieldorder']):
         if field == '-':
             continue
@@ -411,9 +415,9 @@ def display_card(field_values: dict[str, str]) -> None:
                 print(f'{color_of[field]}{padding}{subline}')
 
         if field_number + 1 == config['fieldorder_d']:  # d = delimitation
-            print(f'{delimit_c}{delimit}')
+            print(f'{Color.delimit}{delimit}')
 
-    print(f'{delimit_c}{delimit}')
+    print(f'{Color.delimit}{delimit}')
 
 
 def parse_query(full_query: str) -> tuple[list[tuple[str, str]], str]:
@@ -504,9 +508,15 @@ def main_loop(query: str) -> None:
         if dicts is not None:
             for d in dicts:
                 d.filter_contents(_other_flags)
+                assert d.contents, f'{type(d).__name__} for {query} is empty!\n' \
+                                   'This incident should be reported.'
                 dictionaries.append(d)
 
     if not dictionaries:
+        return
+
+    if config['curses']:
+        r = curses_init(dictionaries)
         return
 
     # Display dictionaries
@@ -601,7 +611,7 @@ def from_define_all_file(_input: str) -> Generator[str, None, None]:
             define_file = file
             break
     else:
-        print(f'{err_c}Could not find {R}"define_all.txt"{err_c} file.\n'
+        print(f'{Color.err}Could not find {R}"define_all.txt"{Color.err} file.\n'
               f'Create one and paste your list of queries there.')
         return None
 
@@ -614,7 +624,7 @@ def from_define_all_file(_input: str) -> Generator[str, None, None]:
         lines = [x.strip().strip(sep) for x in f if x.strip().strip(sep)]
 
     if not lines:
-        print(f'{R}"{define_file}"{err_c} file is empty.')
+        print(f'{R}"{define_file}"{Color.err} file is empty.')
         return None
 
     for line in lines:
@@ -623,7 +633,7 @@ def from_define_all_file(_input: str) -> Generator[str, None, None]:
             if _input:
                 yield _input
 
-    print(f'{YEX}** {R}"{define_file}"{YEX} has been exhausted **\n')
+    print(f'{Color.YEX}** {R}"{define_file}"{Color.YEX} has been exhausted **\n')
 
 
 def main() -> NoReturn:
@@ -633,8 +643,10 @@ def main() -> NoReturn:
         if not os.path.exists(t):
             os.mkdir(t)
 
-    print(f'{BOLD}- Ankidodawacz v{__version__} -{DEFAULT}\n'
-          'type -h for usage and configuration\n\n')
+    sys.stdout.write(
+        f'{BOLD}- Ankidodawacz v{__version__} -{DEFAULT}\n'
+        'type -h for usage and configuration\n\n\n'
+    )
 
     while True:
         users_query = search_interface()
@@ -651,6 +663,6 @@ if __name__ == '__main__':
     try:
         raise SystemExit(main())
     except (KeyboardInterrupt, EOFError):
-        print()
+        sys.stdout.write('\n')
     finally:
         http.pools.clear()

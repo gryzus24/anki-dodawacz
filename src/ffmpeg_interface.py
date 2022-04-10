@@ -20,7 +20,7 @@ import os
 import subprocess
 import sys
 
-from src.colors import GEX, R, YEX, err_c, index_c
+from src.colors import R, Color
 from src.commands import save_command
 from src.data import LINUX, WINDOWS, config
 from src.input_fields import choose_item
@@ -69,7 +69,7 @@ def record(filepath: str) -> subprocess.CompletedProcess:
     else:
         raise NameError  # os not supported
 
-    print(f'{YEX}Recording started...\n'
+    print(f'{Color.YEX}Recording started...\n'
           f'{R}press [q] to stop and save')
     result = subprocess.run((
         'ffmpeg',
@@ -99,14 +99,14 @@ def set_audio_device() -> str | None:
 
     print('Choose your desktop output device:')
     for i, device in enumerate(audio_devices, start=1):
-        print(f"{index_c}{i} {R}{device}")
+        print(f"{Color.index}{i} {R}{device}")
 
     audio_device = choose_item('\nDevice', audio_devices)
     if audio_device is None:
         return 'Invalid input, leaving...'
 
     save_command('audio_device', audio_device)
-    print(f'{GEX}Chosen device:\n'
+    print(f'{Color.GEX}Chosen device:\n'
           f'{R}{audio_device}\n')
     return None
 
@@ -133,25 +133,25 @@ def capture_audio(*args: str) -> str:
     try:
         result = record(filepath)
     except NameError:  # if os is not linux or win
-        print(f'{err_c}Audio recording is not available on {sys.platform!r}')
+        print(f'{Color.err}Audio recording is not available on {sys.platform!r}')
         return ''
     except FileNotFoundError:
-        print(f'{err_c}Could not locate FFmpeg\n'
+        print(f'{Color.err}Could not locate FFmpeg\n'
               "Place the FFmpeg binary alongside the program or in $PATH")
         return ''
 
     if 'Output file is empty' in result.stderr:
-        print(f'{err_c}Recording failed: empty output file\n'
+        print(f'{Color.err}Recording failed: empty output file\n'
               'Try recording a longer excerpt')
         subprocess.run(('rm', filepath))
         return ''
     elif 'Queue input is backward in time' in result.stderr:
         pass
     elif result.stderr or result.returncode == 1:
-        print(f'{err_c}Recording failed:')
+        print(f'{Color.err}Recording failed:')
         print(result.stderr)
         return ''
 
-    print(f'{GEX}Recorded successfully:\n'
+    print(f'{Color.GEX}Recorded successfully:\n'
           f'{R}{filepath}')
     return f"[sound:{date}_sentence{metadata}{recording_no}.mp3]"

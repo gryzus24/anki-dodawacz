@@ -22,9 +22,7 @@ import sys
 from itertools import zip_longest
 from typing import Any, NoReturn, Sequence
 
-from src.colors import (BOLD, DEFAULT, GEX, R, YEX, def1_c, def2_c, delimit_c, err_c,
-                        etym_c, exsen_c, index_c, inflection_c, label_c, phon_c, phrase_c,
-                        pos_c, sign_c, syn_c, syngloss_c)
+from src.colors import Color, BOLD, DEFAULT, R
 from src.data import (LINUX, MAC, ROOT_DIR, WINDOWS, bool_values_dict, cmd_to_msg_usage,
                       color_name_to_ansi, config)
 from src.input_fields import choose_item
@@ -61,6 +59,9 @@ CONFIG_COLUMNS = tuple(
             '',
             '[source config.]',
             '-dict', '-dict2', '-thes', '-audio', '-recqual',
+            '',
+            '[curses config.]',
+            '-curses',
         ),
         fillvalue=''
     )
@@ -110,7 +111,7 @@ def delete_cards(*args: str, **ignore: Any) -> NoReturn | None:
         if no_of_deletions < 1:
             raise ValueError
     except ValueError:
-        print(f'{err_c}Number of cards to delete must be an integer >= 1')
+        print(f'{Color.err}Number of cards to delete must be an integer >= 1')
         return None
 
     try:
@@ -122,19 +123,19 @@ def delete_cards(*args: str, **ignore: Any) -> NoReturn | None:
                 w.write('')
             raise IndexError
     except IndexError:
-        print(f'{R}"cards.txt"{YEX} file has been emptied, nothing more to delete')
+        print(f'{R}"cards.txt"{Color.YEX} file has been emptied, nothing more to delete')
         return None
     except FileNotFoundError:
-        print(f'{R}"cards.txt"{err_c} does not exist, nothing to delete')
+        print(f'{R}"cards.txt"{Color.err} does not exist, nothing to delete')
         return None
     except UnicodeDecodeError:  # wolfram caused this
-        print(f'{err_c}Could not decode a character, card deletion failed')
+        print(f'{Color.err}Could not decode a character, card deletion failed')
         return None
     except Exception:
-        print(f'{err_c}Something went wrong, cards are {GEX}safe{R} though')
+        print(f'{Color.err}Something went wrong, cards are {Color.GEX}safe{R} though')
         raise
     else:
-        print(f'{YEX}Deleted cards:{R}')
+        print(f'{Color.YEX}Deleted cards:{R}')
         for i in range(no_of_deletions):
             card_number = len(lines)
             deleted_line = lines.pop()
@@ -159,12 +160,12 @@ def set_input_field_defaults(*args: str, **ignore: Any) -> str | None:
     try:
         value = args[2]
     except IndexError:
-        return f'{YEX}No value provided\n' \
+        return f'{Color.YEX}No value provided\n' \
                f'{R}{cmd} {bulk_elem} {{value}}'
 
     if bulk_elem == 'all':
         values_to_save = [value] * 5
-        print(f'{GEX}Default values saved:')
+        print(f'{Color.GEX}Default values saved:')
         for elem, val in zip(bulk_elements, values_to_save):
             config[f'{elem}_bulk'] = val
             print(f'{R}{elem:6s}: {val}')
@@ -172,7 +173,7 @@ def set_input_field_defaults(*args: str, **ignore: Any) -> str | None:
         save_config(config)
         print()
     else:
-        print(f"{YEX}Default value for {R}{bulk_elem}{YEX}: {R}{value}")
+        print(f"{Color.YEX}Default value for {R}{bulk_elem}{Color.YEX}: {R}{value}")
         save_command(f'{bulk_elem}_bulk', value)
     return None
 
@@ -246,7 +247,7 @@ def set_width_settings(*args: str, **kwargs: str) -> str | None:
             return f'Invalid value: {R}{value}\n' \
                    f'{cmd} {cmd_to_msg_usage[cmd][1]}'
         else:
-            print(f'{R}{kwargs["message"]}: {GEX}{value}')
+            print(f'{R}{kwargs["message"]}: {Color.GEX}{value}')
             save_command(cmd, [val, ''])
             return None
 
@@ -264,7 +265,7 @@ def set_width_settings(*args: str, **kwargs: str) -> str | None:
     else:
         raise AssertionError('unreachable in `set_width_settings`')
 
-    print(f'{R}{kwargs["message"]}: {GEX}{"".join(map(str, v))}')
+    print(f'{R}{kwargs["message"]}: {Color.GEX}{"".join(map(str, v))}')
     save_command(cmd, v)
     return None
 
@@ -275,11 +276,11 @@ def display_field_order() -> None:
         print(f' {b}{field_number}: {field}{DEFAULT}')
 
         if field_number == config['fieldorder_d']:
-            print(f' {delimit_c}D: ─────────{R}')
+            print(f' {Color.delimit}D: ─────────{R}')
 
 
 def _set_field_order(msg: str, order: list[str], delimit: int) -> None:
-    print(f'{GEX}{msg}')
+    print(f'{Color.GEX}{msg}')
     # I'm not sure what causes the change of 'order' in
     # STD and TSC changing one of the values manually.
     # .copy() somehow resolves the issue
@@ -339,8 +340,8 @@ def set_audio_path(*args: str, **kwargs: str) -> str | None:
         elif MAC:
             initial_path = os.path.join(os.environ['HOME'], 'Library/Application Support/Anki2')
         else:
-            return f'Locating {R}"collection.media"{err_c} failed:\n' \
-                   f'Unknown path for {R}"collection.media"{err_c} on {sys.platform!r}'
+            return f'Locating {R}"collection.media"{Color.err} failed:\n' \
+                   f'Unknown path for {R}"collection.media"{Color.err} on {sys.platform!r}'
 
         user_dirs = []
         for f in os.listdir(initial_path):
@@ -349,14 +350,14 @@ def set_audio_path(*args: str, **kwargs: str) -> str | None:
                 user_dirs.append(next_)
 
         if not user_dirs:
-            return f'Locating {R}"collection.media"{err_c} failed:\n' \
+            return f'Locating {R}"collection.media"{Color.err} failed:\n' \
                    'No results'
         elif len(user_dirs) == 1:
             path = os.path.join(user_dirs[0], 'collection.media')
         else:
             for i, user_dir in enumerate(user_dirs, start=1):
                 anki_user = os.path.basename(user_dir)
-                print(f'{index_c}{i} {R}{anki_user}')
+                print(f'{Color.index}{i} {R}{anki_user}')
             col_dir = choose_item("\nWhich user's collection do you want to use?", user_dirs)
             if col_dir is None:
                 return 'Leaving...'
@@ -365,7 +366,7 @@ def set_audio_path(*args: str, **kwargs: str) -> str | None:
     else:
         path = os.path.expanduser(os.path.normpath(' '.join(args[1:])))
 
-    print(f'{YEX}{kwargs["message"]} set to:\n'
+    print(f'{Color.YEX}{kwargs["message"]} set to:\n'
           f'{R}"{path}"')
     save_command('audio_path', path)
     return None
@@ -416,15 +417,17 @@ def set_colors(*args: str, **ignore: Any) -> str | None:
     try:
         color = args[2].lower()
     except IndexError:
-        return f'{YEX}No color provided\n' \
+        return f'{Color.YEX}No color provided\n' \
                f'{R}{cmd} {element} {{color}}'
 
     if color not in color_name_to_ansi:
         return f'Unknown color: {R}{color}\n' \
                f'To display available colors use `{cmd}`'
 
-    print(f'{R}{COLOR_TO_MSG[element]} set to: {color_name_to_ansi[color]}{color}')
     save_command(f'{element}_c', color_name_to_ansi[color])
+    setattr(Color, element, config[element + '_c'])
+
+    print(f'{R}{COLOR_TO_MSG[element]} set to: {color_name_to_ansi[color]}{color}')
     return None
 
 
@@ -434,7 +437,7 @@ def boolean_commands(*args: str, **kwargs: str) -> str | None:
     try:
         value = bool_values_dict[args[1].lower()]
     except KeyError:
-        return f'{err_c}Invalid value, use:\n' \
+        return f'{Color.err}Invalid value, use:\n' \
                f'{R}{cmd} {{on|off}}'
 
     print(f'{R}{kwargs["message"]}: {BOOL_COLORS_DICT[value]}{value}')
@@ -444,6 +447,8 @@ def boolean_commands(*args: str, **kwargs: str) -> str | None:
         save_config(config)
     else:
         save_command(cmd, value)
+        if cmd == '-curses':
+            raise SystemExit
     return None
 
 
@@ -460,21 +465,21 @@ def show_available_colors() -> None:
 def color_command() -> None:
     print(f"""\
 {R}{BOLD}[Elements]   [Changes the color of]{DEFAULT}
-def1         {def1_c}odd definitions and idiom definitions{R}
-def2         {def2_c}even definitions{R}
-sign         {sign_c}main definition sign{R}
-exsen        {exsen_c}example sentences{R}
-pos          {pos_c}parts of speech{R}
-etym         {etym_c}etymologies{R}
-syn          {syn_c}synonyms{R}
-syngloss     {syngloss_c}synonym definitions{R}
-index        {index_c}indexes{R}
-phrase       {phrase_c}phrase{R}
-phon         {phon_c}phonetic spelling{R}
-label        {label_c}part of speech labels{R}
-inflection   {inflection_c}inflections and additional label info{R}
-error        {err_c}errors{R}
-attention    {YEX}attention drawing{R}
-success      {GEX}successful operation{R}
-delimit      {delimit_c}delimiters/separators{R}\n""")
+def1         {Color.def1}odd definitions and idiom definitions{R}
+def2         {Color.def2}even definitions{R}
+sign         {Color.sign}main definition sign{R}
+exsen        {Color.exsen}example sentences{R}
+pos          {Color.pos}parts of speech{R}
+etym         {Color.etym}etymologies{R}
+syn          {Color.syn}synonyms{R}
+syngloss     {Color.syngloss}synonym definitions{R}
+index        {Color.index}indexes{R}
+phrase       {Color.phrase}phrase{R}
+phon         {Color.phon}phonetic spelling{R}
+label        {Color.label}part of speech labels{R}
+inflection   {Color.inflection}inflections and additional label info{R}
+error        {Color.err}errors{R}
+attention    {Color.YEX}attention drawing{R}
+success      {Color.GEX}successful operation{R}
+delimit      {Color.delimit}delimiters/separators{R}\n""")
     show_available_colors()

@@ -17,7 +17,7 @@ from __future__ import annotations
 
 from src.Dictionaries.dictionary_base import Dictionary
 from src.Dictionaries.utils import request_soup
-from src.colors import R, err_c
+from src.colors import R, Color
 from src.input_fields import get_user_input
 
 
@@ -52,7 +52,7 @@ def ask_farlex(query: str) -> Dictionary | None:
 
     relevant_content = soup.find('section', {'data-src': 'FarlexIdi'})
     if relevant_content is None:
-        print(f'{err_c}Could not find {R}"{query}"{err_c} in Farlex Idioms')
+        print(f'{Color.err}Could not find {R}"{query}"{Color.err} in Farlex Idioms')
         return None
 
     farlex = FarlexIdioms()
