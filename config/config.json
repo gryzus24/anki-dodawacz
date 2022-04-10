@@ -88,5 +88,5 @@
 "shortetyms": true,
 "showsign": false,
 "less": false,
-"curses": false
+"curses": true
 }

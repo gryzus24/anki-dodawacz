@@ -127,7 +127,6 @@ choice for us. This behavior can be changed through the `-cd` command.
 -ap, --audio-path {{path|auto}}   audio save location (default "Cards_audio")
 
 {_title('Display configuration')}
--top                             clear screen before displaying dictionaries
 -less                            use a pager -- `less` -- to display
                                  dictionaries (with `-FKRQX` options)
 -cardpreview                     preview the created card

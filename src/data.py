@@ -54,7 +54,6 @@ boolean_cmd_to_msg = {
     '-upreps': 'Hide prepositions',
     '-keependings': 'Keep hidden word endings (~ed, ~ing etc.)',
 
-    '-top': 'Clear the screen before displaying dictionaries',
     '-less': 'Use a pager -- `less` -- to display dictionaries',
     '-cardpreview': 'Preview the created card',
     '-showadded': "Show added elements' indexes",

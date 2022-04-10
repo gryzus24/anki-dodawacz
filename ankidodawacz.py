@@ -45,8 +45,9 @@ from src.input_fields import sentence_input
 
 if config['curses']:
     from src.curses_interface import curses_init
+    USING_CURSES = True  # temporary solution
 else:
-    curses_init = lambda _: 0
+    USING_CURSES = False
 
 required_arg_commands = {
     # commands that take arguments
@@ -93,7 +94,7 @@ no_arg_commands = {
 # Possible workarounds include using ctypes and somehow unloading `readline` when
 # `curses_init` is called or calling the curses code in a subprocess which is far
 # from ideal.
-if LINUX and not config['curses']:
+if LINUX and not USING_CURSES:
     import src.completer as completer
     tab_completion = completer.Completer(
         tuple(chain(
@@ -351,6 +352,9 @@ def _display_in_less(s: str) -> None:
 
 
 def display_dictionary(dictionary: Dictionary) -> None:
+    if not dictionary.contents:
+        return
+
     width, height = get_config_terminal_size()
     ncols, state = config['columns']
     if state == '* auto':
@@ -515,7 +519,7 @@ def main_loop(query: str) -> None:
     if not dictionaries:
         return
 
-    if config['curses']:
+    if USING_CURSES:
         r = curses_init(dictionaries)
         return
 
@@ -552,7 +556,6 @@ def main_loop(query: str) -> None:
         thesaurus = get_thesaurus(phrase)
         if thesaurus is None:
             return
-
         display_dictionary(thesaurus)
         thesaurus_contents = thesaurus.input_cycle()
         if thesaurus_contents is not None:

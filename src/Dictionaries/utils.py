@@ -114,7 +114,7 @@ elif POSIX:
 
 else:
     def _clear_screen() -> None:
-        sys.stdout.write(f'`-top on`{Color.err} command unavailable on {sys.platform!r}\n')
+        pass
 
 
 class ClearScreen:

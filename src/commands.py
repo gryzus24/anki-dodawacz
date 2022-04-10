@@ -45,7 +45,7 @@ CONFIG_COLUMNS = tuple(
             '-upz', '-udef', '-uexsen', '-usyn', '-upreps', '-keependings', '-hideas',
         ),
         (
-            '-top', '-less', '-cardpreview', '-showadded', '-showsign',
+            '-less', '-cardpreview', '-showadded', '-showsign',
             '-textwrap', '-textwidth', '-columns', '-colviewat', '-indent',
             '',
             '[filtering config.]',
@@ -213,7 +213,7 @@ def print_config_representation() -> None:
         color_a = BOOL_COLORS_DICT.get(state_a, '')
         color_b = BOOL_COLORS_DICT.get(state_b, '')
         color_c = BOOL_COLORS_DICT.get(state_c, '')
-        if color_c: state_c = 10*'\b'+'watch?v=LDl544TI_mU'
+        if color_c and c == 'def' : state_c = 10*'\b'+'watch?v=LDl544TI_mU'
 
         level_a = '\b\b\b\b\b' if '[' in a else ''
         level_b = '\b\b\b\b\b' if '[' in b else ''
@@ -447,8 +447,6 @@ def boolean_commands(*args: str, **kwargs: str) -> str | None:
         save_config(config)
     else:
         save_command(cmd, value)
-        if cmd == '-curses':
-            raise SystemExit
     return None
 
 
