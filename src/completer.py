@@ -38,6 +38,7 @@ def Completer(completions: Sequence[str]) -> Callable[[], ContextManager]:
 
     readline.parse_and_bind('tab: complete')
     readline.parse_and_bind('set horizontal-scroll-mode on')
+    readline.parse_and_bind('set colored-completion-prefix on')
     readline.set_completer_delims(' \t\n')
     readline.set_completer(complete)
 

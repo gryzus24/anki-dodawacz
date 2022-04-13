@@ -87,14 +87,7 @@ no_arg_commands = {
 
 # Completer doesn't work on Windows.
 # It should work on macOS, but I haven't tested it yet.
-# ---
-# `readline` prevents `curses` from updating the `curses.LINES` and `curses.COLS`
-# variables and causes `window.get*` throw a `no input` error on terminal resize.
-# I don't know  how to reconcile these two as the mere import of readline is the cause.
-# Possible workarounds include using ctypes and somehow unloading `readline` when
-# `curses_init` is called or calling the curses code in a subprocess which is far
-# from ideal.
-if LINUX and not USING_CURSES:
+if LINUX and USING_CURSES:
     import src.completer as completer
     tab_completion = completer.Completer(
         tuple(chain(

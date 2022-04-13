@@ -1,9 +1,10 @@
-#!/usr/bin/env python3
 from __future__ import annotations
 
 import curses
 from itertools import compress, islice
 from typing import TYPE_CHECKING, Callable, Any, Reversible, Optional
+import shutil
+import time
 
 from src.Dictionaries.utils import wrap_and_pad
 from src.colors import Color as _Color
@@ -21,9 +22,10 @@ ansi_to_pair = {
 }
 
 
-class MetaColor(type, _Color):
+# Intercepts every __getattribute__ to convert it to an equivalent color pair.
+class MetaColor(type):
     def __getattribute__(self, item: str) -> int:
-        return curses.color_pair(ansi_to_pair[super().__getattribute__(item)])
+        return curses.color_pair(ansi_to_pair[getattr(_Color, item)])
 
 
 class Color(metaclass=MetaColor):
@@ -105,15 +107,15 @@ def format_dictionary(
         return result
 
     index = 0
-    for op, *body in dictionary.contents:
-        # sys.stdout.write(f'{op}\n{body}\n'); continue  # DEBUG
+    for entry in dictionary.contents:
+        op = entry[0]
         temp_boxes = []
 
         if 'DEF' in op:
             index += 1
             index_len = len(str(index))
 
-            _def, _exsen, _label = body
+            _def, _exsen, _label = entry[1], entry[2], entry[3]
             if _label:
                 _label = '{' + _label + '} '
                 label_len = len(_label)
@@ -133,29 +135,22 @@ def format_dictionary(
             def_c = Color.def1 if index % 2 else Color.def2
             temp_boxes.extend(_into_boxes(
                 (
-                    (f'{index} ', Color.index),
-                    (_label, Color.label),
-                    (first_line, def_c)
-                ),
-                (
-                    rest, def_c
-                )
+                   (f'{index} ', Color.index),
+                   (_label, Color.label),
+                   (first_line, def_c)
+                ), (rest, def_c)
             ))
-
             if _exsen:
                 for ex in _exsen.split('<br>'):
                     first_line, rest = wrap_method(ex, gaps + index_len - 1, 1 + indent)
                     temp_boxes.extend(_into_boxes(
                         (
-                            ((index_len + gaps - 1) * ' ', Color.exsen),
-                            (first_line, Color.exsen)
-                        ),
-                        (
-                            rest, Color.exsen
-                        )
+                           ((index_len + gaps - 1) * ' ', Color.exsen),
+                           (first_line, Color.exsen)
+                        ), (rest, Color.exsen)
                     ))
         elif op == 'LABEL':
-            label, inflections = body
+            label, inflections = entry[1], entry[2]
             temp_boxes.append(curses.newwin(1, column_width))
             if label:
                 if inflections:
@@ -164,102 +159,76 @@ def format_dictionary(
                     first_line, rest = wrap_method(label, 1, 0)
                     temp_boxes.extend(_into_boxes(
                         (
-                            (' ' + first_line, Color.label),
-                        ),
-                        (
-                            rest, Color.label
-                        )
+                           (' ' + first_line, Color.label),
+                        ), (rest, Color.label)
                     ))
         elif op == 'PHRASE':
-            phrase, phon = body
+            phrase, phon = entry[1], entry[2]
             if phon:
                 _push_chain(phrase, Color.phrase, phon, Color.phon)
             else:
                 first_line, rest = wrap_method(phrase, 1, 0)
                 temp_boxes.extend(_into_boxes(
                     (
-                        (' ' + first_line, Color.phrase),
-                    ),
-                    (
-                        rest, Color.phrase
-                    )
+                       (' ' + first_line, Color.phrase),
+                    ), (rest, Color.phrase)
                 ))
         elif op == 'HEADER':
-            title = body[0]
+            title = entry[1]
             box = curses.newwin(1, column_width)
             if title:
-                box.insstr(' ]' + curses.COLS * HORIZONTAL_BAR, Color.delimit)
+                box.insstr(' ]' + column_width * HORIZONTAL_BAR, Color.delimit)
                 box.insstr(title, Color.delimit | curses.A_BOLD)
                 box.insstr(HORIZONTAL_BAR + '[ ', Color.delimit)
             else:
                 box.insstr(column_width * HORIZONTAL_BAR, Color.delimit)
             temp_boxes.append(box)
         elif op == 'ETYM':
-            etym = body[0]
+            etym = entry[1]
             if etym:
                 temp_boxes.append(curses.newwin(1, column_width))
                 first_line, rest = wrap_method(etym, 1, indent)
                 temp_boxes.extend(_into_boxes(
                     (
-                        (' ' + first_line, Color.etym),
-                    ),
-                    (
-                        rest, Color.etym
-                    )
+                       (' ' + first_line, Color.etym),
+                    ), (rest, Color.etym)
                 ))
         elif op == 'POS':
-            if body[0].strip(' |'):
+            if entry[1].strip(' |'):
                 temp_boxes.append(curses.newwin(1, column_width))
-                for elem in body:
+                for elem in entry[1:]:
                     pos, phon = elem.split('|')
-                    temp_boxes.extend(_into_boxes(
-                        (
-                            (' ' + pos, Color.pos),
-                            ('  ' + phon, Color.phon)
-                        )
-                    ))
+                    _push_chain(pos, Color.pos, phon, Color.phon)
         elif op == 'AUDIO':
             pass
         elif op == 'SYN':
-            first_line, rest = wrap_method(body[0], 1, 0)
+            first_line, rest = wrap_method(entry[1], 1, 0)
             temp_boxes.extend(_into_boxes(
                 (
-                    (' ' + first_line, Color.syn),
-                ),
-                (
-                    rest, Color.syn
-                )
+                   (' ' + first_line, Color.syn),
+                ), (rest, Color.syn)
             ))
-            first_line, rest = wrap_method(body[1], 2, 0)
+            first_line, rest = wrap_method(entry[2], 2, 0)
             temp_boxes.extend(_into_boxes(
                 (
-                    (': ', Color.sign),
-                    (first_line, Color.syngloss)
-                ),
-                (
-                    rest, Color.syngloss
-                )
+                   (': ', Color.sign),
+                   (first_line, Color.syngloss)
+                ), (rest, Color.syngloss)
             ))
-            for ex in body[2].split('<br>'):
+            for ex in entry[3].split('<br>'):
                 first_line, rest = wrap_method(ex, 1, 1)
                 temp_boxes.extend(_into_boxes(
                     (
-                        (' ' + first_line, Color.exsen),
-                    ),
-                    (
-                        rest, Color.exsen
-                    )
+                       (' ' + first_line, Color.exsen),
+                    ), (rest, Color.exsen)
                 ))
         elif op == 'NOTE':
-            first_line, rest = wrap_method(body[0], 2, 0)
+            first_line, rest = wrap_method(entry[1], 2, 0)
             temp_boxes.extend(_into_boxes(
                 (
-                    ('> ', Color.YEX | curses.A_BOLD),
-                    (first_line, 0 | curses.A_BOLD)
-                ),
-                (
-                    rest, 0 | curses.A_BOLD
-                )
+                   ('> ', Color.YEX | curses.A_BOLD),
+                   (first_line, 0 | curses.A_BOLD)
+                ), (rest, 0 | curses.A_BOLD)
             ))
         else:
             raise AssertionError(f'unreachable dictionary operation: {op!r}')
@@ -271,6 +240,8 @@ def format_dictionary(
 
 
 def get_column_parameters(width: int) -> tuple[int, int]:
+    # assume we have space for one more vertical line to simplify logic.
+    width += 1
     ncols = width // 40
     r = width % 40
     if not r:
@@ -279,16 +250,17 @@ def get_column_parameters(width: int) -> tuple[int, int]:
     try:
         fill = r // ncols
     except ZeroDivisionError:
-        return width, 1
+        return width - 1, 1
 
     col_width = 39 + fill
     return col_width, ncols
 
 
 BORDER_PAD = 1
+TOGGLEABLE = {'DEF', 'SUBDEF', 'LABEL', 'SYN'}
 
 class Screen:
-    MARGIN = 0
+    MARGIN = 1
 
     def __init__(self,
             stdscr: curses.window,
@@ -300,11 +272,17 @@ class Screen:
         self.dictionary = dictionary
         self.formatter = formatter
 
-        col_width, self.ncols = get_column_parameters(curses.COLS - BORDER_PAD)
+        # Screen dimensions.
+        # Unfortunately Python's readline api does not expose functions and
+        # variables responsible for signal handling, which makes it impossible
+        # to reconcile curses' signal handling with the readline's one so we
+        # have to manage COLS and LINES variables ourselves.
+        self.COLS, self.LINES = shutil.get_terminal_size()
+
+        # Display
+        col_width, self.ncols = get_column_parameters(self.COLS - 2 * BORDER_PAD)
         self.col_width = col_width - 2 * self.MARGIN
-
         _boxes, self.lines_total = formatter(dictionary, self.col_width)
-
         self.boxes = _boxes
         self.columns = self._split_into_columns(_boxes)
 
@@ -312,11 +290,19 @@ class Screen:
         self.box_toggles = [False] * len(_boxes)
         self.scroll_pos = 0
 
-    def update_for_redraw(self) -> None:
-        curses.update_lines_cols()
+    def displayable(self, lines: int, cols: int) -> bool:
+        return cols > 4 and lines > 1
 
-        col_width, self.ncols = get_column_parameters(curses.COLS - BORDER_PAD)
-        self.col_width = col_width - 1 * self.MARGIN
+    def update_for_redraw(self) -> None:
+        COLS, LINES = shutil.get_terminal_size()
+        if not self.displayable(LINES, COLS):
+            return
+
+        curses.resizeterm(LINES, COLS)
+        self.COLS, self.LINES = COLS, LINES
+
+        col_width, self.ncols = get_column_parameters(self.COLS - 2 * BORDER_PAD)
+        self.col_width = col_width - 2 * self.MARGIN
 
         _boxes, self.lines_total = self.formatter(self.dictionary, self.col_width)
         if _boxes is None:
@@ -327,7 +313,14 @@ class Screen:
                 line.bkgd(0, curses.A_STANDOUT)
 
         self.boxes = _boxes
+
+        # If scroll_pos is at EOF, keep it this way when resizing.
+        previous_EOF = self.EOF  # EOF before new columns.
         self.columns = self._split_into_columns(_boxes)
+        current_EOF = self.EOF
+        if self.scroll_pos == previous_EOF > current_EOF:
+            self.scroll_pos = current_EOF
+
         self.stdscr.clear()
 
     def _split_into_columns(
@@ -338,27 +331,32 @@ class Screen:
         result: list[list[curses._CursesWindow]] = [[]]
         current_height = 0
         # TODO: move certain boxes to the next column.
-        for lines, _ in zip(boxes, self.dictionary.contents):
+        for lines, dict_entry in zip(boxes, self.dictionary.contents):
+            op = dict_entry[0]
             current_height += len(lines)
-            result[-1].extend(lines)
             if current_height > max_col_height:
                 header = curses.newwin(1, col_width)
                 header.hline(0, col_width)
                 result.append([header])
                 current_height = 0
+                if op in ('LABEL', 'POS', 'ETYM'):
+                    t = lines[1:]
+                    result[-1].extend(t)
+                    current_height -= 1
+                else:
+                    result[-1].extend(lines)
+            else:
+                result[-1].extend(lines)
 
         return result
 
     def _draw_header(self) -> None:
         h = self.columns[0][0]
-        try:
-            h.mvwin(0, BORDER_PAD)
-        except curses.error:
-            return
+        h.mvwin(0, BORDER_PAD)
         h.noutrefresh()
 
     def draw(self) -> None:
-        if curses.LINES < 2:
+        if not self.displayable(self.LINES, self.COLS):
             return
 
         columns = self.columns
@@ -368,26 +366,24 @@ class Screen:
         self.stdscr.box()
         shift = BORDER_PAD + col_width + 2 * margin
         for i in range(1, len(columns)):
-            self.stdscr.vline(BORDER_PAD, i * shift, 0, curses.LINES - 2 * BORDER_PAD)
+            self.stdscr.vline(BORDER_PAD, i * shift, 0, self.LINES - 2 * BORDER_PAD)
         self.stdscr.noutrefresh()
         self._draw_header()
 
         tx = BORDER_PAD
         scroll_pos = self.scroll_pos
-        # reset window positions up until the scroll position.
+        # hide out of view windows behind the header to prevent
+        # them from stealing clicks in the upper region.
         for column in columns:
-            for box in islice(column, None, scroll_pos):
+            for box in islice(column, None, scroll_pos + BORDER_PAD):
                 box.mvwin(0, 1)
 
         vertical_line_positions = []
         for column in columns:
             for y, box in enumerate(
-                    islice(column, scroll_pos + BORDER_PAD, scroll_pos + curses.LINES - BORDER_PAD), 1
+                    islice(column, scroll_pos + BORDER_PAD, scroll_pos + self.LINES - BORDER_PAD), 1
             ):
-                try:
-                    box.mvwin(y, tx + margin)
-                except curses.error:  # prevent crash if curses.COLS <= 2
-                    break
+                box.mvwin(y, tx + margin)
                 box.noutrefresh()
             tx += col_width + 1 + 2 * margin
             vertical_line_positions.append(tx)
@@ -412,10 +408,13 @@ class Screen:
             for i in range(self.scroll_pos)
         }
         for i, (toggle, lines) in enumerate(zip(self.box_toggles, self.boxes)):
+            if self.dictionary.contents[i][0] not in TOGGLEABLE:
+                continue
             for line in lines:
                 if id(line) not in not_in_view and line.enclose(y, x):
                     break
             else:
+                # if not found
                 continue
 
             highlight = curses.A_NORMAL if toggle else curses.A_STANDOUT
@@ -425,13 +424,16 @@ class Screen:
             self.box_toggles[i] = not toggle
             return
 
+    @property
+    def EOF(self) -> int:
+        r = 2 + max(map(len, self.columns)) - self.LINES
+        return r if r > 0 else 0
+
     def view_down(self, n: int = 1) -> None:
-        max_boxes_in_column = 2 + max(map(len, self.columns)) - curses.LINES
-        if max_boxes_in_column < 0:
-            return
+        EOF = self.EOF
         self.scroll_pos += n
-        if self.scroll_pos > max_boxes_in_column:
-            self.scroll_pos = max_boxes_in_column
+        if self.scroll_pos > EOF:
+            self.scroll_pos = EOF
 
     def view_up(self, n: int = 1) -> None:
         self.scroll_pos -= n
@@ -439,19 +441,33 @@ class Screen:
             self.scroll_pos = 0
 
 
+KEY_MAP = {
+    '\x10': 'C-p',
+    '\x0e': 'C-n',
+    '\x18': 'C-x',
+}
+
 def _c_main(stdscr: curses.window, dictionaries: list[Dictionary]) -> int:
     dictionary = dictionaries[0]
     if not dictionary.contents:
         return -1
 
     screen = Screen(stdscr, dictionary, formatter=format_dictionary)
+    buffer = []
     while True:
-        if curses.is_term_resized(curses.LINES, curses.COLS):
-            screen.update_for_redraw()
-
         screen.draw()
-        c = stdscr.get_wch()
-        if c in {'q', 'Q'}:
+
+        try:
+            c = stdscr.get_wch()
+        except curses.error:
+            # this is our sigwinch handler...
+            # looking for `no input` errors triggered by terminal resize...
+            time.sleep(0.2)
+            screen.update_for_redraw()
+            continue
+
+        c = KEY_MAP.get(c, c)
+        if c in ('q', 'Q', 'C-x'):
             break
         elif c == curses.KEY_MOUSE:
             _, x, y, _, bstate = curses.getmouse()
@@ -461,13 +477,20 @@ def _c_main(stdscr: curses.window, dictionaries: list[Dictionary]) -> int:
                 screen.view_up(2)
             elif bstate & curses.BUTTON5_PRESSED:
                 screen.view_down(2)
-        elif c in {curses.KEY_DOWN, 'j'}:
+        elif c in (curses.KEY_DOWN, 'j', 'C-n'):
             screen.view_down(2)
-        elif c in {curses.KEY_UP, 'k'}:
+        elif c in (curses.KEY_UP, 'k', 'C-p'):
             screen.view_up(2)
+        elif c == 'G':
+            screen.scroll_pos = screen.EOF
+
+        if c == 'g':
+            buffer.append(c)
+            if buffer == ['g', 'g']:
+                screen.scroll_pos = 0
         else:
+            buffer.clear()
             # raise AssertionError(repr(c))
-            pass
 
     return 0
 
@@ -501,3 +524,4 @@ def curses_init(dictionaries: list[Dictionary]) -> int:
             curses.echo()
             curses.nocbreak()
             curses.endwin()
+

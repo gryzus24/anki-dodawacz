@@ -63,7 +63,7 @@
 "syngloss_c": "\u001b[39m",
 "tags": "dodawacz",
 "textwidth": [
-116,
+173,
 "* auto"
 ],
 "textwrap": "regular",
@@ -78,7 +78,7 @@
 "formatdefs": true,
 "tsc": "std",
 "columns": [
-2,
+4,
 "* auto"
 ],
 "colviewat": [
