@@ -87,7 +87,7 @@ no_arg_commands = {
 
 # Completer doesn't work on Windows.
 # It should work on macOS, but I haven't tested it yet.
-if LINUX and USING_CURSES:
+if LINUX:
     import src.completer as completer
     tab_completion = completer.Completer(
         tuple(chain(

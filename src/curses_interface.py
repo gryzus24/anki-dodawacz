@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import curses
 import shutil
-from collections import Counter
+from collections import Counter, deque
 from itertools import islice
 from typing import (
     TYPE_CHECKING, NamedTuple, Callable, Any, Reversible, Optional, Container, Sequence
@@ -289,12 +289,17 @@ def get_column_parameters(
 
 class WithinPhrase(NamedTuple):
     clicked: list[int]
-    associated: list[int]
+    corollary: list[int]
+
+
+def get_corollaries() -> set[str]:
+    result = {'PHRASE'} 
+    result.update([x.upper() for x in ('exsen', 'pos', 'etym') if config[x]])
+    return result
 
 
 BORDER_PAD = 1
-TOGGLEABLE = {'DEF', 'SUBDEF', 'SYN'}
-
+DIRECTLY_TOGGLEABLE = {'DEF', 'SUBDEF', 'SYN'}
 
 class Screen:
     def __init__(self,
@@ -339,6 +344,7 @@ class Screen:
         self.columns = self._split_into_columns(_boxes, ncols)
 
         # User facing state.
+        self.COROLLARY_BOXES = get_corollaries()
         self.phraseno_to_ntoggles: Counter[int] = Counter()
         self.box_states = [curses.A_NORMAL] * len(_boxes)
         self.scroll_pos = 0
@@ -464,7 +470,7 @@ class Screen:
 
         curses.doupdate()
 
-    def _toggle_associated_boxes(self, to_toggle: Container, phraseno: int, i: int) -> None:
+    def _toggle_corollary_boxes(self, phraseno: int, i: int) -> None:
         ntoggles = self.phraseno_to_ntoggles[phraseno]
         if ntoggles == 0:
             new_state = curses.A_NORMAL
@@ -475,7 +481,7 @@ class Screen:
 
         for j in range(i - 1, 0, -1):
             prev_op = self.dictionary.contents[j][0]
-            if prev_op in to_toggle:
+            if prev_op in self.COROLLARY_BOXES:
                 for _line in self.boxes[j]:
                     _line.bkgd(0, new_state)
                 self.box_states[j] = new_state
@@ -486,7 +492,7 @@ class Screen:
             next_op = self.dictionary.contents[j][0]
             if next_op == 'PHRASE':
                 break
-            if next_op in to_toggle:
+            if next_op in self.COROLLARY_BOXES:
                 for _line in self.boxes[j]:
                     _line.bkgd(0, new_state)
                 self.box_states[j] = new_state
@@ -513,7 +519,7 @@ class Screen:
             op = self.dictionary.contents[i][0]
             if op == 'PHRASE':
                 phraseno += 1
-            if op not in TOGGLEABLE:
+            if op not in DIRECTLY_TOGGLEABLE:
                 continue
 
             for line in lines:
@@ -534,27 +540,64 @@ class Screen:
 
             self.box_states[i] = new_state
             if op in ('DEF', 'SUBDEF'):
-                self._toggle_associated_boxes({'ETYM', 'POS', 'PHRASE'}, phraseno, i)
+                self._toggle_corollary_boxes(phraseno, i)
             return
+
+    def mark_box_by_number(self, n: int) -> None:
+        if n < 1:
+            return
+        cur = phraseno = 0
+        for i, (state, lines) in enumerate(zip(self.box_states, self.boxes)):
+            op = self.dictionary.contents[i][0]
+            if op == 'PHRASE':
+                phraseno += 1
+            if op not in DIRECTLY_TOGGLEABLE:
+                continue
+            if cur == 9:
+                return
+            cur += 1
+            if n == cur:
+                if state == curses.A_STANDOUT:
+                    new_state = curses.A_NORMAL
+                    self.phraseno_to_ntoggles[phraseno] -= 1
+                else:
+                    new_state = curses.A_STANDOUT
+                    self.phraseno_to_ntoggles[phraseno] += 1
+
+                for line in lines:
+                    line.bkgd(0, new_state)
+
+                self.box_states[i] = new_state
+                if op in ('DEF', 'SUBDEF'):
+                    self._toggle_corollary_boxes(phraseno, i)
+                return
+    
+    def deselect_all(self) -> None:
+        for i, (lines, state) in enumerate(zip(self.boxes, self.box_states)):
+            if state != curses.A_NORMAL:
+                for line in lines:
+                    line.bkgd(0, curses.A_NORMAL)
+                self.box_states[i] = curses.A_NORMAL
+                self.phraseno_to_ntoggles.clear()
 
     def dump_screen_state(self) -> list[WithinPhrase]:
         result = []
         clicked_boxes: list[int] = []
-        associated_boxes: list[int] = []
+        corollary_boxes: list[int] = []
         for i in range(1, len(self.boxes)):
             op = self.dictionary.contents[i][0]
             box_state = self.box_states[i]
-            if op == 'PHRASE' and (clicked_boxes or associated_boxes):
-                result.append(WithinPhrase(clicked_boxes, associated_boxes))
+            if op == 'PHRASE' and (clicked_boxes or corollary_boxes):
+                result.append(WithinPhrase(clicked_boxes, corollary_boxes))
                 clicked_boxes = []
-                associated_boxes = []
+                corollary_boxes = []
             elif box_state == curses.A_STANDOUT:
                 clicked_boxes.append(i)
             elif box_state == curses.A_BOLD:
-                associated_boxes.append(i)
+                corollary_boxes.append(i)
 
-        if clicked_boxes or associated_boxes:
-            result.append(WithinPhrase(clicked_boxes, associated_boxes))
+        if clicked_boxes or corollary_boxes:
+            result.append(WithinPhrase(clicked_boxes, corollary_boxes))
 
         return result
 
@@ -599,7 +642,7 @@ def _c_main(stdscr: curses._CursesWindow, dictionaries: list[Dictionary]) -> int
         return -1
 
     screen = Screen(stdscr, dictionary, formatter=format_dictionary)
-    buffer = []
+    char_queue = deque(maxlen=2)
     while True:
         screen.draw()
 
@@ -630,15 +673,19 @@ def _c_main(stdscr: curses._CursesWindow, dictionaries: list[Dictionary]) -> int
             screen.view_up(screen.LINES - 2 * BORDER_PAD - 1)
         elif c == 'G':
             screen.scroll_pos = screen.EOF
+        elif c in {'1', '2', '3', '4', '5', '6', '7', '8', '9'}:
+            screen.mark_box_by_number(int(c))
         elif c == 'A':
             screen.dump_screen_state()
 
-        if c == 'g':
-            buffer.append(c)
-            if buffer == ['g', 'g']:
+        if c in ('g', 'd'):
+            char_queue.append(c)
+            if char_queue.count('g') == 2:
                 screen.scroll_pos = 0
+            elif char_queue.count('d') == 2:
+                screen.deselect_all()
         else:
-            buffer.clear()
+            char_queue.clear()
             # raise AssertionError(repr(c))
 
     return 0
