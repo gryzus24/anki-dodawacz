@@ -15,6 +15,10 @@ from src.data import HORIZONTAL_BAR, config
 if TYPE_CHECKING:
     from src.Dictionaries.dictionary_base import Dictionary
 
+# Python < 3.10 compatibility.
+# Also mouse wheel buttons require ncurses >= 6.
+BUTTON5_PRESSED = 2097152
+
 ansi_to_pair = {
     '\033[39m': 0, '\033[30m': 1, '\033[31m': 2, '\033[32m': 3,
     '\033[33m': 4, '\033[34m': 5, '\033[35m': 6, '\033[36m': 7,
@@ -242,7 +246,8 @@ def format_dictionary(
 
 
 def column_should_wrap(contents: list[tuple[str, ...]], height: int) -> bool:
-    # No need to simulate height with wrapping, this is good enough.
+    # No need to simulate formatting and wrapping to see
+    # how much space dictionary requires, this is good enough.
     approx_lines = sum(
         3 if op == 'SYN' else
         2 if op in ('LABEL', 'ETYM') or ('DEF' in op and body[1])
@@ -257,17 +262,16 @@ def get_column_parameters(
         height: int,
         width: int
 ) -> tuple[int, int]:
+    if not column_should_wrap(contents, height):
+        return width, 1
+
     # assume we have space for one more vertical line to simplify logic.
     width += 1
-
-    if column_should_wrap(contents, height):
-        config_ncols, state = config['columns']
-        if state == '* auto':
-            divisor = 40
-        else:
-            divisor = width // config_ncols
+    config_ncols, state = config['columns']
+    if state == '* auto':
+        divisor = 40
     else:
-        return width - 1, 1
+        divisor = width // config_ncols
 
     ncols = width // divisor
     r = width % divisor
@@ -614,7 +618,7 @@ def _c_main(stdscr: curses.window, dictionaries: list[Dictionary]) -> int:
                 screen.mark_box_at(y, x)
             elif bstate & curses.BUTTON4_PRESSED:
                 screen.view_up(2)
-            elif bstate & curses.BUTTON5_PRESSED:
+            elif bstate & BUTTON5_PRESSED:
                 screen.view_down(2)
         elif c in (curses.KEY_DOWN, 'j', 'C-n'):
             screen.view_down(2)
