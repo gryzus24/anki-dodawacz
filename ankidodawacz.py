@@ -39,7 +39,7 @@ from src.Dictionaries.utils import (ClearScreen, get_width_per_column, hide, htt
 from src.Dictionaries.wordnet import WordNet, ask_wordnet
 from src.__version__ import __version__
 from src.colors import BOLD, DEFAULT, R, Color
-from src.data import (HORIZONTAL_BAR, LINUX, ON_WINDOWS_CMD, ROOT_DIR, WINDOWS,
+from src.data import (HORIZONTAL_BAR, LINUX, ROOT_DIR, WINDOWS,
                       boolean_cmd_to_msg, cmd_to_msg_usage, config)
 from src.input_fields import sentence_input
 
@@ -53,7 +53,6 @@ required_arg_commands = {
     # commands that take arguments
     '--delete-last': c.delete_cards, '--delete-recent': c.delete_cards,
     '-textwrap': c.set_text_value_commands,
-    '-textwidth': c.set_width_settings,
     '-colviewat': c.set_width_settings,
     '-columns': c.set_width_settings,
     '-indent': c.set_width_settings,
@@ -69,6 +68,7 @@ required_arg_commands = {
     '-dupescope': c.set_text_value_commands,
     '-audio': c.set_text_value_commands,
     '-recqual': c.set_text_value_commands,
+    '-margin': c.set_numeric_value_commands,
     '--field-order': c.change_field_order, '-fo': c.change_field_order,
     '-color': c.set_colors, '-c': c.set_colors,
     '-cd': c.set_input_field_defaults,
@@ -296,18 +296,6 @@ def save_card_to_file(field_values: dict[str, str]) -> None:
     print(f'{Color.GEX}Card successfully saved to a file\n')
 
 
-def get_config_terminal_size() -> tuple[int, int]:
-    term_width, term_height = shutil.get_terminal_size()
-    config_width, flag = config['textwidth']
-
-    if flag == '* auto' or config_width > term_width:
-        # cmd always reports wrong width by 1 cell.
-        if ON_WINDOWS_CMD:
-            term_width -= 1
-        return term_width, term_height
-    return config_width, term_height
-
-
 def _display_in_less(s: str) -> None:
     executable = shutil.which('less')
     if executable is None:
@@ -348,7 +336,7 @@ def display_dictionary(dictionary: Dictionary) -> None:
     if not dictionary.contents:
         return
 
-    width, height = get_config_terminal_size()
+    width, height = shutil.get_terminal_size()
     ncols, state = config['columns']
     if state == '* auto':
         ncols = None
@@ -371,7 +359,7 @@ def display_dictionary(dictionary: Dictionary) -> None:
 
 
 def display_many_dictionaries(dictionaries: list[Dictionary]) -> None:
-    width, height = get_config_terminal_size()
+    width, height = shutil.get_terminal_size()
     col_width, last_col_fill = get_width_per_column(width, len(dictionaries))
 
     columns = []
@@ -397,7 +385,7 @@ def display_card(field_values: dict[str, str]) -> None:
         'phrase': Color.phrase, 'pz': '', 'pos': Color.pos,
         'etym': Color.etym, 'audio': '', 'recording': '',
     }
-    textwidth, _ = get_config_terminal_size()
+    textwidth, _ = shutil.get_terminal_size()
     delimit = textwidth * HORIZONTAL_BAR
     adjusted_textwidth = int(0.95 * textwidth)
     padding = (textwidth - adjusted_textwidth) // 2 * " "

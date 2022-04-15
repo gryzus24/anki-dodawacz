@@ -62,10 +62,6 @@
 "syn_c": "\u001b[33m",
 "syngloss_c": "\u001b[39m",
 "tags": "dodawacz",
-"textwidth": [
-173,
-"* auto"
-],
 "textwrap": "regular",
 "thes": "-",
 "toipa": true,
@@ -78,7 +74,7 @@
 "formatdefs": true,
 "tsc": "std",
 "columns": [
-4,
+3,
 "* auto"
 ],
 "colviewat": [
@@ -88,5 +84,6 @@
 "shortetyms": true,
 "showsign": false,
 "less": false,
-"curses": true
+"curses": true,
+"margin": 1
 }

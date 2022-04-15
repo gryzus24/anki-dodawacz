@@ -83,9 +83,6 @@ cmd_to_msg_usage = {
     '-tags': (
         'Anki tags',
         '{tags separated by commas|-}'),
-    '-textwidth': (
-        'Width of the window',
-        '{n >= 1|auto}'),
     '-colviewat': (
         'Wrap into columns when the dictionary takes more than n% of the screen',
         '{n >= 0}'),
@@ -124,6 +121,10 @@ cmd_to_msg_usage = {
         'Recording quality',
         '{0-9}\n'
         '(0: best, 9: worst, 4: recommended)'),
+    '-margin': (
+        "[curses only] Column's left and right margin",
+        '{0 <= n < 100}\n',
+    ),
     #
     # Action commands
     #

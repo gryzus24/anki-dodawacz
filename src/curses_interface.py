@@ -1,10 +1,12 @@
 from __future__ import annotations
 
 import curses
-from itertools import compress, islice
-from typing import TYPE_CHECKING, Callable, Any, Reversible, Optional
 import shutil
-import time
+from collections import Counter
+from itertools import islice
+from typing import (
+    TYPE_CHECKING, NamedTuple, Callable, Any, Reversible, Optional, Container
+)
 
 from src.Dictionaries.utils import wrap_and_pad
 from src.colors import Color as _Color
@@ -239,34 +241,72 @@ def format_dictionary(
     return boxes, lines_total
 
 
-def get_column_parameters(width: int) -> tuple[int, int]:
+def column_should_wrap(contents: list[tuple[str, ...]], height: int) -> bool:
+    # No need to simulate height with wrapping, this is good enough.
+    approx_lines = sum(
+        3 if op == 'SYN' else
+        2 if op in ('LABEL', 'ETYM') or ('DEF' in op and body[1])
+        else 1
+        for op, *body in contents
+    )
+    return approx_lines > 0.01 * config['colviewat'][0] * height
+
+
+def get_column_parameters(
+        contents: list[tuple[str, ...]],
+        height: int,
+        width: int
+) -> tuple[int, int]:
     # assume we have space for one more vertical line to simplify logic.
     width += 1
-    ncols = width // 40
-    r = width % 40
+
+    if column_should_wrap(contents, height):
+        config_ncols, state = config['columns']
+        if state == '* auto':
+            divisor = 40
+        else:
+            divisor = width // config_ncols
+    else:
+        return width - 1, 1
+
+    ncols = width // divisor
+    r = width % divisor
     if not r:
-        return 39, ncols
+        return divisor - 1, ncols
 
     try:
         fill = r // ncols
     except ZeroDivisionError:
         return width - 1, 1
 
-    col_width = 39 + fill
+    col_width = divisor - 1 + fill
     return col_width, ncols
 
 
+class WithinPhrase(NamedTuple):
+    clicked: list[int]
+    associated: list[int]
+
+
 BORDER_PAD = 1
-TOGGLEABLE = {'DEF', 'SUBDEF', 'LABEL', 'SYN'}
+TOGGLEABLE = {'DEF', 'SUBDEF', 'SYN'}
+
 
 class Screen:
-    MARGIN = 1
-
     def __init__(self,
             stdscr: curses.window,
             dictionary: Dictionary,
             formatter: Callable[[Dictionary, int], tuple[list[list[curses.window]], int]]
     ) -> None:
+        # For some reason:
+        # 1. query a word
+        # 2. press q
+        # 3. resize terminal to a larger size
+        # 4. query the same word
+        # Leaves `hline` and `vline` artifacts from the previous stdscr.
+        # clearing the screen fixes it.
+        stdscr.clear()
+
         # Static.
         self.stdscr = stdscr
         self.dictionary = dictionary
@@ -275,59 +315,36 @@ class Screen:
         # Screen dimensions.
         # Unfortunately Python's readline api does not expose functions and
         # variables responsible for signal handling, which makes it impossible
-        # to reconcile curses' signal handling with the readline's one so we
+        # to reconcile curses' signal handling with the readline's one, so we
         # have to manage COLS and LINES variables ourselves.
         self.COLS, self.LINES = shutil.get_terminal_size()
 
         # Display
-        col_width, self.ncols = get_column_parameters(self.COLS - 2 * BORDER_PAD)
-        self.col_width = col_width - 2 * self.MARGIN
-        _boxes, self.lines_total = formatter(dictionary, self.col_width)
+        _col_width, ncols = get_column_parameters(
+            dictionary.contents,
+            self.LINES - 2 * BORDER_PAD,
+            self.COLS - 2 * BORDER_PAD
+        )
+        _col_width -= 2 * config['margin']
+        if _col_width < 10:
+            _col_width = 10
+
+        _boxes, self.lines_total = formatter(dictionary, _col_width)
         self.boxes = _boxes
-        self.columns = self._split_into_columns(_boxes)
+        self.col_width = _col_width
+        self.columns = self._split_into_columns(_boxes, ncols)
 
         # User facing state.
-        self.box_toggles = [False] * len(_boxes)
+        self.phraseno_to_ntoggles: Counter[int] = Counter()
+        self.box_states = [curses.A_NORMAL] * len(_boxes)
         self.scroll_pos = 0
 
-    def displayable(self, lines: int, cols: int) -> bool:
-        return cols > 4 and lines > 1
-
-    def update_for_redraw(self) -> None:
-        COLS, LINES = shutil.get_terminal_size()
-        if not self.displayable(LINES, COLS):
-            return
-
-        curses.resizeterm(LINES, COLS)
-        self.COLS, self.LINES = COLS, LINES
-
-        col_width, self.ncols = get_column_parameters(self.COLS - 2 * BORDER_PAD)
-        self.col_width = col_width - 2 * self.MARGIN
-
-        _boxes, self.lines_total = self.formatter(self.dictionary, self.col_width)
-        if _boxes is None:
-            return
-        # Keep toggled boxes toggled.
-        for lines in compress(_boxes, self.box_toggles):
-            for line in lines:
-                line.bkgd(0, curses.A_STANDOUT)
-
-        self.boxes = _boxes
-
-        # If scroll_pos is at EOF, keep it this way when resizing.
-        previous_EOF = self.EOF  # EOF before new columns.
-        self.columns = self._split_into_columns(_boxes)
-        current_EOF = self.EOF
-        if self.scroll_pos == previous_EOF > current_EOF:
-            self.scroll_pos = current_EOF
-
-        self.stdscr.clear()
-
     def _split_into_columns(
-            self, boxes: list[list[curses._CursesWindow]]
+            self, boxes: list[list[curses._CursesWindow]],
+            ncols: int
     ) -> list[list[curses._CursesWindow]]:
         col_width = self.col_width
-        max_col_height = self.lines_total // self.ncols
+        max_col_height = self.lines_total // ncols
         result: list[list[curses._CursesWindow]] = [[]]
         current_height = 0
         # TODO: move certain boxes to the next column.
@@ -335,10 +352,13 @@ class Screen:
             op = dict_entry[0]
             current_height += len(lines)
             if current_height > max_col_height:
-                header = curses.newwin(1, col_width)
-                header.hline(0, col_width)
-                result.append([header])
                 current_height = 0
+                if op == 'HEADER' and not dict_entry[1]:
+                    result.append([])
+                else:
+                    header = curses.newwin(1, col_width)
+                    header.hline(0, col_width)
+                    result.append([header])
                 if op in ('LABEL', 'POS', 'ETYM'):
                     t = lines[1:]
                     result[-1].extend(t)
@@ -350,45 +370,122 @@ class Screen:
 
         return result
 
-    def _draw_header(self) -> None:
-        h = self.columns[0][0]
-        h.mvwin(0, BORDER_PAD)
-        h.noutrefresh()
+    def displayable(self, lines: int, cols: int) -> bool:
+        return cols > 4 and lines > 1
+
+    def update_for_redraw(self) -> None:
+        COLS, LINES = shutil.get_terminal_size()
+        if not self.displayable(LINES, COLS):
+            return
+
+        _col_width, ncols = get_column_parameters(
+            self.dictionary.contents,
+            LINES - 2 * BORDER_PAD,
+            COLS - 2 * BORDER_PAD
+        )
+        _col_width -= 2 * config['margin']
+        if _col_width < 10:
+            return
+
+        self.COLS, self.LINES = COLS, LINES
+        curses.resize_term(self.LINES, self.COLS)
+
+        _boxes, self.lines_total = self.formatter(self.dictionary, _col_width)
+        for lines, state in zip(_boxes, self.box_states):
+            if state != curses.A_NORMAL:
+                for line in lines:
+                    line.bkgd(0, state)
+
+        self.boxes = _boxes
+        self.col_width = _col_width
+        self.columns = self._split_into_columns(_boxes, ncols)
+
+        eof = self.EOF
+        if self.scroll_pos > eof:
+            self.scroll_pos = eof
+
+        self.stdscr.clear()
+
+    def _draw_border(self) -> None:
+        shift = BORDER_PAD + self.col_width + 2 * config['margin']
+        try:
+            for i in range(1, len(self.columns)):
+                self.stdscr.vline(BORDER_PAD, i * shift, 0, self.LINES - 2 * BORDER_PAD)
+        except curses.error:
+            pass
+        self.stdscr.box()
+        self.stdscr.noutrefresh()
+
+        try:
+            header = self.columns[0][0]
+        except IndexError:
+            return
+        header.mvwin(0, BORDER_PAD)
+        header.noutrefresh()
 
     def draw(self) -> None:
         if not self.displayable(self.LINES, self.COLS):
             return
 
+        self._draw_border()
+
         columns = self.columns
         col_width = self.col_width
-        margin = self.MARGIN
-
-        self.stdscr.box()
-        shift = BORDER_PAD + col_width + 2 * margin
-        for i in range(1, len(columns)):
-            self.stdscr.vline(BORDER_PAD, i * shift, 0, self.LINES - 2 * BORDER_PAD)
-        self.stdscr.noutrefresh()
-        self._draw_header()
-
-        tx = BORDER_PAD
         scroll_pos = self.scroll_pos
+        lines = self.LINES
+        margin = config['margin']
+
         # hide out of view windows behind the header to prevent
         # them from stealing clicks in the upper region.
-        for column in columns:
-            for box in islice(column, None, scroll_pos + BORDER_PAD):
-                box.mvwin(0, 1)
+        try:
+            for column in self.columns:
+                for box in islice(column, None, scroll_pos + BORDER_PAD):
+                    box.mvwin(0, 1)
+        except curses.error:
+            pass
 
+        tx = BORDER_PAD
         vertical_line_positions = []
-        for column in columns:
-            for y, box in enumerate(
-                    islice(column, scroll_pos + BORDER_PAD, scroll_pos + self.LINES - BORDER_PAD), 1
-            ):
-                box.mvwin(y, tx + margin)
-                box.noutrefresh()
-            tx += col_width + 1 + 2 * margin
-            vertical_line_positions.append(tx)
+        try:
+            for column in self.columns:
+                for y, box in enumerate(
+                        islice(column, scroll_pos + BORDER_PAD, scroll_pos + lines - BORDER_PAD), 1
+                ):
+                    box.mvwin(y, tx + margin)
+                    box.noutrefresh()
+                tx += col_width + 1 + 2 * margin
+                vertical_line_positions.append(tx)
+        except curses.error:
+            pass
 
         curses.doupdate()
+
+    def _toggle_associated_boxes(self, to_toggle: Container, phraseno: int, i: int) -> None:
+        ntoggles = self.phraseno_to_ntoggles[phraseno]
+        if ntoggles == 0:
+            new_state = curses.A_NORMAL
+        elif ntoggles == 1:
+            new_state = curses.A_BOLD
+        else:
+            return
+
+        for j in range(i - 1, 0, -1):
+            prev_op = self.dictionary.contents[j][0]
+            if prev_op in to_toggle:
+                for _line in self.boxes[j]:
+                    _line.bkgd(0, new_state)
+                self.box_states[j] = new_state
+            if prev_op == 'PHRASE':
+                break
+
+        for j in range(i + 1, len(self.boxes)):
+            next_op = self.dictionary.contents[j][0]
+            if next_op == 'PHRASE':
+                break
+            if next_op in to_toggle:
+                for _line in self.boxes[j]:
+                    _line.bkgd(0, new_state)
+                self.box_states[j] = new_state
 
     def mark_box_at(self, y: int, x: int) -> None:
         if not y:  # header clicked.
@@ -407,22 +504,55 @@ class Screen:
             for column in self.columns
             for i in range(self.scroll_pos)
         }
-        for i, (toggle, lines) in enumerate(zip(self.box_toggles, self.boxes)):
-            if self.dictionary.contents[i][0] not in TOGGLEABLE:
+        phraseno = 0
+        for i, (state, lines) in enumerate(zip(self.box_states, self.boxes)):
+            op = self.dictionary.contents[i][0]
+            if op == 'PHRASE':
+                phraseno += 1
+            if op not in TOGGLEABLE:
                 continue
+
             for line in lines:
                 if id(line) not in not_in_view and line.enclose(y, x):
                     break
-            else:
-                # if not found
+            else: # not found
                 continue
 
-            highlight = curses.A_NORMAL if toggle else curses.A_STANDOUT
-            for line in lines:
-                line.bkgd(0, highlight)
+            if state == curses.A_STANDOUT:
+                new_state = curses.A_NORMAL
+                self.phraseno_to_ntoggles[phraseno] -= 1
+            else:
+                new_state = curses.A_STANDOUT
+                self.phraseno_to_ntoggles[phraseno] += 1
 
-            self.box_toggles[i] = not toggle
+            for line in lines:
+                line.bkgd(0, new_state)
+
+            self.box_states[i] = new_state
+            if op in ('DEF', 'SUBDEF'):
+                self._toggle_associated_boxes({'ETYM', 'POS', 'PHRASE'}, phraseno, i)
             return
+
+    def dump_screen_state(self) -> list[WithinPhrase]:
+        result = []
+        clicked_boxes: list[int] = []
+        associated_boxes: list[int] = []
+        for i in range(1, len(self.boxes)):
+            op = self.dictionary.contents[i][0]
+            box_state = self.box_states[i]
+            if op == 'PHRASE' and (clicked_boxes or associated_boxes):
+                result.append(WithinPhrase(clicked_boxes, associated_boxes))
+                clicked_boxes = []
+                associated_boxes = []
+            elif box_state == curses.A_STANDOUT:
+                clicked_boxes.append(i)
+            elif box_state == curses.A_BOLD:
+                associated_boxes.append(i)
+
+        if clicked_boxes or associated_boxes:
+            result.append(WithinPhrase(clicked_boxes, associated_boxes))
+
+        return result
 
     @property
     def EOF(self) -> int:
@@ -441,6 +571,18 @@ class Screen:
             self.scroll_pos = 0
 
 
+def get_wch_wsigwinch(stdscr: curses._CursesWindow) -> int | str | None:
+    i = 1
+    while i % 3:
+        try:
+            return stdscr.get_wch()
+        except curses.error:
+            # Ignore the first callback, report only if resized or not.
+            i += 1
+
+    return None
+
+
 KEY_MAP = {
     '\x10': 'C-p',
     '\x0e': 'C-n',
@@ -457,16 +599,13 @@ def _c_main(stdscr: curses.window, dictionaries: list[Dictionary]) -> int:
     while True:
         screen.draw()
 
-        try:
-            c = stdscr.get_wch()
-        except curses.error:
-            # this is our sigwinch handler...
-            # looking for `no input` errors triggered by terminal resize...
-            time.sleep(0.2)
+        c = get_wch_wsigwinch(stdscr)
+        if c is None:
+            curses.napms(175)
             screen.update_for_redraw()
             continue
 
-        c = KEY_MAP.get(c, c)
+        c = KEY_MAP.get(c, c)  # type: ignore
         if c in ('q', 'Q', 'C-x'):
             break
         elif c == curses.KEY_MOUSE:
@@ -481,8 +620,14 @@ def _c_main(stdscr: curses.window, dictionaries: list[Dictionary]) -> int:
             screen.view_down(2)
         elif c in (curses.KEY_UP, 'k', 'C-p'):
             screen.view_up(2)
+        elif c == curses.KEY_SNEXT:
+            screen.view_down(screen.LINES - 2 * BORDER_PAD - 1)
+        elif c == curses.KEY_SPREVIOUS:
+            screen.view_up(screen.LINES - 2 * BORDER_PAD - 1)
         elif c == 'G':
             screen.scroll_pos = screen.EOF
+        elif c == 'A':
+            screen.dump_screen_state()
 
         if c == 'g':
             buffer.append(c)
@@ -524,4 +669,3 @@ def curses_init(dictionaries: list[Dictionary]) -> int:
             curses.echo()
             curses.nocbreak()
             curses.endwin()
-

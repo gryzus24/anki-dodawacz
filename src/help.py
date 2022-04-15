@@ -133,7 +133,6 @@ choice for us. This behavior can be changed through the `-cd` command.
 -showadded                       show added elements' indexes
 
 -textwrap  {{justify|regular|-}}   text wrapping style
--textwidth {{n >= 1|auto}}         width of the window
 -columns   {{n >= 1|auto}}         (maximum) number of columns
 -colviewat {{n >= 0}}              wrap into columns when the dictionary takes
                                  more than n% of the screen

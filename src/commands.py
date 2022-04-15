@@ -46,7 +46,7 @@ CONFIG_COLUMNS = tuple(
         ),
         (
             '-less', '-cardpreview', '-showadded', '-showsign',
-            '-textwrap', '-textwidth', '-columns', '-colviewat', '-indent',
+            '-textwrap', '-columns', '-colviewat', '-indent',
             '',
             '[filtering config.]',
             '-fsubdefs', '-toipa', '-shortetyms',
@@ -61,7 +61,7 @@ CONFIG_COLUMNS = tuple(
             '-dict', '-dict2', '-thes', '-audio', '-recqual',
             '',
             '[curses config.]',
-            '-curses',
+            '-curses', '-margin',
         ),
         fillvalue=''
     )
@@ -179,12 +179,8 @@ def set_input_field_defaults(*args: str, **ignore: Any) -> str | None:
 
 
 def print_config_representation() -> None:
-    if config['textwidth'][1] == '* auto':
-        terminal_width = shutil.get_terminal_size().columns
-        if terminal_width != config['textwidth'][0]:
-            save_command('textwidth', [terminal_width, '* auto'])
     if config['columns'][1] == '* auto':
-        t = config['textwidth'][0] // 39
+        t = shutil.get_terminal_size().columns // 39
         if not t:
             t = 1
         save_command('columns', [t, '* auto'])
@@ -231,7 +227,7 @@ def print_config_representation() -> None:
 
 def set_width_settings(*args: str, **kwargs: str) -> str | None:
     cmd, value = args[0], args[1]
-    if cmd in ('-textwidth', '-columns'):
+    if cmd == '-columns':
         lower = 1
     elif cmd in ('-colviewat', '-indent'):
         lower = 0
@@ -251,12 +247,10 @@ def set_width_settings(*args: str, **kwargs: str) -> str | None:
             save_command(cmd, [val, ''])
             return None
 
-    if cmd == '-textwidth':
-        v = [shutil.get_terminal_size().columns, '* auto']
-    elif cmd == '-colviewat':
+    if cmd == '-colviewat':
         v = [67, '']
     elif cmd == '-columns':
-        t = config['textwidth'][0] // 39
+        t = shutil.get_terminal_size().columns // 39
         if not t:
             t = 1
         v = [t, '* auto']
@@ -382,6 +376,27 @@ def set_free_value_commands(*args: str, **kwargs: str) -> None:
 
     print(f'{R}{kwargs["message"]}: "{value}"')
     save_command(cmd, value)
+
+
+def set_numeric_value_commands(*args: str, **kwargs: str) -> str | None:
+    cmd, arg = args[0], args[1]
+
+    lower_upper = {
+        '-margin': (0, 100),
+    }
+
+    lower, upper = lower_upper[cmd]
+    try:
+        value = int(arg)
+        if not (lower <= value < upper):
+            raise ValueError
+    except ValueError:
+        return f'Invalid value: {R}{arg}\n' \
+               f'{cmd} {{{lower} <= n < {upper}}}'
+
+    print(f'{R}{kwargs["message"]}: {value}')
+    save_command(cmd, value)
+    return None
 
 
 def set_text_value_commands(*args: str, **kwargs: str) -> str | None:
