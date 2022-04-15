@@ -5,7 +5,7 @@ import shutil
 from collections import Counter
 from itertools import islice
 from typing import (
-    TYPE_CHECKING, NamedTuple, Callable, Any, Reversible, Optional, Container
+    TYPE_CHECKING, NamedTuple, Callable, Any, Reversible, Optional, Container, Sequence
 )
 
 from src.Dictionaries.utils import wrap_and_pad
@@ -245,7 +245,7 @@ def format_dictionary(
     return boxes, lines_total
 
 
-def column_should_wrap(contents: list[tuple[str, ...]], height: int) -> bool:
+def column_should_wrap(contents: list[Sequence[str]], height: int) -> bool:
     # No need to simulate formatting and wrapping to see
     # how much space dictionary requires, this is good enough.
     approx_lines = sum(
@@ -258,7 +258,7 @@ def column_should_wrap(contents: list[tuple[str, ...]], height: int) -> bool:
 
 
 def get_column_parameters(
-        contents: list[tuple[str, ...]],
+        contents: list[Sequence[str]],
         height: int,
         width: int
 ) -> tuple[int, int]:
@@ -298,9 +298,9 @@ TOGGLEABLE = {'DEF', 'SUBDEF', 'SYN'}
 
 class Screen:
     def __init__(self,
-            stdscr: curses.window,
+            stdscr: curses._CursesWindow,
             dictionary: Dictionary,
-            formatter: Callable[[Dictionary, int], tuple[list[list[curses.window]], int]]
+            formatter: Callable[[Dictionary, int], tuple[list[list[curses._CursesWindow]], int]]
     ) -> None:
         # For some reason:
         # 1. query a word
@@ -593,7 +593,7 @@ KEY_MAP = {
     '\x18': 'C-x',
 }
 
-def _c_main(stdscr: curses.window, dictionaries: list[Dictionary]) -> int:
+def _c_main(stdscr: curses._CursesWindow, dictionaries: list[Dictionary]) -> int:
     dictionary = dictionaries[0]
     if not dictionary.contents:
         return -1
