@@ -104,7 +104,11 @@ else:
 def search_interface() -> str:
     while True:
         with tab_completion():
-            word = input('Search $ ').strip()
+            try:
+                word = input('Search $ ').strip()
+            except EOFError:
+                sys.stdout.write('\r')
+                continue
             if not word:
                 continue
 
@@ -217,11 +221,27 @@ def save_audio_url(audio_url: str) -> str | NoReturn:
         with open(os.path.join(audio_path, filename), 'wb') as file:
             file.write(audio_content)
         return f'[sound:{filename}]'
-    except FileNotFoundError:
-        print(f"{Color.err}Saving audio {R}{filename}{Color.err} failed\n"
-              f"Current audio path: {R}{audio_path}\n"
-              f"{Color.err}Make sure the directory exists and try again\n")
-        return ''
+    except (FileNotFoundError, NotADirectoryError):
+        if audio_path == 'Cards_audio':
+            # Always use the path to Cards_audio in the root of the program.
+            # Any other relative path stays relative.
+            t = os.path.join(ROOT_DIR, 'Cards_audio')
+            if not os.path.exists(t):
+                os.mkdir(t)
+            elif os.path.isfile(t):
+                print(f"{Color.err}Saving audio {R}{filename}{Color.err} failed\n"
+                      f"Non-directory file {R}'Cards_audio'{Color.err} has a name conflict with the audio\n"
+                      f"path directory {R}'Cards_audio'")
+                return ''
+
+            with open(os.path.join(t, filename), 'wb') as file:
+                file.write(audio_content)
+            return f'[sound:{filename}]'
+        else:
+            print(f"{Color.err}Saving audio {R}{filename}{Color.err} failed\n"
+                  f"Current audio path: {R}{audio_path}\n"
+                  f"{Color.err}Make sure the directory exists and try again")
+            return ''
     except Exception:
         print(f'{Color.err}Unexpected error occurred while saving audio')
         raise
@@ -621,15 +641,9 @@ def from_define_all_file(_input: str) -> Generator[str, None, None]:
 
 
 def main() -> NoReturn:
-    if config['audio_path'] == 'Cards_audio':
-        # Providing the absolute path solves an occasional PermissionError on Windows.
-        t = os.path.join(ROOT_DIR, 'Cards_audio')
-        if not os.path.exists(t):
-            os.mkdir(t)
-
     sys.stdout.write(
         f'{BOLD}- Ankidodawacz v{__version__} -{DEFAULT}\n'
-        'type -h for usage and configuration\n\n\n'
+        f'type -h for usage and configuration\n\n\n'
     )
 
     while True:
