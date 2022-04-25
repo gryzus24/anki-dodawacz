@@ -684,10 +684,10 @@ KEY_MAP = {
 # Let's enjoy the hacky code that follows.
 if LINUX:
     # if using readline.
-    def is_resized(c):
+    def is_resized(c: int | str | None) -> bool:
         return c is None
 else:
-    def is_resized(c):
+    def is_resized(c: int | str | None) -> bool:
         return c == curses.KEY_RESIZE and curses.is_term_resized(LINES, COLS)
 
 
