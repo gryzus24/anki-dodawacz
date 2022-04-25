@@ -795,9 +795,19 @@ def curses_init(dictionaries: list[Dictionary]) -> int:
             pass
 
         curses.use_default_colors()
-        for i in range(16):
-            curses.init_pair(i + 1, i, -1)
-        curses.init_pair(17, curses.COLOR_BLACK, curses.COLOR_GREEN)
+        try:
+            for i in range(16):
+                curses.init_pair(i + 1, i, -1)
+            curses.init_pair(17, curses.COLOR_BLACK, curses.COLOR_GREEN)
+        except ValueError:
+            raise SystemExit(
+                '=====================================================================\n'
+                'Your terminal does not support color or its capabilities are limited!\n'
+                'If you are using xterm, please configure it to assume\n'
+                'the "xterm-256color" capability or issue this command:\n'
+                'export TERM=xterm-256color\n'
+                '=====================================================================\n'
+            )
 
         return _c_main(stdscr, dictionaries)
     finally:
