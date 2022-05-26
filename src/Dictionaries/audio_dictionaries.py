@@ -1,20 +1,4 @@
-# Copyright 2021-2022 Gryzus
-#
-# This program is free software: you can redistribute it and/or modify
-# it under the terms of the GNU General Public License as published by
-# the Free Software Foundation, either version 3 of the License, or
-# (at your option) any later version.
-#
-# This program is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-# GNU General Public License for more details.
-#
-# You should have received a copy of the GNU General Public License
-# along with this program. If not, see <http://www.gnu.org/licenses/>.
-
 from src.Dictionaries.utils import http, request_soup
-from src.colors import R, Color
 
 
 def diki_audio(raw_phrase: str, flag: str = '') -> str:
@@ -42,9 +26,6 @@ def diki_audio(raw_phrase: str, flag: str = '') -> str:
             return url
         if http.urlopen('HEAD', url_ame).status == 200:
             return url_ame
-
-    print(f'{Color.err}Diki does not have the desired pronunciation\n'
-          f'{Color.YEX}Squeezing the last bits out...')
 
     def shorten_to_possessive(*ignore: str) -> str:
         verb, _, rest = diki_phrase.partition('_the_')
@@ -84,7 +65,6 @@ def diki_audio(raw_phrase: str, flag: str = '') -> str:
         if http.urlopen('HEAD', url).status == 200:
             return url
 
-    print(f"{Color.err}Diki does not have the pronunciation for {R}{raw_phrase}")
     return ''
 
 
@@ -92,9 +72,8 @@ def ahd_audio(query: str) -> str:
     soup = request_soup('https://www.ahdictionary.com/word/search.html?q=' + query)
     audio_url = soup.find('a', {'target': '_blank'})['href']
     if audio_url == 'http://www.hmhco.com':
-        print(f'{Color.err}AHD does not have the pronunciation for {R}{query}\n'
-              f'{Color.YEX}Querying diki...')
-        return diki_audio(query)
+        return ''
+
     return 'https://www.ahdictionary.com' + audio_url
 
 
@@ -102,7 +81,7 @@ def lexico_audio(query: str) -> str:
     soup = request_soup('https://www.lexico.com/definition/' + query.replace(' ', '_'))
     audio_url = soup.find('audio')
     if audio_url is None:
-        print(f'{Color.err}Lexico does not have the pronunciation for {R}{query}\n'
-              f'{Color.YEX}Querying diki...')
-        return diki_audio(query)
+        return ''
+
     return audio_url['src']
+

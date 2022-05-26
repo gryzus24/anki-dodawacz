@@ -1,77 +1,10 @@
-# Copyright 2021-2022 Gryzus
-#
-# This program is free software: you can redistribute it and/or modify
-# it under the terms of the GNU General Public License as published by
-# the Free Software Foundation, either version 3 of the License, or
-# (at your option) any later version.
-#
-# This program is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-# GNU General Public License for more details.
-#
-# You should have received a copy of the GNU General Public License
-# along with this program. If not, see <http://www.gnu.org/licenses/>.
-
 from __future__ import annotations
 
 from typing import Any
 
 from src.Dictionaries.dictionary_base import Dictionary
 from src.Dictionaries.utils import request_soup
-from src.colors import R, Color
-from src.input_fields import get_user_input
-
-
-class Lexico(Dictionary):
-    name = 'lexico'
-    allow_thesaurus = True
-
-    @property
-    def etymologies(self) -> list[str]:
-        # Because of Lexico's HTML structure it's hard to add blank etymologies
-        # and as etymologies are bound to HEADERs we can use them to keep track
-        # of the position.
-        result = []
-        t = ''
-        for x in self.contents:
-            if x[0] == 'ETYM':
-                t = x[1]
-            elif x[0] == 'HEADER':
-                result.append(t)
-                t = ''
-        del result[0]
-        result.append(t)
-        return result
-
-    def input_cycle(self) -> dict[str, str] | None:
-        def_input = get_user_input('def', self.definitions, '1')
-        if def_input is None:
-            return None
-
-        choices_by_headers = self.get_positions_in_sections(def_input.choices)
-        phrase = self.phrases[choices_by_headers[0] - 1]
-
-        audio = self.audio_urls[
-            self.get_positions_in_sections(def_input.choices, from_within='AUDIO')[0] - 1]
-
-        exsen_input = get_user_input(
-            'exsen', self.example_sentences, self.to_auto_choice(def_input.choices, 'DEF'))
-        if exsen_input is None:
-            return None
-
-        etym_input = get_user_input(
-            'etym', self.etymologies, self.to_auto_choice(choices_by_headers, 'ETYM'))
-        if etym_input is None:
-            return None
-
-        return {
-            'phrase': phrase,
-            'def': def_input.content,
-            'exsen': exsen_input.content,
-            'etym': etym_input.content,
-            'audio': audio,
-        }
+from src.colors import Color, R
 
 
 def get_phonetic_spelling(block_: Any) -> str:
@@ -156,7 +89,8 @@ def ask_lexico(query: str) -> Dictionary | None:
             _, _, revive = new_query_tag.get('href').rpartition('/')
             return ask_lexico(revive)
 
-    lexico = Lexico()
+    lexico = Dictionary(name='lexico')
+
     etym = ''
     before_phrase = True
     for block in page_check.find_next_siblings():

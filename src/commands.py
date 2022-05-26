@@ -1,18 +1,3 @@
-# Copyright 2021-2022 Gryzus
-#
-# This program is free software: you can redistribute it and/or modify
-# it under the terms of the GNU General Public License as published by
-# the Free Software Foundation, either version 3 of the License, or
-# (at your option) any later version.
-#
-# This program is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-# GNU General Public License for more details.
-#
-# You should have received a copy of the GNU General Public License
-# along with this program. If not, see <http://www.gnu.org/licenses/>.
-
 from __future__ import annotations
 
 import json
@@ -20,33 +5,28 @@ import os
 import shutil
 import sys
 from itertools import zip_longest
-from typing import Any, NoReturn, Sequence
+from typing import Any, Sequence
 
-from src.colors import Color, BOLD, DEFAULT, R
-from src.data import (LINUX, MAC, ROOT_DIR, WINDOWS, bool_values_dict, cmd_to_msg_usage,
+from src.colors import BOLD, Color, DEFAULT, R
+from src.data import (LINUX, MAC, ROOT_DIR, WINDOWS, bool_values_dict, boolean_cmd_to_msg, cmd_to_msg_usage,
                       color_name_to_ansi, config)
 from src.input_fields import choose_item
-
-STD_FIELD_ORDER = [
-    'def', 'syn', 'pz', 'phrase', 'exsen', 'pos', 'etym', 'audio', 'recording',
-]
-TSC_FIELD_ORDER = [
-    'pz', 'def', 'syn', 'exsen', 'pos', 'etym', 'audio', 'recording', '-',
-]
 
 CONFIG_COLUMNS = tuple(
     zip_longest(
         (
-            '-pz', '-def', '-exsen', '-pos', '-etym', '-syn',
+            '[card creation co.]',
+            '-sen', '-def', '-default', '-exsen', '-pos', '-etym',
             '',
-            '-tsc', '-formatdefs', '-savecards', '-createcards',
+            '-tsc', '-formatdefs', '-savecards',
             '',
             '[phrase hiding co.]',
-            '-upz', '-udef', '-uexsen', '-usyn', '-upreps', '-keependings', '-hideas',
+            '-hsen', '-hdef', '-hexsen', '-hsyn', '-hpreps', '-hideas',
         ),
         (
-            '-less', '-cardpreview', '-showadded', '-showsign',
-            '-textwrap', '-columns', '-colviewat', '-indent',
+            '[display configur.]',
+            '-less', '-cardpreview', '-showsign',
+            '-textwrap', '-columns', '-indent',
             '',
             '[filtering config.]',
             '-fsubdefs', '-toipa', '-shortetyms',
@@ -55,13 +35,11 @@ CONFIG_COLUMNS = tuple(
             '-ankiconnect', '-duplicates', '-dupescope', '-note', '-deck', '-tags',
         ),
         (
-            'def_bulk', 'exsen_bulk', 'pos_bulk', 'etym_bulk', 'syn_bulk',
-            '',
             '[source config.]',
-            '-dict', '-dict2', '-thes', '-audio', '-recqual',
+            '-dict', '-dict2', '-audio', '-recqual',
             '',
             '[curses config.]',
-            '-curses', '-margin',
+            '-curses', '-nohelp', '-margin',
         ),
         fillvalue=''
     )
@@ -94,142 +72,73 @@ BOOL_COLORS_DICT = {
     'False': '\033[91m',
 }
 
+ConfigValue = bool | str | int | Sequence
 
-def save_config(c: dict[str, bool | str | int | Sequence]) -> None:
+
+def save_config(c: dict[str, ConfigValue]) -> None:
     with open(os.path.join(ROOT_DIR, 'config/config.json'), 'w') as f:
         json.dump(c, f, indent=0)
 
 
-def save_command(entry: str, value: bool | str | int | Sequence) -> None:
-    config[entry.lstrip('-')] = value
+def save_command(entry: str, value: ConfigValue) -> None:
+    config[entry] = value
     save_config(config)
 
 
-def delete_cards(*args: str, **ignore: Any) -> NoReturn | None:
-    try:
-        no_of_deletions = int(args[1])
-        if no_of_deletions < 1:
-            raise ValueError
-    except ValueError:
-        print(f'{Color.err}Number of cards to delete must be an integer >= 1')
-        return None
-
-    try:
-        with open('cards.txt') as r:
-            lines = r.readlines()
-
-        if no_of_deletions >= len(lines):
-            with open('cards.txt', 'w') as w:
-                w.write('')
-            raise IndexError
-    except IndexError:
-        print(f'{R}"cards.txt"{Color.YEX} file has been emptied, nothing more to delete')
-        return None
-    except FileNotFoundError:
-        print(f'{R}"cards.txt"{Color.err} does not exist, nothing to delete')
-        return None
-    except UnicodeDecodeError:  # wolfram caused this
-        print(f'{Color.err}Could not decode a character, card deletion failed')
-        return None
-    except Exception:
-        print(f'{Color.err}Something went wrong, cards are {Color.GEX}safe{R} though')
-        raise
-    else:
-        print(f'{Color.YEX}Deleted cards:{R}')
-        for i in range(no_of_deletions):
-            card_number = len(lines)
-            deleted_line = lines.pop()
-            deleted_line = deleted_line.strip().replace('\t', '  ')
-            print(f'Card {card_number}: "{deleted_line[:66 - len(str(card_number))]}..."')
-
-        with open('cards.txt', 'w') as w:
-            w.write(''.join(lines))
-        return None
-
-
-def set_input_field_defaults(*args: str, **ignore: Any) -> str | None:
-    cmd = args[0]
-    bulk_elem = args[1].lower()
-
-    bulk_elements = ('def', 'exsen', 'pos', 'etym', 'syn', 'all')
-    if bulk_elem not in bulk_elements:
-        return f'Unknown field name: {R}{bulk_elem}\n' \
-               f'{BOLD}Field names:{DEFAULT}\n' \
-               f'def, exsen, pos, etym, syn, all\n'
-
-    try:
-        value = args[2]
-    except IndexError:
-        return f'{Color.YEX}No value provided\n' \
-               f'{R}{cmd} {bulk_elem} {{value}}'
-
-    if bulk_elem == 'all':
-        values_to_save = [value] * 5
-        print(f'{Color.GEX}Default values saved:')
-        for elem, val in zip(bulk_elements, values_to_save):
-            config[f'{elem}_bulk'] = val
-            print(f'{R}{elem:6s}: {val}')
-
-        save_config(config)
-        print()
-    else:
-        print(f"{Color.YEX}Default value for {R}{bulk_elem}{Color.YEX}: {R}{value}")
-        save_command(f'{bulk_elem}_bulk', value)
-    return None
-
-
 def print_config_representation() -> None:
-    if config['columns'][1] == '* auto':
-        t = shutil.get_terminal_size().columns // 39
-        if not t:
-            t = 1
-        save_command('columns', [t, '* auto'])
-
-    sys.stdout.write(f'{R}{BOLD}[card creation co.]     [display configur.]     [default values]{DEFAULT}\n')
     for a, b, c in CONFIG_COLUMNS:
         a = a.replace('[', f'{BOLD}[').replace(']', f']{DEFAULT}')
         b = b.replace('[', f'{BOLD}[').replace(']', f']{DEFAULT}')
         c = c.replace('[', f'{BOLD}[').replace(']', f']{DEFAULT}')
 
-        state_a = config.get(a[1:], '')
-        state_b = config.get(b[1:], '')
-        if isinstance(state_b, list):
-            state_b = ''.join(map(str, state_b))
-            if b == '-colviewat':
-                state_b += '%'
-
-        if '_bulk' in c:
-            state_c = config[c]
-            if state_c.startswith('-'):  # to align negative values
-                state_c = '\b' + state_c
-            c = c[:-5]
+        state_a = str(config.get(a, ''))
+        state_b = config.get(b, '')
+        if b == '-columns':
+            state_b = state_b[1]
+        elif b == '-indent':
+            state_b = str(state_b[0])
         else:
-            state_c = config.get(c[1:], '')
+            state_b = str(state_b)
+
+        state_c = str(config.get(c, ''))
 
         color_a = BOOL_COLORS_DICT.get(state_a, '')
         color_b = BOOL_COLORS_DICT.get(state_b, '')
         color_c = BOOL_COLORS_DICT.get(state_c, '')
-        if color_c and c == 'def' : state_c = 10*'\b'+'watch?v=LDl544TI_mU'
 
         level_a = '\b\b\b\b\b' if '[' in a else ''
         level_b = '\b\b\b\b\b' if '[' in b else ''
 
-        sys.stdout.write(f'{a:14s}{color_a}{str(state_a):10s}{level_a}{R}'
-                         f'{b:14s}{color_b}{str(state_b):10s}{level_b}{R}'
-                         f'{c:10s}{color_c}{state_c}{R}\n')
+        if a == '-sen':
+            a = '-sen        ╭ '
+        elif a == '-def':
+            a = '-def    -cc │ '
+        elif a == '-default':
+            a = '-default    ╰ '
+        elif a == '-exsen':
+            a = '-exsen      ╭ '
+        elif a == '-pos':
+            a = '-pos   -all │ '
+        elif a == '-etym':
+            a = '-etym       ╰ '
 
-    sys.stdout.write(f'\n--audio-path: {config["audio_path"]}\n'
-                     f'--audio-device: {config["audio_device"]}\n\n'
-                     'default values configuration: "-cd"\n'
-                     'color configuration: "-c"\n'
-                     'field order configuration: "-fo"\n\n')
+        sys.stdout.write(
+            f'{a:14s}{color_a}{state_a:10s}{level_a}{R}'
+            f'{b:14s}{color_b}{state_b:10s}{level_b}{R}'
+            f'{c:10s}{color_c}{state_c}{R}\n'
+        )
+    sys.stdout.write(
+        f'\n--audio-path: {config["audio_path"]}\n'
+        f'--audio-device: {config["audio_device"]}\n\n'
+        'color configuration: "-c"\n'
+    )
 
 
 def set_width_settings(*args: str, **kwargs: str) -> str | None:
     cmd, value = args[0], args[1]
     if cmd == '-columns':
         lower = 1
-    elif cmd in ('-colviewat', '-indent'):
+    elif cmd == '-indent':
         lower = 0
     else:
         raise AssertionError('unreachable in `set_width_settings`')
@@ -247,79 +156,18 @@ def set_width_settings(*args: str, **kwargs: str) -> str | None:
             save_command(cmd, [val, ''])
             return None
 
-    if cmd == '-colviewat':
-        v = [67, '']
-    elif cmd == '-columns':
+    if cmd == '-columns':
         t = shutil.get_terminal_size().columns // 39
         if not t:
             t = 1
-        v = [t, '* auto']
+        v = [t, 'auto']
     elif cmd == '-indent':
         v = [0, '']
     else:
-        raise AssertionError('unreachable in `set_width_settings`')
+        raise AssertionError('unreachable')
 
     print(f'{R}{kwargs["message"]}: {Color.GEX}{"".join(map(str, v))}')
     save_command(cmd, v)
-    return None
-
-
-def display_field_order() -> None:
-    for field_number, field in enumerate(config['fieldorder'], start=1):
-        b = BOLD if field_number == 1 else ''
-        print(f' {b}{field_number}: {field}{DEFAULT}')
-
-        if field_number == config['fieldorder_d']:
-            print(f' {Color.delimit}D: ─────────{R}')
-
-
-def _set_field_order(msg: str, order: list[str], delimit: int) -> None:
-    print(f'{Color.GEX}{msg}')
-    # I'm not sure what causes the change of 'order' in
-    # STD and TSC changing one of the values manually.
-    # .copy() somehow resolves the issue
-    config['fieldorder'] = order.copy()
-    config['fieldorder_d'] = delimit
-    save_config(config)
-    display_field_order()
-
-
-def change_field_order(*args: str, **ignore: Any) -> str | None:
-    first_arg = args[1].lower()
-    if first_arg == 'std':
-        _set_field_order('STD field order:', STD_FIELD_ORDER, 3)
-        return None
-    elif first_arg == 'tsc':
-        _set_field_order('TSC field order:', TSC_FIELD_ORDER, 1)
-        return None
-
-    _1_to_9 = ('1', '2', '3', '4', '5', '6', '7', '8', '9')
-    if first_arg not in _1_to_9 and first_arg not in ('d', '-'):
-        cmd = args[0]
-        return f'Invalid argument: {R}{first_arg}\n' \
-               f'{cmd} {cmd_to_msg_usage[cmd][1]}'
-
-    try:
-        field_name = args[2].lower()
-    except IndexError:
-        if first_arg == 'd':
-            return 'No field number provided'
-        return 'No field name provided'
-
-    # two arguments commands
-    if first_arg in _1_to_9:
-        if field_name in STD_FIELD_ORDER or field_name == '-':
-            config['fieldorder'][int(first_arg) - 1] = field_name
-            save_config(config)
-        else:
-            return 'Invalid field name provided'
-    elif first_arg == 'd':
-        if field_name in _1_to_9:
-            save_command('fieldorder_d', int(field_name))
-        else:
-            return 'Invalid field number provided'
-
-    display_field_order()
     return None
 
 
@@ -407,9 +255,8 @@ def set_text_value_commands(*args: str, **kwargs: str) -> str | None:
         '-dupescope': ('deck', 'collection'),
         '-recqual':   ('0', '1', '2', '3', '4', '5', '6', '7', '8', '9'),
         '-textwrap':  ('justify', 'regular', '-'),
-        '-dict':      ('ahd', 'lexico', 'idioms'),
-        '-dict2':     ('ahd', 'lexico', 'idioms', '-'),
-        '-thes':      ('wordnet', '-'),
+        '-dict':      ('ahd', 'lexico', 'idioms', 'wordnet'),
+        '-dict2':     ('ahd', 'lexico', 'idioms', 'wordnet', '-'),
         '-audio':     ('ahd', 'lexico', 'diki', 'auto', '-')
     }
 
@@ -455,13 +302,23 @@ def boolean_commands(*args: str, **kwargs: str) -> str | None:
         return f'{Color.err}Invalid value, use:\n' \
                f'{R}{cmd} {{on|off}}'
 
-    print(f'{R}{kwargs["message"]}: {BOOL_COLORS_DICT[value]}{value}')
     if cmd == '-all':
-        for cmd in ('pz', 'def', 'pos', 'etym', 'syn', 'exsen'):
+        for cmd in ('-exsen', '-pos', '-etym'):
             config[cmd] = value
-        save_config(config)
+            print(f'{R}{boolean_cmd_to_msg[cmd]}: {BOOL_COLORS_DICT[value]}{value}')
+    elif cmd == '-cc':
+        for cmd in ('-sen', '-def'):
+            config[cmd] = value
+            print(f'{R}{boolean_cmd_to_msg[cmd]}: {BOOL_COLORS_DICT[value]}{value}')
+
+        val_for_default = '1' if value else '0'
+        config['-default'] = val_for_default
+        print(f'{R}{cmd_to_msg_usage["-default"][0]}: {val_for_default}')
     else:
-        save_command(cmd, value)
+        print(f'{R}{kwargs["message"]}: {BOOL_COLORS_DICT[value]}{value}')
+        config[cmd] = value
+
+    save_config(config)
     return None
 
 

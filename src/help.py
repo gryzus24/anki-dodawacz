@@ -1,10 +1,11 @@
-from src.colors import BOLD, DEFAULT, R, Color
+from src.colors import BOLD, Color, DEFAULT, R
 
 
 def _title(s: str) -> str:
     return f'{R}{BOLD}{f"─[ {s} ]".ljust(79, "─")}{DEFAULT}'
 
 
+#
 # Help commands shouldn't exceed the width of 79.
 ##
 def quick_help() -> None:  # -h
@@ -20,17 +21,18 @@ First the program queries `-dict` (default: AH Dictionary).
 If query fails it fallbacks to `-dict2` (default: Lexico).
 
 OPTIONS:
-  -ahd          query AH Dictionary
-  -l, --lexico  query Lexico
-  -i, --idioms  query Farlex Idioms
+  -ahd             query AH Dictionary
+  -l, --lexico     query Lexico
+  -i, --idioms     query Farlex Idioms
+  -wnet, -wordnet  query WordNet
 
   To search for definitions with specific labels use the starting part of
   label's name as an option.
   e.g.  [QUERY] -noun        : searches for labels starting with "noun"
         [QUERY] -adj -slang  : starting with "adj" and "slang"
 
-  To make multiple queries at once separate them with a separator or use
-  multiple dictionary flags.  Available separators: ',' ';' '=='.
+  To make multiple queries at once separate them with a ',' or ';' or use
+  multiple dictionary flags.
   e.g.  [QUERY] -n, [QUERY2] -n -l, ...
         [QUERY] -ahd -l -i
 
@@ -43,37 +45,17 @@ For more options and commands see `--help-config` or `-config`.
 
 To escape the query or embed it inside a sentence use <QUERY>, this will also
 make the word {BOLD}{Color.GEX}Emphasized{R}{DEFAULT}.
-e.g. >> Search $ This is a sentence with a word <embedded> inside.
+e.g.  Search $ This is a sentence with a word <embedded> inside.
 
 {_title('Dictionary and fields')}
-To add an element (definition, part of speech, synonym) type its index or
-position within a header.
-  3         add third element
-  2,5       add second and third element
-  :5 or 1:5 add second, third, fourth and fifth element
-  -1, all   add all elements
-  -all      add all elements in a reverse order
-  0 or -s   skip element
-  -sc       skip card
-
-To make a more specific choice follow the chosen element's index by a "." and
-a number. This will split the element on every "specifier" character and let
-you choose which parts you want to keep.
-Specifiers:
-  definitions:      ","
-  example sentences "\\n" (new line)
-  parts of speech:  "\\n" (new line)
-  etymologies:      ","
-  synonyms:         ","
-
- e.g. "Extremely unreasonable, incongruous, or inappropriate."
-  type "1.1" to add "Extremely unreasonable.",
-  type "1.2" to add "incongruous.",
-  type "1.231" to add "Incongruous, extremely unreasonable, or inappropriate."
-
-Or not less valid:
-  "1:8.1" to add the first part of the first eight elements.
-  "all.2" to add the second part of all the elements.
+To create a card, type definition's indices into the input field.
+  3          add third definition
+  2,5        add second and third definition
+  :5 or 1:5  add second, third, fourth and fifth definition
+  -1, all    add all definitions
+  -all       add all definitions in a reverse order
+  0 or -s    skip input field
+  -sc        skip creating card
 
 To add your own text to the field precede it with a "/".
 
@@ -89,27 +71,36 @@ To see more options type `-conf` or `-config`.
 Type command's name to display usage.
 
 {BOLD}{79 * '─'}{DEFAULT}
--conf, -config   show current configuration and more options
---help-config    show full config/commands help
---help-bulk      show bulk/define_all help
---help-rec       show recording help\n""")
+-conf, -config      show current configuration and more options
+--help-config       show full config/commands help
+--help-define-all   show bulk/define_all help
+--help-rec          show recording help\n""")
 
 
-def commands_help() -> None:  # --help-commands
+def config_help() -> None:  # --help-config
     print(f"""\
 Type command's name to display usage.
 
-{_title('Field configuration')}
-Disabling a field means we won't be asked for input, the program will make the
-choice for us. This behavior can be changed through the `-cd` command.
+{_title('Curses only commands')}
+-curses        use the ncurses backend to interact with dictionaries
+-nohelp        do not show help (F1) by default
+-margin {{0-99}} column's left and right margin
 
-{BOLD}[Commands]    [on|off]{DEFAULT}
--pz            sentence field
--def           definition field
--exsen         example sentence field
--pos           part of speech field
--etym          etymology field
--syn           synonym field
+{_title('Console only commands')}
+-sen           enable/disable sentence field
+-def           enable/disable definition field
+               (disabling it will insert the `-default` value into it)
+-default       default value for the definition field (-def)
+-cc            create cards (changes `-sen`, `-def` and `-default`)
+
+-less          use a pager (less) to display dictionaries
+               (with `-FKRQX` options)
+-cardpreview   preview the created card in the program
+
+{_title('Card creation commands')}
+-exsen         add example sentences
+-pos           add parts of speech
+-etym          add etymologies
 -all           change above fields state
 
 -tsc           targeted sentence card creation priority
@@ -122,31 +113,22 @@ choice for us. This behavior can be changed through the `-cd` command.
                 every definition is indexed
                 subsequent definitions get more opaque/transparent
 -savecards     save cards to "cards.txt"
--createcards   create/add cards
 
 -ap, --audio-path {{path|auto}}   audio save location (default "Cards_audio")
 
 {_title('Display configuration')}
--less                            use a pager -- `less` -- to display
-                                 dictionaries (with `-FKRQX` options)
--cardpreview                     preview the created card
--showadded                       show added elements' indexes
-
--textwrap  {{justify|regular|-}}   text wrapping style
--columns   {{n >= 1|auto}}         (maximum) number of columns
--colviewat {{n >= 0}}              wrap into columns when the dictionary takes
-                                 more than n% of the screen
--indent    {{n >= 0}}              width of wrapped lines' indent
+-textwrap  {{justify|regular|-}}  text wrapping style
+-columns   {{>=1|auto}}           (maximum) number of columns
+-indent    {{>=0}}                width of wrapped lines' indent
 
 {_title('Hide and filter configuration')}
 Hiding a phrase means replacing it with "..." (default)
 
--upz           hide in sentences
--udef          hide in definitions
--uexsen        hide in examples
--usyn          hide in synonyms
--upreps        hide prepositions
--keependings   keep hidden word endings (~ed, ~ing etc.)
+-hsen          hide in sentences
+-hdef          hide in definitions
+-hexsen        hide in examples
+-hsyn          hide in synonyms
+-hpreps        hide prepositions
 -hideas        hide with (default "...")
 
 -fsubdefs      filter out subdefinitions (definitions without ">")
@@ -154,10 +136,9 @@ Hiding a phrase means replacing it with "..." (default)
 -shortetyms    shorten and simplify etymologies in AH Dictionary
 
 {_title('Sources and recording configuration')}
--dict  {{ahd|lexico|idioms}}        primary dictionary
--dict2 {{ahd|lexico|idioms|-}}      fallback dictionary
--thes  {{wordnet|-}}                thesaurus
--audio {{ahd|lexico|diki|auto|-}}   audio server
+-dict  {{ahd|lexico|idioms|wordnet}}        primary dictionary
+-dict2 {{ahd|lexico|idioms|wordnet|-}}      fallback dictionary
+-audio {{ahd|lexico|diki|auto|-}}           audio server
 
 --audio-device           configure a recording device
 -rec, --record           start recording (saves recording, without adding it to
@@ -188,44 +169,33 @@ Hiding a phrase means replacing it with "..." (default)
 
 {_title('Misc. commands')}
 --define-all [sep]   load content from a "define_all.txt" file and feed it as
-                     search queries, use commas as query separators unless
-                     provided otherwise.
-
---delete-last,
---delete-recent      remove the last card from the "cards.txt" file
+                     search queries, uses commas as query separators unless
+                     different separator is provided.
 
 -c, -color           change elements' colors
--cd                  change default field values
--fo, --field-order   change the order in which fields are added and displayed
-
--conf, -config       show current configuration and more options
---help-config        show full config/commands help
---help-bulk          show bulk/define_all help
---help-rec           show recording help\n""")
+{BOLD}{79 * '─'}{DEFAULT}
+-conf, -config      show current configuration and more options
+--help-config       show full config/commands help (*)
+--help-define-all   show define_all help
+--help-rec          show recording help\n""")
 
 
-def bulk_help() -> None:  # --help-define-all
+def define_all_help() -> None:  # --help-define-all
     print(f"""\
 {_title('Input fields and default values')}
 You can create cards from single words or lists of words faster by changing
-default field values and disabling input fields.
+the `-default` value and disabling input fields (`-def` and `-sen`).
 
-By default every field default value is set to "auto" which picks etymologies,
-parts of speech and examples according to the chosen definitions.
+When the definition field is disabled, program doesn't prompt the user for
+input, but makes the choice based on the `-default` value.
 
-When input fields are disabled, program doesn't prompt the user for input, but
-makes the choice based on input fields' default values.
-
-You can disable all input fields through the `-all off` command.
-To change default field values use the `-cd {{field name}} {{value}}` command.
-e.g. `-cd def 1:5`  - add first five definitions
-     `-cd etym 0`   - don't add etymologies
-     `-cd all auto` - restore everything to "auto"
+You can disable all input fields with the `-cc off` command.
+And then change the `-default` to whatever is desired,  e.g. 1,2
 
 {_title('Creating cards from lists of words')}
-By disabling every input field (`-all off`) the only thing you need to do is
-enter the desired word to create a card, thereby to add multiple words you
-need a list of words which you can enter into the program.
+Now when you enter something into Search card is immediately created, cool.
+Let's enter a bunch of words.
+
 example list:
   gush          by pasting this list the program will treat it as if it was
   glib          user input so it will add "gush, glib, gunk, glen and goal"
@@ -234,10 +204,8 @@ example list:
   goal
 
 {_title('`--define-all` command')}
-If you have a ready list of words (like the one with "gush, glib, gunk") and
-want to pass them only into the Search field giving you the whole control over
-the card creation process (no need for `-all off`), you can use the
-`--define-all [separator]` command.
+If you have a ready list of words (like the one with "gush, glib, gunk") saved
+in a file, you can use the `--define-all [separator]` command to load it.
 
 {BOLD}1.{DEFAULT} create a file named "define_all.txt" in the program's directory.
 {BOLD}2.{DEFAULT} open the program and type `--define-all`, optionally passing a different
@@ -255,7 +223,13 @@ formatting options to apply.
 
 {BOLD}NOTE:{DEFAULT} Lexico doesn't tolerate more than 80 queries at once, but it doesn't
       mean that you should pester AHD or Farlex more for what they allow,
-      please be reasonable.\n""")
+      please be reasonable.
+
+{BOLD}{79 * '─'}{DEFAULT}
+-conf, -config      show current configuration and more options
+--help-config       show full config/commands help
+--help-define-all   show define_all help (*)
+--help-rec          show recording help\n""")
 
 
 def recording_help() -> None:  # --help-rec
@@ -264,7 +238,7 @@ def recording_help() -> None:  # --help-rec
 The program offers a simple FFmpeg interface to record audio from the desktop.
 
 Currently supported configurations:
-  Linux   : pulseaudio (alsa)
+  Linux   : pulseaudio or pipewire-pulse
   Windows : dshow
 
 Official FFmpeg download site: https://www.ffmpeg.org/download.html
@@ -286,4 +260,10 @@ Setup:
 
 To start the recording add the `-rec` option after the query.
 {BOLD}NOTE:{DEFAULT} Use [q] to end the recording, otherwise it might get corrupted or not
-      save at all.\n""")
+      save at all.
+
+{BOLD}{79 * '─'}{DEFAULT}
+-conf, -config      show current configuration and more options
+--help-config       show full config/commands help
+--help-define-all   show define_all help
+--help-rec          show recording help (*)\n""")

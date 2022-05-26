@@ -9,7 +9,7 @@ import urllib3
 from urllib3.exceptions import ConnectTimeoutError, NewConnectionError
 
 from src.__version__ import __version__
-from src.colors import R, Color
+from src.colors import Color, R
 from src.data import LINUX, ON_WINDOWS_CMD, ROOT_DIR, USER_AGENT, WINDOWS, config
 
 http = urllib3.PoolManager(timeout=10, headers=USER_AGENT)
@@ -122,7 +122,7 @@ def main() -> None:
                 open('cards.txt', encoding='utf-8') as cards:
             new_cards.writelines(cards.readlines())
 
-    if not config['ankiconnect'] and config['audio_path'] == 'Cards_audio' and os.path.exists('Cards_audio'):
+    if not config['-ankiconnect'] and config['audio_path'] == 'Cards_audio' and os.path.exists('Cards_audio'):
         print(f"{Color.YEX}:: {R}The 'Cards_audio' directory has to be moved manually.")
 
     with _exit(0):

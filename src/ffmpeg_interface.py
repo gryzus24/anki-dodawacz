@@ -1,18 +1,3 @@
-# Copyright 2021-2022 Gryzus
-#
-# This program is free software: you can redistribute it and/or modify
-# it under the terms of the GNU General Public License as published by
-# the Free Software Foundation, either version 3 of the License, or
-# (at your option) any later version.
-#
-# This program is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-# GNU General Public License for more details.
-#
-# You should have received a copy of the GNU General Public License
-# along with this program. If not, see <http://www.gnu.org/licenses/>.
-
 from __future__ import annotations
 
 import datetime
@@ -20,7 +5,7 @@ import os
 import subprocess
 import sys
 
-from src.colors import R, Color
+from src.colors import Color, R
 from src.commands import save_command
 from src.data import LINUX, WINDOWS, config
 from src.input_fields import choose_item
@@ -55,7 +40,7 @@ else:
         return []
 
 
-def record(filepath: str) -> subprocess.CompletedProcess:
+def _record(filepath: str) -> subprocess.CompletedProcess:
     if LINUX:
         ffmpeg_settings = {
             'format': 'pulse',
@@ -81,21 +66,23 @@ def record(filepath: str) -> subprocess.CompletedProcess:
         '-channel_layout', 'stereo',
         '-i', ffmpeg_settings['device'],
         '-acodec', 'libmp3lame',
-        '-q:a', config['recqual'],
+        '-q:a', config['-recqual'],
         filepath
     ), capture_output=True, text=True)
     return result
 
 
-def set_audio_device() -> str | None:
+def user_set_audio_device() -> None:
     try:
         audio_devices = find_devices()
         if not audio_devices:
-            return f'No devices found\n' \
-                   f'audio recording might not be available on {sys.platform!r}'
+            print(f'{Color.err}No devices found\n'
+                  f'audio recording might not be available on {sys.platform!r}')
+            return
     except FileNotFoundError:
-        return 'Could not locate FFmpeg\n' \
-               "Place the FFmpeg binary alongside the program or in $PATH"
+        print(f'{Color.err}Could not locate FFmpeg\n'
+              f"Place the FFmpeg binary alongside the program or in $PATH")
+        return
 
     print('Choose your desktop output device:')
     for i, device in enumerate(audio_devices, start=1):
@@ -103,11 +90,13 @@ def set_audio_device() -> str | None:
 
     audio_device = choose_item('\nDevice', audio_devices)
     if audio_device is None:
-        return 'Invalid input, leaving...'
+        print(f'{Color.err}Invalid input, leaving...')
+        return
 
     save_command('audio_device', audio_device)
     print(f'{Color.GEX}Chosen device:\n'
           f'{R}{audio_device}\n')
+
     return None
 
 
@@ -131,7 +120,7 @@ def capture_audio(*args: str) -> str:
         filepath = os.path.join(savedir, f"{date}_sentence{metadata}{recording_no}.mp3")
 
     try:
-        result = record(filepath)
+        result = _record(filepath)
     except NameError:  # if os is not linux or win
         print(f'{Color.err}Audio recording is not available on {sys.platform!r}')
         return ''

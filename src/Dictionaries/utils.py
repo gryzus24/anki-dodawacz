@@ -1,18 +1,3 @@
-# Copyright 2021-2022 Gryzus
-#
-# This program is free software: you can redistribute it and/or modify
-# it under the terms of the GNU General Public License as published by
-# the Free Software Foundation, either version 3 of the License, or
-# (at your option) any later version.
-#
-# This program is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-# GNU General Public License for more details.
-#
-# You should have received a copy of the GNU General Public License
-# along with this program. If not, see <http://www.gnu.org/licenses/>.
-
 from __future__ import annotations
 
 import subprocess
@@ -24,7 +9,7 @@ import urllib3
 from urllib3.exceptions import ConnectTimeoutError, NewConnectionError
 
 from src.colors import Color
-from src.data import ON_WINDOWS_CMD, ON_TERMUX, POSIX, USER_AGENT, WINDOWS
+from src.data import ON_TERMUX, ON_WINDOWS_CMD, POSIX, USER_AGENT, WINDOWS
 
 # Silence warnings if soupsieve is not installed, which is good
 # because its bloated `css parse` slows down import time a lot.
@@ -35,19 +20,6 @@ try:
 finally:
     sys.stderr = sys.__stderr__
 
-
-PREPOSITIONS = {
-    'beyond', 'of', 'outside', 'upon', 'with', 'within',
-    'behind', 'from', 'like', 'opposite', 'to', 'under',
-    'after', 'against', 'around', 'near', 'over', 'via',
-    'among', 'except', 'for', 'out', 'since', 'through',
-    'about', 'along', 'beneath', 'underneath', 'unlike',
-    'below', 'into', 'on', 'onto', 'past', 'than', 'up',
-    'across', 'by', 'despite', 'inside', 'off', 'round',
-    'at', 'beside', 'between', 'in', 'towards', 'until',
-    'above', 'as', 'before', 'down', 'during', 'without'
-}
-
 http = urllib3.PoolManager(timeout=10, headers=USER_AGENT)
 
 
@@ -57,7 +29,7 @@ def handle_connection_exceptions(func: Callable) -> Callable:
             return func(*args, **kwargs)
         except Exception as e:
             if isinstance(e.__context__, NewConnectionError):
-                print(f'{Color.err}Could not establish a connection,\n'
+                print(f'{Color.err}Could not establish connection,\n'
                       'check your Internet connection and try again.')
                 return None
             elif isinstance(e.__context__, ConnectTimeoutError):
@@ -128,57 +100,6 @@ class ClearScreen:
     else:
         def __exit__(self, tp: Any, v: Any, tb: Any) -> None:
             pass
-
-
-def hide(
-        target: str,
-        r: str,
-        hide_with: str = '...', *,
-        hide_prepositions: bool = False,
-        keep_endings: bool = True
-) -> str:
-    # Hide every occurrence of words from string `r` in `target`.
-    def case_replace(a: str, b: str) -> None:
-        nonlocal target
-        target = target.replace(a, b).replace(a.capitalize(), b).replace(a.upper(), b.upper())
-
-    nonoes = {
-        'the', 'and', 'a', 'is', 'an', 'it',
-        'or', 'be', 'do', 'does', 'not', 'if', 'he'
-    }
-
-    elements_to_replace = r.lower().split()
-    for elem in elements_to_replace:
-        if elem in nonoes:
-            continue
-
-        if not hide_prepositions:
-            if elem in PREPOSITIONS:
-                continue
-
-        # "Ω" is a placeholder
-        case_replace(elem, f"{hide_with}Ω")
-        if elem.endswith('e'):
-            case_replace(elem[:-1] + 'ing', f'{hide_with}Ωing')
-            if elem.endswith('ie'):
-                case_replace(elem[:-2] + 'ying', f'{hide_with}Ωying')
-        elif elem.endswith('y'):
-            case_replace(elem[:-1] + 'ies', f'{hide_with}Ωies')
-            case_replace(elem[:-1] + 'ied', f'{hide_with}Ωied')
-
-    if keep_endings:
-        return target.replace('Ω', '')
-    else:
-        # e.g. from "We weren't ...Ωed for this." -> "We weren't ... for this."
-        split_content = target.split('Ω')
-        temp = [split_content[0].strip()]
-        for elem in split_content[1:]:
-            for letter in elem:
-                if letter in (' ', '.', ':'):
-                    break
-                elem = elem.replace(letter, '', 1)
-            temp.append(elem.strip())
-        return ' '.join(temp)
 
 
 def wrap_lines(

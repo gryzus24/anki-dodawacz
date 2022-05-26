@@ -6,7 +6,7 @@ from random import sample
 
 from src.Dictionaries.ahdictionary import ask_ahdictionary
 from src.Dictionaries.lexico import ask_lexico
-from src.colors import R, Color
+from src.colors import Color, R
 from src.data import config
 
 # SETUP:
@@ -185,7 +185,7 @@ def dictionary_content_check(dictionary, _word):
     log_buffer = []
 
     dictionary_name = dictionary.name.upper()[:3]
-    if dictionary_name == 'AHD' and not config['toipa']:
+    if dictionary_name == 'AHD' and not config['-toipa']:
         right_paren, left_paren = '(', ')'
     else:
         right_paren, left_paren = '/', '/'

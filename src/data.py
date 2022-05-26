@@ -6,12 +6,12 @@ import json
 import os
 import sys
 
-# abspath(__file__) for <=3.8 compatibility
+# abspath(__file__) for Python <= 3.8 compatibility
 ROOT_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
 try:
-    with open(os.path.join(ROOT_DIR, 'config/config.json')) as cf:
-        config = json.load(cf)
+    with open(os.path.join(ROOT_DIR, 'config/config.json')) as f:
+        config = json.load(f)
 except (FileNotFoundError, json.JSONDecodeError):
     print(' "config.json" does not exist '.center(79, '='))
     raise
@@ -30,38 +30,36 @@ USER_AGENT = {
 }
 
 boolean_cmd_to_msg = {
-    '-pz': 'Sentence field',
+    '-sen': 'Sentence field',
     '-def': 'Definition field',
-    '-pos': 'Part of speech field',
-    '-etym': 'Etymology field',
-    '-syn': 'Synonym field',
-    '-exsen': 'Example sentence field',
+    '-pos': 'Add parts of speech',
+    '-etym': 'Add etymologies',
+    '-exsen': 'Add example sentences',
+
+    '-all': 'Change values of (-exsen, -pos, -etym)',
+    '-cc': 'Create cards (changes -sen, -def and -default)',
 
     '-formatdefs': 'Definition formatting',
     '-savecards': 'Save cards to "cards.txt"',
-    '-createcards': 'Create/add cards',
-
-    '-all': 'All fields',
 
     '-fsubdefs': 'Filter out subdefinitions (definitions without ">")',
     '-toipa': 'Translate AH Dictionary phonetic spelling into IPA',
     '-shortetyms': 'Shorten and simplify etymologies in AH Dictionary',
 
-    '-upz': 'Hide phrase in sentence',
-    '-udef': 'Hide phrase in definitions',
-    '-usyn': 'Hide phrase in synonyms',
-    '-uexsen': 'Hide phrase in example sentences',
-    '-upreps': 'Hide prepositions',
-    '-keependings': 'Keep hidden word endings (~ed, ~ing etc.)',
+    '-hsen': 'Hide phrase in user sentences',
+    '-hdef': 'Hide phrase in definitions',
+    '-hsyn': 'Hide phrase in synonyms',
+    '-hexsen': 'Hide phrase in example sentences',
+    '-hpreps': 'Hide prepositions',
 
-    '-less': 'Use a pager -- `less` -- to display dictionaries',
-    '-cardpreview': 'Preview the created card',
-    '-showadded': "Show added elements' indexes",
-    '-showsign': 'Show a ">" before the main definition',
+    '-less': '[console] Use a pager (less) to display dictionaries',
+    '-cardpreview': '[console] Preview created cards',
+    '-showsign': 'Show a ">" before main definitions',
 
     '-ankiconnect': 'Use AnkiConnect to add cards',
     '-duplicates': 'Allow duplicates',
-    '-curses': 'Use the ncurses backend to interact with dictionaries (requires restart)',
+    '-curses': 'Use the ncurses backend to interact with dictionaries',
+    '-nohelp': "[curses] Hide usage help (F1) by default",
 }
 
 cmd_to_msg_usage = {
@@ -74,6 +72,9 @@ cmd_to_msg_usage = {
     '-dupescope': (
         'Look for duplicates in',
         '{deck|collection}'),
+    '-default': (
+        'Default value for the definition field (-def)',
+        '{e.g. 1,2,3}'),
     '-note': (
         'Note used for adding cards',
         '{note name}'),
@@ -83,15 +84,12 @@ cmd_to_msg_usage = {
     '-tags': (
         'Anki tags',
         '{tags separated by commas|-}'),
-    '-colviewat': (
-        'Wrap into columns when the dictionary takes more than n% of the screen',
-        '{n >= 0}'),
     '-columns': (
         '(Maximum) number of columns',
-        '{n >= 1|auto}'),
+        '{>=1|auto}'),
     '-indent': (
         "Width of wrapped lines' indent",
-        '{n >= 0}'),
+        '{>=0}'),
     '--audio-path': (
         'Audio save location',
         '{path|auto}'),
@@ -107,13 +105,10 @@ cmd_to_msg_usage = {
              '}'),
     '-dict': (
         'Primary dictionary',
-        '{ahd|lexico|idioms}'),
+        '{ahd|lexico|idioms|wordnet}'),
     '-dict2': (
         'Fallback dictionary',
-        '{ahd|lexico|idioms|-}'),
-    '-thes': (
-        'Thesaurus',
-        '{wordnet|-}'),
+        '{ahd|lexico|idioms|wordnet|-}'),
     '-audio': (
         'Audio server',
         '{ahd|lexico|diki|auto|-}'),
@@ -123,42 +118,17 @@ cmd_to_msg_usage = {
         '(0: best, 9: worst, 4: recommended)'),
     '-margin': (
         "[curses only] Column's left and right margin",
-        '{0 <= n < 100}\n',
+        '{0-99}\n',
     ),
     #
     # Action commands
     #
-    '--delete-last': (
-        'Removes the last card from the "cards.txt" file',
-        '{n >= 1}'),
-    '--delete-recent': (
-        'Removes the last card from the "cards.txt" file',
-        '{n >= 1}'),
-    '-fo': (
-        'Changes the order in which fields are added and displayed',
-        '{\n'
-        '  std : default field order\n'
-        '  tsc : Targeted Sentence Cards field order\n'
-        '  {1-9} {field} : change a field {1-9} to {field}\n'
-        '  d {1-9}       : move the delimiter below {1-9}\n'
-        '}'),
-    '--field-order': (
-        'Changes the order in which fields are added and displayed',
-        '{\n'
-        '  std : default field order\n'
-        '  tsc : Targeted Sentence Cards field order\n'
-        '  {1-9} {field} : change a field {1-9} to {field}\n'
-        '  d {1-9}       : move the delimiter below {1-9}\n'
-        '}'),
     '-c': (
         "Change elements' colors",
         '{element} {color}'),
     '-color': (
         "Change elements' colors",
         '{element} {color}'),
-    '-cd': (
-        'Change default field values',
-        '{field name} {value}'),
 }
 
 color_name_to_ansi = {
@@ -184,10 +154,8 @@ color_name_to_ansi = {
 bool_values_dict = {
     'on':   True, 'off':   False,
     'true': True, 'false': False,
-    'yin':  True, 'yang':  False,
     'tak':  True, 'nie':   False,
     'yes':  True, 'no':    False,
-    'yay':  True, 'nay':   False,
     'y':    True, 'n':     False,
     't':    True,
 }
