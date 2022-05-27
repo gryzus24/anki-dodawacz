@@ -72,15 +72,13 @@ BOOL_COLORS_DICT = {
     'False': '\033[91m',
 }
 
-ConfigValue = bool | str | int | Sequence
 
-
-def save_config(c: dict[str, ConfigValue]) -> None:
+def save_config(c: dict[str, bool | str | int | Sequence]) -> None:
     with open(os.path.join(ROOT_DIR, 'config/config.json'), 'w') as f:
         json.dump(c, f, indent=0)
 
 
-def save_command(entry: str, value: ConfigValue) -> None:
+def save_command(entry: str, value: bool | str | int | Sequence) -> None:
     config[entry] = value
     save_config(config)
 

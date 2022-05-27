@@ -53,7 +53,7 @@
 "-less": false,
 "-curses": true,
 "-margin": 1,
-"-nohelp": true,
+"-nohelp": false,
 "-default": "1",
 "-sen": true,
 "-exsen": true,

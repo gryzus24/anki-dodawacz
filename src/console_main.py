@@ -327,14 +327,13 @@ def _display_in_less(s: str) -> None:
     # r - accept escape sequences. `-R` does not produce desirable results on Windows.
     # F - do not open the pager if output fits on the screen.
     # K - exit on SIGINT. *This is important not to break keyboard input.
-    # Q - be quiet.
     # X - do not clear the screen after exiting from the pager.
     if WINDOWS:
         env = {'LESSCHARSET': 'UTF-8'}
-        options = '-rFKQX'
+        options = '-rFKX'
     else:
         env = None
-        options = '-RFKQX'
+        options = '-RFKX'
     with Popen((executable, options), stdin=PIPE, stderr=DEVNULL, env=env) as process:
         try:
             process.communicate(s.encode())

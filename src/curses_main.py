@@ -748,14 +748,12 @@ KEY_MAP = {
 # by flushing any typeahead in the main function.
 # Let's enjoy the hacky code that follows.
 
-Wch_key_t = int | str | None
-
 if LINUX:
     # if using readline.
-    def is_resized(c: Wch_key_t) -> bool:
+    def is_resized(c: int | str | None) -> bool:
         return c is None
 else:
-    def is_resized(c: Wch_key_t) -> bool:
+    def is_resized(c: int | str | None) -> bool:
         return c == curses.KEY_RESIZE and curses.is_term_resized(LINES, COLS)
 
 

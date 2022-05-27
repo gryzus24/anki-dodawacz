@@ -94,7 +94,7 @@ Type command's name to display usage.
 -cc            create cards (changes `-sen`, `-def` and `-default`)
 
 -less          use a pager (less) to display dictionaries
-               (with `-FKRQX` options)
+               (with `-RFKX` options)
 -cardpreview   preview the created card in the program
 
 {_title('Card creation commands')}

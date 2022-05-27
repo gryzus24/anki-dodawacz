@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from src.Dictionaries.dictionary_base import Dictionary
 from src.Dictionaries.utils import request_soup
 from src.colors import Color, R
