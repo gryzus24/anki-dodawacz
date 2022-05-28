@@ -8,7 +8,7 @@ from typing import Optional, Sequence, TYPE_CHECKING
 
 import src.anki_interface as anki
 import src.cards as cards
-from src.Dictionaries.utils import ClearScreen, get_width_per_column, wrap_and_pad, wrap_lines, display_in_less
+from src.Dictionaries.utils import ClearScreen, get_width_per_column, wrap_and_pad, wrap_lines, less_wrapper
 from src.colors import BOLD, Color, DEFAULT, R
 from src.data import HORIZONTAL_BAR, WINDOWS, config
 
@@ -157,7 +157,7 @@ def stringify_columns(
         if line[-1][-1] == HORIZONTAL_BAR else
         f"{Color.delimit}{vert_bar}{R}".join(line)
         for line in zipped_columns
-    ) + '\n'
+    ) + '\n\n'
 
     return result
 
@@ -291,15 +291,15 @@ def format_dictionary(dictionary: Dictionary, column_width: int) -> list[str]:
     return buffer
 
 
-def prepare_to_print(
-        dictionary: Dictionary,
-        ncols: Optional[int],
-        width: int,
-        height: int,
-) -> tuple[list[list[str]], int, int]:
-    # Return value of this method should be passed to the `print_dictionary` method.
+@less_wrapper
+def display_dictionary(dictionary: Dictionary) -> str:
+    width, height = get_terminal_size()
+    ncols, state = config['-columns']
+    if state == 'auto':
+        ncols = None
+
     column_width, ncols, last_col_fill = get_display_parameters(
-        dictionary, width, height, ncols
+        dictionary, width, height - 3, ncols
     )
     formatted = format_dictionary(dictionary, column_width)
     if ncols == 1:
@@ -307,34 +307,12 @@ def prepare_to_print(
     else:
         columns = columnize(formatted, column_width, height, ncols)
 
-    return columns, column_width, last_col_fill
+    return stringify_columns(columns, column_width, last_col_fill)
 
 
-def display_dictionary(dictionary: Dictionary) -> int:
-    if not dictionary.contents:
-        return 1
-
-    width, height = get_terminal_size()
-    ncols, state = config['-columns']
-    if state == 'auto':
-        ncols = None
-
-    columns, col_width, last_col_fill = prepare_to_print(
-        dictionary, ncols, width, height - 3
-    )
-    raw_str = stringify_columns(columns, col_width, last_col_fill)
-    if config['-less']:
-        with ClearScreen():
-            return display_in_less(raw_str + '\n')
-    else:
-        with ClearScreen():
-            sys.stdout.write(raw_str + '\n')
-
-    return 0
-
-
-def display_many_dictionaries(dictionaries: list[Dictionary]) -> int:
-    width, height = get_terminal_size()
+@less_wrapper
+def display_many_dictionaries(dictionaries: list[Dictionary]) -> str:
+    width, _ = get_terminal_size()
     col_width, last_col_fill = get_width_per_column(width, len(dictionaries))
 
     columns = []
@@ -342,19 +320,10 @@ def display_many_dictionaries(dictionaries: list[Dictionary]) -> int:
         formatted = format_dictionary(d, col_width)
         columns.append([line.lstrip('$!') for line in formatted])
 
-    raw_str = stringify_columns(columns, col_width, last_col_fill, ('║', '╥'))
-    if config['-less']:
-        with ClearScreen():
-            return display_in_less(raw_str + '\n')
-    else:
-        with ClearScreen():
-            sys.stdout.write(raw_str + '\n')
-
-    return 0
+    return stringify_columns(columns, col_width, last_col_fill, ("║", "╥"))
 
 
 def display_card(card: dict[str, str]) -> None:
-    # field coloring
     color_of = {
         'def': Color.def1, 'syn': Color.syn, 'sen': '',
         'phrase': Color.phrase, 'exsen': Color.exsen, 'pos': Color.pos,

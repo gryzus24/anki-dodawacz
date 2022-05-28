@@ -9,7 +9,7 @@ import urllib3
 from urllib3.exceptions import ConnectTimeoutError, NewConnectionError
 
 from src.colors import R, Color
-from src.data import ON_TERMUX, ON_WINDOWS_CMD, POSIX, USER_AGENT, WINDOWS
+from src.data import ON_TERMUX, ON_WINDOWS_CMD, POSIX, USER_AGENT, WINDOWS, config
 
 # Silence warnings if soupsieve is not installed, which is good
 # because its bloated `css parse` slows down import time a lot.
@@ -133,12 +133,27 @@ def display_in_less(s: str) -> int:
             process.kill()
 
         # less returns 2 on SIGINT.
-        return_code = process.poll()
-        if return_code and return_code != 2:
-            print(f"{Color.err}Could not open the pager as: 'less {options}'\n")
+        rc = process.poll()
+        if rc and rc != 2:
+            print(f"{Color.err}Could not open 'less' as: 'less {options}'\n")
             return 1
 
     return 0
+
+
+def less_wrapper(func: Callable[..., str]) -> Callable[..., None]:
+    def wrapper(*args: Any, **kwargs: Any) -> None:
+        string = func(*args, **kwargs)
+        if config['-less']:
+            with ClearScreen():
+                rc = display_in_less(string)
+                if rc:
+                    print(string)
+        else:
+            with ClearScreen():
+                print(string)
+
+    return wrapper
 
 
 def wrap_lines(

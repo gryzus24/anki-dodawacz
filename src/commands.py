@@ -11,6 +11,7 @@ from src.colors import BOLD, Color, DEFAULT, R
 from src.data import (LINUX, MAC, ROOT_DIR, WINDOWS, bool_values_dict, boolean_cmd_to_msg, cmd_to_msg_usage,
                       color_name_to_ansi, config)
 from src.input_fields import choose_item
+from src.Dictionaries.utils import less_wrapper
 
 CONFIG_COLUMNS = tuple(
     zip_longest(
@@ -83,7 +84,9 @@ def save_command(entry: str, value: bool | str | int | Sequence) -> None:
     save_config(config)
 
 
-def print_config_representation() -> None:
+@less_wrapper
+def print_config_representation() -> str:
+    result = []
     for a, b, c in CONFIG_COLUMNS:
         a = a.replace('[', f'{BOLD}[').replace(']', f']{DEFAULT}')
         b = b.replace('[', f'{BOLD}[').replace(']', f']{DEFAULT}')
@@ -119,17 +122,18 @@ def print_config_representation() -> None:
             a = '-pos   -all │ '
         elif a == '-etym':
             a = '-etym       ╰ '
-
-        sys.stdout.write(
+        
+        result.append(
             f'{a:14s}{color_a}{state_a:10s}{level_a}{R}'
             f'{b:14s}{color_b}{state_b:10s}{level_b}{R}'
             f'{c:10s}{color_c}{state_c}{R}\n'
         )
-    sys.stdout.write(
+    result.append(
         f'\n--audio-path: {config["audio_path"]}\n'
         f'--audio-device: {config["audio_device"]}\n\n'
         'color configuration: "-c"\n'
     )
+    return ''.join(result)
 
 
 def set_width_settings(*args: str, **kwargs: str) -> str | None:
@@ -171,7 +175,6 @@ def set_width_settings(*args: str, **kwargs: str) -> str | None:
 
 def set_audio_path(*args: str, **kwargs: str) -> str | None:
     arg = args[1]
-
     if arg == 'auto':
         if WINDOWS:
             initial_path = os.path.join(os.environ['APPDATA'], 'Anki2')
@@ -182,12 +185,18 @@ def set_audio_path(*args: str, **kwargs: str) -> str | None:
         else:
             return f'Locating {R}"collection.media"{Color.err} failed:\n' \
                    f'Unknown path for {R}"collection.media"{Color.err} on {sys.platform!r}'
+    
+        try:
+            anki_directory_listing = os.listdir(initial_path)
+        except FileNotFoundError:
+            return f'Locating {R}"collection.media"{Color.err} failed:\n' \
+                   f'Directory with Anki data does not exists'
 
         user_dirs = []
-        for f in os.listdir(initial_path):
-            next_ = os.path.join(initial_path, f)
-            if os.path.isdir(next_) and 'collection.media' in os.listdir(next_):
-                user_dirs.append(next_)
+        for file in anki_directory_listing:
+            next_file = os.path.join(initial_path, file)
+            if os.path.isdir(next_file) and 'collection.media' in os.listdir(next_file):
+                user_dirs.append(next_file)
 
         if not user_dirs:
             return f'Locating {R}"collection.media"{Color.err} failed:\n' \
@@ -195,7 +204,7 @@ def set_audio_path(*args: str, **kwargs: str) -> str | None:
         elif len(user_dirs) == 1:
             path = os.path.join(user_dirs[0], 'collection.media')
         else:
-            for i, user_dir in enumerate(user_dirs, start=1):
+            for i, user_dir in enumerate(user_dirs, 1):
                 anki_user = os.path.basename(user_dir)
                 print(f'{Color.index}{i} {R}{anki_user}')
             col_dir = choose_item("\nWhich user's collection do you want to use?", user_dirs)
@@ -320,18 +329,9 @@ def boolean_commands(*args: str, **kwargs: str) -> str | None:
     return None
 
 
-def show_available_colors() -> None:
-    print(f'{R}{BOLD}Available colors:{DEFAULT}')
-    t = tuple(color_name_to_ansi.items())
-    for i, (name, col, lname, lcol) in enumerate(
-        (*t[0 + i], *t[len(t) // 2 + i]) for i in range(len(t) // 2)
-    ):
-        sys.stdout.write(f'{col}{name:9s}{lcol}{lname:14s}{col}██{lcol}██ {BOLD}{i}{DEFAULT}\n')
-    sys.stdout.write(f'{R}reset                  ██\n\n')
-
-
-def color_command() -> None:
-    print(f"""\
+@less_wrapper
+def color_command() -> str:
+    result = [f"""\
 {R}{BOLD}[Elements]   [Changes the color of]{DEFAULT}
 def1         {Color.def1}odd definitions and idiom definitions{R}
 def2         {Color.def2}even definitions{R}
@@ -349,5 +349,16 @@ inflection   {Color.inflection}inflections and additional label info{R}
 error        {Color.err}errors{R}
 attention    {Color.YEX}attention drawing{R}
 success      {Color.GEX}successful operation{R}
-delimit      {Color.delimit}delimiters/separators{R}\n""")
-    show_available_colors()
+delimit      {Color.delimit}delimiters/separators{R}
+
+{R}{BOLD}Available color:{DEFAULT}\n"""]
+
+    t = tuple(color_name_to_ansi.items())
+    for i, (name, col, lname, lcol) in enumerate(
+        (*t[0 + i], *t[len(t) // 2 + i]) for i in range(len(t) // 2)
+    ):
+        result.append(f'{col}{name:9s}{lcol}{lname:14s}{col}██{lcol}██ {BOLD}{i}{DEFAULT}\n')
+    result.append(f'{R}reset                  ██\n')
+
+    return ''.join(result)
+

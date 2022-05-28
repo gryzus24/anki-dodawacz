@@ -62,22 +62,26 @@ no_arg_commands = {
     '--audio-device': ffmpeg.user_set_audio_device,
     '-refresh': anki.refresh_cached_notes,
     '--add-note': anki.user_add_custom_note,
+}
+
+help_commands = {
+    '-config': c.print_config_representation, '-conf': c.print_config_representation,
     '--help': h.quick_help, '-help': h.quick_help, '-h': h.quick_help,
-    '--help-define-all': h.define_all_help,
     '--help-config': h.config_help, '--help-conf': h.config_help,
+    '--help-define-all': h.define_all_help,
     '--help-recording': h.recording_help, '--help-rec': h.recording_help,
-    '-config': c.print_config_representation, '-conf': c.print_config_representation
 }
 
 # Completer doesn't work on Windows.
 # It should work on macOS, but I haven't tested it yet.
 if LINUX:
-    import src.completer as completer
-    tab_completion = completer.Completer(
+    from src.completer import Completer
+    tab_completion = Completer(
         tuple(chain(
             boolean_cmd_to_msg,
             cmd_to_msg_usage,
             no_arg_commands,
+            help_commands,
             ('-b', '--browse', '--define-all')
         ))
     )
@@ -103,7 +107,10 @@ def search_interface() -> str:
 
         args = word.split()
         cmd = args[0]
-        if cmd in no_arg_commands:
+        if cmd in help_commands:
+            help_commands[cmd]()
+            continue
+        elif cmd in no_arg_commands:
             response = no_arg_commands[cmd]()
             if response is not None:
                 print(f'{Color.err if response.error else Color.GEX}{response.body}')

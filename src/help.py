@@ -1,4 +1,5 @@
 from src.colors import BOLD, Color, DEFAULT, R
+from src.Dictionaries.utils import less_wrapper
 
 
 def _title(s: str) -> str:
@@ -8,8 +9,9 @@ def _title(s: str) -> str:
 #
 # Help commands shouldn't exceed the width of 79.
 ##
-def quick_help() -> None:  # -h
-    print(f"""\
+@less_wrapper
+def quick_help() -> str:  # -h
+    return f"""\
 {_title('Search')}
 USAGE:
   Search $ QUERY [OPTIONS...] [separator] [QUERY2] [OPTIONS...] ...
@@ -74,11 +76,13 @@ Type command's name to display usage.
 -conf, -config      show current configuration and more options
 --help-config       show full config/commands help
 --help-define-all   show bulk/define_all help
---help-rec          show recording help\n""")
+--help-rec          show recording help
+"""
 
 
-def config_help() -> None:  # --help-config
-    print(f"""\
+@less_wrapper
+def config_help() -> str:  # --help-config
+    return f"""\
 Type command's name to display usage.
 
 {_title('Curses only commands')}
@@ -177,11 +181,13 @@ Hiding a phrase means replacing it with "..." (default)
 -conf, -config      show current configuration and more options
 --help-config       show full config/commands help (*)
 --help-define-all   show define_all help
---help-rec          show recording help\n""")
+--help-rec          show recording help
+"""
 
 
-def define_all_help() -> None:  # --help-define-all
-    print(f"""\
+@less_wrapper
+def define_all_help() -> str:  # --help-define-all
+    return f"""\
 {_title('Input fields and default values')}
 You can create cards from single words or lists of words faster by changing
 the `-default` value and disabling input fields (`-def` and `-sen`).
@@ -229,11 +235,13 @@ formatting options to apply.
 -conf, -config      show current configuration and more options
 --help-config       show full config/commands help
 --help-define-all   show define_all help (*)
---help-rec          show recording help\n""")
+--help-rec          show recording help
+"""
 
 
-def recording_help() -> None:  # --help-rec
-    print(f"""\
+@less_wrapper
+def recording_help() -> str:  # --help-rec
+    return f"""\
 {_title('Desktop audio recording')}
 The program offers a simple FFmpeg interface to record audio from the desktop.
 
@@ -266,4 +274,5 @@ To start the recording add the `-rec` option after the query.
 -conf, -config      show current configuration and more options
 --help-config       show full config/commands help
 --help-define-all   show define_all help
---help-rec          show recording help (*)\n""")
+--help-rec          show recording help (*)
+"""
