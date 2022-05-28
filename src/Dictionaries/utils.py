@@ -1,14 +1,14 @@
 from __future__ import annotations
 
-import subprocess
 import sys
-from shutil import get_terminal_size
+from shutil import get_terminal_size, which
+from subprocess import Popen, DEVNULL, PIPE, call
 from typing import Any, Callable, NoReturn, Optional
 
 import urllib3
 from urllib3.exceptions import ConnectTimeoutError, NewConnectionError
 
-from src.colors import Color
+from src.colors import R, Color
 from src.data import ON_TERMUX, ON_WINDOWS_CMD, POSIX, USER_AGENT, WINDOWS
 
 # Silence warnings if soupsieve is not installed, which is good
@@ -47,8 +47,8 @@ def request_soup(
         url: str, fields: Optional[dict[str, str]] = None, **kw: Any
 ) -> BeautifulSoup:
     r = http.request_encode_url('GET', url, fields=fields, **kw)
-    # At the moment only WordNet uses other than utf-8 encoding (iso-8859-1),
-    # so as long as there are no decoding problems we'll use utf-8.
+    # At the moment only WordNet uses other than UTF-8 encoding (iso-8859-1),
+    # so as long as there are no decoding problems we'll use UTF-8.
     return BeautifulSoup(r.data.decode(), 'lxml')
 
 
@@ -75,14 +75,14 @@ elif POSIX:
             sys.stdout.flush()
             # Termux's terminal dimensions depend on the on-screen keyboard size
             # Termux can't correctly preserve the buffer, so we'll do full clear.
-            subprocess.call(('clear',))
+            call(('clear',))
     else:
         def _clear_screen() -> None:
             # Even though `clear -x` is slower than directly using ANSI escapes
             # it doesn't have flickering issues, and it's more robust.
             sys.stdout.write('\033[?25l')  # Hide cursor
             sys.stdout.flush()
-            subprocess.call(('clear', '-x'))  # I hope the `-x` option works on macOS.
+            call(('clear', '-x'))  # I hope the `-x` option works on macOS.
 
 else:
     def _clear_screen() -> None:
@@ -100,6 +100,45 @@ class ClearScreen:
     else:
         def __exit__(self, tp: Any, v: Any, tb: Any) -> None:
             pass
+
+
+def display_in_less(s: str) -> int:
+    executable = which('less')
+    if executable is None:
+        if WINDOWS:
+            print(
+                f"'less'{Color.err} is not available in %PATH% or in the current directory.\n"
+                f"You can grab the latest Windows executable from:\n"
+                f"{R}https://github.com/jftuga/less-Windows/releases"
+            )
+        else:
+            print(f"{Color.err}Could not find the 'less' executable.\n"
+                  f"Install 'less' or disable this feature: '-less off'")
+        return 1
+
+    # r - accept escape sequences. -R does not produce desirable results on Windows.
+    # F - do not open the pager if output fits on the screen.
+    # K - exit on SIGINT. *This is important not to break keyboard input.
+    # X - do not clear the screen after exiting from the pager.
+    if WINDOWS:
+        env = {'LESSCHARSET': 'UTF-8'}
+        options = '-rFKX'
+    else:
+        env = None
+        options = '-RFKX'
+    with Popen((executable, options), stdin=PIPE, stderr=DEVNULL, env=env) as process:
+        try:
+            process.communicate(s.encode())
+        except:
+            process.kill()
+
+        # less returns 2 on SIGINT.
+        return_code = process.poll()
+        if return_code and return_code != 2:
+            print(f"{Color.err}Could not open the pager as: 'less {options}'\n")
+            return 1
+
+    return 0
 
 
 def wrap_lines(

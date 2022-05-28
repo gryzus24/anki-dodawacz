@@ -1,15 +1,14 @@
 from __future__ import annotations
 
 import os
-import shutil
 import sys
 from itertools import islice, zip_longest
-from subprocess import DEVNULL, PIPE, Popen
+from shutil import get_terminal_size
 from typing import Optional, Sequence, TYPE_CHECKING
 
 import src.anki_interface as anki
 import src.cards as cards
-from src.Dictionaries.utils import ClearScreen, get_width_per_column, wrap_and_pad, wrap_lines
+from src.Dictionaries.utils import ClearScreen, get_width_per_column, wrap_and_pad, wrap_lines, display_in_less
 from src.colors import BOLD, Color, DEFAULT, R
 from src.data import HORIZONTAL_BAR, WINDOWS, config
 
@@ -311,46 +310,11 @@ def prepare_to_print(
     return columns, column_width, last_col_fill
 
 
-def _display_in_less(s: str) -> None:
-    executable = shutil.which('less')
-    if executable is None:
-        if WINDOWS:
-            print(
-                f"'less'{Color.err} is not available in %PATH% or in the current directory.\n"
-                f"You can grab the latest Windows executable from:\n"
-                f"{R}https://github.com/jftuga/less-Windows/releases\n"
-            )
-        else:
-            print(f"{Color.err}Could not find the 'less' executable.\n")
-        return
-
-    # r - accept escape sequences. `-R` does not produce desirable results on Windows.
-    # F - do not open the pager if output fits on the screen.
-    # K - exit on SIGINT. *This is important not to break keyboard input.
-    # X - do not clear the screen after exiting from the pager.
-    if WINDOWS:
-        env = {'LESSCHARSET': 'UTF-8'}
-        options = '-rFKX'
-    else:
-        env = None
-        options = '-RFKX'
-    with Popen((executable, options), stdin=PIPE, stderr=DEVNULL, env=env) as process:
-        try:
-            process.communicate(s.encode())
-        except:
-            process.kill()
-
-        # less returns 2 on SIGINT.
-        return_code = process.poll()
-        if return_code and return_code != 2:
-            print(f"{Color.err}Could not open the pager as: 'less {options}'\n")
-
-
-def display_dictionary(dictionary: Dictionary) -> None:
+def display_dictionary(dictionary: Dictionary) -> int:
     if not dictionary.contents:
-        return
+        return 1
 
-    width, height = shutil.get_terminal_size()
+    width, height = get_terminal_size()
     ncols, state = config['-columns']
     if state == 'auto':
         ncols = None
@@ -361,14 +325,16 @@ def display_dictionary(dictionary: Dictionary) -> None:
     raw_str = stringify_columns(columns, col_width, last_col_fill)
     if config['-less']:
         with ClearScreen():
-            _display_in_less(raw_str + '\n')
+            return display_in_less(raw_str + '\n')
     else:
         with ClearScreen():
             sys.stdout.write(raw_str + '\n')
 
+    return 0
 
-def display_many_dictionaries(dictionaries: list[Dictionary]) -> None:
-    width, height = shutil.get_terminal_size()
+
+def display_many_dictionaries(dictionaries: list[Dictionary]) -> int:
+    width, height = get_terminal_size()
     col_width, last_col_fill = get_width_per_column(width, len(dictionaries))
 
     columns = []
@@ -379,10 +345,12 @@ def display_many_dictionaries(dictionaries: list[Dictionary]) -> None:
     raw_str = stringify_columns(columns, col_width, last_col_fill, ('║', '╥'))
     if config['-less']:
         with ClearScreen():
-            _display_in_less(raw_str + '\n')
+            return display_in_less(raw_str + '\n')
     else:
         with ClearScreen():
             sys.stdout.write(raw_str + '\n')
+
+    return 0
 
 
 def display_card(card: dict[str, str]) -> None:
@@ -392,7 +360,7 @@ def display_card(card: dict[str, str]) -> None:
         'phrase': Color.phrase, 'exsen': Color.exsen, 'pos': Color.pos,
         'etym': Color.etym, 'audio': '', 'recording': '',
     }
-    textwidth, _ = shutil.get_terminal_size()
+    textwidth, _ = get_terminal_size()
     delimit = textwidth * HORIZONTAL_BAR
     adjusted_textwidth = int(0.95 * textwidth)
     padding = (textwidth - adjusted_textwidth) // 2 * " "
@@ -493,9 +461,13 @@ def console_ui_entry(dictionaries: list[Dictionary], settings: QuerySettings) ->
     # Display dictionaries
     current_dict = dictionaries[0]
     if len(dictionaries) > 1:
-        display_many_dictionaries(dictionaries)
+        rc = display_many_dictionaries(dictionaries)
     else:
-        display_dictionary(current_dict)
+        rc = display_dictionary(current_dict)
+
+    if rc:
+        print(f'{Color.err}Could not display dictionary')
+        return
 
     if config['-sen'] and not settings.user_sentence:
         user_sentence = sentence_input()
@@ -507,24 +479,23 @@ def console_ui_entry(dictionaries: list[Dictionary], settings: QuerySettings) ->
     default_value = config['-default']
     if config['-def']:
         user_input = input(f'Choose definitions [{default_value}]> ').strip()
+        if not user_input:
+            user_input = default_value
     else:
         user_input = default_value
 
-    max_ = current_dict.count(lambda y: 'DEF' in y[0] or y[0] == 'SYN')
     user_definition = ''
     if user_input.startswith('/'):
         user_definition = user_input[1:]
         choices = [1]
-    elif user_input:
-        ret = parse_input(user_input, max_)
-        if ret is None:
-            print(f'{Color.GEX}Skipped!')
-            return
-        else:
-            choices = ret
     else:
-        ret = parse_input(default_value, max_)
+        ret = parse_input(
+            user_input,
+            current_dict.count(lambda y: 'DEF' in y[0] or y[0] == 'SYN')
+        )
         if ret is None:
+            if config['-def']:
+                print(f'{Color.GEX}Skipped!')
             return
         else:
             choices = ret
