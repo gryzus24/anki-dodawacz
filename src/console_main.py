@@ -430,13 +430,9 @@ def console_ui_entry(dictionaries: list[Dictionary], settings: QuerySettings) ->
     # Display dictionaries
     current_dict = dictionaries[0]
     if len(dictionaries) > 1:
-        rc = display_many_dictionaries(dictionaries)
+        display_many_dictionaries(dictionaries)
     else:
-        rc = display_dictionary(current_dict)
-
-    if rc:
-        print(f'{Color.err}Could not display dictionary')
-        return
+        display_dictionary(current_dict)
 
     if config['-sen'] and not settings.user_sentence:
         user_sentence = sentence_input()
