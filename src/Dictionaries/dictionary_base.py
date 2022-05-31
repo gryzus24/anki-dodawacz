@@ -92,6 +92,9 @@ class Dictionary:
 
     def static_entries_to_index_from_index(self, n: int) -> dict[str, int]:
         p_indices = self.phrase_indices
+        if not p_indices:
+            raise ValueError('Dictionary has no PHRASE entries')
+
         for pi in reversed(p_indices):
             if n >= pi:
                 return self.static_entries[p_indices.index(pi)]

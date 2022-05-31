@@ -5,20 +5,34 @@ from shutil import get_terminal_size, which
 from subprocess import Popen, DEVNULL, PIPE, call
 from typing import Any, Callable, NoReturn, Optional
 
-import urllib3
-from urllib3.exceptions import ConnectTimeoutError, NewConnectionError
-
 from src.colors import R, Color
 from src.data import ON_TERMUX, ON_WINDOWS_CMD, POSIX, USER_AGENT, WINDOWS, config
 
 # Silence warnings if soupsieve is not installed, which is good
-# because its bloated `css parse` slows down import time a lot.
+# because its bloated "css parse" slows down import time a lot.
 # ~70ms on my desktop and ~200ms on an android phone.
+# bs4 itself compiles regexes on startup which slows it down by
+# another 40-150ms. And guess what? Those regexes are useless.
 try:
     sys.stderr = None  # type: ignore
-    from bs4 import BeautifulSoup  # type: ignore
+    from bs4 import BeautifulSoup, __version__  # type: ignore
 finally:
     sys.stderr = sys.__stderr__
+
+if (*map(int, __version__.split('.')),) < (4, 10, 0):
+    sys.stderr.write(
+         f'{Color.err}-----------------------------------------------------------------{R}\n'
+         'Your version of beautifulsoup is out of date, please update:\n'
+         'pip install -U --no-deps beautifulsoup4\n'
+         'And while you are at it, kindly, uninstall the soupsieve package:\n'
+         'pip uninstall soupsieve\n'
+    )
+    raise SystemExit
+else:
+    del __version__
+
+import urllib3
+from urllib3.exceptions import ConnectTimeoutError, NewConnectionError
 
 http = urllib3.PoolManager(timeout=10, headers=USER_AGENT)
 

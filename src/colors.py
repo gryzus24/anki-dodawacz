@@ -12,7 +12,7 @@ else:
     BOLD = DEFAULT = ''
 
 # Color values are updated dynamically with `setattr(Color, ..., config[..._c])`
-class Color:
+class _Color:
     GEX        = config['success_c']
     YEX        = config['attention_c']
 
@@ -31,3 +31,6 @@ class Color:
     syngloss   = config['syngloss_c']
     err        = config['error_c']
     delimit    = config['delimit_c']
+
+Color = _Color()
+
