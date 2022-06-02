@@ -198,13 +198,12 @@ def refresh_cached_notes() -> AnkiResponse:
     return AnkiResponse(f'Notes refreshed', error=False)
 
 
-def gui_browse_cards(query: Sequence[str]) -> AnkiResponse:
-    q = ' '.join(query) if query else 'added:1'
-    response = invoke('guiBrowse', query=q)
+def gui_browse_cards(query: str = 'added:1') -> AnkiResponse:
+    response = invoke('guiBrowse', query=query)
     if response.error:
         return response
 
-    return AnkiResponse('Graphical card browser opened', error=False)
+    return AnkiResponse('Anki card browser opened', error=False)
 
 
 def user_add_custom_note() -> None:
@@ -233,7 +232,7 @@ def user_add_custom_note() -> None:
         print(f'{Color.err}Note could not be added:\n{R}{response.body}\n')
         return
 
-    print(f'{Color.GEX}Note added successfully')
+    print(f'{Color.success}Note added successfully')
     if ask_yes_no(f'Set "{model_name}" as -note?', default=True):
         save_command('note', model_name)
 

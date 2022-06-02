@@ -20,6 +20,7 @@ from __future__ import annotations
 import os
 import sys
 from itertools import chain, repeat
+from functools import lru_cache
 from typing import Generator, NoReturn, Optional, Sequence
 
 import src.anki_interface as anki
@@ -113,10 +114,14 @@ def search_interface() -> str:
         elif cmd in no_arg_commands:
             response = no_arg_commands[cmd]()
             if response is not None:
-                print(f'{Color.err if response.error else Color.GEX}{response.body}')
+                print(f'{Color.err if response.error else Color.success}{response.body}')
             continue
         elif cmd in ('-b', '--browse'):
-            response = anki.gui_browse_cards(query=args[1:])
+            query_args = args[1:]
+            if query_args:
+                response = anki.gui_browse_cards(' '.join(query_args))
+            else:
+                response = anki.gui_browse_cards('added:1')
             if response.error:
                 print(f'{Color.err}Could not open the card browser:\n{R}{response.body}\n')
             continue
@@ -134,7 +139,7 @@ def search_interface() -> str:
             if args[1].strip('-').lower() in ('h', 'help'):
                 raise IndexError
         except IndexError:  # Print help
-            print(f'{Color.YEX}{message}\n'
+            print(f'{Color.heed}{message}\n'
                   f'{R}{cmd} {usage}')
 
             # Print additional information
@@ -156,6 +161,13 @@ DICT_DISPATCH = {
     'wordnet': ask_wordnet, 'wnet': ask_wordnet,
     '-': lambda _: None
 }
+
+
+#@lru_cache(maxsize=None)
+def _query(key: str, query: str) -> Dictionary:
+    return DICT_DISPATCH[key](query)
+
+
 def get_dictionaries(
         query: str, dict_flags: Optional[Sequence[str]] = None
 ) -> list[Dictionary] | None:
@@ -164,7 +176,7 @@ def get_dictionaries(
 
     result = []
     for flag in dict_flags:
-        dictionary = DICT_DISPATCH[flag](query)
+        dictionary = _query(flag, query)
         if dictionary is not None:
             result.append(dictionary)
 
@@ -174,13 +186,13 @@ def get_dictionaries(
     if config['-dict2'] == '-':
         return None
 
-    print(f'{Color.YEX}Querying the fallback dictionary...')
-    fallback_dict = DICT_DISPATCH[config['-dict2']](query)
+    print(f'{Color.heed}Querying the fallback dictionary...')
+    fallback_dict = _query(config['-dict2'], query)
     if fallback_dict is not None:
         return [fallback_dict]
 
     if config['-dict'] != 'idioms' and config['-dict2'] != 'idioms':
-        print(f"{Color.YEX}To ask the idioms dictionary use {R}`{query} -i`")
+        print(f"{Color.heed}To ask the idioms dictionary use {R}`{query} -i`")
     return None
 
 
@@ -311,7 +323,7 @@ def from_define_all_file(_input: str) -> Generator[str, None, None]:
             if _input:
                 yield _input
 
-    print(f'{Color.YEX}** {R}"{define_file}"{Color.YEX} has been exhausted **\n')
+    print(f'{Color.heed}** {R}"{define_file}"{Color.heed} has been exhausted **\n')
 
 
 def main() -> NoReturn:

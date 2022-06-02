@@ -1,4 +1,4 @@
-from colorama import init  # type: ignore
+from colorama import init  # type: ignore[import]
 
 from src.data import POSIX, config
 
@@ -13,8 +13,8 @@ else:
 
 # Color values are updated dynamically with `setattr(Color, ..., config[..._c])`
 class _Color:
-    GEX        = config['success_c']
-    YEX        = config['attention_c']
+    success    = config['success_c']
+    heed       = config['heed_c']
 
     syn        = config['syn_c']
     exsen      = config['exsen_c']
@@ -29,7 +29,7 @@ class _Color:
     inflection = config['inflection_c']
     etym       = config['etym_c']
     syngloss   = config['syngloss_c']
-    err        = config['error_c']
+    err        = config['err_c']
     delimit    = config['delimit_c']
 
 Color = _Color()

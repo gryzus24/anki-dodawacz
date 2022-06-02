@@ -14,8 +14,8 @@ from src.data import ON_TERMUX, ON_WINDOWS_CMD, POSIX, USER_AGENT, WINDOWS, conf
 # bs4 itself compiles regexes on startup which slows it down by
 # another 40-150ms. And guess what? Those regexes are useless.
 try:
-    sys.stderr = None  # type: ignore
-    from bs4 import BeautifulSoup, __version__  # type: ignore
+    sys.stderr = None  # type: ignore[assignment]
+    from bs4 import BeautifulSoup, __version__  # type: ignore[import]
 finally:
     sys.stderr = sys.__stderr__
 

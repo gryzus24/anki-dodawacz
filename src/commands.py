@@ -60,8 +60,8 @@ COLOR_TO_MSG = {
     'phon': 'Phonetic spelling color',
     'label': 'Label color',
     'inflection': 'Inflections and additional label info color',
-    'error': 'Errors color',
-    'attention': 'Attention drawing color',
+    'err': 'Errors color',
+    'heed': 'Attention drawing color',
     'success': 'Successful operation color',
     'delimit': 'Delimiters/separators color',
 }
@@ -122,7 +122,7 @@ def print_config_representation() -> str:
             a = '-pos   -all │ '
         elif a == '-etym':
             a = '-etym       ╰ '
-        
+
         result.append(
             f'{a:14s}{color_a}{state_a:10s}{level_a}{R}'
             f'{b:14s}{color_b}{state_b:10s}{level_b}{R}'
@@ -154,7 +154,7 @@ def set_width_settings(*args: str, **kwargs: str) -> str | None:
             return f'Invalid value: {R}{value}\n' \
                    f'{cmd} {cmd_to_msg_usage[cmd][1]}'
         else:
-            print(f'{R}{kwargs["message"]}: {Color.GEX}{value}')
+            print(f'{R}{kwargs["message"]}: {Color.success}{value}')
             save_command(cmd, [val, ''])
             return None
 
@@ -168,7 +168,7 @@ def set_width_settings(*args: str, **kwargs: str) -> str | None:
     else:
         raise AssertionError('unreachable')
 
-    print(f'{R}{kwargs["message"]}: {Color.GEX}{"".join(map(str, v))}')
+    print(f'{R}{kwargs["message"]}: {Color.success}{"".join(map(str, v))}')
     save_command(cmd, v)
     return None
 
@@ -185,7 +185,7 @@ def set_audio_path(*args: str, **kwargs: str) -> str | None:
         else:
             return f'Locating {R}"collection.media"{Color.err} failed:\n' \
                    f'Unknown path for {R}"collection.media"{Color.err} on {sys.platform!r}'
-    
+
         try:
             anki_directory_listing = os.listdir(initial_path)
         except FileNotFoundError:
@@ -215,7 +215,7 @@ def set_audio_path(*args: str, **kwargs: str) -> str | None:
     else:
         path = os.path.expanduser(os.path.normpath(' '.join(args[1:])))
 
-    print(f'{Color.YEX}{kwargs["message"]} set to:\n'
+    print(f'{Color.heed}{kwargs["message"]} set to:\n'
           f'{R}"{path}"')
     save_command('audio_path', path)
     return None
@@ -286,7 +286,7 @@ def set_colors(*args: str, **ignore: Any) -> str | None:
     try:
         color = args[2].lower()
     except IndexError:
-        return f'{Color.YEX}No color provided\n' \
+        return f'{Color.heed}No color provided\n' \
                f'{R}{cmd} {element} {{color}}'
 
     if color not in color_name_to_ansi:
@@ -346,9 +346,9 @@ phrase       {Color.phrase}phrase{R}
 phon         {Color.phon}phonetic spelling{R}
 label        {Color.label}part of speech labels{R}
 inflection   {Color.inflection}inflections and additional label info{R}
-error        {Color.err}errors{R}
-attention    {Color.YEX}attention drawing{R}
-success      {Color.GEX}successful operation{R}
+err          {Color.err}errors{R}
+heed         {Color.heed}attention drawing{R}
+success      {Color.success}successful operation{R}
 delimit      {Color.delimit}delimiters/separators{R}
 
 {R}{BOLD}Available color:{DEFAULT}\n"""]

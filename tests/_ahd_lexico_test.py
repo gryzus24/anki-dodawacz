@@ -115,7 +115,7 @@ class Setup:
         self.buffer = {}
 
         words = load_words(WORDS_FILE_PATH)
-        sys.stdout.write(f'\nTotal words loaded : {Color.GEX}{len(words)}\n')
+        sys.stdout.write(f'\nTotal words loaded : {Color.success}{len(words)}\n')
 
         if SAVE_TESTED_WORDS_TO_FILE:
             try:
@@ -125,25 +125,25 @@ class Setup:
                 with open('_tested_words.json', 'w') as f:
                     f.write('{}')
             else:
-                sys.stdout.write(f'Total words tested : {Color.GEX}{len(tested_words)}\n')
+                sys.stdout.write(f'Total words tested : {Color.success}{len(tested_words)}\n')
 
                 words.difference_update(set(tested_words))
                 if not words:
-                    sys.stdout.write(f'{Color.YEX}\n* * *  No words to test  * * *\n')
+                    sys.stdout.write(f'{Color.heed}\n* * *  No words to test  * * *\n')
                     if tested_words:
-                        sys.stdout.write(f'{Color.YEX}Rerunning already tested words\n\n')
+                        sys.stdout.write(f'{Color.heed}Rerunning already tested words\n\n')
                         words = tested_words
                     else:
                         sys.stdout.write('Exiting...\n')
                         raise SystemExit
 
-                sys.stdout.write(f'Words left to test : {Color.GEX}{len(words)}\n')
+                sys.stdout.write(f'Words left to test : {Color.success}{len(words)}\n')
                 self.tested_words = tested_words
 
         if SAMPLE_SIZE < len(words):
             words = sample(tuple(words), SAMPLE_SIZE)
 
-        sys.stdout.write(f'Testing now        : {Color.GEX}{len(words)}\n\n')
+        sys.stdout.write(f'Testing now        : {Color.success}{len(words)}\n\n')
         self.words = words
 
     @property
@@ -316,7 +316,7 @@ def print_logs(logs, word, col_width):
         if msg.startswith('OK'):
             if LOG_LEVEL in {'ERROR', 'INFO'}:
                 continue
-            c = Color.GEX
+            c = Color.success
         elif msg.startswith('??'):
             if LOG_LEVEL == 'ERROR':
                 continue

@@ -54,7 +54,7 @@ def diki_audio(raw_phrase: str, flag: str = '') -> str:
 
     last_phrase = ''
     for method in salvage_methods:
-        diki_phrase = method(diki_phrase)  # type: ignore
+        diki_phrase = method(diki_phrase)  # type: ignore[operator]
         # To avoid making unnecessary requests, continue if nothing in the url has changed.
         if last_phrase == diki_phrase:
             continue

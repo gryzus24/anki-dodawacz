@@ -2,10 +2,11 @@ from __future__ import annotations
 
 import curses
 import os
+from random import choice
 from shutil import get_terminal_size
 from collections import Counter, deque
-from itertools import islice
-from typing import Any, Callable, Iterable, NamedTuple, Optional, Reversible, TYPE_CHECKING
+from itertools import islice, zip_longest
+from typing import Any, Callable, Iterable, NamedTuple, Optional, Reversible, Sequence, TYPE_CHECKING
 
 import src.anki_interface as anki
 import src.cards as cards
@@ -22,24 +23,44 @@ if TYPE_CHECKING:
 # Also, mouse wheel requires ncurses >= 6.
 BUTTON5_PRESSED = 2097152
 
-# Assume the 16-bit color capability. Don't be silly.
-os.environ['TERM'] = 'xterm-256color'
+# Custom color pairs.
+BLACK_ON_GREEN = 31
+BLACK_ON_RED = 32
 
-ansi_to_pair = {
-    '\033[39m': 0, '\033[30m': 1, '\033[31m': 2, '\033[32m': 3,
-    '\033[33m': 4, '\033[34m': 5, '\033[35m': 6, '\033[36m': 7,
-    '\033[37m': 8, '\033[90m': 9, '\033[91m': 10, '\033[92m': 11,
-    '\033[93m': 12, '\033[94m': 13, '\033[95m': 14, '\033[96m': 15,
-    '\033[97m': 16,
-}
-
-
-class CursesColor:
-    def __getattribute__(self, item: str) -> int:
-        return curses.color_pair(ansi_to_pair[getattr(_Color, item)])
+ANSI_COLORS = (
+    '\033[39m',
+    '\033[30m', '\033[31m', '\033[32m', '\033[33m',
+    '\033[34m', '\033[35m', '\033[36m', '\033[37m',
+    '\033[90m', '\033[91m', '\033[92m', '\033[93m',
+    '\033[94m', '\033[95m', '\033[96m', '\033[97m',
+)
 
 
-Color = CursesColor()
+class _CursesColor:
+    _lookup = None
+
+    # It's better to wait for "curses.COLORS" variable to become available,
+    # instead of fiddling with terminfo or some environment variables to
+    # properly initialize color_pair lookup. The instance of this class requires
+    # calling "setup_colors" after curses.start_color. As far as I know, this
+    # is the only way to provide a common API with that of console UI without
+    # using metaclasses.
+
+    def __getattr__(self, item: str) -> int:
+        return self._lookup[getattr(_Color, item)]  # type: ignore[index]
+
+    def setup_colors(self, ncolors: int) -> None:
+        if self._lookup is not None:
+            return
+        # Curses does not throw an error when accessing uninitialized color pairs.
+        # Wrap colors only when things may break.
+        if ncolors == 8 or ncolors == 16777216:
+            self._lookup = {k: curses.color_pair(i % 8) for i, k in enumerate(ANSI_COLORS)}
+        else:
+            self._lookup = {k: curses.color_pair(i) for i, k in enumerate(ANSI_COLORS)}
+
+
+Color = _CursesColor()
 
 
 def format_dictionary(
@@ -231,12 +252,12 @@ def format_dictionary(
             first_line, rest = wrap_method(entry[1], 2, 0)
             temp_boxes.extend(_into_boxes(
                 (
-                   ('> ', Color.YEX | curses.A_BOLD),
+                   ('> ', Color.heed | curses.A_BOLD),
                    (first_line, 0 | curses.A_BOLD)
                 ), (rest, 0 | curses.A_BOLD)
             ))
         else:
-            raise AssertionError(f'unreachable dictionary operation: {op!r}')
+            raise AssertionError(f'unreachable dictionary op: {op!r}')
 
         boxes.append(temp_boxes)
         lines_total += len(temp_boxes)
@@ -269,7 +290,8 @@ def create_and_add_card_to_anki(
         if config['-ankiconnect']:
             response = anki.add_card_to_anki(card)
             if response.error:
-                status_bar.send_anki_response(f'({card["phrase"]}) Could not add card:', response)
+                status_bar.error(f'({card["phrase"]}) Could not add card:', newline=True)
+                status_bar.add_str(response.body)
             else:
                 ncards_added += 1
                 if ok_response is None:
@@ -280,50 +302,52 @@ def create_and_add_card_to_anki(
             status_bar.success(f'Card saved to a file: {os.path.basename(cards.CARD_SAVE_LOCATION)!r}')
 
     if ok_response is not None:
-        status_bar.send_anki_response(
-            f'Successfully added {ncards_added} card{"s" if ncards_added > 1 else ""}',
-            ok_response
-        )
-
-
-def _draw_help() -> None:
-    try:
-        help_win = curses.newwin(2, COLS - 2, LINES - 3, 1)
-    except curses.error:
-        return
-
-    messages = [
-        ('S ', ' Cards per cell'), ('1-9', ' Select cell'), ('gg', ' Go top'),
-        ('j/k', ' Move down/up'), ('F1', ' Help'),
-        ('C ', ' Card from cells'), ('dd', ' Deselect all'), ('G ', ' Go EOF'),
-        ('h/l', ' Swap screens'), ('q ', ' Exit'),
-    ]
-    # As the second row is longer - and we can easily tell - to simplify
-    # things let's start from the hard coded 5 as long as:
-    # TODO: Display additional help cells as terminal width increases and hide
-    #       as it decreases, but keep 5 elements per row when width is 80.
-    #       Something similar to what nano does.
-    line_len = sum(len(''.join(x)) for x in messages[5:])
-    free_per_cell = (COLS - 3 - line_len) // 4
-    if free_per_cell < 1:
-        free_per_cell = 1
-
-    gaps = 4 * [free_per_cell * ' '] + ['']
-    y = gap_i = 0
-    for i, (key, msg) in enumerate(messages, 1):
-        help_win.insstr(y, 0, msg)
-        help_win.insstr(y, 0, key, curses.color_pair(17))
-        help_win.insstr(y, 0, gaps[gap_i])
-        if not i % 5:
-            y += 1
-            gap_i = 0
-        else:
-            gap_i += 1
-
-    help_win.noutrefresh()
+        status_bar.success(f'Successfully added {ncards_added} card{"s" if ncards_added > 1 else ""}', newline=True)
+        status_bar.add_str(ok_response.body)
 
 
 BORDER_PAD = 1
+
+def draw_help(stdscr: curses._CursesWindow) -> None:
+    top_line = [
+        ('F1', ' Help '), ('j/k', ' Move down/up '), ('1-9', ' Select cell '),
+        ('B ', ' Card browser '), ('gg', ' Go top '), ('^l', ' Redraw screen '),
+    ]
+    bot_line = [
+        ('q ', ' Exit '), ('h/l', ' Swap screens '), ('dd', ' Deselect all '),
+        ('C ', ' Create cards '), ('G ', ' Go EOF '), ('F8', ' Rearrange columns '),
+    ]
+
+    top_bot_pairs = []
+    space_occupied = 0
+    space_to_occupy = COLS - 2*BORDER_PAD
+    for top_pair, bot_pair in zip_longest(top_line, bot_line, fillvalue=('', '')):
+        pair_width = max(map(len, (''.join(top_pair), ''.join(bot_pair))))
+        space_occupied += pair_width
+        if space_occupied > space_to_occupy:
+            space_occupied -= pair_width
+            break
+        else:
+            top_bot_pairs.append((top_pair, bot_pair))
+
+    space_left = space_to_occupy - space_occupied
+    try:
+        gap = (space_left // len(top_bot_pairs)) * ' '
+    except ZeroDivisionError:  # window too small, because of COLS
+        return
+
+    bot_y = LINES - 2
+    top_y = bot_y - 1
+    a_standout = curses.A_STANDOUT
+    try:
+        for (top_cmd, top_msg), (bot_cmd, bot_msg) in reversed(top_bot_pairs):
+            stdscr.insstr(top_y, BORDER_PAD, f'{top_msg}{gap}')
+            stdscr.insstr(top_y, BORDER_PAD, top_cmd, a_standout)
+            stdscr.insstr(bot_y, BORDER_PAD, f'{bot_msg}{gap}')
+            stdscr.insstr(bot_y, BORDER_PAD, bot_cmd, a_standout)
+    except curses.error:  # window too small, because of LINES
+        pass
+
 
 class StatusBar:
     def __init__(self, *, persistence: int) -> None:
@@ -346,7 +370,7 @@ class StatusBar:
         if last_color != color_pair:
             return self.buffer.append((line, color_pair))
 
-        new_line = last_line + '  ' + line
+        new_line = f'{last_line}  {line}'
         space_missing = COLS - len(new_line) - 2*BORDER_PAD
         if space_missing < 0:
             self.buffer[-1] = (
@@ -359,21 +383,18 @@ class StatusBar:
 
     def success(self, line: str, *, newline: bool = False) -> None:
         if newline:
-            self.add_lines([line], curses.color_pair(18))
+            self.add_lines([line], curses.color_pair(BLACK_ON_GREEN))
         else:
-            self.append_line(line, curses.color_pair(18))
+            self.append_line(line, curses.color_pair(BLACK_ON_GREEN))
 
     def error(self, line: str, *, newline: bool = False) -> None:
         if newline:
-            self.add_lines([line], curses.color_pair(19))
+            self.add_lines([line], curses.color_pair(BLACK_ON_RED))
         else:
-            self.append_line(line, curses.color_pair(19))
+            self.append_line(line, curses.color_pair(BLACK_ON_RED))
 
-    def send_anki_response(self, msg: str, response: AnkiResponse) -> None:
-        self.buffer.append(
-            (msg, curses.color_pair(19) if response.error else curses.color_pair(18))
-        )
-        self.add_lines(response.body.split('\n'), curses.color_pair(0))
+    def add_str(self, string: str) -> None:
+        self.add_lines(string.splitlines(), curses.color_pair(0))
 
     def draw_if_available(self) -> None:
         if not self.buffer:
@@ -423,15 +444,10 @@ def corollary_boxes_to_toggle() -> set[str]:
 
 DIRECTLY_TOGGLEABLE = {'DEF', 'SUBDEF', 'SYN'}
 AUTO_COLUMN_WIDTH = 43
-MINIMAL_TEXT_WIDTH = 24
+MINIMUM_TEXT_WIDTH = 24
 
 class Screen:
-    def __init__(self,
-            stdscr: curses._CursesWindow,
-            dictionary: Dictionary,
-    ) -> None:
-        # Static.
-        self.stdscr = stdscr
+    def __init__(self, dictionary: Dictionary) -> None:
         self.dictionary = dictionary
 
         # Display
@@ -471,8 +487,8 @@ class Screen:
         while True:
             col_width = (width // min_columns) - 1
             col_text_width = col_width - 2*margin
-            if col_text_width < MINIMAL_TEXT_WIDTH:
-                margin -= (MINIMAL_TEXT_WIDTH - col_text_width) // 2
+            if col_text_width < MINIMUM_TEXT_WIDTH:
+                margin -= (MINIMUM_TEXT_WIDTH - col_text_width) // 2
                 if margin < 0:
                     margin = 0
                 col_text_width = col_width - 2*margin
@@ -530,18 +546,16 @@ class Screen:
         self.boxes = _boxes
         self.columns = self._split_into_columns(_boxes)
 
+        a_normal = curses.A_NORMAL
         for lines, state in zip(_boxes, self.box_states):
-            if state != curses.A_NORMAL:
+            if state != a_normal:
                 for line in lines:
                     line.bkgd(0, state)
 
-        eof = self.get_EOF()
-        if self.scroll_pos > eof:
-            self.scroll_pos = eof
-
     def draw(self) -> None:
-        # scroll_pos can be bigger than eof if self.bottom_margin has decreased.
-        eof = self.get_EOF()
+        # scroll_pos can be bigger than eof if self.bottom_margin
+        # has decreased or window has been resized.
+        eof = self.get_scroll_EOF()
         if self.scroll_pos > eof:
             self.scroll_pos = eof
 
@@ -563,7 +577,7 @@ class Screen:
                     box.mvwin(y, tx + margin)
                     box.noutrefresh()
                 tx += col_width + 1
-        except curses.error:  # very small window
+        except curses.error:  # window too small
             pass
 
     def _toggle_box(self, i: int, state: int) -> None:
@@ -645,20 +659,21 @@ class Screen:
 
     def deselect_all(self) -> None:
         self.phraseno_to_ntoggles.clear()
+        a_normal = curses.A_NORMAL
         for i, state in enumerate(self.box_states):
-            if state != curses.A_NORMAL:
-                self._toggle_box(i, curses.A_NORMAL)
+            if state != a_normal:
+                self._toggle_box(i, a_normal)
 
     def get_indices_of_selected_boxes(self) -> list[int]:
         return [i for i, x in enumerate(self.box_states) if x == curses.A_STANDOUT]
 
-    def get_EOF(self) -> int:
+    def get_scroll_EOF(self) -> int:
         r = max(map(len, self.columns)) - self.screen_height
         return r if r > 0 else 0
 
     def view_down(self, n: int = 1) -> None:
         self.scroll_pos += n
-        eof = self.get_EOF()
+        eof = self.get_scroll_EOF()
         if self.scroll_pos > eof:
             self.scroll_pos = eof
 
@@ -669,7 +684,8 @@ class Screen:
 
 
 class ScreenBuffer:
-    def __init__(self, screens: list[Screen]) -> None:
+    def __init__(self, stdscr: curses._CursesWindow, screens: Sequence[Screen]) -> None:
+        self.stdscr = stdscr
         self.screens = screens
         self.cursor = 0
         self.nohelp = config['-nohelp']
@@ -689,7 +705,7 @@ class ScreenBuffer:
         return self.current
 
     def draw_border(self, screen: Screen) -> None:
-        stdscr = screen.stdscr
+        stdscr = self.stdscr
         ncols, col_width, _ = screen.column_params
 
         stdscr.box()
@@ -702,64 +718,65 @@ class ScreenBuffer:
             if truncated.strip():
                 try:
                     stdscr.addstr(0, 2, f'[ {truncated}... ]', curses.A_BOLD)
-                except curses.error:  # very small window
+                except curses.error:  # window too small
                     pass
         else:
+            # curses.error should not happen here, I assert that.
             stdscr.addstr(0, 2, f'[ {header_title} ]', curses.A_BOLD)
 
         nscreens = len(self.screens)
         if nscreens > 1:
-            buffer_hint = f'╴{self.cursor+1}/{nscreens}╶'
-            bhint_x = COLS - len(buffer_hint) - 1
-            if bhint_x > 0:
+            buffer_hint = f'{self.cursor+1}/{nscreens}'
+            bhint_y = LINES - 1
+            bhint_x = COLS - len(buffer_hint) - 2
+            if bhint_x > 1:
                 try:
-                    stdscr.addstr(LINES - 1, bhint_x, buffer_hint, curses.A_BOLD)
-                except curses.error:  # very small window
+                    stdscr.addch(bhint_y, bhint_x - 1, '╴')
+                    stdscr.addstr(bhint_y, bhint_x, buffer_hint, curses.A_BOLD)
+                    stdscr.addch(bhint_y, bhint_x + len(buffer_hint), '╶')
+                except curses.error:  # window too small
                     pass
 
+        shift = BORDER_PAD + col_width
+        screen_height = screen.screen_height
         try:
-            shift = BORDER_PAD + col_width
             for i in range(1, ncols):
-                stdscr.vline(BORDER_PAD, i * shift, 0, LINES - 2 * BORDER_PAD)
-        except (IndexError, curses.error):
+                stdscr.vline(BORDER_PAD, i * shift, 0, screen_height)
+        except curses.error:
             pass
 
         stdscr.bkgd(0, Color.delimit)
 
     def draw(self, screen: Screen) -> None:
-        self.draw_border(screen)
-        screen.stdscr.noutrefresh()
         if self.nohelp:
             screen.bottom_margin = 0
         else:
             screen.bottom_margin = 2
+            draw_help(self.stdscr)
 
+        self.draw_border(screen)
+        self.stdscr.noutrefresh()
         screen.draw()
-        if not self.nohelp:
-            _draw_help()
 
-    def update_after_resize(self, _lines: int, _cols: int) -> None:
-        # prevents malloc() errors from ncurses on the i686 binaries.
-        if _cols < 2:
+    def update_after_resize(self) -> None:
+        global LINES, COLS
+        COLS, LINES = get_terminal_size()
+
+        # prevents malloc() errors from ncurses on 32-bit binaries.
+        if COLS < 2:
             return
+
         # This is noticeably slow when there are more than 10 screens.
         # Updating lazily doesn't help, because `curses.resize_term` is what
         # takes the majority of the time.
-        curses.resize_term(_lines, _cols)
+        curses.resize_term(LINES, COLS)
         for screen in self.screens:
             screen.update_for_redraw()
         # prevents stalling when updating takes a noticeable amount of time.
         curses.flushinp()
 
+        self.stdscr.clearok(True)
 
-KEY_MAP = {
-    '\x02': 'C-b',
-    '\x06': 'C-f',
-    '\x0c': 'C-l',
-    '\x0e': 'C-n',
-    '\x10': 'C-p',
-    '\x18': 'C-x',
-}
 
 # Unfortunately Python's readline api does not expose functions and variables
 # responsible for signal handling, which makes it impossible to reconcile
@@ -782,12 +799,31 @@ else:
 def get_wch_sigwinch(stdscr: curses._CursesWindow) -> int | str | None:
     try:
         return stdscr.get_wch()
-    except curses.error:
+    except curses.error:  # readline is interfering
         return None
 
 
 COLS = LINES = 0
 ###############################################################################
+
+
+KEYBOARD_SELECTOR_CHARS = (
+    '1', '2', '3', '4', '5', '6', '7', '8', '9', '0',
+    '!', '@', '#', '$', '%', '^', '&', '*', '(', ')',
+)
+
+DOUBLE_TAP_CHARS = {'d', 'g'}
+
+KEY_MAP = {
+    #'\x02': 'C-b',
+    #'\x06': 'C-f',
+    '\x0c': 'C-l',
+    '\x0e': 'C-n',
+    # '\x0f': 'C-o',
+    '\x10': 'C-p',
+    #'\x14': 'C-t',
+    '\x18': 'C-x',
+}
 
 
 def _curses_main(
@@ -803,9 +839,10 @@ def _curses_main(
     # readline or not. Let's always start with a fresh buffer.
     curses.flushinp()
 
-    screen_buffer = ScreenBuffer([Screen(stdscr, d) for d in dictionaries])
+    screen_buffer = ScreenBuffer(stdscr, tuple(map(Screen, dictionaries)))
     screen = screen_buffer.current
     status_bar = StatusBar(persistence=3)
+
     char_queue: deque[str] = deque(maxlen=2)
     while True:
         stdscr.erase()
@@ -816,14 +853,35 @@ def _curses_main(
         c = get_wch_sigwinch(stdscr)
         if is_resized(c):
             curses.napms(125)
-            COLS, LINES = get_terminal_size()
-            screen_buffer.update_after_resize(LINES, COLS)
-            stdscr.clearok(True)
+            screen_buffer.update_after_resize()
             continue
 
-        c = KEY_MAP.get(c, c)  # type: ignore
+        c = KEY_MAP.get(c, c)  # type: ignore[arg-type]
+        if c in DOUBLE_TAP_CHARS:
+            char_queue.append(c)  # type: ignore[arg-type]
+        else:
+            char_queue.clear()
+
+        ## Events
         if c in ('q', 'Q', 'C-x'):
             break
+        elif c == curses.KEY_F1:
+            screen_buffer.nohelp = not screen_buffer.nohelp
+
+        elif c in (curses.KEY_LEFT, 'h'):
+            screen = screen_buffer.previous()
+        elif c in (curses.KEY_RIGHT, 'l'):
+            screen = screen_buffer.next()
+        elif c in (curses.KEY_DOWN, 'j', 'C-n'):
+            screen.view_down(2)
+        elif c in (curses.KEY_UP, 'k', 'C-p'):
+            screen.view_up(2)
+
+        elif char_queue.count('d') == 2:
+            screen.deselect_all()
+        elif c in KEYBOARD_SELECTOR_CHARS:
+            screen.mark_box_by_number(KEYBOARD_SELECTOR_CHARS.index(c) + 1)
+
         elif c == 'C':
             selection_data = screen.get_indices_of_selected_boxes()
             if selection_data:
@@ -836,37 +894,19 @@ def _curses_main(
                 screen.deselect_all()
             else:
                 status_bar.error('Nothing selected')
-        elif c == 'S':
-            status_bar.success('...')
-        elif c == curses.KEY_MOUSE:
-            _, x, y, _, bstate = curses.getmouse()
-            if bstate & curses.BUTTON1_PRESSED:
-                screen.mark_box_at(y, x)
-            elif bstate & curses.BUTTON4_PRESSED:
-                screen.view_up(2)
-            elif bstate & BUTTON5_PRESSED:
-                screen.view_down(2)
-        elif c in (curses.KEY_DOWN, 'j', 'C-n'):
-            screen.view_down(2)
-        elif c in (curses.KEY_UP, 'k', 'C-p'):
-            screen.view_up(2)
-        elif c in (curses.KEY_LEFT, 'h', 'C-b'):
-            screen = screen_buffer.previous()
-        elif c in (curses.KEY_RIGHT, 'l', 'C-f'):
-            screen = screen_buffer.next()
-        # 338: PageDown, 339: PageUp
-        elif c in (curses.KEY_SNEXT, 338):
-            screen.view_down(LINES - 2 * BORDER_PAD - 1)
-        elif c in (curses.KEY_SPREVIOUS, 339):
-            screen.view_up(LINES - 2 * BORDER_PAD - 1)
-        elif c == 'G':
-            screen.scroll_pos = screen.get_EOF()
-        elif c == 'C-l':
-            COLS, LINES = get_terminal_size()
-            screen_buffer.update_after_resize(LINES, COLS)
-            stdscr.clearok(True)
-        elif c == curses.KEY_F1:
-            screen_buffer.nohelp = not screen_buffer.nohelp
+        elif c == 'B':
+            response = anki.gui_browse_cards()
+            if response.error:
+                status_bar.error('Could not open a card browser:', newline=True)
+                status_bar.add_str(response.body)
+            else:
+                status_bar.success('Anki card browser opened.')
+
+        elif c in ('G', curses.KEY_END):
+            screen.scroll_pos = screen.get_scroll_EOF()
+        elif char_queue.count('g') == 2 or c == curses.KEY_HOME:
+            screen.scroll_pos = 0
+
         elif c == curses.KEY_F8:
             col_state = screen.column_state
             if col_state > 4:
@@ -876,23 +916,21 @@ def _curses_main(
             screen.column_state = col_state
             screen.update_for_redraw()
             status_bar.success(str(col_state) if col_state else 'Auto')
-        elif isinstance(c, str):
-            n = {
-                '1': 1, '2': 2, '3': 3, '4': 4, '5': 5, '6': 6, '7': 7,
-                '8': 8, '9': 9, '0': 10, '!': 11, '@': 12, '#': 13, '$': 14,
-                '%': 15, '^': 16, '&': 17, '*': 18, '(': 19, ')': 20
-            }.get(c)
-            if n is not None:
-                screen.mark_box_by_number(n)
+        elif c == 'C-l':
+            screen_buffer.update_after_resize()
 
-        if c in ('g', 'd'):
-            char_queue.append(c)  # type: ignore
-            if char_queue.count('g') == 2:
-                screen.scroll_pos = 0
-            elif char_queue.count('d') == 2:
-                screen.deselect_all()
-        else:
-            char_queue.clear()
+        elif c == curses.KEY_MOUSE:
+            _, x, y, _, bstate = curses.getmouse()
+            if bstate & curses.BUTTON1_PRESSED:
+                screen.mark_box_at(y, x)
+            elif bstate & curses.BUTTON4_PRESSED:
+                screen.view_up(2)
+            elif bstate & BUTTON5_PRESSED:
+                screen.view_down(2)
+        elif c in (curses.KEY_SNEXT, curses.KEY_NPAGE):
+            screen.view_down(screen.screen_height - 1)
+        elif c in (curses.KEY_SPREVIOUS, curses.KEY_PPAGE):
+            screen.view_up(screen.screen_height - 1)
 
     return 0
 
@@ -901,7 +939,12 @@ def curses_ui_entry(dictionaries: list[Dictionary], settings: QuerySettings) -> 
     try:
         stdscr = curses.initscr()
 
-        curses.curs_set(0)
+        try:
+            # make the cursor invisible.
+            curses.curs_set(0)
+        except curses.error:  # not supported
+            pass
+
         curses.cbreak()
         curses.noecho()
         curses.mousemask(-1)
@@ -912,23 +955,33 @@ def curses_ui_entry(dictionaries: list[Dictionary], settings: QuerySettings) -> 
 
         try:
             curses.start_color()
-        except:
+        except:  # some internal table cannot be allocated?
+            pass
+        try:
+            curses.use_default_colors()
+        except curses.error:  # not supported
             pass
 
-        curses.use_default_colors()
-        for i in range(16):
+        ncolors = curses.COLORS
+        Color.setup_colors(ncolors)
+        if ncolors < 8:
+            return _curses_main(stdscr, dictionaries, settings)
+
+        if ncolors == 8:
+            pairs_to_initialize = 8
+        else:
+            pairs_to_initialize = 16
+
+        for i in range(pairs_to_initialize):
             curses.init_pair(i + 1, i, -1)
-        curses.init_pair(17, 16, 251)  # -> Black on white
-        curses.init_pair(18, curses.COLOR_BLACK, curses.COLOR_GREEN)
-        curses.init_pair(19, curses.COLOR_BLACK, curses.COLOR_RED)
+
+        curses.init_pair(31, curses.COLOR_BLACK, curses.COLOR_GREEN)
+        curses.init_pair(32, curses.COLOR_BLACK, curses.COLOR_RED)
 
         return _curses_main(stdscr, dictionaries, settings)
     finally:
-        if 'stdscr' in locals():
-            stdscr.clear()    # Repaint the whole window to prevent a flash
-            stdscr.refresh()  # of contents from the previous draw.
-            stdscr.notimeout(False)
-            stdscr.keypad(False)
-            curses.echo()
-            curses.nocbreak()
-            curses.endwin()
+        # Repaint the whole window to prevent a flash
+        # of contents from the previous draw.
+        stdscr.clear()
+        stdscr.refresh()
+        curses.endwin()

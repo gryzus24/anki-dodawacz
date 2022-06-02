@@ -1,6 +1,6 @@
 {
 "-ankiconnect": false,
-"attention_c": "\u001b[93m",
+"heed_c": "\u001b[93m",
 "-audio": "auto",
 "audio_device": "default",
 "audio_path": "Cards_audio",
@@ -15,7 +15,7 @@
 "-cardpreview": true,
 "-dupescope": "deck",
 "-duplicates": false,
-"error_c": "\u001b[91m",
+"err_c": "\u001b[91m",
 "-etym": true,
 "etym_c": "\u001b[39m",
 "exsen_c": "\u001b[94m",

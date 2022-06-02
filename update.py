@@ -60,7 +60,7 @@ def main() -> None:
     latest_tag = json.loads(response_data.data.decode())[0]
     if latest_tag['name'].lstrip('v') == __version__:
         with _exit(0):
-            print(f'{Color.GEX}You are using the latest version ({__version__}).')
+            print(f'{Color.success}You are using the latest version ({__version__}).')
 
     out_dir_name = f'anki-dodawacz-{latest_tag["name"]}'
     out_dir_path = os.path.join(os.path.dirname(ROOT_DIR), out_dir_name)
@@ -73,10 +73,10 @@ def main() -> None:
         with _exit(1):
             print(f'{Color.err}update.py script does not work on {sys.platform!r}.\n')
 
-    print(f'{Color.GEX}:: {R}Downloading the package...')
+    print(f'{Color.success}:: {R}Downloading the package...')
     archive = get_request(latest_tag['tarball_url'])
 
-    print(f'{Color.GEX}:: {R}Extracting...')
+    print(f'{Color.success}:: {R}Extracting...')
     tfile = tempfile.NamedTemporaryFile(delete=False)
     try:
         # We cannot use the NamedTemporaryFile as a context manager because Windows
@@ -98,7 +98,7 @@ def main() -> None:
     finally:
         os.remove(tfile.name)
 
-    print(f"{Color.YEX}:: {R}Copying 'config.json'...")
+    print(f"{Color.heed}:: {R}Copying 'config.json'...")
     with open(os.path.join(out_dir_path, 'config/config.json')) as f:
         new_config = json.load(f)
         for old_key, old_val in config.items():
@@ -116,17 +116,17 @@ def main() -> None:
         json.dump(new_config, f, indent=0)
 
     if os.path.exists('cards.txt'):
-        print(f"{Color.YEX}:: {R}Copying 'cards.txt'...")
+        print(f"{Color.heed}:: {R}Copying 'cards.txt'...")
         with \
                 open(os.path.join(out_dir_path, 'cards.txt'), 'w', encoding='utf-8') as new_cards, \
                 open('cards.txt', encoding='utf-8') as cards:
             new_cards.writelines(cards.readlines())
 
     if not config['-ankiconnect'] and config['audio_path'] == 'Cards_audio' and os.path.exists('Cards_audio'):
-        print(f"{Color.YEX}:: {R}The 'Cards_audio' directory has to be moved manually.")
+        print(f"{Color.heed}:: {R}The 'Cards_audio' directory has to be moved manually.")
 
     with _exit(0):
-        print(f'\n{Color.GEX}Updated successfully\n'
+        print(f'\n{Color.success}Updated successfully\n'
               f'Program saved to {out_dir_path!r}')
 
 

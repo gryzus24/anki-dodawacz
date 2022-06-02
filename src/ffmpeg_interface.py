@@ -54,7 +54,7 @@ def _record(filepath: str) -> subprocess.CompletedProcess:
     else:
         raise NameError  # os not supported
 
-    print(f'{Color.YEX}Recording started...\n'
+    print(f'{Color.heed}Recording started...\n'
           f'{R}press [q] to stop and save')
     result = subprocess.run((
         'ffmpeg',
@@ -94,7 +94,7 @@ def user_set_audio_device() -> None:
         return
 
     save_command('audio_device', audio_device)
-    print(f'{Color.GEX}Chosen device:\n'
+    print(f'{Color.success}Chosen device:\n'
           f'{R}{audio_device}\n')
 
     return None
@@ -141,6 +141,6 @@ def capture_audio(*args: str) -> str:
         print(result.stderr)
         return ''
 
-    print(f'{Color.GEX}Recorded successfully:\n'
+    print(f'{Color.success}Recorded successfully:\n'
           f'{R}{filepath}')
     return f"[sound:{date}_sentence{metadata}{recording_no}.mp3]"

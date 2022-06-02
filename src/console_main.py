@@ -282,7 +282,7 @@ def format_dictionary(dictionary: Dictionary, column_width: int) -> list[str]:
                     buffer.append(f'${Color.exsen}{line}')
         elif op == 'NOTE':
             first_line, rest = wrap_method(body[0], 2, 0)
-            buffer.append(f'!{BOLD}{Color.YEX}> {R}{first_line}{DEFAULT}')
+            buffer.append(f'!{BOLD}{Color.heed}> {R}{first_line}{DEFAULT}')
             for line in rest:
                 buffer.append(f'!{BOLD}{line}{DEFAULT}')
         else:
@@ -408,10 +408,10 @@ def parse_input(input_: str, max_: int) -> list[int] | None:
 def sentence_input() -> str | None:
     sentence = input('Add a sentence: ')
     if sentence.lower() == '-sc':
-        print(f'{Color.GEX}Card skipped')
+        print(f'{Color.success}Card skipped')
         return None
     elif sentence.lower() == '-s':
-        print(f'{Color.GEX}Sentence skipped')
+        print(f'{Color.success}Sentence skipped')
         return ''
     else:
         emph_start = sentence.find('<')
@@ -460,7 +460,7 @@ def console_ui_entry(dictionaries: list[Dictionary], settings: QuerySettings) ->
         )
         if ret is None:
             if config['-def']:
-                print(f'{Color.GEX}Skipped!')
+                print(f'{Color.success}Skipped!')
             return
         else:
             choices = ret
@@ -469,7 +469,7 @@ def console_ui_entry(dictionaries: list[Dictionary], settings: QuerySettings) ->
         current_dict.into_indices(choices, lambda y: 'DEF' in y[0] or y[0] == 'SYN')
     )
     if not grouped_by_phrase:
-        print(f'{Color.YEX}This dictionary does not support creating cards\nSkipping...')
+        print(f'{Color.heed}This dictionary does not support creating cards\nSkipping...')
         return
 
     for card, audio_error, error_info in cards.cards_from_definitions(
@@ -494,12 +494,12 @@ def console_ui_entry(dictionaries: list[Dictionary], settings: QuerySettings) ->
             if response.error:
                 print(f'{Color.err}Card could not be added to Anki:\n{R}{response.body}\n')
             else:
-                print(f'{Color.GEX}Card successfully added to Anki')
+                print(f'{Color.success}Card successfully added to Anki')
                 for item in response.body.split('\n'):
                     a, b = item.split(': ')
-                    print(f'{Color.YEX}{a}: {R}{b}')
+                    print(f'{Color.heed}{a}: {R}{b}')
                 print('> open card browser: `-b`\n')
 
         if config['-savecards']:
             cards.save_card_to_file(card)
-            print(f'{Color.GEX}Card saved to a file: {os.path.basename(cards.CARD_SAVE_LOCATION)!r}\n')
+            print(f'{Color.success}Card saved to a file: {os.path.basename(cards.CARD_SAVE_LOCATION)!r}\n')
