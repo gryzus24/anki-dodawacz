@@ -110,18 +110,12 @@ def print_config_representation() -> str:
         level_a = '\b\b\b\b\b' if '[' in a else ''
         level_b = '\b\b\b\b\b' if '[' in b else ''
 
-        if a == '-sen':
-            a = '-sen        ╭ '
-        elif a == '-def':
-            a = '-def    -cc │ '
-        elif a == '-default':
-            a = '-default    ╰ '
-        elif a == '-exsen':
-            a = '-exsen      ╭ '
-        elif a == '-pos':
-            a = '-pos   -all │ '
-        elif a == '-etym':
-            a = '-etym       ╰ '
+        if   a == '-sen':     a = '-sen        ╭ '
+        elif a == '-def':     a = '-def    -cc │ '
+        elif a == '-default': a = '-default    ╰ '
+        elif a == '-exsen':   a = '-exsen      ╭ '
+        elif a == '-pos':     a = '-pos   -all │ '
+        elif a == '-etym':    a = '-etym       ╰ '
 
         result.append(
             f'{a:14s}{color_a}{state_a:10s}{level_a}{R}'

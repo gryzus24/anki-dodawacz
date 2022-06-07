@@ -2,10 +2,9 @@ from __future__ import annotations
 
 import curses
 import os
-from random import choice
-from shutil import get_terminal_size
 from collections import Counter, deque
 from itertools import islice, zip_longest
+from shutil import get_terminal_size
 from typing import Any, Callable, Iterable, NamedTuple, Optional, Reversible, Sequence, TYPE_CHECKING
 
 import src.anki_interface as anki
