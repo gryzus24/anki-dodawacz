@@ -30,7 +30,7 @@ CONFIG_COLUMNS = tuple(
             '-textwrap', '-columns', '-indent',
             '',
             '[filtering config.]',
-            '-fsubdefs', '-toipa', '-shortetyms',
+            '-toipa', '-shortetyms',
             '',
             '[ankiconnect conf.]',
             '-ankiconnect', '-duplicates', '-dupescope', '-note', '-deck', '-tags',

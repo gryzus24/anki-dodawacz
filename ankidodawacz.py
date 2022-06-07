@@ -243,8 +243,8 @@ def parse_query(full_query: str) -> QuerySettings | None:
             )
             query = query[emph_start + 1:emph_stop]
 
-        query_flags = ['f'] if config['-fsubdefs'] else []
         dictionary_flags = []
+        query_flags = []
         recorded = False
         for flag in flags:
             flag = flag.strip(' -')

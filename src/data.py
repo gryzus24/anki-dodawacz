@@ -42,7 +42,6 @@ boolean_cmd_to_msg = {
     '-formatdefs': 'Definition formatting',
     '-savecards': 'Save cards to "cards.txt"',
 
-    '-fsubdefs': 'Filter out subdefinitions (definitions without ">")',
     '-toipa': 'Translate AH Dictionary phonetic spelling into IPA',
     '-shortetyms': 'Shorten and simplify etymologies in AH Dictionary',
 

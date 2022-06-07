@@ -33,13 +33,17 @@ OPTIONS:
   e.g.  [QUERY] -noun        : searches for labels starting with "noun"
         [QUERY] -adj -slang  : starting with "adj" and "slang"
 
+  To search for words in definitions instead of labels, use: "-/{word}"
+  e.g.  [QUERY] -/decrease   : searches for "decrease" in definitions
+        [QUERY] -n -/coin    : searches for "coin" within definitions
+                               that are below labels starting with "n"
+
   To make multiple queries at once separate them with a ',' or ';' or use
   multiple dictionary flags.
   e.g.  [QUERY] -n, [QUERY2] -n -l, ...
         [QUERY] -ahd -l -i
 
   Other options:
-  -f, -fsubdefs   filter out subdefinitions
   -c, -compare    query `-dict` and `-dict2` simultaneously, possibly
                   expands to `-ahd -l`
 
@@ -135,7 +139,6 @@ Hiding a phrase means replacing it with "..." (default)
 -hpreps        hide prepositions
 -hideas        hide with (default "...")
 
--fsubdefs      filter out subdefinitions (definitions without ">")
 -toipa         translate AH Dictionary phonetic spelling into IPA
 -shortetyms    shorten and simplify etymologies in AH Dictionary
 
@@ -223,7 +226,7 @@ in a file, you can use the `--define-all [separator]` command to load it.
 All query options and flags apply, so nothing is stopping you from specifying
 which part of speech you want the definitions for, or which filtering or
 formatting options to apply.
-  gush -n -f
+  gush -v -/forth
   glib -adj
   ...
 
