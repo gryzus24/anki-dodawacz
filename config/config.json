@@ -50,7 +50,7 @@
 "-shortetyms": true,
 "-showsign": true,
 "-less": false,
-"-curses": false,
+"-curses": true,
 "-margin": 1,
 "-nohelp": false,
 "-default": "1",
