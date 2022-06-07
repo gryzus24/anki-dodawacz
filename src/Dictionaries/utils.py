@@ -162,10 +162,10 @@ def less_wrapper(func: Callable[..., str]) -> Callable[..., None]:
             with ClearScreen():
                 rc = display_in_less(string)
                 if rc:
-                    print(string)
+                    sys.stdout.write(string)
         else:
             with ClearScreen():
-                print(string)
+                sys.stdout.write(string)
 
     return wrapper
 

@@ -36,7 +36,7 @@ from src.Dictionaries.wordnet import ask_wordnet
 from src.__version__ import __version__
 from src.colors import BOLD, Color, DEFAULT, R
 from src.console_main import console_ui_entry
-from src.data import LINUX, boolean_cmd_to_msg, cmd_to_msg_usage, config
+from src.data import LINUX, WINDOWS, boolean_cmd_to_msg, cmd_to_msg_usage, config
 
 required_arg_commands = {
     # commands that take arguments
@@ -448,7 +448,7 @@ def new_filtered_dictionary(dictionary: Dictionary, flags: Sequence[str]) -> Dic
         result.extend(header['after'])
 
     if result:
-        return Dictionary(result)
+        return Dictionary(result, name=dictionary.name)
     else:
         return dictionary
 
@@ -474,11 +474,28 @@ def main_loop(query: str) -> None:
     if not dictionaries:
         return
 
-    if config['-curses']:
+    if not config['-curses']:
+        return console_ui_entry(dictionaries, settings)
+
+    try:
         from src.curses_main import curses_ui_entry
-        curses_ui_entry(dictionaries, settings)
-    else:
-        console_ui_entry(dictionaries, settings)
+    except ImportError:
+        if WINDOWS:
+            sys.stdout.write(
+                f'{Color.err}The curses module could not be imported:{R}\n'
+                f'Curses support on Windows is close to non-existent,\n'
+                f'but there are a few things you can try:\n'
+                f' - install CygWin or MinGW32,\n'
+                f' - install WSL,\n'
+                f' - pip install windows-curses (not recommended),\n'
+                f' - use the console backend: -curses off,\n'
+                f' - install Linux or some other Unix-like OS\n\n'
+            )
+            return
+        else:
+            raise
+
+    curses_ui_entry(dictionaries, settings)
 
 
 def from_define_all_file(_input: str) -> Generator[str, None, None]:

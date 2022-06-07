@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import json
 import os
-from typing import Any, NamedTuple, Sequence
+from typing import Any, NamedTuple
 
 from urllib3.exceptions import NewConnectionError
 

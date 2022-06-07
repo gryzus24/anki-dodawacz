@@ -5,7 +5,7 @@ import os
 from collections import Counter, deque
 from itertools import islice, zip_longest
 from shutil import get_terminal_size
-from typing import Any, Callable, Iterable, NamedTuple, Optional, Reversible, Sequence, TYPE_CHECKING
+from typing import Iterable, NamedTuple, Optional, Reversible, Sequence, TYPE_CHECKING
 
 import src.anki_interface as anki
 import src.cards as cards
@@ -16,7 +16,6 @@ from src.data import HORIZONTAL_BAR, LINUX, config
 if TYPE_CHECKING:
     from ankidodawacz import QuerySettings
     from src.Dictionaries.dictionary_base import Dictionary
-    from src.anki_interface import AnkiResponse
 
 # Pythons < 3.10 do not define BUTTON5_PRESSED.
 # Also, mouse wheel requires ncurses >= 6.
@@ -979,8 +978,9 @@ def curses_ui_entry(dictionaries: list[Dictionary], settings: QuerySettings) -> 
 
         return _curses_main(stdscr, dictionaries, settings)
     finally:
-        # Repaint the whole window to prevent a flash
-        # of contents from the previous draw.
-        stdscr.clear()
-        stdscr.refresh()
-        curses.endwin()
+        if 'stdscr' in locals():
+            # Repaint the whole window to prevent a flash
+            # of contents from the previous draw.
+            stdscr.clear()
+            stdscr.refresh()
+            curses.endwin()

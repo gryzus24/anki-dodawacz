@@ -194,10 +194,6 @@ def ask_lexico(query: str) -> Dictionary | None:
                     gram_urls = gramb_audio.find_all('audio')
                     if gram_urls:
                         lexico.add('AUDIO', gram_urls[-1]['src'])
-                    else:
-                        lexico.add('AUDIO', '')
-                else:
-                    lexico.add('AUDIO', '')
 
         elif block['class'][0] == 'etymology' and block.h3.text == 'Origin' and etym:
             lexico.add('ETYM', etym)

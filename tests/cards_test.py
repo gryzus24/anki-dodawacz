@@ -64,7 +64,7 @@ def test_map_card_fields_to_values():
         ('ETYM', 'etymology two'),
         ('SYN', 'synonym one, synonym two', 'synonym gloss one:', 'example synonym sentence one'),     # 19
         ('SYN', 'synonym three, synonym four', 'synonym gloss two:', 'example synonym sentence two'),  # 20
-    ])
+    ], name='test')
 
     expected = (
         {
@@ -121,7 +121,7 @@ def test_map_card_fields_to_values():
         ('ETYM', 'etymology two'),
         ('SYN', 'synonym one, synonym two', 'synonym gloss one:', 'example synonym sentence one'),     # 19
         ('SYN', 'synonym three, synonym four', 'synonym gloss two:', 'example synonym sentence two'),  # 20
-    ])
+    ], name='test')
     expected = (
         {
             'def': 'sixth definition<br>{def label three} seventh definition',
@@ -162,7 +162,7 @@ def test_map_card_fields_to_values():
         ('ETYM', 'etymology two'),
         ('SYN', 'synonym one, synonym two', 'synonym gloss one:', 'example synonym sentence one'),     # 20
         ('SYN', 'synonym three, synonym four', 'synonym gloss two:', 'example synonym sentence two'),  # 21
-    ])
+    ], name='test')
     expected = (
         {
             'def': 'sixth definition<br>{def label three} seventh definition',
@@ -202,7 +202,7 @@ def test_map_card_fields_to_values():
         ('ETYM', 'etymology two'),
         ('SYN', 'synonym one, synonym two', 'synonym gloss one:', 'example synonym sentence one'),     # 20
         ('SYN', 'synonym three, synonym four', 'synonym gloss two:', 'example synonym sentence two'),  # 21
-    ])
+    ], name='test')
     expected = (
         {
             'def': 'first definition<br>{def label one} third definition<br>second definition',

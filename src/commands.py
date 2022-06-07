@@ -7,11 +7,11 @@ import sys
 from itertools import zip_longest
 from typing import Any, Sequence
 
+from src.Dictionaries.utils import less_wrapper
 from src.colors import BOLD, Color, DEFAULT, R
 from src.data import (LINUX, MAC, ROOT_DIR, WINDOWS, bool_values_dict, boolean_cmd_to_msg, cmd_to_msg_usage,
                       color_name_to_ansi, config)
 from src.input_fields import choose_item
-from src.Dictionaries.utils import less_wrapper
 
 CONFIG_COLUMNS = tuple(
     zip_longest(

@@ -216,8 +216,6 @@ def ask_ahdictionary(query: str) -> Dictionary | None:
         audio_url = td.find('a', {'target': '_blank'})
         if audio_url is not None:
             ahd.add('AUDIO', 'https://www.ahdictionary.com' + audio_url['href'].strip())
-        else:
-            ahd.add('AUDIO', '')
 
         for labeled_block in td.find_all('div', class_='pseg', recursive=False):
             # Gather part of speech labels
@@ -294,8 +292,6 @@ def ask_ahdictionary(query: str) -> Dictionary | None:
             td_pos.append(f'{pos}|{phon_spell}')
         if td_pos:
             ahd.add('POS', *td_pos)
-        else:
-            ahd.add('POS', '')
 
         # Add etymologies
         etymology = td.find('div', class_='etyseg', recursive=False)
@@ -305,8 +301,6 @@ def ask_ahdictionary(query: str) -> Dictionary | None:
                 ahd.add('ETYM', _shorten_etymology(etym.strip('[]')))
             else:
                 ahd.add('ETYM', etym)
-        else:
-            ahd.add('ETYM', '')
 
         # Add idioms
         idioms = td.find_all('div', class_='idmseg', recursive=False)

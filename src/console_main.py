@@ -1,16 +1,15 @@
 from __future__ import annotations
 
 import os
-import sys
 from itertools import islice, zip_longest
 from shutil import get_terminal_size
 from typing import Optional, Sequence, TYPE_CHECKING
 
 import src.anki_interface as anki
 import src.cards as cards
-from src.Dictionaries.utils import ClearScreen, get_width_per_column, wrap_and_pad, wrap_lines, less_wrapper
+from src.Dictionaries.utils import get_width_per_column, wrap_and_pad, wrap_lines, less_wrapper
 from src.colors import BOLD, Color, DEFAULT, R
-from src.data import HORIZONTAL_BAR, WINDOWS, config
+from src.data import HORIZONTAL_BAR, config
 
 if TYPE_CHECKING:
     from ankidodawacz import QuerySettings

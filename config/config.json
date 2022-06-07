@@ -48,8 +48,8 @@
 "auto"
 ],
 "-shortetyms": true,
-"-showsign": false,
-"-less": false,
+"-showsign": true,
+"-less": true,
 "-curses": true,
 "-margin": 1,
 "-nohelp": false,

@@ -1,5 +1,5 @@
-from src.colors import BOLD, Color, DEFAULT, R
 from src.Dictionaries.utils import less_wrapper
+from src.colors import BOLD, Color, DEFAULT, R
 
 
 def _title(s: str) -> str:

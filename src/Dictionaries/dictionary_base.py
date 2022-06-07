@@ -2,15 +2,11 @@ from __future__ import annotations
 
 import sys
 from collections import defaultdict
-from itertools import chain
-from typing import Callable, Optional, Sequence, NamedTuple
+from typing import Callable, Optional, Sequence
 
 
 class Dictionary:
-    def __init__(self,
-            contents: Optional[list[Sequence[str]]] = None,
-            *, name: str = 'not set'
-    ) -> None:
+    def __init__(self, contents: Optional[list[Sequence[str]]] = None, *, name: str) -> None:
         self.name = name
         self.contents: list[Sequence[str]] = []
         self.phrase_indices: list[int] = []
@@ -36,23 +32,18 @@ class Dictionary:
         # Adds an instruction to the dictionary.
         # Added entry is a sequence of at least 2 elements.
         # ('OP', 'BODY', ... )
-        # Particular care must be taken when adding elements meant to encompass
-        # other elements, as is the case with AUDIO and DEF instructions. If the
-        # encompassing instruction's body is empty it has to be added by the
-        # virtue of providing a toehold for other non-empty AUDIO instructions
-        # to preserve the integrity of the dictionary when extracting entries.
-        #
+        # Entries marked with a * can be added only once per PHRASE.
         # Available instructions:
         #  (DEF,    'definition', 'example_sentence', 'label')
         #  (SUBDEF, 'definition', 'example_sentence', 'label')
         #  (LABEL,  'pos_label', 'additional_info')
         #  (PHRASE, 'phrase', 'phonetic_spelling')
-        #  (HEADER, 'header_title')
-        #  (ETYM,   'etymology')
-        #  (POS,    'pos|phonetic_spelling', ...)  ## `|` acts as a separator.
-        #  (AUDIO,  'audio_url')
+        #  (HEADER, 'header_title')*
+        #  (ETYM,   'etymology')*
+        #  (POS,    'pos|phonetic_spelling', ...)*  ## `|` acts as a separator.
+        #  (AUDIO,  'audio_url')*
         #  (SYN,    'synonyms', 'gloss', 'examples')
-        #  (NOTE,   'note')
+        #  (NOTE,   'note')*
 
         op = op.upper()
         if op == 'PHRASE':
