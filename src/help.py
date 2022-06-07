@@ -33,7 +33,7 @@ OPTIONS:
   e.g.  [QUERY] -noun        : searches for labels starting with "noun"
         [QUERY] -adj -slang  : starting with "adj" and "slang"
 
-  To search for words in definitions instead of labels, use: "-/{word}"
+  To search for words in definitions instead of labels, use: "-/{{word}}"
   e.g.  [QUERY] -/decrease   : searches for "decrease" in definitions
         [QUERY] -n -/coin    : searches for "coin" within definitions
                                that are below labels starting with "n"
