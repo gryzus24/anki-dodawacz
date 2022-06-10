@@ -3,7 +3,7 @@ from __future__ import annotations
 import sys
 from collections import defaultdict
 from itertools import compress
-from typing import Callable, Optional, Sequence, TypedDict, NamedTuple
+from typing import Callable, Optional, Sequence, TypedDict
 
 
 class EntryGroup(TypedDict):

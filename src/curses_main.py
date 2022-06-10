@@ -3,12 +3,12 @@ from __future__ import annotations
 import contextlib
 import curses
 import os
-from collections import Counter, deque
+from collections import Counter
 from itertools import islice, zip_longest
 from shutil import get_terminal_size
 from typing import (
     Callable, Iterable, NamedTuple, Optional,
-    Reversible, Sequence, Generator, TYPE_CHECKING
+    Reversible, Sequence, TYPE_CHECKING
 )
 
 import src.anki_interface as anki
