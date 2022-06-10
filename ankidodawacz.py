@@ -17,9 +17,9 @@
 
 from __future__ import annotations
 
+import functools
 import os
 import sys
-from functools import lru_cache
 from itertools import chain, repeat
 from typing import Generator, NoReturn, Optional, Sequence
 
@@ -163,7 +163,7 @@ DICT_DISPATCH = {
 }
 
 
-@lru_cache(maxsize=None)
+@functools.lru_cache(maxsize=None)
 def query_dictionary(key: str, query: str) -> Dictionary | None:
     return DICT_DISPATCH[key](query)
 

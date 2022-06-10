@@ -1,8 +1,8 @@
 from __future__ import annotations
 
 import os
+import shutil
 from itertools import islice, zip_longest
-from shutil import get_terminal_size
 from typing import Optional, Sequence, TYPE_CHECKING
 
 import src.anki_interface as anki
@@ -122,8 +122,8 @@ def columnize(buffer: Sequence[str], textwidth: int, height: int, ncols: int) ->
             else:
                 li = -1
 
-    # filter out blank lines and columns, as they are not guaranteed to be of
-    # uniform height and should be easily printable with the help of zip_longest.
+    # zip_longest is later used to print blank lines between columns.
+    # We should remove any redundant lines here.
     r = [[line for line in column if line] for column in formatted if column]
     if not r[0]:
         del r[0]
@@ -292,7 +292,7 @@ def format_dictionary(dictionary: Dictionary, column_width: int) -> list[str]:
 
 @less_wrapper
 def display_dictionary(dictionary: Dictionary) -> str:
-    width, height = get_terminal_size()
+    width, height = shutil.get_terminal_size()
     ncols, state = config['-columns']
     if state == 'auto':
         ncols = None
@@ -311,7 +311,7 @@ def display_dictionary(dictionary: Dictionary) -> str:
 
 @less_wrapper
 def display_many_dictionaries(dictionaries: list[Dictionary]) -> str:
-    width, _ = get_terminal_size()
+    width, _ = shutil.get_terminal_size()
     col_width, last_col_fill = get_width_per_column(width, len(dictionaries))
 
     columns = []
@@ -328,7 +328,7 @@ def display_card(card: dict[str, str]) -> None:
         'phrase': Color.phrase, 'exsen': Color.exsen, 'pos': Color.pos,
         'etym': Color.etym, 'audio': '', 'recording': '',
     }
-    textwidth, _ = get_terminal_size()
+    textwidth, _ = shutil.get_terminal_size()
     delimit = textwidth * HORIZONTAL_BAR
     adjusted_textwidth = int(0.95 * textwidth)
     padding = (textwidth - adjusted_textwidth) // 2 * " "

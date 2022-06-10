@@ -1,11 +1,11 @@
 from __future__ import annotations
 
+import collections
 import contextlib
 import curses
 import os
-from collections import Counter
-from itertools import islice, zip_longest
-from shutil import get_terminal_size
+import shutil
+from itertools import islice, zip_longest, repeat
 from typing import (
     Callable, Iterable, NamedTuple, Optional,
     Reversible, Sequence, TYPE_CHECKING
@@ -134,6 +134,15 @@ def format_dictionary(
                 result.append(_box)
         return result
 
+    # This is ugly, but saves on a LOT of __getattr__ calls, which are quite
+    # expensive in this case, because we have to translate console's color API
+    # to the curses one.
+    def1_c, def2_c, sign_c = Color.def1, Color.def2, Color.sign
+    index_c, label_c, exsen_c = Color.index, Color.label, Color.exsen
+    inflection_c, phrase_c, phon_c = Color.inflection, Color.phrase, Color.phon
+    delimit_c, etym_c, pos_c = Color.delimit, Color.etym, Color.pos
+    syn_c, syngloss_c, heed_c = Color.syn, Color.syngloss, Color.heed
+
     index = 0
     for entry in dictionary.contents:
         op = entry[0]
@@ -160,12 +169,12 @@ def format_dictionary(
             first_line, rest = wrap_method(
                 _def, gaps + index_len + label_len, indent - label_len
             )
-            def_color = Color.def1 if index % 2 else Color.def2
+            def_color = def1_c if index % 2 else def2_c
             temp_boxes.extend(_into_boxes(
                 (
-                   (_def_sign, Color.sign),
-                   (f'{index} ', Color.index),
-                   (_label, Color.label),
+                   (_def_sign, sign_c),
+                   (f'{index} ', index_c),
+                   (_label, label_c),
                    (first_line, def_color)
                 ), (rest, def_color)
             ))
@@ -174,43 +183,43 @@ def format_dictionary(
                     first_line, rest = wrap_method(ex, gaps + index_len - 1, 1 + indent)
                     temp_boxes.extend(_into_boxes(
                         (
-                           ((index_len + gaps - 1) * ' ', Color.exsen),
-                           (first_line, Color.exsen)
-                        ), (rest, Color.exsen)
+                           ((index_len + gaps - 1) * ' ', exsen_c),
+                           (first_line, exsen_c)
+                        ), (rest, exsen_c)
                     ))
         elif op == 'LABEL':
             label, inflections = entry[1], entry[2]
             temp_boxes.append(curses.newwin(1, column_width))
             if label:
                 if inflections:
-                    _push_chain(label, Color.label, inflections, Color.inflection)
+                    _push_chain(label, label_c, inflections, inflection_c)
                 else:
                     first_line, rest = wrap_method(label, 1, 0)
                     temp_boxes.extend(_into_boxes(
                         (
-                           (' ' + first_line, Color.label),
-                        ), (rest, Color.label)
+                           (' ' + first_line, label_c),
+                        ), (rest, label_c)
                     ))
         elif op == 'PHRASE':
             phrase, phon = entry[1], entry[2]
             if phon:
-                _push_chain(phrase, Color.phrase, phon, Color.phon)
+                _push_chain(phrase, phrase_c, phon, phon_c)
             else:
                 first_line, rest = wrap_method(phrase, 1, 0)
                 temp_boxes.extend(_into_boxes(
                     (
-                       (' ' + first_line, Color.phrase),
-                    ), (rest, Color.phrase)
+                       (' ' + first_line, phrase_c),
+                    ), (rest, phrase_c)
                 ))
         elif op == 'HEADER':
             title = entry[1]
             box = curses.newwin(1, column_width)
             if title:
-                box.insstr(' ]' + column_width * HORIZONTAL_BAR, Color.delimit)
-                box.insstr(title, Color.delimit | curses.A_BOLD)
-                box.insstr(HORIZONTAL_BAR + '[ ', Color.delimit)
+                box.insstr(' ]' + column_width * HORIZONTAL_BAR, delimit_c)
+                box.insstr(title, delimit_c | curses.A_BOLD)
+                box.insstr(HORIZONTAL_BAR + '[ ', delimit_c)
             else:
-                box.insstr(column_width * HORIZONTAL_BAR, Color.delimit)
+                box.insstr(column_width * HORIZONTAL_BAR, delimit_c)
             temp_boxes.append(box)
         elif op == 'ETYM':
             etym = entry[1]
@@ -219,43 +228,43 @@ def format_dictionary(
                 first_line, rest = wrap_method(etym, 1, indent)
                 temp_boxes.extend(_into_boxes(
                     (
-                       (' ' + first_line, Color.etym),
-                    ), (rest, Color.etym)
+                       (' ' + first_line, etym_c),
+                    ), (rest, etym_c)
                 ))
         elif op == 'POS':
             if entry[1].strip(' |'):
                 temp_boxes.append(curses.newwin(1, column_width))
                 for elem in entry[1:]:
                     pos, phon = elem.split('|')
-                    _push_chain(pos, Color.pos, phon, Color.phon)
+                    _push_chain(pos, pos_c, phon, phon_c)
         elif op == 'AUDIO':
             pass
         elif op == 'SYN':
             first_line, rest = wrap_method(entry[1], 1, 0)
             temp_boxes.extend(_into_boxes(
                 (
-                   (' ' + first_line, Color.syn),
-                ), (rest, Color.syn)
+                   (' ' + first_line, syn_c),
+                ), (rest, syn_c)
             ))
             first_line, rest = wrap_method(entry[2], 2, 0)
             temp_boxes.extend(_into_boxes(
                 (
-                   (': ', Color.sign),
-                   (first_line, Color.syngloss)
-                ), (rest, Color.syngloss)
+                   (': ', sign_c),
+                   (first_line, syngloss_c)
+                ), (rest, syngloss_c)
             ))
             for ex in entry[3].split('<br>'):
                 first_line, rest = wrap_method(ex, 1, 1)
                 temp_boxes.extend(_into_boxes(
                     (
-                       (' ' + first_line, Color.exsen),
-                    ), (rest, Color.exsen)
+                       (' ' + first_line, exsen_c),
+                    ), (rest, exsen_c)
                 ))
         elif op == 'NOTE':
             first_line, rest = wrap_method(entry[1], 2, 0)
             temp_boxes.extend(_into_boxes(
                 (
-                   ('> ', Color.heed | curses.A_BOLD),
+                   ('> ', heed_c | curses.A_BOLD),
                    (first_line, 0 | curses.A_BOLD)
                 ), (rest, 0 | curses.A_BOLD)
             ))
@@ -285,7 +294,7 @@ def create_and_add_card_to_anki(
             dictionary, grouped_by_phrase, settings
     ):
         if audio_error is not None:
-            notify.error(audio_error, newline=True)
+            notify.nlerror(audio_error)
             notify.add_lines(error_info, curses.color_pair(0))
 
         card = cards.format_and_prepare_card(card)
@@ -293,7 +302,7 @@ def create_and_add_card_to_anki(
         if config['-ankiconnect']:
             response = anki.add_card_to_anki(card)
             if response.error:
-                notify.error(f'({card["phrase"]}) Could not add card:', newline=True)
+                notify.nlerror(f'({card["phrase"]}) Could not add card:')
                 notify.addstr(response.body)
             else:
                 ncards_added += 1
@@ -305,7 +314,7 @@ def create_and_add_card_to_anki(
             notify.success(f'Card saved to a file: {os.path.basename(cards.CARD_SAVE_LOCATION)!r}')
 
     if ok_response is not None:
-        notify.success(f'Successfully added {ncards_added} card{"s" if ncards_added > 1 else ""}', newline=True)
+        notify.nlsuccess(f'Successfully added {ncards_added} card{"s" if ncards_added > 1 else ""}')
         notify.addstr(ok_response.body)
 
 
@@ -366,8 +375,7 @@ class Notifications:
 
     def add_lines(self, lines: Iterable[str], color_pair: int) -> None:
         self.ticks = 1
-        for line in lines:
-            self.buffer.append((line, color_pair))
+        self.buffer.extend(zip(lines, repeat(color_pair)))
 
     def append_line(self, line: str, color_pair: int) -> None:
         self.ticks = 1
@@ -388,21 +396,21 @@ class Notifications:
             )
         else:
             self.buffer[-1] = (new_line, color_pair)
+    
+    def nlsuccess(self, s: str) -> None:
+        self.add_lines([s], curses.color_pair(BLACK_ON_GREEN))
 
-    def success(self, line: str, *, newline: bool = False) -> None:
-        if newline:
-            self.add_lines([line], curses.color_pair(BLACK_ON_GREEN))
-        else:
-            self.append_line(line, curses.color_pair(BLACK_ON_GREEN))
+    def success(self, s: str) -> None:
+        self.append_line(s, curses.color_pair(BLACK_ON_GREEN))
+    
+    def nlerror(self, s: str) -> None:
+        self.add_lines([s], curses.color_pair(BLACK_ON_RED))
 
-    def error(self, line: str, *, newline: bool = False) -> None:
-        if newline:
-            self.add_lines([line], curses.color_pair(BLACK_ON_RED))
-        else:
-            self.append_line(line, curses.color_pair(BLACK_ON_RED))
+    def error(self, s: str) -> None:
+        self.append_line(s, curses.color_pair(BLACK_ON_RED))
 
-    def addstr(self, string: str) -> None:
-        self.add_lines(string.splitlines(), curses.color_pair(0))
+    def addstr(self, s: str) -> None:
+        self.add_lines(s.splitlines(), curses.color_pair(0))
 
     def draw_if_available(self) -> None:
         if not self.buffer:
@@ -423,11 +431,11 @@ class Notifications:
             if padding < 0:
                 line = line[:COLS-2] + '..'
             else:
-                line = line + padding * ' '
+                line += padding * ' '
             win.insstr(i, 0, line, color)
 
         win.noutrefresh()
-        if not self.ticks % self.persistence:
+        if self.ticks >= self.persistence:
             self.buffer.clear()
         else:
             self.ticks += 1
@@ -469,7 +477,7 @@ class Screen:
         self.columns = self._split_into_columns(_boxes)
 
         # User facing state.
-        self.phraseno_to_ntoggles: Counter[int] = Counter()
+        self.ptoggled: collections.Counter[int] = collections.Counter()
         self.box_states = [curses.A_NORMAL] * len(_boxes)
         self.scroll_pos = 0
 
@@ -600,12 +608,12 @@ class Screen:
     def _toggle_related_boxes(self, current_state: int, phraseno: int, box_index: int) -> None:
         if current_state == curses.A_STANDOUT:
             self._toggle_box(box_index, curses.A_NORMAL)
-            self.phraseno_to_ntoggles[phraseno] -= 1
+            self.ptoggled[phraseno] -= 1
         else:
             self._toggle_box(box_index, curses.A_STANDOUT)
-            self.phraseno_to_ntoggles[phraseno] += 1
+            self.ptoggled[phraseno] += 1
 
-        currently_toggled = self.phraseno_to_ntoggles[phraseno]
+        currently_toggled = self.ptoggled[phraseno]
         if currently_toggled == 0:
             new_corollary_state = curses.A_NORMAL
         elif currently_toggled == 1:
@@ -679,7 +687,7 @@ class Screen:
         self.update_for_redraw()
 
     def deselect_all(self) -> None:
-        self.phraseno_to_ntoggles.clear()
+        self.ptoggled.clear()
         a_normal = curses.A_NORMAL
         for i, state in enumerate(self.box_states):
             if state != a_normal:
@@ -842,19 +850,19 @@ class Prompt:
     
     @staticmethod
     def _enter() -> None:
-        curses.raw()
         try:
             curses.curs_set(1)
         except curses.error:
             pass
+        curses.raw()
 
     @staticmethod 
     def _exit() -> None:
-        curses.cbreak()
         try:
             curses.curs_set(0)
         except curses.error:
             pass
+        curses.cbreak()
     
     @call_on(enter=_enter, exit=_exit)
     def run(self) -> str | None:
@@ -972,7 +980,7 @@ class ScreenBuffer:
 
     def resize(self) -> None:
         global LINES, COLS
-        COLS, LINES = get_terminal_size()
+        COLS, LINES = shutil.get_terminal_size()
 
         # prevents malloc() errors from ncurses on 32-bit binaries.
         if COLS < 2:
@@ -1003,7 +1011,7 @@ class ScreenBuffer:
 # Unfortunately Python's readline api does not expose functions and variables
 # responsible for signal handling, which makes it impossible to reconcile
 # curses' signal handling with the readline's one, so we have to manage
-# COLS and LINES variables ourselves. Also when curses is de-initialized,
+# COLS and LINES variables ourselves. Also, when curses is de-initialized,
 # readline's sigwinch handler does not raise "no input", but ungets the
 # correct b'KEY_RESIZE' code as soon as curses comes back. This is worked
 # around by flushing any typeahead in the main function.
@@ -1027,7 +1035,7 @@ def _curses_main(
         settings: QuerySettings
 ) -> None:
     global COLS, LINES
-    COLS, LINES = get_terminal_size()
+    COLS, LINES = shutil.get_terminal_size()
 
     # Resizing the terminal while curses in de-initialized inserts the resize
     # character into the buffer. Let's always start with a fresh buffer.
@@ -1078,7 +1086,7 @@ def _curses_main(
         elif c == b'B':
             response = anki.gui_browse_cards()
             if response.error:
-                notify.error('Could not open a card browser:', newline=True)
+                notify.nlerror('Could not open a card browser:')
                 notify.addstr(response.body)
             else:
                 notify.success('Anki card browser opened')

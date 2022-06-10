@@ -2,8 +2,8 @@
 from __future__ import annotations
 
 import json
+import random
 import sys
-from random import sample
 
 from src.Dictionaries.ahdictionary import ask_ahdictionary
 from src.Dictionaries.lexico import ask_lexico
@@ -142,7 +142,7 @@ class Setup:
                 self.tested_words = tested_words
 
         if SAMPLE_SIZE < len(words):
-            words = sample(tuple(words), SAMPLE_SIZE)
+            words = random.sample(tuple(words), SAMPLE_SIZE)
 
         sys.stdout.write(f'Testing now        : {Color.success}{len(words)}\n\n')
         self.words = words

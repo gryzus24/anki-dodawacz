@@ -1,7 +1,7 @@
 from __future__ import annotations
 
+import shutil
 import sys
-from shutil import get_terminal_size, which
 from subprocess import Popen, DEVNULL, PIPE, call
 from typing import Any, Callable, NoReturn, Optional
 
@@ -71,13 +71,13 @@ if WINDOWS:
     # I'm not sure if it works on terminals other than cmd and WT
     if ON_WINDOWS_CMD:
         def _clear_screen() -> None:
-            height = get_terminal_size().lines
+            height = shutil.get_terminal_size().lines
             # Move cursor up and down
             sys.stdout.write(height * '\n' + f'\033[{height}A')
             sys.stdout.flush()
     else:
         def _clear_screen() -> None:
-            height = get_terminal_size().lines
+            height = shutil.get_terminal_size().lines
             # Use Windows ANSI sequence to clear the screen
             sys.stdout.write((height - 1) * '\n' + '\033[2J')
             sys.stdout.flush()
@@ -117,7 +117,7 @@ class ClearScreen:
 
 
 def display_in_less(s: str) -> int:
-    executable = which('less')
+    executable = shutil.which('less')
     if executable is None:
         if WINDOWS:
             print(

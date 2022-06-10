@@ -1,7 +1,7 @@
 from __future__ import annotations
 
+import collections
 import sys
-from collections import defaultdict
 from itertools import compress
 from typing import Callable, Optional, Sequence, TypedDict
 
@@ -275,8 +275,8 @@ class Dictionary:
 
     def group_phrases_to_definitions(self,
             indices: list[int]
-    ) -> defaultdict[int, list[int]] | None:
-        result = defaultdict(list)
+    ) -> collections.defaultdict[int, list[int]] | None:
+        result = collections.defaultdict(list)
         phrase_indices = self.phrase_indices
         for di in indices:
             for pi in reversed(phrase_indices):
