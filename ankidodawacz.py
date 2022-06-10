@@ -20,15 +20,15 @@ from __future__ import annotations
 import os
 import sys
 from functools import lru_cache
-from itertools import chain, repeat, compress
-from typing import Generator, NoReturn, Optional, Sequence, TypedDict
+from itertools import chain, repeat
+from typing import Generator, NoReturn, Optional, Sequence
 
 import src.anki_interface as anki
 import src.commands as c
 import src.ffmpeg_interface as ffmpeg
 import src.help as h
 from src.Dictionaries.ahdictionary import ask_ahdictionary
-from src.Dictionaries.dictionary_base import Dictionary
+from src.Dictionaries.dictionary_base import Dictionary, filter_dictionary
 from src.Dictionaries.farlex import ask_farlex
 from src.Dictionaries.lexico import ask_lexico
 from src.Dictionaries.utils import http
@@ -164,7 +164,7 @@ DICT_DISPATCH = {
 
 
 @lru_cache(maxsize=None)
-def _query(key: str, query: str) -> Dictionary | None:
+def query_dictionary(key: str, query: str) -> Dictionary | None:
     return DICT_DISPATCH[key](query)
 
 
@@ -176,7 +176,7 @@ def get_dictionaries(
 
     result = []
     for flag in dict_flags:
-        ret = _query(flag, query)
+        ret = query_dictionary(flag, query)
         if ret is not None:
             result.append(ret)
 
@@ -187,7 +187,7 @@ def get_dictionaries(
         return None
 
     print(f'{Color.heed}Querying the fallback dictionary...')
-    fallback_dict = _query(config['-dict2'], query)
+    fallback_dict = query_dictionary(config['-dict2'], query)
     if fallback_dict is not None:
         return [fallback_dict]
 
@@ -267,192 +267,6 @@ def parse_query(full_query: str) -> QuerySettings | None:
     return settings
 
 
-def multi_split(string: str, splits: set[str]) -> list[str]:
-    # Splits a string at multiple places discarding redundancies just like `.split()`.
-    result = []
-    elem = ''
-    for letter in string:
-        if letter in splits:
-            if elem:
-                result.append(elem)
-                elem = ''
-        else:
-            elem += letter
-    if elem:
-        result.append(elem)
-    return result
-
-
-def should_skip(label: str, flags: tuple[str, ...]) -> bool:
-    labels = tuple(multi_split(label, {' ', '.', '&'}))
-    for label in labels:
-        if label.startswith(flags):
-            return False
-    for flag in flags:
-        if flag.startswith(labels):
-            return False
-    return True
-
-
-class EntryGroup(TypedDict):
-    after: list[Sequence[str]]
-    before: list[Sequence[str]]
-    contents: list[Sequence[str]]
-    header: Sequence[str] | None
-
-
-def new_filtered_dictionary(dictionary: Dictionary, flags: Sequence[str]) -> Dictionary:
-    for flag in flags:
-        if flag.startswith('/'):
-            look_for = flag[1:]
-            break
-    else:
-        look_for = None
-
-    if look_for is not None:
-        flags = [x for x in flags if not x.startswith('/')]
-    flags = tuple(map(str.lower, flags))
-
-    added: set[str] = set()
-    last_header = None
-    header_contents = []
-    result = []
-    for entry in dictionary.contents:
-        op = entry[0]
-        if op in added:
-            # We could use some salvaging methods like copying previous header's
-            # contents or restructuring the original list of contents to make
-            # later retrieval more consistent or something like that.
-            # But to be completely honest, the "ask_dictionary" functions
-            # should be more compliant, i.e. adding only one entry like:
-            # NOTE, AUDIO, ETYM, POS and HEADER per PHRASE. Currently,
-            # Lexico has some problems with this compliance when it comes to
-            # words that have different pronunciations depending on whether
-            # they are nouns, verb or adjectives (e.g. concert).
-            continue
-        elif op == 'HEADER':
-            last_header = entry
-            if entry[1]:  # header with title
-                added.clear()
-                group: EntryGroup = {
-                    'after': [],
-                    'before': [],
-                    'contents': [],
-                    'header': entry,
-                }
-                header_contents.append(group)
-        elif op == 'PHRASE':
-            added.clear()
-            if last_header is None:
-                group: EntryGroup = {  # type: ignore[no-redef]
-                    'after': [],
-                    'before': [entry],
-                    'contents': [],
-                    'header': None,
-                }
-                header_contents.append(group)
-            else:
-                if last_header[1]:
-                    header_contents[-1]['before'].append(entry)
-                else:
-                    group: EntryGroup = {  # type: ignore[no-redef]
-                        'after': [],
-                        'before': [entry],
-                        'contents': [],
-                        'header': last_header,
-                    }
-                    header_contents.append(group)
-                last_header = None
-        elif op in {'LABEL', 'DEF', 'SUBDEF'}:
-            header_contents[-1]['contents'].append(entry)
-        elif op in {'PHRASE', 'NOTE', 'AUDIO'}:
-            header_contents[-1]['before'].append(entry)
-            added.add(op)
-        elif op in {'POS', 'ETYM', 'SYN'}:
-            header_contents[-1]['after'].append(entry)
-            added.add(op)
-        else:
-            raise AssertionError(f'unreachable {op!r}')
-
-    last_titled_header = None
-    for header in header_contents:
-        header_entry = header['header']
-        if header_entry is not None and header_entry[1]:
-            # If not looking for any specific word narrow search down to labels only.
-            if look_for is None and header_entry[1].lower() in ('synonyms', 'idioms'):
-                break
-            last_titled_header = header_entry
-
-        last_label_skipped = last_def_skipped = False
-        last_label_i = last_def_i = None
-        skips = []
-        for i, entry in enumerate(header['contents']):
-            op = entry[0]
-            if op == 'LABEL':
-                last_label_i = i
-                if not entry[1]:
-                    _skip_label = True
-                else:
-                    _skip_label = should_skip(entry[1].lower(), flags)
-                skips.append(_skip_label)
-                last_label_skipped = _skip_label
-            elif 'DEF' in op:
-                if op == 'DEF':
-                    last_def_i = i
-
-                if not last_label_skipped or not flags:
-                    _skip_def = False
-                elif not entry[3]:
-                    if op == 'DEF':
-                        _skip_def = True
-                    elif op == 'SUBDEF':
-                        _skip_def = last_def_skipped
-                    else:
-                        raise AssertionError(f'unreachable {op!r}')
-                else:
-                    _skip_def = should_skip(entry[3].lower(), flags)
-
-                if look_for is not None:
-                    for word in entry[1].split():
-                        if look_for in word:
-                            break
-                    else:
-                        if not _skip_def:
-                            _skip_def = True
-                            # needs testing
-                            #if not last_label_skipped:
-                            #    skips[last_label_i] = True
-
-                skips.append(_skip_def)
-                if not _skip_def:
-                    if last_label_i is not None:
-                        skips[last_label_i] = False
-                    if op == 'SUBDEF' and last_def_i is not None:
-                        skips[last_def_i] = False
-                if op == 'DEF':
-                    last_def_skipped = _skip_def
-            else:
-                raise AssertionError(f'unreachable {op!r}')
-
-        if False not in skips:
-            continue
-
-        if last_titled_header is not None:
-            result.append(last_titled_header)
-            last_titled_header = None
-        elif header_entry is not None:
-            result.append(header_entry)
-
-        result.extend(header['before'])
-        result.extend(compress(header['contents'], map(lambda x: not x, skips)))
-        result.extend(header['after'])
-
-    if result:
-        return Dictionary(result, name=dictionary.name)
-    else:
-        return dictionary
-
-
 def main_loop(query: str) -> None:
     settings = parse_query(query)
     if settings is None:
@@ -465,9 +279,7 @@ def main_loop(query: str) -> None:
         if dicts is None:
             continue
         elif query_flags:
-            dictionaries.extend(
-                map(new_filtered_dictionary, dicts, repeat(query_flags))
-            )
+            dictionaries.extend(map(filter_dictionary, dicts, repeat(query_flags)))
         else:
             dictionaries.extend(dicts)
 

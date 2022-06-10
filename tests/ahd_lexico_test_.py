@@ -1,3 +1,4 @@
+# the trailing underscore in the name is to prevent pytest from running this file.
 from __future__ import annotations
 
 import json
