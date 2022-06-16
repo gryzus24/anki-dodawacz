@@ -28,8 +28,7 @@ from src.Dictionaries.ahdictionary import ask_ahdictionary
 from src.Dictionaries.dictionary_base import Dictionary, filter_dictionary
 from src.Dictionaries.farlex import ask_farlex
 from src.Dictionaries.lexico import ask_lexico
-from src.Dictionaries.utils import http
-from src.Dictionaries.utils import less_print
+from src.Dictionaries.utils import http, less_print
 from src.Dictionaries.wordnet import ask_wordnet
 from src.__version__ import __version__
 from src.colors import BOLD, Color, DEFAULT, R
@@ -107,18 +106,38 @@ def search() -> str:
             return word
 
 
-DICT_DISPATCH = {
-    'ahd': ask_ahdictionary,
-    'lexico': ask_lexico, 'l': ask_lexico,
-    'idioms': ask_farlex, 'idiom': ask_farlex, 'i': ask_farlex,
-    'wordnet': ask_wordnet, 'wnet': ask_wordnet,
-    '-': lambda _: None
+class QueryNotFound(Exception):
+    pass
+
+
+DICT_FLAG_TO_QUERY_KEY = {
+    'ahd': '_ahd',
+    'idioms': '_farlex', 'idiom': '_farlex', 'i': '_farlex',
+    'lexico': '_lexico', 'l': '_lexico',
+    'wordnet': '_wordnet', 'wnet': '_wordnet',
 }
-
-
+# Every dictionary has its individual key to avoid cluttering cache
+# with identical dictionaries that were called with the same query
+# but different "dictionary flag", which acts as nothing more but
+# an alias.
+DICTIONARY_LOOKUP = {
+    '_ahd': ask_ahdictionary,
+    '_farlex': ask_farlex,
+    '_lexico': ask_lexico,
+    '_wordnet': ask_wordnet,
+}
 @functools.lru_cache(maxsize=None)
-def query_dictionary(key: str, query: str) -> Dictionary | None:
-    return DICT_DISPATCH[key](query)
+def query_dictionary(key: str, query: str) -> Dictionary | NoReturn:
+    # raises "QueryNotFound" instead of returning to avoid caching None values.
+    # Caching them is hardly useful, because:
+    # - it is unlikely that user wants to lookup again the word that
+    #   they misspelled or that is not in the dictionary.
+    # - also, it helps avoid a nasty bug that prevents the user to re-lookup
+    #   a query after they lost the Internet connection.
+    result = DICTIONARY_LOOKUP[key](query)
+    if result is None:
+        raise QueryNotFound
+    return result
 
 
 def get_dictionaries(
@@ -129,9 +148,10 @@ def get_dictionaries(
 
     result = []
     for flag in dict_flags:
-        ret = query_dictionary(flag, query)
-        if ret is not None:
-            result.append(ret)
+        try:
+            result.append(query_dictionary(DICT_FLAG_TO_QUERY_KEY[flag], query))
+        except QueryNotFound:
+            pass
 
     if result:
         return result
@@ -140,13 +160,14 @@ def get_dictionaries(
         return None
 
     print(f'{Color.heed}Querying the fallback dictionary...')
-    fallback_dict = query_dictionary(config['-dict2'], query)
-    if fallback_dict is not None:
+    try:
+        fallback_dict = query_dictionary(DICT_FLAG_TO_QUERY_KEY[config['-dict2']], query)
+    except QueryNotFound:
+        if config['-dict'] != 'idioms' and config['-dict2'] != 'idioms':
+            print(f"{Color.heed}To ask the idioms dictionary use {R}`{query} -i`")
+        return None
+    else:
         return [fallback_dict]
-
-    if config['-dict'] != 'idioms' and config['-dict2'] != 'idioms':
-        print(f"{Color.heed}To ask the idioms dictionary use {R}`{query} -i`")
-    return None
 
 
 class QuerySettings:
@@ -196,7 +217,7 @@ def parse_query(full_query: str) -> QuerySettings | None:
             )
             query = query[emph_start + 1:emph_stop]
 
-        dictionary_flags = []
+        dict_flags = []
         query_flags = []
         recorded = False
         for flag in flags:
@@ -208,14 +229,18 @@ def parse_query(full_query: str) -> QuerySettings | None:
                 if not recorded:
                     settings.recording_filename = ffmpeg.capture_audio(query)
                     recorded = True
-            elif flag in DICT_DISPATCH:
-                dictionary_flags.append(flag)
+            elif flag in DICT_FLAG_TO_QUERY_KEY:
+                dict_flags.append(flag)
             elif flag in {'c', 'compare'}:
-                dictionary_flags.extend((config['-dict'], config['-dict2']))
+                d1, d2 = config['-dict'], config['-dict2']
+                if d1 in DICT_FLAG_TO_QUERY_KEY:
+                    dict_flags.append(d1)
+                if d2 in DICT_FLAG_TO_QUERY_KEY:
+                    dict_flags.append(d2)
             else:
                 query_flags.append(flag)
 
-        settings.queries.append((query, dictionary_flags, query_flags))
+        settings.queries.append((query, dict_flags, query_flags))
 
     return settings
 
@@ -227,8 +252,8 @@ def main_loop(query: str) -> None:
 
     # Retrieve dictionaries,
     dictionaries: list[Dictionary] = []
-    for query, dictionary_flags, query_flags in settings.queries:
-        dicts = get_dictionaries(query, dictionary_flags)
+    for query, dict_flags, query_flags in settings.queries:
+        dicts = get_dictionaries(query, dict_flags)
         if dicts is None:
             continue
         elif query_flags:

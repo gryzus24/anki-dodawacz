@@ -741,6 +741,22 @@ class call_on(contextlib.ContextDecorator):
     __exit__ = lambda self, *_: self._exit()
 
 
+def prompt_run_enter() -> None:
+    curses.raw()
+    try:
+        curses.curs_set(1)
+    except curses.error:
+        pass
+
+
+def prompt_run_exit() -> None:
+    curses.cbreak()
+    try:
+        curses.curs_set(0)
+    except curses.error:
+        pass
+
+
 class CursesInputField:
     def __init__(self, sb: ScreenBuffer) -> None:
         self.prompt_inst = Prompt(sb)
@@ -867,7 +883,6 @@ class Prompt:
             self._cursor += 1
 
     def delete(self) -> None:
-        _cur, _ent = self._cursor, self._entered
         try:
             del self._entered[self._cursor]
         except IndexError:
@@ -923,23 +938,7 @@ class Prompt:
         11: control_k,
     }
 
-    @staticmethod
-    def _enter() -> None:
-        try:
-            curses.curs_set(1)
-        except curses.error:
-            pass
-        curses.raw()
-
-    @staticmethod
-    def _exit() -> None:
-        try:
-            curses.curs_set(0)
-        except curses.error:
-            pass
-        curses.cbreak()
-
-    @call_on(enter=_enter, exit=_exit)
+    @call_on(enter=prompt_run_enter, exit=prompt_run_exit)
     def run(self) -> str | None:
         prompt_commands = Prompt.COMMANDS
         while True:
@@ -1100,6 +1099,8 @@ class ScreenBuffer:
             result = func(*args)
         elif cmd in INTERACTIVE_COMMANDS:
             result = INTERACTIVE_COMMANDS[cmd](CursesInputField(self), *args)
+        elif typed.strip('-'):
+            return CommandResult(error='Not a command')
         else:
             return None
 
