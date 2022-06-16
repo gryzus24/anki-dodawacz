@@ -70,6 +70,8 @@ def diki_audio(raw_phrase: str, flag: str = '') -> str:
 
 def ahd_audio(query: str) -> str:
     soup = request_soup('https://www.ahdictionary.com/word/search.html?q=' + query)
+    if soup is None:
+        return ''
     audio_url = soup.find('a', {'target': '_blank'})['href']
     if audio_url == 'http://www.hmhco.com':
         return ''
@@ -79,6 +81,8 @@ def ahd_audio(query: str) -> str:
 
 def lexico_audio(query: str) -> str:
     soup = request_soup('https://www.lexico.com/definition/' + query.replace(' ', '_'))
+    if soup is None:
+        return ''
     audio_url = soup.find('audio')
     if audio_url is None:
         return ''

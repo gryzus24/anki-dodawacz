@@ -112,7 +112,7 @@ def filter_dictionary(dictionary: Dictionary, flags: Sequence[str]) -> Dictionar
             added.add(op)
         else:
             raise AssertionError(f'unreachable {op!r}')
-    
+
     last_titled_header = None
     for header in header_contents:
         header_entry = header['header']
@@ -175,7 +175,7 @@ def filter_dictionary(dictionary: Dictionary, flags: Sequence[str]) -> Dictionar
 
         if False not in skips:
             continue
-        
+
         if last_titled_header is not None:
             result.append(last_titled_header)
             last_titled_header = None

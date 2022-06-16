@@ -23,55 +23,20 @@ import sys
 from itertools import chain, repeat
 from typing import Generator, NoReturn, Optional, Sequence
 
-import src.anki_interface as anki
-import src.commands as c
 import src.ffmpeg_interface as ffmpeg
-import src.help as h
 from src.Dictionaries.ahdictionary import ask_ahdictionary
 from src.Dictionaries.dictionary_base import Dictionary, filter_dictionary
 from src.Dictionaries.farlex import ask_farlex
 from src.Dictionaries.lexico import ask_lexico
 from src.Dictionaries.utils import http
+from src.Dictionaries.utils import less_print
 from src.Dictionaries.wordnet import ask_wordnet
 from src.__version__ import __version__
 from src.colors import BOLD, Color, DEFAULT, R
+from src.commands import INTERACTIVE_COMMANDS, HELP_ARG_COMMANDS, NO_HELP_ARG_COMMANDS
 from src.console_main import console_ui_entry
-from src.data import LINUX, WINDOWS, boolean_cmd_to_msg, cmd_to_msg_usage, config
-
-required_arg_commands = {
-    # commands that take arguments
-    '-textwrap': c.set_text_value_commands,
-    '-columns': c.set_width_settings,
-    '-indent': c.set_width_settings,
-    '-default': c.set_free_value_commands,
-    '-note': c.set_free_value_commands,
-    '-deck': c.set_free_value_commands,
-    '-tags': c.set_free_value_commands,
-    '-hideas': c.set_free_value_commands,
-    '--audio-path': c.set_audio_path, '-ap': c.set_audio_path,
-    '-tsc': c.set_text_value_commands,
-    '-dict': c.set_text_value_commands,
-    '-dict2': c.set_text_value_commands,
-    '-dupescope': c.set_text_value_commands,
-    '-audio': c.set_text_value_commands,
-    '-recqual': c.set_text_value_commands,
-    '-margin': c.set_numeric_value_commands,
-    '-color': c.set_colors, '-c': c.set_colors,
-}
-
-no_arg_commands = {
-    '--audio-device': ffmpeg.user_set_audio_device,
-    '-refresh': anki.refresh_cached_notes,
-    '--add-note': anki.user_add_custom_note,
-}
-
-help_commands = {
-    '-config': c.print_config_representation, '-conf': c.print_config_representation,
-    '--help': h.quick_help, '-help': h.quick_help, '-h': h.quick_help,
-    '--help-config': h.config_help, '--help-conf': h.config_help,
-    '--help-define-all': h.define_all_help,
-    '--help-recording': h.recording_help, '--help-rec': h.recording_help,
-}
+from src.data import LINUX, WINDOWS, config
+from src.input_fields import ConsoleInputField
 
 # Completer doesn't work on Windows.
 # It should work on macOS, but I haven't tested it yet.
@@ -79,11 +44,10 @@ if LINUX:
     from src.completer import Completer
     tab_completion = Completer(
         tuple(chain(
-            boolean_cmd_to_msg,
-            cmd_to_msg_usage,
-            no_arg_commands,
-            help_commands,
-            ('-b', '--browse', '--define-all')
+            INTERACTIVE_COMMANDS,
+            NO_HELP_ARG_COMMANDS,
+            HELP_ARG_COMMANDS,
+            ('--define-all',)
         ))
     )
 else:
@@ -91,67 +55,56 @@ else:
 
 
 def search_field() -> str:
+    # Returns a non-empty string.
     while True:
         try:
             word = input('Search $ ').strip()
         except EOFError:
             sys.stdout.write('\r')
-            continue
-        if word:
-            return word
+        else:
+            if word:
+                return word
 
 
-def search_interface() -> str:
+def dispatch_command(s: str) -> bool:
+    # Returns whether command was dispatched or not.
+    args = s.split()
+    cmd = args[0]
+    if cmd in NO_HELP_ARG_COMMANDS:
+        result = NO_HELP_ARG_COMMANDS[cmd](*args)
+    elif cmd in INTERACTIVE_COMMANDS:
+        result = INTERACTIVE_COMMANDS[cmd](ConsoleInputField(), *args)
+    elif cmd in HELP_ARG_COMMANDS:
+        func, note, usage = HELP_ARG_COMMANDS[cmd]
+        if (len(args) == 1 or
+           (len(args) == 2 and args[1].strip(' -').lower() in ('h', 'help'))
+        ):
+            sys.stdout.write(f'{Color.heed}{note}{R}\n{cmd} {usage}\n')
+            return True
+        else:
+            result = func(*args)
+    else:
+        return False
+
+    if result.error:
+        sys.stdout.write(f'{Color.err}{result.error}\n')
+    if result.reason:
+        sys.stdout.write(result.reason)
+        sys.stdout.write('\n')
+    if result.output:
+        less_print(result.output)
+
+    return True
+
+
+def search() -> str:
     while True:
         with tab_completion():
             word = search_field()
 
-        args = word.split()
-        cmd = args[0]
-        if cmd in help_commands:
-            help_commands[cmd]()
-            continue
-        elif cmd in no_arg_commands:
-            response = no_arg_commands[cmd]()
-            if response is not None:
-                print(f'{Color.err if response.error else Color.success}{response.body}')
-            continue
-        elif cmd in ('-b', '--browse'):
-            query_args = args[1:]
-            if query_args:
-                response = anki.gui_browse_cards(' '.join(query_args))
-            else:
-                response = anki.gui_browse_cards('added:1')
-            if response.error:
-                print(f'{Color.err}Could not open the card browser:\n{R}{response.body}\n')
-            continue
-
-        if cmd in boolean_cmd_to_msg:
-            method = c.boolean_commands
-            message, usage = boolean_cmd_to_msg[cmd], '{on|off}'
-        elif cmd in required_arg_commands:
-            method = required_arg_commands[cmd]
-            message, usage = cmd_to_msg_usage[cmd]
-        else:
+        dispatched = dispatch_command(word)
+        if not dispatched:
             return word
-
-        try:
-            if args[1].strip('-').lower() in ('h', 'help'):
-                raise IndexError
-        except IndexError:  # Print help
-            print(f'{Color.heed}{message}\n'
-                  f'{R}{cmd} {usage}')
-
-            # Print additional information
-            if cmd in ('-ap', '--audio-path'):
-                print(f'{BOLD}Current audio path:\n'
-                      f'{DEFAULT}{config["audio_path"]}\n')
-            elif cmd in ('-c', '-color'):
-                c.color_command()
-        else:
-            err = method(*args, message=message)
-            if err is not None:
-                print(f'{Color.err}{err}')
 
 
 DICT_DISPATCH = {
@@ -212,9 +165,9 @@ class QuerySettings:
     def __repr__(self) -> str:
         return (
             f'{type(self).__name__}('
-            f'{self.queries=}, '
-            f'{self.user_sentence=}, '
-            f'{self.recording_filename=})'
+            f'queries={self.queries}, '
+            f'user_sentence={self.user_sentence}, '
+            f'recording_filename={self.recording_filename})'
         )
 
 
@@ -348,7 +301,7 @@ def main() -> NoReturn:
         f'type -h for usage and configuration\n\n\n'
     )
     while True:
-        user_query = search_interface()
+        user_query = search()
         if user_query.startswith(('-rec', '--record')):
             ffmpeg.capture_audio()
         elif user_query.startswith('--define-all'):

@@ -6,7 +6,7 @@ from typing import Callable, ContextManager, Generator, Sequence
 
 
 # Import on Linux (maybe POSIX) only, readline doesn't work on Windows.
-def Completer(completions: Sequence[str]) -> Callable[[], ContextManager]:
+def Completer(completions: Sequence[str]) -> Callable[[], ContextManager[None]]:
     # Initializes a tab completer and returns a contextmanager,
     # that can be used to limit the scope of tab completion, as
     # it is global by default.

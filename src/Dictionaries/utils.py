@@ -3,7 +3,7 @@ from __future__ import annotations
 import shutil
 import sys
 from subprocess import Popen, DEVNULL, PIPE, call
-from typing import Any, Callable, NoReturn, Optional
+from typing import Any, Callable, NoReturn, Optional, TypeVar
 
 from src.colors import R, Color
 from src.data import ON_TERMUX, ON_WINDOWS_CMD, POSIX, USER_AGENT, WINDOWS, config
@@ -23,7 +23,7 @@ if (*map(int, __version__.split('.')),) < (4, 10, 0):
     sys.stderr.write(
          f'{Color.err}-----------------------------------------------------------------{R}\n'
          'Your version of beautifulsoup is out of date, please update:\n'
-         'pip install -U --no-deps beautifulsoup4\n'
+         'pip install -U beautifulsoup4\n'
          'And while you are at it, kindly, uninstall the soupsieve package:\n'
          'pip uninstall soupsieve\n'
     )
@@ -36,9 +36,9 @@ from urllib3.exceptions import ConnectTimeoutError, NewConnectionError
 
 http = urllib3.PoolManager(timeout=10, headers=USER_AGENT)
 
-
-def handle_connection_exceptions(func: Callable) -> Callable:
-    def wrapper(*args: Any, **kwargs: Any) -> NoReturn | Callable | None:
+T = TypeVar('T')
+def handle_connection_exceptions(func: Callable[..., T]) -> Callable[..., NoReturn | T | None]:
+    def wrapper(*args: Any, **kwargs: Any) -> NoReturn | T | None:
         try:
             return func(*args, **kwargs)
         except Exception as e:
@@ -155,19 +155,15 @@ def display_in_less(s: str) -> int:
     return 0
 
 
-def less_wrapper(func: Callable[..., str]) -> Callable[..., None]:
-    def wrapper(*args: Any, **kwargs: Any) -> None:
-        string = func(*args, **kwargs)
-        if config['-less']:
-            with ClearScreen():
-                rc = display_in_less(string)
-                if rc:
-                    sys.stdout.write(string)
-        else:
-            with ClearScreen():
-                sys.stdout.write(string)
-
-    return wrapper
+def less_print(s: str) -> None:
+    if config['-less']:
+        with ClearScreen():
+            rc = display_in_less(s)
+            if rc:
+                sys.stdout.write(s)
+    else:
+        with ClearScreen():
+            sys.stdout.write(s)
 
 
 def wrap_lines(

@@ -20,10 +20,6 @@
 "etym_c": "\u001b[39m",
 "exsen_c": "\u001b[94m",
 "-hideas": "...",
-"-indent": [
-0,
-""
-],
 "index_c": "\u001b[92m",
 "inflection_c": "\u001b[90m",
 "-note": "-",
@@ -31,7 +27,7 @@
 "phrase_c": "\u001b[36m",
 "pos_c": "\u001b[33m",
 "label_c": "\u001b[97m",
-"-recqual": "4",
+"-recqual": 4,
 "-savecards": true,
 "success_c": "\u001b[92m",
 "-syn": true,

@@ -7,7 +7,7 @@ from typing import Optional, Sequence, TYPE_CHECKING
 
 import src.anki_interface as anki
 import src.cards as cards
-from src.Dictionaries.utils import get_width_per_column, wrap_and_pad, wrap_lines, less_wrapper
+from src.Dictionaries.utils import get_width_per_column, wrap_and_pad, wrap_lines, less_print
 from src.colors import BOLD, Color, DEFAULT, R
 from src.data import HORIZONTAL_BAR, config
 
@@ -163,7 +163,6 @@ def stringify_columns(
 
 def format_dictionary(dictionary: Dictionary, column_width: int) -> list[str]:
     wrap_method = wrap_and_pad(config['-textwrap'], column_width)
-    indent = config['-indent'][0]
     signed = config['-showsign']
 
     buffer = []
@@ -206,9 +205,7 @@ def format_dictionary(dictionary: Dictionary, column_width: int) -> list[str]:
                 _def_s = ''
                 gaps = 1
 
-            first_line, rest = wrap_method(
-                _def, gaps + index_len + label_len, indent - label_len
-            )
+            first_line, rest = wrap_method(_def, gaps + index_len + label_len, -label_len)
             def_c = Color.def1 if index % 2 else Color.def2
             buffer.append(f'{_def_s}{Color.index}{index} {Color.label}{_label}{def_c}{first_line}')
             for line in rest:
@@ -216,7 +213,7 @@ def format_dictionary(dictionary: Dictionary, column_width: int) -> list[str]:
 
             if _exsen:
                 for ex in _exsen.split('<br>'):
-                    first_line, rest = wrap_method(ex, gaps + index_len - 1, 1 + indent)
+                    first_line, rest = wrap_method(ex, gaps + index_len - 1, 1)
                     buffer.append(f'${index_len * " "}{(gaps - 1) * " "}{Color.exsen}{first_line}')
                     for line in rest:
                         buffer.append(f'${Color.exsen}{line}')
@@ -250,7 +247,7 @@ def format_dictionary(dictionary: Dictionary, column_width: int) -> list[str]:
             etym = body[0]
             if etym:
                 buffer.append(blank)
-                first_line, rest = wrap_method(etym, 1, indent)
+                first_line, rest = wrap_method(etym, 1, 0)
                 buffer.append(f' {Color.etym}{first_line}')
                 for line in rest:
                     buffer.append(f'${Color.etym}{line}')
@@ -290,8 +287,7 @@ def format_dictionary(dictionary: Dictionary, column_width: int) -> list[str]:
     return buffer
 
 
-@less_wrapper
-def display_dictionary(dictionary: Dictionary) -> str:
+def display_dictionary(dictionary: Dictionary) -> None:
     width, height = shutil.get_terminal_size()
     ncols, state = config['-columns']
     if state == 'auto':
@@ -306,11 +302,10 @@ def display_dictionary(dictionary: Dictionary) -> str:
     else:
         columns = columnize(formatted, column_width, height, ncols)
 
-    return stringify_columns(columns, column_width, last_col_fill)
+    less_print(stringify_columns(columns, column_width, last_col_fill))
 
 
-@less_wrapper
-def display_many_dictionaries(dictionaries: list[Dictionary]) -> str:
+def display_many_dictionaries(dictionaries: list[Dictionary]) -> None:
     width, _ = shutil.get_terminal_size()
     col_width, last_col_fill = get_width_per_column(width, len(dictionaries))
 
@@ -319,7 +314,7 @@ def display_many_dictionaries(dictionaries: list[Dictionary]) -> str:
         formatted = format_dictionary(d, col_width)
         columns.append([line.lstrip('$!') for line in formatted])
 
-    return stringify_columns(columns, col_width, last_col_fill, ("║", "╥"))
+    less_print(stringify_columns(columns, col_width, last_col_fill, ("║", "╥")))
 
 
 def display_card(card: dict[str, str]) -> None:

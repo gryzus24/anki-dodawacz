@@ -95,7 +95,7 @@ def add_audio_to_anki(
             audio_url = ahd_audio(phrase)
         elif server == 'lexico':
             audio_url = lexico_audio(phrase)
-    
+
     if not audio_url:
         if flags is None:
             audio_url = diki_audio(phrase)
@@ -223,6 +223,8 @@ def _map_card_fields_to_values(
 
 
 def format_and_prepare_card(card: dict[str, str]) -> dict[str, str]:
+    card = {k: v.replace("'", "&#39;").replace('"', '&quot;') for k, v in card.items()}
+
     if config['-formatdefs']:
         card['def'] = format_definitions(card['def'])
 
@@ -231,13 +233,7 @@ def format_and_prepare_card(card: dict[str, str]) -> dict[str, str]:
     sentence = sentence.replace('}}', '</b>', 1)
     card['sen'] = sentence
 
-    return {
-        k: v.replace("'", "&#39;").replace('"', '&quot;') for k, v in card.items()
-    }
-
-
-class DictionaryError(Exception):
-    pass
+    return card
 
 
 def cards_from_definitions(

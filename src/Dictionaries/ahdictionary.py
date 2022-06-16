@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from itertools import filterfalse
-from typing import Any, Callable, Iterable
+from typing import Any, Callable, Iterable, TypeVar
 
 from src.Dictionaries.dictionary_base import Dictionary
 from src.Dictionaries.utils import request_soup
@@ -85,7 +85,7 @@ def _extract_phrase_and_phonetic_spelling(raw_string: str) -> tuple[str, str]:
     )
 
 
-def _get_phrase_inflections(content: list) -> str:
+def _get_phrase_inflections(content: list[Any]) -> str:
     parsed_cl = [
         x.string.strip(', ') for x in content
         if x.string is not None
@@ -130,7 +130,8 @@ def _get_def_and_exsen(s: str) -> tuple[str, str]:
     return _def, _exsen
 
 
-def _separate(i: Iterable[Any], pred: Callable[[Any], bool]) -> tuple[list, list]:
+T = TypeVar('T')
+def _separate(i: Iterable[T], pred: Callable[[T], bool]) -> tuple[list[T], list[T]]:
     return list(filter(pred, i)), list(filterfalse(pred, i))
 
 

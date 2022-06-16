@@ -7,10 +7,7 @@ from typing import Any, NamedTuple
 from urllib3.exceptions import NewConnectionError
 
 from src.Dictionaries.utils import http
-from src.colors import BOLD, Color, DEFAULT, R
-from src.commands import save_command
 from src.data import ROOT_DIR, config
-from src.input_fields import ask_yes_no, choose_item
 
 # Module global configuration allows for hard refresh
 # of saved notes without restarting the program and
@@ -22,8 +19,6 @@ except (FileNotFoundError, json.JSONDecodeError):
     with open(os.path.join(ROOT_DIR, 'config/ankiconnect.json'), 'w') as af:
         af.write('{}')
     config_ac = {}
-
-CUSTOM_NOTES = sorted(os.listdir(os.path.join(ROOT_DIR, 'notes')))
 
 # fields used for Anki note recognition
 AC_BASE_FIELDS = (
@@ -204,39 +199,6 @@ def gui_browse_cards(query: str = 'added:1') -> AnkiResponse:
         return response
 
     return AnkiResponse('Anki card browser opened', error=False)
-
-
-def user_add_custom_note() -> None:
-    print(f'{BOLD}Available notes:{DEFAULT}')
-    for i, note in enumerate(CUSTOM_NOTES, start=1):
-        print(f'{Color.index}{i} {R}{note[:-5]}')  # strip ".json"
-    print()
-
-    note_name = choose_item('Choose a note to add', CUSTOM_NOTES, default=0)
-    if note_name is None:
-        print(f'{Color.err}Leaving...')
-        return
-
-    with open(os.path.join(ROOT_DIR, f'notes/{note_name}')) as f:
-        note_config = json.load(f)
-
-    model_name = note_config['modelName']
-    response = invoke('createModel',
-                      modelName=model_name,
-                      inOrderFields=note_config['fields'],
-                      css=note_config['css'],
-                      cardTemplates=[{'Name': note_config['cardName'],
-                                      'Front': note_config['front'],
-                                      'Back': note_config['back']}])
-    if response.error:
-        print(f'{Color.err}Note could not be added:\n{R}{response.body}\n')
-        return
-
-    print(f'{Color.success}Note added successfully')
-    if ask_yes_no(f'Set "{model_name}" as -note?', default=True):
-        save_command('note', model_name)
-
-    return None
 
 
 def add_card_to_anki(field_values: dict[str, str]) -> AnkiResponse:

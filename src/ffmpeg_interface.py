@@ -6,9 +6,7 @@ import subprocess
 import sys
 
 from src.colors import Color, R
-from src.commands import save_command
 from src.data import LINUX, WINDOWS, config
-from src.input_fields import choose_item
 
 if WINDOWS:
     def find_devices() -> list[str]:
@@ -40,7 +38,7 @@ else:
         return []
 
 
-def _record(filepath: str) -> subprocess.CompletedProcess:
+def _record(filepath: str) -> subprocess.CompletedProcess[str]:
     if LINUX:
         ffmpeg_settings = {
             'format': 'pulse',
@@ -66,38 +64,10 @@ def _record(filepath: str) -> subprocess.CompletedProcess:
         '-channel_layout', 'stereo',
         '-i', ffmpeg_settings['device'],
         '-acodec', 'libmp3lame',
-        '-q:a', config['-recqual'],
+        '-q:a', str(config['-recqual']),
         filepath
     ), capture_output=True, text=True)
     return result
-
-
-def user_set_audio_device() -> None:
-    try:
-        audio_devices = find_devices()
-        if not audio_devices:
-            print(f'{Color.err}No devices found\n'
-                  f'audio recording might not be available on {sys.platform!r}')
-            return
-    except FileNotFoundError:
-        print(f'{Color.err}Could not locate FFmpeg\n'
-              f"Place the FFmpeg binary alongside the program or in $PATH")
-        return
-
-    print('Choose your desktop output device:')
-    for i, device in enumerate(audio_devices, start=1):
-        print(f"{Color.index}{i} {R}{device}")
-
-    audio_device = choose_item('\nDevice', audio_devices)
-    if audio_device is None:
-        print(f'{Color.err}Invalid input, leaving...')
-        return
-
-    save_command('audio_device', audio_device)
-    print(f'{Color.success}Chosen device:\n'
-          f'{R}{audio_device}\n')
-
-    return None
 
 
 def capture_audio(*args: str) -> str:

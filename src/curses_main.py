@@ -8,7 +8,7 @@ import shutil
 from itertools import islice, zip_longest, repeat
 from typing import (
     Callable, Iterable, NamedTuple, Optional,
-    Reversible, Sequence, TYPE_CHECKING
+    Reversible, Sequence, Any, TYPE_CHECKING
 )
 
 import src.anki_interface as anki
@@ -16,7 +16,8 @@ import src.cards as cards
 from src.Dictionaries.dictionary_base import filter_dictionary
 from src.Dictionaries.utils import wrap_and_pad
 from src.colors import Color as _Color
-from src.data import HORIZONTAL_BAR, LINUX, config
+from src.commands import INTERACTIVE_COMMANDS, NO_HELP_ARG_COMMANDS, HELP_ARG_COMMANDS, CommandResult
+from src.data import STRING_TO_BOOL, HORIZONTAL_BAR, LINUX, config
 
 if TYPE_CHECKING:
     from ankidodawacz import QuerySettings
@@ -84,7 +85,6 @@ def format_dictionary(
     #  (NOTE,   'note')
 
     wrap_method = wrap_and_pad(config['-textwrap'], column_width)
-    indent = config['-indent'][0]
     signed = config['-showsign']
 
     boxes = []
@@ -166,9 +166,7 @@ def format_dictionary(
                 _def_sign = ''
                 gaps = 1
 
-            first_line, rest = wrap_method(
-                _def, gaps + index_len + label_len, indent - label_len
-            )
+            first_line, rest = wrap_method(_def, gaps + index_len + label_len, -label_len)
             def_color = def1_c if index % 2 else def2_c
             temp_boxes.extend(_into_boxes(
                 (
@@ -180,7 +178,7 @@ def format_dictionary(
             ))
             if _exsen:
                 for ex in _exsen.split('<br>'):
-                    first_line, rest = wrap_method(ex, gaps + index_len - 1, 1 + indent)
+                    first_line, rest = wrap_method(ex, gaps + index_len - 1, 1)
                     temp_boxes.extend(_into_boxes(
                         (
                            ((index_len + gaps - 1) * ' ', exsen_c),
@@ -225,7 +223,7 @@ def format_dictionary(
             etym = entry[1]
             if etym:
                 temp_boxes.append(curses.newwin(1, column_width))
-                first_line, rest = wrap_method(etym, 1, indent)
+                first_line, rest = wrap_method(etym, 1, 0)
                 temp_boxes.extend(_into_boxes(
                     (
                        (' ' + first_line, etym_c),
@@ -321,13 +319,16 @@ def create_and_add_card_to_anki(
 BORDER_PAD = 1
 
 def draw_help(stdscr: curses._CursesWindow) -> None:
+    # These should be of uniform width, padded with spaces if needed.
     top_line = [
         ('F1', ' Help '), ('j/k', ' Move down/up '), ('1-9', ' Select cell '),
-        ('B ', ' Card browser '), ('g ', ' Go top '), ('^l', ' Redraw screen     '),
+        ('B ', ' Card browser '), ('/ ', ' Filter/Search '), ('g ', ' Go top '),
+        ('^l', ' Redraw screen     '),
     ]
     bot_line = [
         ('q ', ' Exit '), ('h/l', ' Swap screens '), ('d ', ' Deselect all '),
-        ('C ', ' Create cards '), ('G ', ' Go EOF '), ('F8', ' Rearrange columns '),
+        ('C ', ' Create cards '), ('^J', ' Reset filters '), ('G ', ' Go EOF '),
+        ('F8', ' Rearrange columns '),
     ]
 
     top_bot_pairs = []
@@ -396,13 +397,13 @@ class Notifications:
             )
         else:
             self.buffer[-1] = (new_line, color_pair)
-    
+
     def nlsuccess(self, s: str) -> None:
         self.add_lines([s], curses.color_pair(BLACK_ON_GREEN))
 
     def success(self, s: str) -> None:
         self.append_line(s, curses.color_pair(BLACK_ON_GREEN))
-    
+
     def nlerror(self, s: str) -> None:
         self.add_lines([s], curses.color_pair(BLACK_ON_RED))
 
@@ -411,6 +412,9 @@ class Notifications:
 
     def addstr(self, s: str) -> None:
         self.add_lines(s.splitlines(), curses.color_pair(0))
+
+    def clear_on_next_draw(self) -> None:
+        self.ticks = self.persistence
 
     def draw_if_available(self) -> None:
         if not self.buffer:
@@ -715,7 +719,7 @@ class Screen:
 
     def page_up(self) -> None:
         self.move_up(self.screen_height - 1)
-        
+
     COMMANDS: dict[bytes, Callable[..., None]] = {
         b'^J': use_original_dictionary,
         b'd': deselect_all,
@@ -723,8 +727,8 @@ class Screen:
         b'k': move_up,   b'^P': move_up,   b'KEY_UP': move_up,
         b'G': go_bottom, b'KEY_END': go_bottom,
         b'g': go_top,    b'KEY_HOME': go_top,
-        b'KEY_NPAGE': page_down, b'KEY_SNEXT': page_down,   
-        b'KEY_PPAGE': page_up,   b'KEY_SPREVIOUS': page_up, 
+        b'KEY_NPAGE': page_down, b'KEY_SNEXT': page_down,
+        b'KEY_PPAGE': page_up,   b'KEY_SPREVIOUS': page_up,
     }
 
 
@@ -732,108 +736,179 @@ class call_on(contextlib.ContextDecorator):
     def __init__(self, *, enter: Callable[..., None], exit: Callable[..., None]) -> None:
         self._enter = enter
         self._exit = exit
-    
+
     __enter__ = lambda self: self._enter()
     __exit__ = lambda self, *_: self._exit()
 
 
+class CursesInputField:
+    def __init__(self, sb: ScreenBuffer) -> None:
+        self.prompt_inst = Prompt(sb)
+
+    def write(self, s: str) -> None:
+        self.prompt_inst.line_buffer.append(s)
+
+    def choose_item(self, prompt_name: str, seq: Sequence[Any], default: int = 1) -> Any | None:
+        self.prompt_inst.prompt = f'{prompt_name} [{default}]: '
+        self.prompt_inst.exit_if_empty = False
+        typed = self.prompt_inst.run()
+        if typed is None:
+            return None
+        typed = typed.strip()
+        try:
+            choice = int(typed) if typed else default
+        except ValueError:
+            return None
+        if 0 < choice <= len(seq):
+            return seq[choice - 1]
+        return None
+
+    def ask_yes_no(self, prompt_name: str, *, default: bool) -> bool:
+        d = 'Y/n' if default else 'y/N'
+        self.prompt_inst.prompt = f'{prompt_name} [{d}]: '
+        self.prompt_inst.exit_if_empty = False
+        typed = self.prompt_inst.run()
+        if typed is None:
+            return default
+        return STRING_TO_BOOL.get(typed.strip().lower(), default)
+
+
 class Prompt:
-    def __init__(self, screen_buffer: ScreenBuffer, pretype: str) -> None:
+    def __init__(self,
+            screen_buffer: ScreenBuffer,
+            prompt: str = '', *,
+            pretype: str = '',
+            lines: Optional[list[str]] = None,
+            exit_if_empty: bool = True,
+    ) -> None:
         self.win = screen_buffer.stdscr
         self.screen_buffer = screen_buffer
-        self.entered = [*pretype]
-        self.cursor = len(pretype)
-    
+        self.prompt: str = prompt
+        self.line_buffer: list[str] = lines or []
+        self.exit_if_empty: bool = exit_if_empty
+        self._entered = [*pretype]
+        self._cursor = len(pretype)
+
+    def _draw_line_buffer(self) -> None:
+        y, x = LINES-2, 0
+        if y <= len(self.line_buffer):
+            return
+        for line in reversed(self.line_buffer):
+            self.win.move(y, x)
+            self.win.clrtoeol()
+            self.win.insstr(y, x, line)
+            y -= 1
+
+    def _draw_prompt(self) -> None:
+        width = COLS - 1
+        offset = width // 3
+
+        headroom = width - len(self.prompt) - 6
+        if headroom < 0:
+            prompt_text = f'..{self.prompt[2-headroom:]}'
+        else:
+            prompt_text = self.prompt
+
+        self.win.move(LINES-1, 0)
+        self.win.clrtoeol()
+
+        bogus_cursor = self._cursor + len(prompt_text)
+        if bogus_cursor < width:
+            self.win.insstr(LINES-1, 0, prompt_text)
+            if len(self._entered) > width - len(prompt_text):
+                text = f'{"".join(self._entered[:width - len(prompt_text)])}>'
+            else:
+                text = ''.join(self._entered)
+            text_x = len(prompt_text)
+        else:
+            bogus_cursor -= len(prompt_text)
+            while bogus_cursor >= width:
+                bogus_cursor = bogus_cursor - width + offset
+
+            start = self._cursor - bogus_cursor
+            if start + width > len(self._entered):
+                text = f'<{"".join(self._entered[start + 1:start + width])}'
+            else:
+                text = f'<{"".join(self._entered[start + 1:start + width])}>'
+            text_x = 0
+
+        self.win.insstr(LINES-1, text_x, text)
+        self.win.move(LINES-1, bogus_cursor)
+
+    def _delete_line(self) -> None:
+        self._entered.clear()
+        self._cursor = 0
+
     def draw(self) -> None:
         self.win.erase()
         self.screen_buffer.draw()
 
-        self.win.move(LINES-1, 0)
-        self.win.clrtoeol()
-        
-        width = COLS - 1
-        offset = width // 3
-        bogus_cursor = self.cursor
-        if bogus_cursor < width:
-            if len(self.entered) > width:
-                text = f'{"".join(self.entered[:width])}>'
-            else:
-                text = ''.join(self.entered)
-        else:
-            while bogus_cursor >= width:
-                bogus_cursor = bogus_cursor - width + offset
+        self._draw_line_buffer()
+        self._draw_prompt()
 
-            start = self.cursor - bogus_cursor 
-            if start + width > len(self.entered):
-                text = f'<{"".join(self.entered[start+1:start+width])}'
-            else:
-                text = f'<{"".join(self.entered[start+1:start+width])}>'
-
-        self.win.insstr(LINES-1, 0, text)
-        self.win.move(LINES-1, bogus_cursor)
-    
     def resize(self) -> None:
         self.screen_buffer.resize()
 
-    def letter(self, c: int) -> None:
-        self.entered.insert(self.cursor, chr(c))
-        self.cursor += 1
-    
+    def type(self, c: int) -> None:
+        self._entered.insert(self._cursor, chr(c))
+        self._cursor += 1
+
     def backspace(self) -> None:
-        if self.cursor > 0:
-            self.cursor -= 1
-            del self.entered[self.cursor]
+        if self._cursor > 0:
+            self._cursor -= 1
+            del self._entered[self._cursor]
 
     def left(self) -> None:
-        if self.cursor > 0:
-            self.cursor -= 1
-    
+        if self._cursor > 0:
+            self._cursor -= 1
+
     def right(self) -> None:
-        if self.cursor < len(self.entered):
-            self.cursor += 1
-    
+        if self._cursor < len(self._entered):
+            self._cursor += 1
+
     def delete(self) -> None:
+        _cur, _ent = self._cursor, self._entered
         try:
-            del self.entered[self.cursor]
+            del self._entered[self._cursor]
         except IndexError:
             pass
 
     def home(self) -> None:
-        self.cursor = 0
+        self._cursor = 0
 
     def end(self) -> None:
-        self.cursor = len(self.entered)
-    
+        self._cursor = len(self._entered)
+
     def jump_left(self) -> None:
         skip = True
-        entered = self.entered
-        for i in range(self.cursor-1, -1, -1):
+        entered = self._entered
+        for i in range(self._cursor - 1, -1, -1):
             if entered[i].isspace():
                 if skip:
                     continue
-                self.cursor = i + 1
+                self._cursor = i + 1
                 break
             else:
                 skip = False
         else:
-            self.cursor = 0
-    
+            self._cursor = 0
+
     def jump_right(self) -> None:
         skip = True
-        entered = self.entered
-        for i in range(self.cursor+1, len(entered)):
+        entered = self._entered
+        for i in range(self._cursor + 1, len(entered)):
             if entered[i].isspace():
                 if skip:
                     continue
-                self.cursor = i
+                self._cursor = i
                 break
             else:
                 skip = False
         else:
-            self.cursor = len(entered)
+            self._cursor = len(entered)
 
     def control_k(self) -> None:
-        self.entered = self.entered[:self.cursor]
+        self._entered = self._entered[:self._cursor]
 
     COMMANDS = {
         410: resize,              12: resize,       # ^L
@@ -847,7 +922,7 @@ class Prompt:
         561: jump_right,          559: jump_right,  # ^RIGHT, Alt-RIGHT
         11: control_k,
     }
-    
+
     @staticmethod
     def _enter() -> None:
         try:
@@ -856,14 +931,14 @@ class Prompt:
             pass
         curses.raw()
 
-    @staticmethod 
+    @staticmethod
     def _exit() -> None:
         try:
             curses.curs_set(0)
         except curses.error:
             pass
         curses.cbreak()
-    
+
     @call_on(enter=_enter, exit=_exit)
     def run(self) -> str | None:
         prompt_commands = Prompt.COMMANDS
@@ -872,13 +947,17 @@ class Prompt:
 
             c = get_key(self.win)
             if 32 <= c <= 126:  # printable ascii
-                self.letter(c)
+                self.type(c)
             elif c in prompt_commands:
                 prompt_commands[c](self)
             elif c in (7, 10):  # ^J, \n
-                return ''.join(self.entered)
+                ret = ''.join(self._entered)
+                self._delete_line()
+                return ret
 
-            if not self.entered or c in (3, 27):  # ^C, ESC
+            if (c in (3, 27) or  # ^C, ESC
+               (self.exit_if_empty and not self._entered)
+            ):
                 return None
 
 
@@ -902,7 +981,7 @@ class ScreenBuffer:
         if self.cursor > 0:
             self.cursor -= 1
         return self.current
-    
+
     def cycle_column_state(self) -> str:
         col_state = self.current.column_state
         if col_state > 4:
@@ -913,7 +992,7 @@ class ScreenBuffer:
         for screen in self.screens:
             screen.column_state = col_state
             screen.update_for_redraw()
-        
+
         if col_state > 0:
             return str(col_state)
         else:
@@ -998,14 +1077,35 @@ class ScreenBuffer:
         self.stdscr.clearok(True)
 
     def search_prompt(self, screen: Screen) -> None:
-        typed = Prompt(self, '/').run()
+        typed = Prompt(self, 'Search ', pretype='/').run()
         if typed is None:
-            return 
+            return
         if typed.startswith('/'):
             typed = typed[1:]
-        
+
         screen.dictionary = filter_dictionary(screen._original_dictionary, (typed,))
         screen.update_for_redraw()
+
+    def command_prompt(self, screen: Screen) -> CommandResult | None:
+        typed = Prompt(self, '$ ', pretype='-').run()
+        if typed is None:
+            return None
+
+        args = typed.split()
+        cmd = args[0]
+        if cmd in NO_HELP_ARG_COMMANDS:
+            result = NO_HELP_ARG_COMMANDS[cmd](*args)
+        elif cmd in HELP_ARG_COMMANDS:
+            func, note, usage = HELP_ARG_COMMANDS[cmd]
+            result = func(*args)
+        elif cmd in INTERACTIVE_COMMANDS:
+            result = INTERACTIVE_COMMANDS[cmd](CursesInputField(self), *args)
+        else:
+            return None
+
+        screen.update_for_redraw()
+
+        return result
 
 
 # Unfortunately Python's readline api does not expose functions and variables
@@ -1076,6 +1176,14 @@ def _curses_main(
             screen = screen_buffer.previous()
         elif c in (b'l', b'KEY_RIGHT'):
             screen = screen_buffer.next()
+        elif c == b'-':
+            result = screen_buffer.command_prompt(screen)
+            if result is not None:
+                if result.error:
+                    notify.nlerror(result.error)
+                if result.reason:
+                    notify.addstr(result.reason)
+                notify.clear_on_next_draw()
         elif c == b'/':
             screen_buffer.search_prompt(screen)
         elif c == b'KEY_F(1)':
@@ -1086,7 +1194,7 @@ def _curses_main(
         elif c == b'B':
             response = anki.gui_browse_cards()
             if response.error:
-                notify.nlerror('Could not open a card browser:')
+                notify.nlerror('Could not open the card browser:')
                 notify.addstr(response.body)
             else:
                 notify.success('Anki card browser opened')
