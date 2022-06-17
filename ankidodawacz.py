@@ -146,7 +146,7 @@ def get_dictionaries(
         fallback: Optional[str] = None
 ) -> list[Dictionary] | None:
     if flags is None or not flags:
-        flags = ['ahd']
+        flags = [config['-dict']]
 
     none_keys = set()
     result = []
