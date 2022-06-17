@@ -141,33 +141,38 @@ def query_dictionary(key: str, query: str) -> Dictionary | NoReturn:
 
 
 def get_dictionaries(
-        query: str, dict_flags: Optional[Sequence[str]] = None
+        query: str,
+        flags: Optional[Sequence[str]] = None,
+        fallback: Optional[str] = None
 ) -> list[Dictionary] | None:
-    if dict_flags is None or not dict_flags:
-        dict_flags = [config['-dict']]
+    if flags is None or not flags:
+        flags = ['ahd']
 
+    none_keys = set()
     result = []
-    for flag in dict_flags:
-        try:
-            result.append(query_dictionary(DICT_FLAG_TO_QUERY_KEY[flag], query))
-        except QueryNotFound:
-            pass
+    for flag in flags:
+        key = DICT_FLAG_TO_QUERY_KEY[flag]
+        if key not in none_keys:
+            try:
+                result.append(query_dictionary(key, query))
+            except QueryNotFound:
+                none_keys.add(key)
 
     if result:
         return result
-
-    if config['-dict2'] == '-':
+    if fallback is None:
+        return None
+    fallback_key = DICT_FLAG_TO_QUERY_KEY[fallback]
+    if fallback_key in none_keys:
         return None
 
     print(f'{Color.heed}Querying the fallback dictionary...')
     try:
-        fallback_dict = query_dictionary(DICT_FLAG_TO_QUERY_KEY[config['-dict2']], query)
+        result.append(query_dictionary(fallback_key, query))
     except QueryNotFound:
-        if config['-dict'] != 'idioms' and config['-dict2'] != 'idioms':
-            print(f"{Color.heed}To ask the idioms dictionary use {R}`{query} -i`")
         return None
     else:
-        return [fallback_dict]
+        return result
 
 
 class QuerySettings:
@@ -250,10 +255,14 @@ def main_loop(query: str) -> None:
     if settings is None:
         return
 
-    # Retrieve dictionaries,
+    ## Retrieve dictionaries,
+    fallback_dict = config['-dict2']
+    if fallback_dict == '-':
+        fallback_dict = None
+
     dictionaries: list[Dictionary] = []
     for query, dict_flags, query_flags in settings.queries:
-        dicts = get_dictionaries(query, dict_flags)
+        dicts = get_dictionaries(query, dict_flags, fallback_dict)
         if dicts is None:
             continue
         elif query_flags:
@@ -264,28 +273,29 @@ def main_loop(query: str) -> None:
     if not dictionaries:
         return
 
-    if not config['-curses']:
-        return console_ui_entry(dictionaries, settings)
+    if config['-curses']:
+        try:
+            from src.curses_main import curses_ui_entry
+        except ImportError:
+            if WINDOWS:
+                sys.stdout.write(
+                    f'{Color.err}The curses module could not be imported:{R}\n'
+                    f'Curses support on Windows is close to non-existent,\n'
+                    f'but there are a few things you can try:\n'
+                    f' - install CygWin or MinGW32,\n'
+                    f' - install WSL,\n'
+                    f' - pip install windows-curses (not recommended),\n'
+                    f' - use the console backend: -curses off,\n'
+                    f' - install Linux or some other Unix-like OS\n\n'
+                )
+                return
+            else:
+                raise
 
-    try:
-        from src.curses_main import curses_ui_entry
-    except ImportError:
-        if WINDOWS:
-            sys.stdout.write(
-                f'{Color.err}The curses module could not be imported:{R}\n'
-                f'Curses support on Windows is close to non-existent,\n'
-                f'but there are a few things you can try:\n'
-                f' - install CygWin or MinGW32,\n'
-                f' - install WSL,\n'
-                f' - pip install windows-curses (not recommended),\n'
-                f' - use the console backend: -curses off,\n'
-                f' - install Linux or some other Unix-like OS\n\n'
-            )
-            return
-        else:
-            raise
+        curses_ui_entry(dictionaries, settings)
+    else:
+        console_ui_entry(dictionaries, settings)
 
-    curses_ui_entry(dictionaries, settings)
 
 
 def from_define_all_file(_input: str) -> Generator[str, None, None]:

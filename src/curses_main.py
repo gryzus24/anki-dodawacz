@@ -17,7 +17,7 @@ from src.Dictionaries.dictionary_base import filter_dictionary
 from src.Dictionaries.utils import wrap_and_pad
 from src.colors import Color as _Color
 from src.commands import INTERACTIVE_COMMANDS, NO_HELP_ARG_COMMANDS, HELP_ARG_COMMANDS, CommandResult
-from src.data import STRING_TO_BOOL, HORIZONTAL_BAR, LINUX, config
+from src.data import CARD_SAVE_LOCATION, STRING_TO_BOOL, HORIZONTAL_BAR, LINUX, config
 
 if TYPE_CHECKING:
     from ankidodawacz import QuerySettings
@@ -308,8 +308,8 @@ def create_and_add_card_to_anki(
                     ok_response = response
 
         if config['-savecards']:
-            cards.save_card_to_file(card)
-            notify.success(f'Card saved to a file: {os.path.basename(cards.CARD_SAVE_LOCATION)!r}')
+            cards.save_card_to_file(CARD_SAVE_LOCATION, card)
+            notify.success(f'Card saved to a file: {os.path.basename(CARD_SAVE_LOCATION)!r}')
 
     if ok_response is not None:
         notify.nlsuccess(f'Successfully added {ncards_added} card{"s" if ncards_added > 1 else ""}')

@@ -8,6 +8,7 @@ import sys
 
 # abspath(__file__) for Python < 3.9 compatibility
 ROOT_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+CARD_SAVE_LOCATION = os.path.join(ROOT_DIR, 'cards.txt')
 
 try:
     with open(os.path.join(ROOT_DIR, 'config/config.json')) as f:

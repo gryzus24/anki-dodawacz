@@ -1,10 +1,9 @@
-from ankidodawacz import filter_dictionary  
 from ankidodawacz import query_dictionary
-from src.Dictionaries.dictionary_base import Dictionary
+from src.Dictionaries.dictionary_base import Dictionary, filter_dictionary
 
-ahd_mint_dict = query_dictionary('ahd', 'mint')
-ahd_decrease_dict = query_dictionary('ahd', 'decrease')
-ahd_sing_dict = query_dictionary('ahd', 'sing')
+ahd_mint_dict = query_dictionary('_ahd', 'mint')
+ahd_decrease_dict = query_dictionary('_ahd', 'decrease')
+ahd_sing_dict = query_dictionary('_ahd', 'sing')
 
 
 def _run_test(result, expected):

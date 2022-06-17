@@ -9,7 +9,7 @@ import src.anki_interface as anki
 import src.cards as cards
 from src.Dictionaries.utils import get_width_per_column, wrap_and_pad, wrap_lines, less_print
 from src.colors import BOLD, Color, DEFAULT, R
-from src.data import HORIZONTAL_BAR, config
+from src.data import CARD_SAVE_LOCATION, HORIZONTAL_BAR, config
 
 if TYPE_CHECKING:
     from ankidodawacz import QuerySettings
@@ -495,5 +495,5 @@ def console_ui_entry(dictionaries: list[Dictionary], settings: QuerySettings) ->
                 print('> open card browser: `-b`\n')
 
         if config['-savecards']:
-            cards.save_card_to_file(card)
-            print(f'{Color.success}Card saved to a file: {os.path.basename(cards.CARD_SAVE_LOCATION)!r}\n')
+            cards.save_card_to_file(CARD_SAVE_LOCATION, card)
+            print(f'{Color.success}Card saved to a file: {os.path.basename(CARD_SAVE_LOCATION)!r}\n')

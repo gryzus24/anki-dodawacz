@@ -122,7 +122,10 @@ def main() -> None:
                 open('cards.txt', encoding='utf-8') as cards:
             new_cards.writelines(cards.readlines())
 
-    if not config['-ankiconnect'] and config['audio_path'] == 'Cards_audio' and os.path.exists('Cards_audio'):
+    if (not config['-ankiconnect'] and
+        config['audio_path'] == 'Cards_audio' and
+        os.path.exists('Cards_audio')
+    ):
         print(f"{Color.heed}:: {R}The 'Cards_audio' directory has to be moved manually.")
 
     with _exit(0):

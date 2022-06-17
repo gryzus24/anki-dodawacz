@@ -14,7 +14,6 @@ if TYPE_CHECKING:
     from src.Dictionaries.dictionary_base import Dictionary
 
 CARD_FIELDS_SAVE_ORDER = ('def', 'syn', 'sen', 'phrase', 'exsen', 'pos', 'etym', 'audio', 'recording')
-CARD_SAVE_LOCATION = os.path.join(ROOT_DIR, 'cards.txt')
 
 PREPOSITIONS = {
     'beyond', 'of', 'outside', 'upon', 'with', 'within',
@@ -29,8 +28,8 @@ PREPOSITIONS = {
 }
 
 
-def save_card_to_file(card: dict[str, str]) -> None:
-    with open(CARD_SAVE_LOCATION, 'a', encoding='UTF-8') as f:
+def save_card_to_file(path: str, card: dict[str, str]) -> None:
+    with open(path, 'a', encoding='UTF-8') as f:
         f.write('\t'.join(card[x] for x in CARD_FIELDS_SAVE_ORDER))
         f.write('\n')
 
