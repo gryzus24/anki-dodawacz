@@ -41,21 +41,20 @@ def should_skip(label: str, flags: tuple[str, ...]) -> bool:
 
 
 def filter_dictionary(dictionary: Dictionary, flags: Sequence[str]) -> Dictionary:
+    temp = []
+    word_flags = []
     for flag in flags:
+        flag = flag.lstrip()
         if flag.startswith('/'):
-            look_for = flag[1:]
-            break
-    else:
-        look_for = None
+            word_flags.append(flag[1:])
+        else:
+            temp.append(flag.lower())
 
-    if look_for is not None:
-        flags = [x for x in flags if not x.startswith('/')]
-    flags = tuple(map(str.lower, flags))
+    label_flags = tuple(temp)
 
     added: set[str] = set()
     last_header = None
     header_contents = []
-    result = []
     for entry in dictionary.contents:
         op = entry[0]
         if op in added:
@@ -113,12 +112,13 @@ def filter_dictionary(dictionary: Dictionary, flags: Sequence[str]) -> Dictionar
         else:
             raise AssertionError(f'unreachable {op!r}')
 
+    result = []
     last_titled_header = None
     for header in header_contents:
         header_entry = header['header']
         if header_entry is not None and header_entry[1]:
             # If not looking for any specific word narrow search down to labels only.
-            if look_for is None and header_entry[1].lower() in ('synonyms', 'idioms'):
+            if not word_flags and header_entry[1].lower() in ('synonyms', 'idioms'):
                 break
             last_titled_header = header_entry
 
@@ -129,38 +129,43 @@ def filter_dictionary(dictionary: Dictionary, flags: Sequence[str]) -> Dictionar
             op = entry[0]
             if op == 'LABEL':
                 last_label_i = i
-                if not entry[1]:
+                if not entry[1] or not label_flags:
+                    # assume skip, later if the assumption turns out false,
+                    # we keep a reference to the label to change it to False.
                     _skip_label = True
                 else:
-                    _skip_label = should_skip(entry[1].lower(), flags)
+                    _skip_label = should_skip(entry[1].lower(), label_flags)
                 skips.append(_skip_label)
                 last_label_skipped = _skip_label
             elif 'DEF' in op:
                 if op == 'DEF':
                     last_def_i = i
 
-                if not last_label_skipped or not flags:
-                    _skip_def = False
-                elif not entry[3]:
-                    if op == 'DEF':
-                        _skip_def = True
-                    elif op == 'SUBDEF':
-                        _skip_def = last_def_skipped
+                if label_flags:
+                    if not last_label_skipped:
+                        _skip_def = False
+                    elif not entry[3]:
+                        if op == 'DEF':
+                            _skip_def = True
+                        elif op == 'SUBDEF':
+                            _skip_def = last_def_skipped
+                        else:
+                            raise AssertionError(f'unreachable {op!r}')
                     else:
-                        raise AssertionError(f'unreachable {op!r}')
-                else:
-                    _skip_def = should_skip(entry[3].lower(), flags)
+                        _skip_def = should_skip(entry[3].lower(), label_flags)
 
-                if look_for is not None:
-                    for word in entry[1].split():
-                        if look_for in word:
+                    if word_flags and _skip_def:
+                        for word in word_flags:
+                            if word in entry[1]:
+                                _skip_def = False
+                                break
+                elif word_flags:
+                    for word in word_flags:
+                        if word in entry[1]:
+                            _skip_def = False
                             break
                     else:
-                        if not _skip_def:
-                            _skip_def = True
-                            # needs testing
-                            #if not last_label_skipped:
-                            #    skips[last_label_i] = True
+                        _skip_def = True
 
                 skips.append(_skip_def)
                 if not _skip_def:

@@ -21,7 +21,7 @@ import functools
 import os
 import sys
 from itertools import chain, repeat
-from typing import Generator, NoReturn, Optional, Sequence
+from typing import Generator, NoReturn, Optional, Sequence, NamedTuple
 
 import src.ffmpeg_interface as ffmpeg
 from src.Dictionaries.ahdictionary import ask_ahdictionary
@@ -99,11 +99,11 @@ def dispatch_command(s: str) -> bool:
 def search() -> str:
     while True:
         with tab_completion():
-            word = search_field()
+            typed = search_field()
 
-        dispatched = dispatch_command(word)
+        dispatched = dispatch_command(typed)
         if not dispatched:
-            return word
+            return typed
 
 
 class QueryNotFound(Exception):
@@ -141,9 +141,7 @@ def query_dictionary(key: str, query: str) -> Dictionary | NoReturn:
 
 
 def get_dictionaries(
-        query: str,
-        flags: Optional[Sequence[str]] = None,
-        fallback: Optional[str] = None
+        query: str, flags: Optional[Sequence[str]] = None
 ) -> list[Dictionary] | None:
     if flags is None or not flags:
         flags = [config['-dict']]
@@ -160,9 +158,9 @@ def get_dictionaries(
 
     if result:
         return result
-    if fallback is None:
+    if config['-dict2'] == '-':
         return None
-    fallback_key = DICT_FLAG_TO_QUERY_KEY[fallback]
+    fallback_key = DICT_FLAG_TO_QUERY_KEY[config['-dict2']]
     if fallback_key in none_keys:
         return None
 
@@ -175,38 +173,43 @@ def get_dictionaries(
         return result
 
 
+class Query(NamedTuple):
+    query:       str
+    sentence:    str
+    dict_flags:  list[str]
+    query_flags: list[str]
+    record:      bool
+
+
 class QuerySettings:
     __slots__ = 'queries', 'user_sentence', 'recording_filename'
 
-    def __init__(self) -> None:
-        self.queries: list[tuple[str, list[str], list[str]]] = []
-        self.user_sentence = ''
-        self.recording_filename = ''
-
-    def flags_for_query(self, n: int) -> list[str]:
-        if n < 0:
-            raise ValueError('n must be >= 0')
-        return self.queries[n][2]
+    def __init__(self,
+            queries: list[Query], user_sentence: str, recording_filename: str
+    ) -> None:
+        self.queries = queries
+        self.user_sentence = user_sentence
+        self.recording_filename = recording_filename
 
     def __repr__(self) -> str:
         return (
             f'{type(self).__name__}('
-            f'queries={self.queries}, '
-            f'user_sentence={self.user_sentence}, '
-            f'recording_filename={self.recording_filename})'
+            f'queries={self.queries!r}, '
+            f'user_sentence={self.user_sentence!r}, '
+            f'recording_filename={self.recording_filename!r})'
         )
 
 
-def parse_query(full_query: str) -> QuerySettings | None:
-    query_separators = (',', ';')
-    chars_to_strip = ' ' + ''.join(query_separators)
+def parse_query(full_query: str) -> list[Query] | None:
+    separators = ',;'
+    chars_to_strip = ' ' + separators
 
     full_query = full_query.strip(chars_to_strip)
     if not full_query:
         return None
 
-    settings = QuerySettings()
-    for field in max(map(str.split, repeat(full_query), query_separators), key=len):
+    result = []
+    for field in max(map(str.split, repeat(full_query), separators), key=len):
         field = field.strip(chars_to_strip)
         if not field:
             continue
@@ -214,26 +217,26 @@ def parse_query(full_query: str) -> QuerySettings | None:
         query, *flags = field.split(' -')
         emph_start = query.find('<')
         emph_stop = query.rfind('>')
-        if ~emph_start and ~emph_stop:
-            settings.user_sentence = (
+        if ~emph_start and ~emph_stop and emph_start < emph_stop:
+            sentence = (
                 query[:emph_start]
                 + '{{' + query[emph_start + 1:emph_stop] + '}}'
                 + query[emph_stop + 1:]
             )
             query = query[emph_start + 1:emph_stop]
+        else:
+            sentence = ''
 
         dict_flags = []
         query_flags = []
-        recorded = False
+        record = False
         for flag in flags:
             flag = flag.strip(' -')
             if not flag:
                 continue
 
             if flag in {'rec', 'record'}:
-                if not recorded:
-                    settings.recording_filename = ffmpeg.capture_audio(query)
-                    recorded = True
+                record = True
             elif flag in DICT_FLAG_TO_QUERY_KEY:
                 dict_flags.append(flag)
             elif flag in {'c', 'compare'}:
@@ -245,32 +248,40 @@ def parse_query(full_query: str) -> QuerySettings | None:
             else:
                 query_flags.append(flag)
 
-        settings.queries.append((query, dict_flags, query_flags))
+        result.append(
+            Query(query.strip(), sentence, dict_flags, query_flags, record)
+        )
 
-    return settings
+    return result
 
 
 def main_loop(query: str) -> None:
-    settings = parse_query(query)
-    if settings is None:
+    parsed = parse_query(query)
+    if parsed is None:
         return
 
-    ## Retrieve dictionaries,
-    fallback_dict = config['-dict2']
-    if fallback_dict == '-':
-        fallback_dict = None
-
     dictionaries: list[Dictionary] = []
-    for query, dict_flags, query_flags in settings.queries:
-        dicts = get_dictionaries(query, dict_flags, fallback_dict)
-        if dicts is None:
-            continue
-        elif query_flags:
-            dictionaries.extend(map(filter_dictionary, dicts, repeat(query_flags)))
-        else:
-            dictionaries.extend(dicts)
+    recorded = False
+    user_sentence = recording_filename = ''
+    for query, sentence, dict_flags, query_flags, record in parsed:
+        if sentence and not user_sentence:
+            user_sentence = sentence
+        if record and not recorded:
+            recording_filename = ffmpeg.capture_audio(query)
+            recorded = True
 
-    if not dictionaries:
+        dicts = get_dictionaries(query, dict_flags)
+        if dicts is not None:
+            if query_flags:
+                dictionaries.extend(
+                    map(filter_dictionary, dicts, repeat(query_flags))
+                )
+            else:
+                dictionaries.extend(dicts)
+
+    if dictionaries:
+        settings = QuerySettings(parsed, user_sentence, recording_filename)
+    else:
         return
 
     if config['-curses']:
@@ -295,7 +306,6 @@ def main_loop(query: str) -> None:
         curses_ui_entry(dictionaries, settings)
     else:
         console_ui_entry(dictionaries, settings)
-
 
 
 def from_define_all_file(_input: str) -> Generator[str, None, None]:

@@ -256,7 +256,7 @@ def cards_from_definitions(
                 audio_url,
                 dictionary.name,
                 phrase,
-                settings.flags_for_query(0)
+                settings.queries[0].query_flags
             )
         except AnkiError as e:
             error = 'Could not save audio:'
@@ -278,9 +278,8 @@ def cards_from_definitions(
             error_info = []
             card['audio'] = audio_tag
 
-        sentence = settings.user_sentence
-        if sentence:
-            card['sen'] = sentence
+        if settings.user_sentence:
+            card['sen'] = settings.user_sentence
         elif config['-tsc'] != '-':
             if card['exsen']:
                 card['sen'] = card['exsen']

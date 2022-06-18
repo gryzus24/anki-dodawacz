@@ -98,7 +98,7 @@ def ask_lexico(query: str) -> Dictionary | None:
         if block_id is not None:  # header
             # Gather phrases
             phrase_ = block.find('span', class_='hw')
-            phrase_ = phrase_.find(recursive=False, text=True)
+            phrase_ = phrase_.find(recursive=False, string=True)
 
             if before_phrase:
                 before_phrase = False

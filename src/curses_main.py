@@ -319,16 +319,15 @@ def create_and_add_card_to_anki(
 BORDER_PAD = 1
 
 def draw_help(stdscr: curses._CursesWindow) -> None:
-    # These should be of uniform width, padded with spaces if needed.
     top_line = [
         ('F1', ' Help '), ('j/k', ' Move down/up '), ('1-9', ' Select cell '),
         ('B ', ' Card browser '), ('/ ', ' Filter/Search '), ('g ', ' Go top '),
-        ('^l', ' Redraw screen     '),
+        ('^l', ' Redraw screen '),
     ]
     bot_line = [
         ('q ', ' Exit '), ('h/l', ' Swap screens '), ('d ', ' Deselect all '),
         ('C ', ' Create cards '), ('^J', ' Reset filters '), ('G ', ' Go EOF '),
-        ('F8', ' Rearrange columns '),
+        ('- ', ' Exec commands '), ('F8', ' Rearrange columns '),
     ]
 
     top_bot_pairs = []
@@ -345,26 +344,20 @@ def draw_help(stdscr: curses._CursesWindow) -> None:
 
     space_left = space_to_occupy - space_occupied
     try:
-        gap = (space_left // len(top_bot_pairs)) * ' '
-    except ZeroDivisionError:  # window too small, because of COLS
-        return
+        gap = space_left // (len(top_bot_pairs)-1) * ' '
+    except ZeroDivisionError:
+        gap = ''
 
     bot_y, top_y = LINES-2, LINES-3
-    space_remaining = space_left % len(top_bot_pairs)
-    try:
-        # Insert remaining space to eliminate the need to clear
-        # the stdscr everytime this function is called.
-        stdscr.insstr(top_y, BORDER_PAD, space_remaining * ' ')
-        stdscr.insstr(bot_y, BORDER_PAD, space_remaining * ' ')
-    except curses.error:  # window too small, because of LINES
-        return
-
     a_standout = curses.A_STANDOUT
-    for (top_cmd, top_msg), (bot_cmd, bot_msg) in reversed(top_bot_pairs):
-        stdscr.insstr(top_y, BORDER_PAD, f'{top_msg}{gap}')
-        stdscr.insstr(top_y, BORDER_PAD, top_cmd, a_standout)
-        stdscr.insstr(bot_y, BORDER_PAD, f'{bot_msg}{gap}')
-        stdscr.insstr(bot_y, BORDER_PAD, bot_cmd, a_standout)
+    try:
+        for (top_cmd, top_msg), (bot_cmd, bot_msg) in reversed(top_bot_pairs):
+            stdscr.insstr(top_y, BORDER_PAD, top_msg + gap)
+            stdscr.insstr(top_y, BORDER_PAD, top_cmd, a_standout)
+            stdscr.insstr(bot_y, BORDER_PAD, bot_msg + gap)
+            stdscr.insstr(bot_y, BORDER_PAD, bot_cmd, a_standout)
+    except curses.error:  # window too small, because of LINES
+        pass
 
 
 class Notifications:
@@ -816,6 +809,10 @@ class Prompt:
             y -= 1
 
     def _draw_prompt(self) -> None:
+        # prevents going into an infinite loop on some terminals.
+        if COLS < 2:
+            return
+
         width = COLS - 1
         offset = width // 3
 
@@ -837,7 +834,6 @@ class Prompt:
                 text = ''.join(self._entered)
             text_x = len(prompt_text)
         else:
-            bogus_cursor -= len(prompt_text)
             while bogus_cursor >= width:
                 bogus_cursor = bogus_cursor - width + offset
 
@@ -1076,11 +1072,12 @@ class ScreenBuffer:
         self.stdscr.clearok(True)
 
     def search_prompt(self, screen: Screen) -> None:
-        typed = Prompt(self, 'Search ', pretype='/').run()
+        typed = Prompt(self, 'Filter (~n, ~/n):', pretype=' ').run()
         if typed is None:
             return
-        if typed.startswith('/'):
-            typed = typed[1:]
+        typed = typed.lstrip()
+        if not typed:
+            return
 
         screen.dictionary = filter_dictionary(screen._original_dictionary, (typed,))
         screen.update_for_redraw()
