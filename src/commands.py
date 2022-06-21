@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import json
 import os
-import shutil
 import sys
 from itertools import zip_longest
 from typing import Any, Sequence, NamedTuple, Optional, Callable, TYPE_CHECKING

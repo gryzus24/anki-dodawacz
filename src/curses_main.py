@@ -438,7 +438,7 @@ class Notifications:
             self.ticks += 1
 
 
-def corollary_boxes_to_toggle() -> set[str]:
+def corollary_boxes_to_toggle_on() -> set[str]:
     result = {'PHRASE'}
     if config['-audio'] != '-':
         result.add('AUDIO')
@@ -449,6 +449,7 @@ def corollary_boxes_to_toggle() -> set[str]:
     return result
 
 
+COROLLARY_DICTIONARY_OPS = {'PHRASE', 'AUDIO', 'POS', 'ETYM'}
 DIRECTLY_TOGGLEABLE = {'DEF', 'SUBDEF', 'SYN'}
 AUTO_COLUMN_WIDTH = 47
 MINIMUM_TEXT_WIDTH = 26
@@ -609,22 +610,22 @@ class Screen:
             self._toggle_box(box_index, curses.A_STANDOUT)
             self._ptoggled[phraseno] += 1
 
-        currently_toggled = self._ptoggled[phraseno]
-        if currently_toggled == 0:
-            new_corollary_state = curses.A_NORMAL
-        elif currently_toggled == 1:
-            new_corollary_state = curses.A_BOLD
-        else:
-            return
-
         try:
             static_entries_to_index = self.dictionary.static_entries_to_index_from_index(box_index)
-        except ValueError:
+        except ValueError:  # Dictionary has no PHRASE entries.
             return
 
-        for op in corollary_boxes_to_toggle():
+        # Accounts for the possibility of -pos, -etym etc.
+        # changing state when selections are active.
+        for op in COROLLARY_DICTIONARY_OPS:
             if op in static_entries_to_index:
-                self._toggle_box(static_entries_to_index[op], new_corollary_state)
+                self._toggle_box(static_entries_to_index[op], curses.A_NORMAL)
+
+        if self._ptoggled[phraseno] > 0:
+            for op in corollary_boxes_to_toggle_on():
+                if op in static_entries_to_index:
+                    self._toggle_box(static_entries_to_index[op], curses.A_BOLD)
+
 
     def mark_box_at(self, y: int, x: int) -> None:
         if y < BORDER_PAD or y > self.screen_height:  # border clicked.

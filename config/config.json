@@ -1,5 +1,5 @@
 {
-"-ankiconnect": false,
+"-ankiconnect": true,
 "heed_c": "\u001b[93m",
 "-audio": "auto",
 "audio_device": "default",
