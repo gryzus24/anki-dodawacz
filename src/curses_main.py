@@ -7,7 +7,7 @@ import os
 import shutil
 from itertools import islice, zip_longest, repeat
 from typing import (
-    Callable, Iterable, NamedTuple, Optional,
+    Callable, Iterable, Optional,
     Reversible, Sequence, Any, TYPE_CHECKING
 )
 
@@ -322,7 +322,7 @@ def draw_help(stdscr: curses._CursesWindow) -> None:
     top_line = [
         ('F1', ' Help '), ('j/k', ' Move down/up '), ('1-9', ' Select cell '),
         ('B ', ' Card browser '), ('/ ', ' Filter/Search '), ('g ', ' Go top '),
-        ('^l', ' Redraw screen '),
+        ('^L', ' Redraw screen '),
     ]
     bot_line = [
         ('q ', ' Exit '), ('h/l', ' Swap screens '), ('d ', ' Deselect all '),
@@ -438,12 +438,6 @@ class Notifications:
             self.ticks += 1
 
 
-class ColumnParameters(NamedTuple):
-    ncols: int
-    width: int
-    margin: int
-
-
 def corollary_boxes_to_toggle() -> set[str]:
     result = {'PHRASE'}
     if config['-audio'] != '-':
@@ -456,111 +450,117 @@ def corollary_boxes_to_toggle() -> set[str]:
 
 
 DIRECTLY_TOGGLEABLE = {'DEF', 'SUBDEF', 'SYN'}
-AUTO_COLUMN_WIDTH = 43
-MINIMUM_TEXT_WIDTH = 24
+AUTO_COLUMN_WIDTH = 47
+MINIMUM_TEXT_WIDTH = 26
+
+
+def _create_layout(
+        dictionary: Dictionary,
+        expected_columns: int,
+        screen_height: int,
+        margin: int
+) -> tuple[list[list[curses._CursesWindow]], list[list[curses._CursesWindow]], int, int]:
+    width = COLS - 2*BORDER_PAD + 1
+
+    if expected_columns > 0:
+        min_columns = max_columns = expected_columns
+    else:  # auto
+        min_columns = 1
+        max_columns = width // AUTO_COLUMN_WIDTH
+        if max_columns < 1:
+            max_columns = 1
+
+    height = screen_height
+    while True:
+        col_width = (width // min_columns) - 1
+        col_text_width = col_width - 2*margin
+        if col_text_width < MINIMUM_TEXT_WIDTH:
+            margin -= ((MINIMUM_TEXT_WIDTH - col_text_width) // 2)
+            if margin < 0:
+                margin = 0
+            col_text_width = col_width - 2*margin
+            if col_text_width < 1:
+                col_text_width = 1
+
+        _boxes, _lines = format_dictionary(dictionary, col_text_width)
+        if (_lines // min_columns < height) or (min_columns >= max_columns):
+            break
+        else:
+            min_columns += 1
+
+    if min_columns > 5:
+        min_columns = 5
+
+    current = 0
+    max_height = _lines // min_columns
+    columns: list[list[curses._CursesWindow]] = [[]]
+    move_ops = []
+    for lines, entry in zip(_boxes, dictionary.contents):
+        op = entry[0]
+
+        if current < max_height:
+            if op in ('LABEL', 'PHRASE', 'HEADER'):
+                move_ops.append((op, len(lines)))
+            elif op == 'AUDIO':
+                continue
+            else:
+                move_ops.clear()
+            columns[-1].extend(lines)
+            current += len(lines)
+        else:
+            if op == 'HEADER' and not entry[0]:
+                columns.append(lines)
+            else:
+                header = curses.newwin(1, col_text_width)
+                header.hline(0, col_text_width)
+                columns.append([header])
+                max_height += 1
+
+            t_move = []
+            while move_ops:
+                t_op, t_len = move_ops.pop()
+                t_lines = [columns[-2].pop() for _ in range(t_len)]
+                if t_op == 'LABEL' and not move_ops:
+                    t_lines.pop()
+                t_move.extend(t_lines)
+
+            columns[-1].extend(reversed(t_move))
+            if op in ('LABEL', 'POS', 'ETYM'):
+                lines = lines[1:]
+            columns[-1].extend(lines)
+
+            current = len(lines)
+
+    return _boxes, columns, col_width, margin
+
 
 class Screen:
     def __init__(self, dictionary: Dictionary) -> None:
-        self._original_dictionary = self.dictionary = dictionary
+        self._orig_dictionary = self.dictionary = dictionary
 
-        # Display
-        conf_ncols, state = config['-columns']
-        self.column_state = 0 if 'auto' in state else conf_ncols
+        state = config['-columns']
+        self.column_state = 0 if 'auto' in state else int(state)
         self.bottom_margin = 0 if config['-nohelp'] else 2
 
-        _boxes, self.lines_total, self.column_params = \
-            self._box_dictionary_entries_and_get_column_params(config['-margin'])
-        self.boxes = _boxes
-        self.columns = self._split_into_columns(_boxes)
+        self._boxes, self.columns, self.col_width, self.margin = _create_layout(
+            dictionary, self.column_state, self.screen_height, config['-margin']
+        )
 
-        # User facing state.
-        self.ptoggled: collections.Counter[int] = collections.Counter()
-        self.box_states = [curses.A_NORMAL] * len(_boxes)
-        self.scroll_pos = 0
+        self._ptoggled: collections.Counter[int] = collections.Counter()
+        self._box_states = [curses.A_NORMAL] * len(self._boxes)
+        self._scroll_i = 0
 
     @property
     def screen_height(self) -> int:
         r = LINES - self.bottom_margin - 2*BORDER_PAD
         return r if r > 0 else 0
 
-    def _box_dictionary_entries_and_get_column_params(self,
-            margin: int
-    ) -> tuple[list[list[curses._CursesWindow]], int, ColumnParameters]:
-        width = COLS - 2*BORDER_PAD + 1
-
-        if self.column_state > 0:
-            min_columns = max_columns = self.column_state
-        else:  # auto
-            min_columns = 1
-            max_columns = width // AUTO_COLUMN_WIDTH
-            if max_columns < 1:
-                max_columns = 1
-
-        height = self.screen_height
-        while True:
-            col_width = (width // min_columns) - 1
-            col_text_width = col_width - 2*margin
-            if col_text_width < MINIMUM_TEXT_WIDTH:
-                margin -= (MINIMUM_TEXT_WIDTH - col_text_width) // 2
-                if margin < 0:
-                    margin = 0
-                col_text_width = col_width - 2*margin
-                if col_text_width < 1:
-                    col_text_width = 1
-
-            _boxes, _lines = format_dictionary(self.dictionary, col_text_width)
-            if (_lines // min_columns < height) or (min_columns >= max_columns):
-                break
-            else:
-                min_columns += 1
-
-        # Prevent crash if self.column_state > 0
-        if col_width < 0:
-            col_width = 0
-
-        return _boxes, _lines, ColumnParameters(min_columns, col_width, margin)
-
-    def _split_into_columns(self,
-            boxes: list[list[curses._CursesWindow]]
-    ) -> list[list[curses._CursesWindow]]:
-        ncols, col_width, margin = self.column_params
-        col_text_width = col_width - 2*margin
-
-        max_col_height = self.lines_total // ncols
-        result: list[list[curses._CursesWindow]] = [[]]
-        current_height = 0
-        # TODO: move certain boxes to the next column.
-        for lines, dict_entry in zip(boxes, self.dictionary.contents):
-            op = dict_entry[0]
-            current_height += len(lines)
-            if current_height > max_col_height:
-                current_height = 0
-                if op == 'HEADER' and not dict_entry[1]:
-                    result.append([])
-                else:
-                    header = curses.newwin(1, col_text_width)
-                    header.hline(0, col_text_width)
-                    result.append([header])
-                if op in ('LABEL', 'POS', 'ETYM'):
-                    t = lines[1:]
-                    result[-1].extend(t)
-                    current_height -= 1
-                else:
-                    result[-1].extend(lines)
-            else:
-                result[-1].extend(lines)
-
-        return result
-
     def update_for_redraw(self) -> None:
-        _boxes, self.lines_total, self.column_params =\
-            self._box_dictionary_entries_and_get_column_params(config['-margin'])
-
-        self.boxes = _boxes
-        self.columns = self._split_into_columns(_boxes)
-
+        self._boxes, self.columns, self.col_width, self.margin = _create_layout(
+            self.dictionary, self.column_state, self.screen_height, config['-margin']
+        )
         a_normal = curses.A_NORMAL
-        for lines, state in zip(_boxes, self.box_states):
+        for lines, state in zip(self._boxes, self._box_states):
             if state != a_normal:
                 for line in lines:
                     line.bkgd(0, state)
@@ -573,12 +573,11 @@ class Screen:
         # scroll_pos can be bigger than eof if self.bottom_margin
         # has decreased or window has been resized.
         eof = self._get_scroll_EOF()
-        if self.scroll_pos > eof:
-            self.scroll_pos = eof
+        if self._scroll_i > eof:
+            self._scroll_i = eof
 
         columns = self.columns
-        # stopgap +1 to ignore the header entry
-        from_index = self.scroll_pos + 1
+        from_index = self._scroll_i + 1  # +1 skips headers
         try:
             # hide out of view windows behind the header to prevent
             # them from stealing clicks in the upper region.
@@ -586,7 +585,7 @@ class Screen:
                 for box in islice(column, None, from_index):
                     box.mvwin(0, 1)
 
-            _, col_width, margin = self.column_params
+            col_width, margin = self.col_width, self.margin
             to_index = from_index + self.screen_height
             tx = BORDER_PAD
             for column in columns:
@@ -598,19 +597,19 @@ class Screen:
             pass
 
     def _toggle_box(self, i: int, state: int) -> None:
-        self.box_states[i] = state
-        for line in self.boxes[i]:
+        self._box_states[i] = state
+        for line in self._boxes[i]:
             line.bkgd(0, state)
 
     def _toggle_related_boxes(self, current_state: int, phraseno: int, box_index: int) -> None:
         if current_state == curses.A_STANDOUT:
             self._toggle_box(box_index, curses.A_NORMAL)
-            self.ptoggled[phraseno] -= 1
+            self._ptoggled[phraseno] -= 1
         else:
             self._toggle_box(box_index, curses.A_STANDOUT)
-            self.ptoggled[phraseno] += 1
+            self._ptoggled[phraseno] += 1
 
-        currently_toggled = self.ptoggled[phraseno]
+        currently_toggled = self._ptoggled[phraseno]
         if currently_toggled == 0:
             new_corollary_state = curses.A_NORMAL
         elif currently_toggled == 1:
@@ -639,22 +638,24 @@ class Screen:
         # pointer to an immutable type like a `bool` and as far as I know you
         # cannot remove/reset the top-left corner position from the curses
         # window.
-        not_in_view = {
-            id(column[i])
-            for column in self.columns
-            for i in range(self.scroll_pos)
-        }
+        not_in_view = set()
+        for column in self.columns:
+            for i in range(self._scroll_i):
+                try:
+                    not_in_view.add(id(column[i]))
+                except IndexError:
+                    break
+
         phraseno = 0
-        for i, (state, lines) in enumerate(zip(self.box_states, self.boxes)):
+        for i, (state, lines) in enumerate(zip(self._box_states, self._boxes)):
             op = self.dictionary.contents[i][0]
             if op == 'PHRASE':
                 phraseno += 1
-            if op not in DIRECTLY_TOGGLEABLE:
-                continue
-            for line in lines:
-                if id(line) not in not_in_view and line.enclose(y, x):
-                    self._toggle_related_boxes(state, phraseno, i)
-                    return
+            if op in DIRECTLY_TOGGLEABLE:
+                for line in lines:
+                    if id(line) not in not_in_view and line.enclose(y, x):
+                        self._toggle_related_boxes(state, phraseno, i)
+                        return
 
     KEYBOARD_SELECTOR_CHARS = (
         b'1', b'2', b'3', b'4', b'5', b'6', b'7', b'8', b'9', b'0',
@@ -663,7 +664,7 @@ class Screen:
     def mark_box_by_selector(self, s: bytes) -> None:
         box_i = self.KEYBOARD_SELECTOR_CHARS.index(s) + 1
         cur = phraseno = 0
-        for i, (state, lines) in enumerate(zip(self.box_states, self.boxes)):
+        for i, (state, lines) in enumerate(zip(self._box_states, self._boxes)):
             op = self.dictionary.contents[i][0]
             if op == 'PHRASE':
                 phraseno += 1
@@ -677,44 +678,44 @@ class Screen:
                 return
 
     def get_indices_of_selected_boxes(self) -> list[int]:
-        return [i for i, x in enumerate(self.box_states) if x == curses.A_STANDOUT]
+        return [i for i, x in enumerate(self._box_states) if x == curses.A_STANDOUT]
 
-    def use_original_dictionary(self) -> None:
-        self.dictionary = self._original_dictionary
+    def restore_original_dictionary(self) -> None:
+        self.dictionary = self._orig_dictionary
         self.update_for_redraw()
 
     def deselect_all(self) -> None:
-        self.ptoggled.clear()
+        self._ptoggled.clear()
         a_normal = curses.A_NORMAL
-        for i, state in enumerate(self.box_states):
+        for i, state in enumerate(self._box_states):
             if state != a_normal:
                 self._toggle_box(i, a_normal)
 
     def move_down(self, n: int = 2) -> None:
-        self.scroll_pos += n
+        self._scroll_i += n
         eof = self._get_scroll_EOF()
-        if self.scroll_pos > eof:
-            self.scroll_pos = eof
+        if self._scroll_i > eof:
+            self._scroll_i = eof
 
     def move_up(self, n: int = 2) -> None:
-        self.scroll_pos -= n
-        if self.scroll_pos < 0:
-            self.scroll_pos = 0
+        self._scroll_i -= n
+        if self._scroll_i < 0:
+            self._scroll_i = 0
 
     def go_bottom(self) -> None:
-        self.scroll_pos = self._get_scroll_EOF()
+        self._scroll_i = self._get_scroll_EOF()
 
     def go_top(self) -> None:
-        self.scroll_pos = 0
+        self._scroll_i = 0
 
     def page_down(self) -> None:
-        self.move_down(self.screen_height - 1)
+        self.move_down(self.screen_height - 2)
 
     def page_up(self) -> None:
-        self.move_up(self.screen_height - 1)
+        self.move_up(self.screen_height - 2)
 
     COMMANDS: dict[bytes, Callable[..., None]] = {
-        b'^J': use_original_dictionary,
+        b'^J': restore_original_dictionary,
         b'd': deselect_all,
         b'j': move_down, b'^N': move_down, b'KEY_DOWN': move_down,
         b'k': move_up,   b'^P': move_up,   b'KEY_UP': move_up,
@@ -995,8 +996,6 @@ class ScreenBuffer:
 
     def draw_border(self, screen: Screen) -> None:
         stdscr = self.stdscr
-        ncols, col_width, _ = screen.column_params
-
         stdscr.box()
 
         header_title = screen.dictionary.contents[0][1]
@@ -1030,10 +1029,10 @@ class ScreenBuffer:
                 except curses.error:  # window too small
                     pass
 
-        shift = BORDER_PAD + col_width
+        shift = BORDER_PAD + screen.col_width
         screen_height = screen.screen_height
         try:
-            for i in range(1, ncols):
+            for i in range(1, len(screen.columns)):
                 stdscr.vline(BORDER_PAD, i * shift, 0, screen_height)
         except curses.error:
             pass
@@ -1066,8 +1065,6 @@ class ScreenBuffer:
         curses.resize_term(LINES, COLS)
         for screen in self.screens:
             screen.update_for_redraw()
-        # prevents stalling when updating takes a noticeable amount of time.
-        curses.flushinp()
 
         self.stdscr.clearok(True)
 
@@ -1079,7 +1076,7 @@ class ScreenBuffer:
         if not typed:
             return
 
-        screen.dictionary = filter_dictionary(screen._original_dictionary, (typed,))
+        screen.dictionary = filter_dictionary(screen._orig_dictionary, (typed,))
         screen.update_for_redraw()
 
     def command_prompt(self, screen: Screen) -> CommandResult | None:
@@ -1166,7 +1163,7 @@ def _curses_main(
         elif c in screen.KEYBOARD_SELECTOR_CHARS:
             screen.mark_box_by_selector(c)
         elif c == b'KEY_RESIZE':
-            curses.napms(100)
+            curses.napms(50)
             screen_buffer.resize()
         elif c == b'^L':
             screen_buffer.resize()

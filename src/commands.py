@@ -273,21 +273,21 @@ def boolean_command(cmd: str, *args: str) -> CommandResult:
 
 
 def columns_command(cmd: str, value: str, *args: str) -> CommandResult:
-    if value.lower() == 'auto':
-        t = shutil.get_terminal_size().columns // 39
-        save_command(cmd, [t if t else 1, 'auto'])
-    else:
-        try:
-            int_value = int(value)
-            if int_value < 1:
-                raise ValueError
-        except ValueError:
+    value = value.lower()
+    try:
+        val = int(value)
+        if val < 1:
+            raise ValueError
+    except ValueError:
+        if value == 'auto':
+            save_command(cmd, 'auto')
+        else:
             return CommandResult(
                 error=f'Invalid value: {value}',
                 reason=f'{cmd} {{auto|n >= 1}}'
             )
-        else:
-            save_command(cmd, [int_value, ''])
+    else:
+        save_command(cmd, value)
 
     return CommandResult()
 
@@ -531,15 +531,7 @@ def config_command(*args: str) -> CommandResult:
         c = c.replace('[', f'{BOLD}[').replace(']', f']{DEFAULT}')
 
         state_a = str(config.get(a, ''))
-        state_b = config.get(b, '')
-        if b == '-columns':
-            if state_b[1] == 'auto':
-                state_b = 'auto'
-            else:
-                state_b = str(state_b[0])
-        else:
-            state_b = str(state_b)
-
+        state_b = str(config.get(b, ''))
         state_c = str(config.get(c, ''))
 
         color_a = BOOL_TO_COLOR.get(state_a, '')

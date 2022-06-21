@@ -1,6 +1,6 @@
-import pytest
-
 import time
+
+import pytest
 
 from ankidodawacz import get_dictionaries, parse_query, Query
 from src.data import config

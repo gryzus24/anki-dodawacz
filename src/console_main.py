@@ -289,9 +289,11 @@ def format_dictionary(dictionary: Dictionary, column_width: int) -> list[str]:
 
 def display_dictionary(dictionary: Dictionary) -> None:
     width, height = shutil.get_terminal_size()
-    ncols, state = config['-columns']
+    state = config['-columns']
     if state == 'auto':
         ncols = None
+    else:
+        ncols = int(state)
 
     column_width, ncols, last_col_fill = get_display_parameters(
         dictionary, width, height - 3, ncols

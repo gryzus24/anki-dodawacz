@@ -39,10 +39,7 @@
 "-top": true,
 "-formatdefs": true,
 "-tsc": "std",
-"-columns": [
-2,
-"auto"
-],
+"-columns": "auto",
 "-shortetyms": true,
 "-showsign": true,
 "-less": false,
