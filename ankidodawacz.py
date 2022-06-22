@@ -255,7 +255,7 @@ def parse_query(full_query: str) -> list[Query] | None:
     return result
 
 
-def main_loop(query: str) -> None:
+def main_dispatch(query: str) -> None:
     parsed = parse_query(query)
     if parsed is None:
         return
@@ -291,13 +291,15 @@ def main_loop(query: str) -> None:
             if WINDOWS:
                 sys.stdout.write(
                     f'{Color.err}The curses module could not be imported:{R}\n'
-                    f'Curses support on Windows is close to non-existent,\n'
+                    f'to use the console front-end type: -curses off\n'
+                    f'Windows is not officially supported,\n'
                     f'but there are a few things you can try:\n'
                     f' - install CygWin or MinGW32,\n'
-                    f' - install WSL,\n'
-                    f' - pip install windows-curses (not recommended),\n'
-                    f' - use the console backend: -curses off,\n'
-                    f' - install Linux or some other Unix-like OS\n\n'
+                    f' - install WSL and run it from there,\n'
+                    f' - pip install windows-curses (works, but broken),\n'
+                    f' - install Linux or some other Unix-like OS\n'
+                    f'   (changing an entire operating system just to run\n'
+                    f'   this program is a chad move for sure :^)\n\n'
                 )
                 return
             else:
@@ -308,7 +310,7 @@ def main_loop(query: str) -> None:
         console_ui_entry(dictionaries, settings)
 
 
-def from_define_all_file(_input: str) -> Generator[str, None, None]:
+def from_define_all_file(s: str) -> Generator[str, None, None]:
     # Search for the "define_all" like file.
     for file in os.listdir():
         if file.lower().startswith('define') and 'all' in file.lower():
@@ -319,7 +321,7 @@ def from_define_all_file(_input: str) -> Generator[str, None, None]:
               f'Create one and paste your list of queries there.')
         return None
 
-    _, _, sep = _input.partition(' ')
+    _, _, sep = s.partition(' ')
     sep = sep.strip()
     if not sep:
         sep = ','
@@ -332,12 +334,12 @@ def from_define_all_file(_input: str) -> Generator[str, None, None]:
         return None
 
     for line in lines:
-        for _input in line.split(sep):
-            _input = _input.strip()
-            if _input:
-                yield _input
+        for query in line.split(sep):
+            query = query.strip()
+            if query:
+                yield query
 
-    print(f'{Color.heed}** {R}"{define_file}"{Color.heed} has been exhausted **\n')
+    print(f'{Color.heed}** {R}"{define_file}"{Color.heed} has been exhausted **')
 
 
 def main() -> NoReturn:
@@ -346,14 +348,14 @@ def main() -> NoReturn:
         f'type -h for usage and configuration\n\n\n'
     )
     while True:
-        user_query = search()
-        if user_query.startswith(('-rec', '--record')):
+        typed = search()
+        if typed.startswith(('-rec', '--record')):
             ffmpeg.capture_audio()
-        elif user_query.startswith('--define-all'):
-            for query in from_define_all_file(user_query):
-                main_loop(query)
+        elif typed.startswith('--define-all'):
+            for query in from_define_all_file(typed):
+                main_dispatch(query)
         else:
-            main_loop(user_query)
+            main_dispatch(typed)
 
 
 if __name__ == '__main__':

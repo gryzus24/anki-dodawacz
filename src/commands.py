@@ -426,7 +426,7 @@ HELP_ARG_COMMANDS: dict[str, tuple[Callable[..., CommandResult], str, str]] = {
     '-nohelp':      (boolean_command, '[curses] Hide usage help (F1) by default', '{on/off}'),
 
     '-audio':       (audio_command, 'Audio server', '{ahd|lexico|diki|auto|-}'),
-    '-columns':     (columns_command, '(Maximum) number of columns', '{>=1|auto}'),
+    '-columns':     (columns_command, '(Maximum) number of columns when dispatching a dictionary', '{>=1|auto}'),
     '-deck':        (deck_command, 'Deck used for adding cards', '{deck name}'),
     '-default':     (default_command, 'Default value for the definition field (-def)', '{e.g. 1,2,3}'),
     '-dict':        (dict_command, 'Primary dictionary', '{ahd|lexico|idioms|wordnet}'),
@@ -593,12 +593,22 @@ See `--help-define-all` for more information.
 First the program queries `-dict` (default: AH Dictionary).
 If query fails it fallbacks to `-dict2` (default: Lexico).
 
-OPTIONS:
+There are two front-ends:
+  Cross-platform: console
+  Unix-like specific: curses
+
+See `--help-console` and `--help-curses` for more information.
+
+DICTIONARY OPTIONS:
   -ahd             query AH Dictionary
-  -l, --lexico     query Lexico
-  -i, --idioms     query Farlex Idioms
+  -l, -lexico      query Lexico
+  -i, -idioms      query Farlex Idioms
   -wnet, -wordnet  query WordNet
 
+  -c, -compare    query `-dict` and `-dict2` simultaneously,
+                  expands to `-ahd -lexico` by default
+
+QUERY OPTIONS:
   To search for definitions with specific labels use the starting part of
   label's name as an option.
   e.g.  [QUERY] -noun        : searches for labels starting with "noun"
@@ -607,34 +617,19 @@ OPTIONS:
   To search for words in definitions instead of labels, use: "-/{{word}}"
   e.g.  [QUERY] -/decrease   : searches for "decrease" in definitions
         [QUERY] -n -/coin    : searches for "coin" within definitions
-                               that are below labels starting with "n"
+                               and labels starting with "n"
 
   To make multiple queries at once separate them with a ',' or ';' or use
   multiple dictionary flags.
-  e.g.  [QUERY] -n, [QUERY2] -n -l, ...
+  e.g.  [QUERY] -n, [QUERY2] -n -l, [QUERY3]...
         [QUERY] -ahd -l -i
 
-  Other options:
-  -c, -compare    query `-dict` and `-dict2` simultaneously, possibly
-                  expands to `-ahd -l`
-
-For more options and commands see `--help-config` or `-config`.
+See `--help-config` for more options and commands.
+Alternatively, use `-conf` and type command's name to display usage.
 
 To escape the query or embed it inside a sentence use <QUERY>, this will also
 make the word {BOLD}{Color.success}Emphasized{R}{DEFAULT}.
 e.g.  Search $ This is a sentence with a word <embedded> inside.
-
-{_title('Dictionary and fields')}
-To create a card, type definition's indices into the input field.
-  3          add third definition
-  2,5        add second and third definition
-  :5 or 1:5  add second, third, fourth and fifth definition
-  -1, all    add all definitions
-  -all       add all definitions in a reverse order
-  0 or -s    skip input field
-  -sc        skip creating card
-
-To add your own text to the field precede it with a "/".
 
 {_title('Audio and Anki configuration')}
 {BOLD}1.{DEFAULT} open Anki and install the AnkiConnect add-on (2055492159)
@@ -644,12 +639,11 @@ To add your own text to the field precede it with a "/".
 {BOLD}4.{DEFAULT} add a premade note `--add-note` or specify your own `-note {{note name}}`
 {BOLD}5.{DEFAULT} enable AnkiConnect `-ankiconnect on`
 
-To see more options type `-conf` or `-config`.
-Type command's name to display usage.
-
 {BOLD}{79 * '─'}{DEFAULT}
 -conf, -config      show current configuration and more options
 --help-config       show full config/commands help
+--help-console      show console specific help and usage
+--help-curses       show curses specific help and usage
 --help-define-all   show bulk/define_all help
 --help-rec          show recording help
 """
@@ -694,7 +688,8 @@ Type command's name to display usage.
 
 {_title('Display configuration')}
 -textwrap  {{justify|regular|-}}  text wrapping style
--columns   {{>=1|auto}}           (maximum) number of columns
+-columns   {{>=1|auto}}           (maximum) number of columns when dispatching
+                                  a dictionary
 -indent    {{>=0}}                width of wrapped lines' indent
 
 {_title('Hide and filter configuration')}
@@ -748,10 +743,104 @@ Hiding a phrase means replacing it with "..." (default)
                      different separator is specified.
 
 -c, -color           change elements' colors
+
 {BOLD}{79 * '─'}{DEFAULT}
 -conf, -config      show current configuration and more options
 --help-config       show full config/commands help (*)
---help-define-all   show define_all help
+--help-console      show console specific help and usage
+--help-curses       show curses specific help and usage
+--help-define-all   show bulk/define_all help
+--help-rec          show recording help
+"""
+
+HELP_CONSOLE_TEXT = f"""\
+{_title('Console')}
+Displays the queried dictionaries and asks for a sentence and definitions,
+then creates a card and displays a simple preview.
+
+Created cards are saved to the "cards.txt" file and their audio files
+to the directory specified by the `-ap` command ("Cards_audio" by default).
+If AnkiConnect is configured and enabled (`-ankiconnect on`) it adds the card
+directly to Anki.
+
+If you have "less" installed you can use it to handle dictionary display for
+easier navigation. You can turn it on with `-less on`.
+
+{_title('Fields')}
+To create a card, type definition's indices into the input field.
+  3          add third definition
+  2,5        add second and third definition
+  :5 or 1:5  add second, third, fourth and fifth definition
+  -1, all    add all definitions
+  -all       add all definitions in a reverse order
+  0 or -s    skip input field
+  -sc        skip creating card
+
+To add your own text to the field precede it with a "/".
+
+{BOLD}{79 * '─'}{DEFAULT}
+-conf, -config      show current configuration and more options
+--help-config       show full config/commands help
+--help-console      show console specific help and usage (*)
+--help-curses       show curses specific help and usage
+--help-define-all   show bulk/define_all help
+--help-rec          show recording help
+"""
+
+HELP_CURSES_TEXT = f"""\
+{_title('Curses')}
+Simple and minimalist interface with vim'n'emacs-like keybindings for
+navigation and mouse support for selecting definitions.
+Windows is not supported yet.
+
+Commands and their preferred keybindings are self-explanatory and discoverable
+by increasing the terminal window size. Here is their full documentation.
+
+The ^ symbol denotes "Ctrl".  e.g. ^C means Ctrl-c
+(Case does not matter with Ctrl, but characters typed individually are
+case sensitive)
+
+{_title('Commands and functions')}
+^C        exit the program
+q Q ^X    return to the search prompt
+F1        toggle help (use `-nohelp on` to toggle it off by default)
+
+Navigation:
+  You can use arrows or:
+  j ^N       scroll up (move down)
+  k ^P       scroll down (move up)
+  l          go to the previous screen
+  h          go to the next screen
+  PgUp PgDn  page up and page down
+             (on some terminals you have to hold Shift for it to work)
+  g Home     go to the top of the page
+  G End      go to the bottom of the page
+
+Selection and Anki:
+  1-9 !-)   select definition from 1 to 20, press 0 for the tenth definition
+            hold Shift for the remaining 10 to 20.
+  d         deselect everything
+  B         open the Anki card browser
+  C         create card(s) from the selection
+
+Filtering/searching the dictionary:
+  /         open the filter prompt (this is just like the flags when querying)
+            e.g.  entering "n"   : searches for labels starting with "n"
+                  entering "/To" : searches for definitions containing "To"
+  ^J Enter  restore the original dictionary
+
+Miscellaneous:
+  - :       open the command prompt for issuing commands listed by `-conf`
+            that means some commands, like `-conf` itself, do not work
+  ^L        redraw the screen, useful when screen gets corrupted somehow
+  F8        change the number of columns currently displayed
+
+{BOLD}{79 * '─'}{DEFAULT}
+-conf, -config      show current configuration and more options
+--help-config       show full config/commands help
+--help-console      show console specific help and usage
+--help-curses       show curses specific help and usage (*)
+--help-define-all   show bulk/define_all help
 --help-rec          show recording help
 """
 
@@ -802,7 +891,9 @@ formatting options to apply.
 {BOLD}{79 * '─'}{DEFAULT}
 -conf, -config      show current configuration and more options
 --help-config       show full config/commands help
---help-define-all   show define_all help (*)
+--help-console      show console specific help and usage
+--help-curses       show curses specific help and usage
+--help-define-all   show bulk/define_all help (*)
 --help-rec          show recording help
 """
 
@@ -838,6 +929,8 @@ To start the recording add the `-rec` option after the query.
 {BOLD}{79 * '─'}{DEFAULT}
 -conf, -config      show current configuration and more options
 --help-config       show full config/commands help
+--help-console      show console specific help and usage
+--help-curses       show curses specific help and usage
 --help-define-all   show define_all help
 --help-rec          show recording help (*)
 """
@@ -846,14 +939,17 @@ To start the recording add the `-rec` option after the query.
 def help_command(*args: str) -> CommandResult:
     return CommandResult(output=HELP_TEXT)
 
-
 def help_config_command(*args: str) -> CommandResult:
     return CommandResult(output=HELP_CONFIG_TEXT)
 
+def help_console_command(*args: str) -> CommandResult:
+    return CommandResult(output=HELP_CONSOLE_TEXT)
+
+def help_curses_command(*args: str) -> CommandResult:
+    return CommandResult(output=HELP_CURSES_TEXT)
 
 def help_define_all_command(*args: str) -> CommandResult:
     return CommandResult(output=HELP_DEFINE_ALL_TEXT)
-
 
 def help_recording_command(*args: str) -> CommandResult:
     return CommandResult(output=HELP_RECORDING_TEXT)
@@ -872,6 +968,8 @@ NO_HELP_ARG_COMMANDS: dict[str, Callable[..., CommandResult]] = {
     '--help': help_command,
     '--help-config': help_config_command,
     '--help-conf': help_config_command,
+    '--help-console': help_console_command,
+    '--help-curses': help_curses_command,
     '--help-define-all': help_define_all_command,
     '--help-recording': help_recording_command,
     '--help-rec': help_recording_command,

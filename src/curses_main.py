@@ -455,6 +455,14 @@ AUTO_COLUMN_WIDTH = 47
 MINIMUM_TEXT_WIDTH = 26
 
 
+def _one_to_five(n: int) -> int:
+    if n < 1:
+        return 1
+    if n > 5:
+        return 5
+    return n
+
+
 def _create_layout(
         dictionary: Dictionary,
         expected_columns: int,
@@ -464,12 +472,10 @@ def _create_layout(
     width = COLS - 2*BORDER_PAD + 1
 
     if expected_columns > 0:
-        min_columns = max_columns = expected_columns
+        min_columns = max_columns = _one_to_five(expected_columns)
     else:  # auto
         min_columns = 1
-        max_columns = width // AUTO_COLUMN_WIDTH
-        if max_columns < 1:
-            max_columns = 1
+        max_columns = _one_to_five(width // AUTO_COLUMN_WIDTH)
 
     height = screen_height
     while True:
@@ -489,48 +495,47 @@ def _create_layout(
         else:
             min_columns += 1
 
-    if min_columns > 5:
-        min_columns = 5
-
-    current = 0
-    max_height = _lines // min_columns
-    columns: list[list[curses._CursesWindow]] = [[]]
+    columns: list[list[curses._CursesWindow]] = [[] for _ in range(min_columns)]
+    cur = 0
+    max_height = (_lines // min_columns) + 1
     move_ops = []
     for lines, entry in zip(_boxes, dictionary.contents):
         op = entry[0]
 
-        if current < max_height:
+        if len(columns[cur]) < max_height:
             if op in ('LABEL', 'PHRASE', 'HEADER'):
                 move_ops.append((op, len(lines)))
             elif op == 'AUDIO':
                 continue
             else:
                 move_ops.clear()
-            columns[-1].extend(lines)
-            current += len(lines)
         else:
+            if cur < min_columns - 1:
+                cur += 1
+            else:
+                columns[cur].extend(lines)
+                continue
+
             if op == 'HEADER' and not entry[0]:
-                columns.append(lines)
+                columns[cur].extend(lines)
             else:
                 header = curses.newwin(1, col_text_width)
                 header.hline(0, col_text_width)
-                columns.append([header])
-                max_height += 1
+                columns[cur].append(header)
 
             t_move = []
             while move_ops:
                 t_op, t_len = move_ops.pop()
-                t_lines = [columns[-2].pop() for _ in range(t_len)]
+                t_lines = [columns[cur-1].pop() for _ in range(t_len)]
                 if t_op == 'LABEL' and not move_ops:
                     t_lines.pop()
                 t_move.extend(t_lines)
 
-            columns[-1].extend(reversed(t_move))
+            columns[cur].extend(reversed(t_move))
             if op in ('LABEL', 'POS', 'ETYM'):
                 lines = lines[1:]
-            columns[-1].extend(lines)
 
-            current = len(lines)
+        columns[cur].extend(lines)
 
     return _boxes, columns, col_width, margin
 
@@ -849,7 +854,7 @@ class Prompt:
         self.win.insstr(LINES-1, text_x, text)
         self.win.move(LINES-1, bogus_cursor)
 
-    def _delete_line(self) -> None:
+    def _clear(self) -> None:
         self._entered.clear()
         self._cursor = 0
 
@@ -949,7 +954,7 @@ class Prompt:
                 prompt_commands[c](self)
             elif c in (7, 10):  # ^J, \n
                 ret = ''.join(self._entered)
-                self._delete_line()
+                self._clear()
                 return ret
 
             if (c in (3, 27) or  # ^C, ESC
@@ -1172,7 +1177,7 @@ def _curses_main(
             screen = screen_buffer.previous()
         elif c in (b'l', b'KEY_RIGHT'):
             screen = screen_buffer.next()
-        elif c == b'-':
+        elif c in (b'-', b':'):
             result = screen_buffer.command_prompt(screen)
             if result is not None:
                 if result.error:
