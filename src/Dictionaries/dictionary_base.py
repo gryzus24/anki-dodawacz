@@ -117,7 +117,10 @@ def filter_dictionary(dictionary: Dictionary, flags: Sequence[str]) -> Dictionar
     for header in header_contents:
         header_entry = header['header']
         if header_entry is not None and header_entry[1]:
-            # If not looking for any specific word narrow search down to labels only.
+            if header_entry[1] == 'Synonyms':
+                continue
+            if header_entry[1] == 'Idioms' and label_flags:
+                continue
             last_titled_header = header_entry
 
         last_label_skipped = last_def_skipped = False
