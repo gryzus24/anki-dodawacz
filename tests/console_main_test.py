@@ -1,5 +1,6 @@
 import pytest
 
+from src.console_main import get_width_per_column
 from src.console_main import parse_input
 
 
@@ -85,3 +86,21 @@ def test_parse_input_comma_separated_ranges(input_, expected):
 )
 def test_parse_input_invalid_cases(input_, expected):
     assert parse_input(input_, 20) == expected
+
+
+@pytest.mark.parametrize(
+    ('input_', 'expected'),
+    (
+        ((100, 4), (24, 1)),
+        ((101, 4), (24, 2)),
+        ((102, 4), (24, 3)),
+        ((103, 4), (25, 0)),
+        ((104, 4), (25, 1)),
+        ((70, 3), (22, 2)),
+        ((70, 2), (34, 1)),
+        ((70, 1), (70, 0)),
+        ((70, -1), (70, 0))
+    )
+)
+def test_get_width_per_column(input_, expected):
+    assert get_width_per_column(*input_) == expected

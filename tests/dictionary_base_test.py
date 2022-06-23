@@ -621,6 +621,40 @@ def test_no_matching_label_filters():
     ], name='ahd')
     _run_test(ahd_sing_dict, [''], expected)
 
+    expected = Dictionary([
+        ('HEADER', 'AH Dictionary'),
+        ('PHRASE', 'sing', '/sɪŋ/'),
+        ('AUDIO', 'https://www.ahdictionary.com/application/resources/wavs/S0424300.wav'),
+        ('LABEL', 'v.', 'sang * sung * sung * sing·ing * sings'),
+        ('LABEL', 'v. intr.', ''),
+        ('DEF', 'To utter a series of words or sounds in musical tones.', '', 'Music'),
+        ('SUBDEF', 'To vocalize songs or selections.', '', ''),
+        ('SUBDEF', 'To perform songs or selections as a trained or professional singer.', '', ''),
+        ('SUBDEF', 'To produce sounds when played.', '‘made the violin sing.’', ''),
+        ('DEF', 'To make melodious sounds.', '‘birds singing outside the window.’', ''),
+        ('SUBDEF', 'To give or have the effect of melody; lilt.', '', ''),
+        ('DEF', 'To make a high whining, humming, or whistling sound.', '', ''),
+        ('DEF', 'To be filled with a buzzing or ringing sound.', '', ''),
+        ('DEF', 'To proclaim or extol something in verse.', '', ''),
+        ('SUBDEF', 'To write poetry.', '', ''),
+        ('DEF', 'To give information or evidence against someone.', '', 'Slang'),
+        ('LABEL', 'v. tr.', ''),
+        ('DEF', 'To produce the musical sound of.', '‘sang a love song.’', 'Music'),
+        ('SUBDEF', 'To utter with musical inflections.', '‘She sang the message.’', ''),
+        ('SUBDEF', 'To bring to a specified state by singing.', '‘sang the baby to sleep.’', ''),
+        ('DEF', 'To intone or chant (parts of the Mass, for example).', '', ''),
+        ('DEF', 'To proclaim or extol, especially in verse.', '‘sang his praises.’', ''),
+        ('LABEL', 'n. Music', ''),
+        ('DEF', 'A gathering of people for group singing.', '', ''),
+        ('POS', 'sing.able adj.|'),
+        ('ETYM', 'Middle English (singen) ← Old English (singan)'),
+        ('HEADER', ''),
+        ('PHRASE', 'sing.', ''),
+        ('LABEL', 'abbr. Grammar', ''),
+        ('DEF', 'singular.', '', '')
+    ], name='ahd')
+    _run_test(ahd_sing_dict, [], expected)
+
 
 def test_text_filters():
     # mint

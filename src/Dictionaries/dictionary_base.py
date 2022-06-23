@@ -167,6 +167,8 @@ def filter_dictionary(dictionary: Dictionary, flags: Sequence[str]) -> Dictionar
                             break
                     else:
                         _skip_def = True
+                else:
+                    _skip_def = True
 
                 skips.append(_skip_def)
                 if not _skip_def:
@@ -294,4 +296,3 @@ class Dictionary:
             return None
 
         return result
-

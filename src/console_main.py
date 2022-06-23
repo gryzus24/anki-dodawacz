@@ -7,13 +7,19 @@ from typing import Optional, Sequence, TYPE_CHECKING
 
 import src.anki_interface as anki
 import src.cards as cards
-from src.Dictionaries.utils import get_width_per_column, wrap_and_pad, wrap_lines, less_print
+from src.Dictionaries.utils import wrap_and_pad, wrap_lines, less_print
 from src.colors import BOLD, Color, DEFAULT, R
 from src.data import CARD_SAVE_LOCATION, HORIZONTAL_BAR, config
 
 if TYPE_CHECKING:
     from ankidodawacz import QuerySettings
     from src.Dictionaries.dictionary_base import Dictionary
+
+
+def get_width_per_column(width: int, ncols: int) -> tuple[int, int]:
+    if ncols < 1:
+        return width, 0
+    return (width + 1) // ncols - 1, (width + 1) % ncols
 
 
 def get_display_parameters(

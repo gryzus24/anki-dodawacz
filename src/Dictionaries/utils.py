@@ -266,14 +266,3 @@ def wrap_and_pad(style: str, textwidth: int) -> Callable[[str, int, int], tuple[
         return first_line, rest
 
     return call
-
-
-def get_width_per_column(width: int, columns: int) -> tuple[int, int]:
-    if columns < 1:
-        return width, 0
-
-    column_width = width // columns
-    remainder = width % columns
-    if remainder < columns - 1:
-        return column_width - 1, remainder + 1
-    return column_width, 0
