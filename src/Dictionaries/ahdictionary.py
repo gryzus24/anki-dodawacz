@@ -1,70 +1,12 @@
-# Copyright 2021-2022 Gryzus
-#
-# This program is free software: you can redistribute it and/or modify
-# it under the terms of the GNU General Public License as published by
-# the Free Software Foundation, either version 3 of the License, or
-# (at your option) any later version.
-#
-# This program is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-# GNU General Public License for more details.
-#
-# You should have received a copy of the GNU General Public License
-# along with this program. If not, see <http://www.gnu.org/licenses/>.
-
 from __future__ import annotations
 
 from itertools import filterfalse
-from typing import Any, Callable, Iterable
+from typing import Any, Callable, Iterable, TypeVar
 
 from src.Dictionaries.dictionary_base import Dictionary
 from src.Dictionaries.utils import request_soup
-from src.colors import R, err_c
+from src.colors import Color, R
 from src.data import config
-from src.input_fields import get_user_input
-
-
-class AHDictionary(Dictionary):
-    name = 'ahd'
-    allow_thesaurus = True
-
-    def input_cycle(self) -> dict[str, str] | None:
-        def_input = get_user_input('def', self.definitions, '1')
-        if def_input is None:
-            return None
-
-        phrase = self.phrases[
-            self.get_positions_in_sections(def_input.choices, from_within='PHRASE')[0] - 1]
-
-        audio = self.audio_urls[
-            self.get_positions_in_sections(def_input.choices, from_within='AUDIO')[0] - 1]
-
-        exsen_input = get_user_input(
-            'exsen', self.example_sentences, self.to_auto_choice(def_input.choices, 'DEF'))
-        if exsen_input is None:
-            return None
-
-        choices_by_headers = self.get_positions_in_sections(def_input.choices)
-        pos_input = get_user_input(
-            'pos', self.parts_of_speech, self.to_auto_choice(choices_by_headers, 'POS'))
-        if pos_input is None:
-            return None
-
-        etym_input = get_user_input(
-            'etym', self.etymologies, self.to_auto_choice(choices_by_headers, 'ETYM'))
-        if etym_input is None:
-            return None
-
-        return {
-            'phrase': phrase,
-            'def': def_input.content,
-            'exsen': exsen_input.content,
-            'pos': pos_input.content,
-            'etym': etym_input.content,
-            'audio': audio,
-        }
-
 
 AHD_IPA_translation = str.maketrans({
     'ă': 'æ',   'ā': 'eɪ',  'ä': 'ɑː',
@@ -143,7 +85,7 @@ def _extract_phrase_and_phonetic_spelling(raw_string: str) -> tuple[str, str]:
     )
 
 
-def _get_phrase_inflections(content: list) -> str:
+def _get_phrase_inflections(content: list[Any]) -> str:
     parsed_cl = [
         x.string.strip(', ') for x in content
         if x.string is not None
@@ -188,7 +130,8 @@ def _get_def_and_exsen(s: str) -> tuple[str, str]:
     return _def, _exsen
 
 
-def _separate(i: Iterable[Any], pred: Callable[[Any], bool]) -> tuple[list, list]:
+T = TypeVar('T')
+def _separate(i: Iterable[T], pred: Callable[[T], bool]) -> tuple[list[T], list[T]]:
     return list(filter(pred, i)), list(filterfalse(pred, i))
 
 
@@ -225,7 +168,7 @@ def _shorten_etymology(_input: str) -> str:
 def ask_ahdictionary(query: str) -> Dictionary | None:
     query = query.strip(' \'";')
     if not query:
-        print(f'{err_c}Invalid query')
+        print(f'{Color.err}Invalid query')
         return None
 
     soup = request_soup('https://www.ahdictionary.com/word/search.html', {'q': query})
@@ -234,13 +177,14 @@ def ask_ahdictionary(query: str) -> Dictionary | None:
 
     try:
         if soup.find('div', {'id': 'results'}).text == 'No word definition found':
-            print(f'{err_c}Could not find {R}"{query}"{err_c} in AH Dictionary')
+            print(f'{Color.err}Could not find {R}"{query}"{Color.err} in AH Dictionary')
             return None
     except AttributeError:
-        print(f'{err_c}AH Dictionary is probably down:\n{R}{soup.prettify()}')
+        print(f'{Color.err}AH Dictionary is probably down:\n{R}{soup.prettify()}')
         return None
 
-    ahd = AHDictionary()
+    ahd = Dictionary(name='ahd')
+
     before_phrase = True
     for td in soup.find_all('td'):
         header = td.find('div', class_='rtseg', recursive=False)
@@ -254,7 +198,7 @@ def ask_ahdictionary(query: str) -> Dictionary | None:
         header = header.replace('(', ' (').replace(')', ') ')
         phrase, phon_spell = _extract_phrase_and_phonetic_spelling(header)
 
-        if config['toipa']:
+        if config['-toipa']:
             phon_spell = _translate_ahd_to_ipa(phon_spell, th)
         else:
             phon_spell = _fix_stress_and_remove_private_symbols(phon_spell)
@@ -267,14 +211,12 @@ def ask_ahdictionary(query: str) -> Dictionary | None:
         else:
             ahd.add('HEADER', '')
 
+        ahd.add('PHRASE', phrase, phon_spell)
+
         # Gather audio urls
         audio_url = td.find('a', {'target': '_blank'})
         if audio_url is not None:
             ahd.add('AUDIO', 'https://www.ahdictionary.com' + audio_url['href'].strip())
-        else:
-            ahd.add('AUDIO', '')
-
-        ahd.add('PHRASE', phrase, phon_spell)
 
         for labeled_block in td.find_all('div', class_='pseg', recursive=False):
             # Gather part of speech labels
@@ -341,7 +283,7 @@ def ask_ahdictionary(query: str) -> Dictionary | None:
 
             pos = _fix_stress_and_remove_private_symbols(pos)
 
-            if config['toipa']:
+            if config['-toipa']:
                 # this is very general, I have no idea how to differentiate these correctly
                 th = 'ð' if pos.startswith('th') else 'θ'
                 phon_spell = _translate_ahd_to_ipa(phon_spell, th)
@@ -351,19 +293,15 @@ def ask_ahdictionary(query: str) -> Dictionary | None:
             td_pos.append(f'{pos}|{phon_spell}')
         if td_pos:
             ahd.add('POS', *td_pos)
-        else:
-            ahd.add('POS', '')
 
         # Add etymologies
         etymology = td.find('div', class_='etyseg', recursive=False)
         if etymology is not None:
             etym = etymology.text.strip()
-            if config['shortetyms']:
+            if config['-shortetyms']:
                 ahd.add('ETYM', _shorten_etymology(etym.strip('[]')))
             else:
                 ahd.add('ETYM', etym)
-        else:
-            ahd.add('ETYM', '')
 
         # Add idioms
         idioms = td.find_all('div', class_='idmseg', recursive=False)

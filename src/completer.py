@@ -6,7 +6,7 @@ from typing import Callable, ContextManager, Generator, Sequence
 
 
 # Import on Linux (maybe POSIX) only, readline doesn't work on Windows.
-def Completer(completions: Sequence[str]) -> Callable[[], ContextManager]:
+def Completer(completions: Sequence[str]) -> Callable[[], ContextManager[None]]:
     # Initializes a tab completer and returns a contextmanager,
     # that can be used to limit the scope of tab completion, as
     # it is global by default.
@@ -38,6 +38,7 @@ def Completer(completions: Sequence[str]) -> Callable[[], ContextManager]:
 
     readline.parse_and_bind('tab: complete')
     readline.parse_and_bind('set horizontal-scroll-mode on')
+    readline.parse_and_bind('set colored-completion-prefix on')
     readline.set_completer_delims(' \t\n')
     readline.set_completer(complete)
 

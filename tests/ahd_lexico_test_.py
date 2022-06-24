@@ -1,12 +1,13 @@
+# the trailing underscore in the name is to prevent pytest from running this file.
 from __future__ import annotations
 
 import json
+import random
 import sys
-from random import sample
 
 from src.Dictionaries.ahdictionary import ask_ahdictionary
 from src.Dictionaries.lexico import ask_lexico
-from src.colors import GEX, R, YEX, err_c
+from src.colors import Color, R
 from src.data import config
 
 # SETUP:
@@ -115,7 +116,7 @@ class Setup:
         self.buffer = {}
 
         words = load_words(WORDS_FILE_PATH)
-        sys.stdout.write(f'\nTotal words loaded : {GEX}{len(words)}\n')
+        sys.stdout.write(f'\nTotal words loaded : {Color.success}{len(words)}\n')
 
         if SAVE_TESTED_WORDS_TO_FILE:
             try:
@@ -125,25 +126,25 @@ class Setup:
                 with open('_tested_words.json', 'w') as f:
                     f.write('{}')
             else:
-                sys.stdout.write(f'Total words tested : {GEX}{len(tested_words)}\n')
+                sys.stdout.write(f'Total words tested : {Color.success}{len(tested_words)}\n')
 
                 words.difference_update(set(tested_words))
                 if not words:
-                    sys.stdout.write(f'{YEX}\n* * *  No words to test  * * *\n')
+                    sys.stdout.write(f'{Color.heed}\n* * *  No words to test  * * *\n')
                     if tested_words:
-                        sys.stdout.write(f'{YEX}Rerunning already tested words\n\n')
+                        sys.stdout.write(f'{Color.heed}Rerunning already tested words\n\n')
                         words = tested_words
                     else:
                         sys.stdout.write('Exiting...\n')
                         raise SystemExit
 
-                sys.stdout.write(f'Words left to test : {GEX}{len(words)}\n')
+                sys.stdout.write(f'Words left to test : {Color.success}{len(words)}\n')
                 self.tested_words = tested_words
 
         if SAMPLE_SIZE < len(words):
-            words = sample(tuple(words), SAMPLE_SIZE)
+            words = random.sample(tuple(words), SAMPLE_SIZE)
 
-        sys.stdout.write(f'Testing now        : {GEX}{len(words)}\n\n')
+        sys.stdout.write(f'Testing now        : {Color.success}{len(words)}\n\n')
         self.words = words
 
     @property
@@ -185,7 +186,7 @@ def dictionary_content_check(dictionary, _word):
     log_buffer = []
 
     dictionary_name = dictionary.name.upper()[:3]
-    if dictionary_name == 'AHD' and not config['toipa']:
+    if dictionary_name == 'AHD' and not config['-toipa']:
         right_paren, left_paren = '(', ')'
     else:
         right_paren, left_paren = '/', '/'
@@ -316,13 +317,13 @@ def print_logs(logs, word, col_width):
         if msg.startswith('OK'):
             if LOG_LEVEL in {'ERROR', 'INFO'}:
                 continue
-            c = GEX
+            c = Color.success
         elif msg.startswith('??'):
             if LOG_LEVEL == 'ERROR':
                 continue
-            c = R  # type: ignore
+            c = R
         else:
-            c = err_c
+            c = Color.err
 
         sys.stdout.write(f'{dname} {op:8s} {index:2d} {word:{col_width}s} : {c}{msg}\n')
 

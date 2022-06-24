@@ -1,77 +1,10 @@
-# Copyright 2021-2022 Gryzus
-#
-# This program is free software: you can redistribute it and/or modify
-# it under the terms of the GNU General Public License as published by
-# the Free Software Foundation, either version 3 of the License, or
-# (at your option) any later version.
-#
-# This program is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-# GNU General Public License for more details.
-#
-# You should have received a copy of the GNU General Public License
-# along with this program. If not, see <http://www.gnu.org/licenses/>.
-
 from __future__ import annotations
 
 from typing import Any
 
 from src.Dictionaries.dictionary_base import Dictionary
 from src.Dictionaries.utils import request_soup
-from src.colors import R, err_c
-from src.input_fields import get_user_input
-
-
-class Lexico(Dictionary):
-    name = 'lexico'
-    allow_thesaurus = True
-
-    @property
-    def etymologies(self) -> list[str]:
-        # Because of Lexico's HTML structure it's hard to add blank etymologies
-        # and as etymologies are bound to HEADERs we can use them to keep track
-        # of the position.
-        result = []
-        t = ''
-        for x in self.contents:
-            if x[0] == 'ETYM':
-                t = x[1]
-            elif x[0] == 'HEADER':
-                result.append(t)
-                t = ''
-        del result[0]
-        result.append(t)
-        return result
-
-    def input_cycle(self) -> dict[str, str] | None:
-        def_input = get_user_input('def', self.definitions, '1')
-        if def_input is None:
-            return None
-
-        choices_by_headers = self.get_positions_in_sections(def_input.choices)
-        phrase = self.phrases[choices_by_headers[0] - 1]
-
-        audio = self.audio_urls[
-            self.get_positions_in_sections(def_input.choices, from_within='AUDIO')[0] - 1]
-
-        exsen_input = get_user_input(
-            'exsen', self.example_sentences, self.to_auto_choice(def_input.choices, 'DEF'))
-        if exsen_input is None:
-            return None
-
-        etym_input = get_user_input(
-            'etym', self.etymologies, self.to_auto_choice(choices_by_headers, 'ETYM'))
-        if etym_input is None:
-            return None
-
-        return {
-            'phrase': phrase,
-            'def': def_input.content,
-            'exsen': exsen_input.content,
-            'etym': etym_input.content,
-            'audio': audio,
-        }
+from src.colors import Color, R
 
 
 def get_phonetic_spelling(block_: Any) -> str:
@@ -130,7 +63,7 @@ def ask_lexico(query: str) -> Dictionary | None:
 
     query = query.strip(' ?/.#')
     if not query:
-        print(f'{err_c}Invalid query')
+        print(f'{Color.err}Invalid query')
         return None
 
     soup = request_soup('https://www.lexico.com/definition/' + query)
@@ -140,7 +73,7 @@ def ask_lexico(query: str) -> Dictionary | None:
     main_div = soup.find('div', class_='entryWrapper')
     if main_div is None:  # lexico probably denied access
         import time
-        print(f'{err_c}Lexico could not handle this many requests...\n'
+        print(f'{Color.err}Lexico could not handle this many requests...\n'
               f'Try again in 1-5 minutes')
         time.sleep(2.5)
         raise SystemExit(1)
@@ -149,14 +82,15 @@ def ask_lexico(query: str) -> Dictionary | None:
     if page_check.get_text(strip=True) == 'HomeEnglish':
         new_query_tag = main_div.find('a', class_='no-transition')
         if new_query_tag is None:
-            print(f'{err_c}Could not find {R}"{query}"{err_c} in Lexico')
+            print(f'{Color.err}Could not find {R}"{query}"{Color.err} in Lexico')
             return None
         else:
             _previous_query = query  # global
             _, _, revive = new_query_tag.get('href').rpartition('/')
             return ask_lexico(revive)
 
-    lexico = Lexico()
+    lexico = Dictionary(name='lexico')
+
     etym = ''
     before_phrase = True
     for block in page_check.find_next_siblings():
@@ -164,7 +98,7 @@ def ask_lexico(query: str) -> Dictionary | None:
         if block_id is not None:  # header
             # Gather phrases
             phrase_ = block.find('span', class_='hw')
-            phrase_ = phrase_.find(recursive=False, text=True)
+            phrase_ = phrase_.find(recursive=False, string=True)
 
             if before_phrase:
                 before_phrase = False
@@ -260,10 +194,6 @@ def ask_lexico(query: str) -> Dictionary | None:
                     gram_urls = gramb_audio.find_all('audio')
                     if gram_urls:
                         lexico.add('AUDIO', gram_urls[-1]['src'])
-                    else:
-                        lexico.add('AUDIO', '')
-                else:
-                    lexico.add('AUDIO', '')
 
         elif block['class'][0] == 'etymology' and block.h3.text == 'Origin' and etym:
             lexico.add('ETYM', etym)

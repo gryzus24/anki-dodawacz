@@ -9,7 +9,7 @@ import urllib3
 from urllib3.exceptions import ConnectTimeoutError, NewConnectionError
 
 from src.__version__ import __version__
-from src.colors import GEX, R, YEX, err_c
+from src.colors import Color, R
 from src.data import LINUX, ON_WINDOWS_CMD, ROOT_DIR, USER_AGENT, WINDOWS, config
 
 http = urllib3.PoolManager(timeout=10, headers=USER_AGENT)
@@ -32,18 +32,18 @@ def get_request(url: str) -> urllib3.HTTPResponse:
     except Exception as e:
         if isinstance(e.__context__, NewConnectionError):
             with _exit(1):
-                print(f'{err_c}Could not establish a connection,\n'
+                print(f'{Color.err}Could not establish a connection,\n'
                       f'check your Internet connection and try again.')
         elif isinstance(e.__context__, ConnectTimeoutError):
             with _exit(1):
-                print(f'{err_c}Github is not responding')
+                print(f'{Color.err}Github is not responding')
         else:
-            print(f'{err_c}An unexpected error occurred.')
+            print(f'{Color.err}An unexpected error occurred.')
         raise
     else:
         if response.status != 200:
             with _exit(1):
-                print(f'{err_c}Could not retrieve the package.\n'
+                print(f'{Color.err}Could not retrieve the package.\n'
                       f'Non 200 status code.')
         return response
 
@@ -60,23 +60,23 @@ def main() -> None:
     latest_tag = json.loads(response_data.data.decode())[0]
     if latest_tag['name'].lstrip('v') == __version__:
         with _exit(0):
-            print(f'{GEX}You are using the latest version ({__version__}).')
+            print(f'{Color.success}You are using the latest version ({__version__}).')
 
     out_dir_name = f'anki-dodawacz-{latest_tag["name"]}'
     out_dir_path = os.path.join(os.path.dirname(ROOT_DIR), out_dir_name)
     if os.path.exists(out_dir_path):
         with _exit(1):
-            print(f'{err_c}Directory {out_dir_name!r} already exists.\nExiting...')
+            print(f'{Color.err}Directory {out_dir_name!r} already exists.\nExiting...')
 
     if not LINUX and not WINDOWS:
         # There are too much os calls in this script. I'm not sure if it works on macOS.
         with _exit(1):
-            print(f'{err_c}update.py script does not work on {sys.platform!r}.\n')
+            print(f'{Color.err}update.py script does not work on {sys.platform!r}.\n')
 
-    print(f'{GEX}:: {R}Downloading the package...')
+    print(f'{Color.success}:: {R}Downloading the package...')
     archive = get_request(latest_tag['tarball_url'])
 
-    print(f'{GEX}:: {R}Extracting...')
+    print(f'{Color.success}:: {R}Extracting...')
     tfile = tempfile.NamedTemporaryFile(delete=False)
     try:
         # We cannot use the NamedTemporaryFile as a context manager because Windows
@@ -94,11 +94,11 @@ def main() -> None:
             except OSError:  # In case tar gets interrupted,
                 pass         # otherwise the directory should be empty.
             with _exit(1):
-                print(f'{err_c}Could not extract archive.')
+                print(f'{Color.err}Could not extract archive.')
     finally:
         os.remove(tfile.name)
 
-    print(f"{YEX}:: {R}Copying 'config.json'...")
+    print(f"{Color.heed}:: {R}Copying 'config.json'...")
     with open(os.path.join(out_dir_path, 'config/config.json')) as f:
         new_config = json.load(f)
         for old_key, old_val in config.items():
@@ -110,23 +110,26 @@ def main() -> None:
             if isinstance(new_val, type(old_val)):
                 new_config[old_key] = old_val
             else:
-                print(f"{err_c}:: {R}Could not copy '{old_key}': incompatible data type")
+                print(f"{Color.err}:: {R}Could not copy '{old_key}': incompatible data type")
 
     with open(os.path.join(out_dir_path, 'config/config.json'), 'w') as f:
         json.dump(new_config, f, indent=0)
 
     if os.path.exists('cards.txt'):
-        print(f"{YEX}:: {R}Copying 'cards.txt'...")
+        print(f"{Color.heed}:: {R}Copying 'cards.txt'...")
         with \
                 open(os.path.join(out_dir_path, 'cards.txt'), 'w', encoding='utf-8') as new_cards, \
                 open('cards.txt', encoding='utf-8') as cards:
             new_cards.writelines(cards.readlines())
 
-    if not config['ankiconnect'] and config['audio_path'] == 'Cards_audio' and os.path.exists('Cards_audio'):
-        print(f"{YEX}:: {R}The 'Cards_audio' directory has to be moved manually.")
+    if (not config['-ankiconnect'] and
+        config['audio_path'] == 'Cards_audio' and
+        os.path.exists('Cards_audio')
+    ):
+        print(f"{Color.heed}:: {R}The 'Cards_audio' directory has to be moved manually.")
 
     with _exit(0):
-        print(f'\n{GEX}Updated successfully\n'
+        print(f'\n{Color.success}Updated successfully\n'
               f'Program saved to {out_dir_path!r}')
 
 

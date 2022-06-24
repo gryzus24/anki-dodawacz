@@ -1,70 +1,56 @@
-# Copyright 2021-2022 Gryzus
-#
-# This program is free software: you can redistribute it and/or modify
-# it under the terms of the GNU General Public License as published by
-# the Free Software Foundation, either version 3 of the License, or
-# (at your option) any later version.
-#
-# This program is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-# GNU General Public License for more details.
-#
-# You should have received a copy of the GNU General Public License
-# along with this program. If not, see <http://www.gnu.org/licenses/>.
-
 from __future__ import annotations
 
-import subprocess
+import shutil
 import sys
-from shutil import get_terminal_size
-from typing import Any, Callable, NoReturn, Optional
+from subprocess import Popen, DEVNULL, PIPE, call
+from typing import Any, Callable, NoReturn, Optional, TypeVar
+
+from src.colors import R, Color
+from src.data import ON_TERMUX, ON_WINDOWS_CMD, POSIX, USER_AGENT, WINDOWS, config
+
+# Silence warnings if soupsieve is not installed, which is good
+# because its bloated "css parse" slows down import time a lot.
+# ~70ms on my desktop and ~200ms on an android phone.
+# bs4 itself compiles regexes on startup which slows it down by
+# another 40-150ms. And guess what? Those regexes are useless.
+try:
+    sys.stderr = None  # type: ignore[assignment]
+    from bs4 import BeautifulSoup, __version__  # type: ignore[import]
+finally:
+    sys.stderr = sys.__stderr__
+
+if (*map(int, __version__.split('.')),) < (4, 10, 0):
+    sys.stderr.write(
+         f'{Color.err}-----------------------------------------------------------------{R}\n'
+         'Your version of beautifulsoup is out of date, please update:\n'
+         'pip install -U beautifulsoup4\n'
+         'And while you are at it, kindly, uninstall the soupsieve package:\n'
+         'pip uninstall soupsieve\n'
+    )
+    raise SystemExit
+else:
+    del __version__
 
 import urllib3
 from urllib3.exceptions import ConnectTimeoutError, NewConnectionError
 
-from src.colors import err_c
-from src.data import ON_WINDOWS_CMD, ON_TERMUX, POSIX, USER_AGENT, WINDOWS
-
-# Silence warnings if soupsieve is not installed, which is good
-# because its bloated `css parse` slows down import time a lot.
-# ~70ms on my desktop and ~200ms on an android phone.
-try:
-    sys.stderr = None  # type: ignore
-    from bs4 import BeautifulSoup  # type: ignore
-finally:
-    sys.stderr = sys.__stderr__
-
-
-PREPOSITIONS = {
-    'beyond', 'of', 'outside', 'upon', 'with', 'within',
-    'behind', 'from', 'like', 'opposite', 'to', 'under',
-    'after', 'against', 'around', 'near', 'over', 'via',
-    'among', 'except', 'for', 'out', 'since', 'through',
-    'about', 'along', 'beneath', 'underneath', 'unlike',
-    'below', 'into', 'on', 'onto', 'past', 'than', 'up',
-    'across', 'by', 'despite', 'inside', 'off', 'round',
-    'at', 'beside', 'between', 'in', 'towards', 'until',
-    'above', 'as', 'before', 'down', 'during', 'without'
-}
-
 http = urllib3.PoolManager(timeout=10, headers=USER_AGENT)
 
-
-def handle_connection_exceptions(func: Callable) -> Callable:
-    def wrapper(*args: Any, **kwargs: Any) -> NoReturn | Callable | None:
+T = TypeVar('T')
+def handle_connection_exceptions(func: Callable[..., T]) -> Callable[..., NoReturn | T | None]:
+    def wrapper(*args: Any, **kwargs: Any) -> NoReturn | T | None:
         try:
             return func(*args, **kwargs)
         except Exception as e:
             if isinstance(e.__context__, NewConnectionError):
-                print(f'{err_c}Could not establish a connection,\n'
+                print(f'{Color.err}Could not establish connection,\n'
                       'check your Internet connection and try again.')
                 return None
             elif isinstance(e.__context__, ConnectTimeoutError):
-                print(f'{err_c}Connection timed out.')
+                print(f'{Color.err}Connection timed out.')
                 return None
             else:
-                print(f'{err_c}An unexpected error occurred in {func.__qualname__}.')
+                print(f'{Color.err}An unexpected error occurred in {func.__qualname__}.')
                 raise
 
     return wrapper
@@ -75,8 +61,8 @@ def request_soup(
         url: str, fields: Optional[dict[str, str]] = None, **kw: Any
 ) -> BeautifulSoup:
     r = http.request_encode_url('GET', url, fields=fields, **kw)
-    # At the moment only WordNet uses other than utf-8 encoding (iso-8859-1),
-    # so as long as there are no decoding problems we'll use utf-8.
+    # At the moment only WordNet uses other than UTF-8 encoding (iso-8859-1),
+    # so as long as there are no decoding problems we'll use UTF-8.
     return BeautifulSoup(r.data.decode(), 'lxml')
 
 
@@ -85,13 +71,13 @@ if WINDOWS:
     # I'm not sure if it works on terminals other than cmd and WT
     if ON_WINDOWS_CMD:
         def _clear_screen() -> None:
-            height = get_terminal_size().lines
+            height = shutil.get_terminal_size().lines
             # Move cursor up and down
             sys.stdout.write(height * '\n' + f'\033[{height}A')
             sys.stdout.flush()
     else:
         def _clear_screen() -> None:
-            height = get_terminal_size().lines
+            height = shutil.get_terminal_size().lines
             # Use Windows ANSI sequence to clear the screen
             sys.stdout.write((height - 1) * '\n' + '\033[2J')
             sys.stdout.flush()
@@ -103,18 +89,18 @@ elif POSIX:
             sys.stdout.flush()
             # Termux's terminal dimensions depend on the on-screen keyboard size
             # Termux can't correctly preserve the buffer, so we'll do full clear.
-            subprocess.call(('clear',))
+            call(('clear',))
     else:
         def _clear_screen() -> None:
             # Even though `clear -x` is slower than directly using ANSI escapes
             # it doesn't have flickering issues, and it's more robust.
             sys.stdout.write('\033[?25l')  # Hide cursor
             sys.stdout.flush()
-            subprocess.call(('clear', '-x'))  # I hope the `-x` option works on macOS.
+            call(('clear', '-x'))  # I hope the `-x` option works on macOS.
 
 else:
     def _clear_screen() -> None:
-        sys.stdout.write(f'`-top on`{err_c} command unavailable on {sys.platform!r}\n')
+        pass
 
 
 class ClearScreen:
@@ -130,55 +116,54 @@ class ClearScreen:
             pass
 
 
-def hide(
-        target: str,
-        r: str,
-        hide_with: str = '...', *,
-        hide_prepositions: bool = False,
-        keep_endings: bool = True
-) -> str:
-    # Hide every occurrence of words from string `r` in `target`.
-    def case_replace(a: str, b: str) -> None:
-        nonlocal target
-        target = target.replace(a, b).replace(a.capitalize(), b).replace(a.upper(), b.upper())
+def display_in_less(s: str) -> int:
+    executable = shutil.which('less')
+    if executable is None:
+        if WINDOWS:
+            print(
+                f"'less'{Color.err} is not available in %PATH% or in the current directory.\n"
+                f"You can grab the latest Windows executable from:\n"
+                f"{R}https://github.com/jftuga/less-Windows/releases"
+            )
+        else:
+            print(f"{Color.err}Could not find the 'less' executable.\n"
+                  f"Install 'less' or disable this feature: '-less off'")
+        return 1
 
-    nonoes = {
-        'the', 'and', 'a', 'is', 'an', 'it',
-        'or', 'be', 'do', 'does', 'not', 'if', 'he'
-    }
-
-    elements_to_replace = r.lower().split()
-    for elem in elements_to_replace:
-        if elem in nonoes:
-            continue
-
-        if not hide_prepositions:
-            if elem in PREPOSITIONS:
-                continue
-
-        # "Ω" is a placeholder
-        case_replace(elem, f"{hide_with}Ω")
-        if elem.endswith('e'):
-            case_replace(elem[:-1] + 'ing', f'{hide_with}Ωing')
-            if elem.endswith('ie'):
-                case_replace(elem[:-2] + 'ying', f'{hide_with}Ωying')
-        elif elem.endswith('y'):
-            case_replace(elem[:-1] + 'ies', f'{hide_with}Ωies')
-            case_replace(elem[:-1] + 'ied', f'{hide_with}Ωied')
-
-    if keep_endings:
-        return target.replace('Ω', '')
+    # r - accept escape sequences. -R does not produce desirable results on Windows.
+    # F - do not open the pager if output fits on the screen.
+    # K - exit on SIGINT. *This is important not to break keyboard input.
+    # X - do not clear the screen after exiting from the pager.
+    if WINDOWS:
+        env = {'LESSCHARSET': 'UTF-8'}
+        options = '-rFKX'
     else:
-        # e.g. from "We weren't ...Ωed for this." -> "We weren't ... for this."
-        split_content = target.split('Ω')
-        temp = [split_content[0].strip()]
-        for elem in split_content[1:]:
-            for letter in elem:
-                if letter in (' ', '.', ':'):
-                    break
-                elem = elem.replace(letter, '', 1)
-            temp.append(elem.strip())
-        return ' '.join(temp)
+        env = None
+        options = '-RFKX'
+    with Popen((executable, options), stdin=PIPE, stderr=DEVNULL, env=env) as process:
+        try:
+            process.communicate(s.encode())
+        except:
+            process.kill()
+
+        # less returns 2 on SIGINT.
+        rc = process.poll()
+        if rc and rc != 2:
+            print(f"{Color.err}Could not open 'less' as: 'less {options}'\n")
+            return 1
+
+    return 0
+
+
+def less_print(s: str) -> None:
+    if config['-less']:
+        with ClearScreen():
+            rc = display_in_less(s)
+            if rc:
+                sys.stdout.write(s)
+    else:
+        with ClearScreen():
+            sys.stdout.write(s)
 
 
 def wrap_lines(
@@ -271,25 +256,13 @@ def wrap_lines(
     return no_wrap()
 
 
-def wrap_and_pad(style: str, textwidth: int) -> Callable[[str, int, int], list[str]]:
+def wrap_and_pad(style: str, textwidth: int) -> Callable[[str, int, int], tuple[str, list[str]]]:
     # Wraps and adds right side padding that matches `textwidth`.
 
-    def call(lines: str, gap: int, indent: int) -> list[str]:
+    def call(lines: str, gap: int, indent: int) -> tuple[str, list[str]]:
         fl, *rest = wrap_lines(lines, style, textwidth, gap, indent)
-        result = [fl + (textwidth - len(fl) - gap) * ' ']
-        for line in rest:
-            result.append(line + (textwidth - len(line)) * ' ')
-        return result
+        first_line = fl + (textwidth - len(fl) - gap) * ' '
+        rest = [line + (textwidth - len(line)) * ' ' for line in rest]
+        return first_line, rest
 
     return call
-
-
-def get_width_per_column(width: int, columns: int) -> tuple[int, int]:
-    if columns < 1:
-        return width, 0
-
-    column_width = width // columns
-    remainder = width % columns
-    if remainder < columns - 1:
-        return column_width - 1, remainder + 1
-    return column_width, 0

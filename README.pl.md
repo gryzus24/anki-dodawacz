@@ -2,13 +2,13 @@
 
 ![Polish](https://github.com/gryzus24/anki-dodawacz/blob/main/README.pl.md) • ![English](https://github.com/gryzus24/anki-dodawacz/blob/main/README.md)
 
-Zintegrowany z Anki terminalowy program do przeglądania słowników.<br>
+Zintegrowany z Anki, terminalowy program do przeglądania słowników.<br>
 
-![image](https://user-images.githubusercontent.com/82805891/147771954-d4eda99e-0265-46ca-8ad3-564669368845.png)
+![curses image](https://user-images.githubusercontent.com/82805891/175177470-bf5048b9-8e01-4288-a28e-741c180d28b6.png)
 
 ## Użycie
 
-Wyszukaj słowo i wybierz elementy wpisując ich indeks.<br>
+Wyszukaj słowo i wybierz definicje po ich indeksach.<br>
 Program zapisze Twój wybór w pliku `cards.txt`, który może być manualnie zaimportowany do Anki.<br>
 Możesz także połączyć program z Anki poprzez AnkiConnect co znacznie uprości proces dodawania.
 
@@ -20,16 +20,18 @@ Możesz także połączyć program z Anki poprzez AnkiConnect co znacznie uproś
 4. dodaj wbudowaną notatkę `--add-note` lub wybierz swoją własną `-note {nazwa notatki}`
 5. włącz AnkiConnect `-ankiconnect on`
 
-Aby wyświetlić więcej opcji konfiguracji wpisz `-conf` lub `-config`<br>
+Aby wyświetlić więcej opcji konfiguracji wpisz `-conf`<br>
 Aby wyświetlić użycie dla danej komendy po prostu wpisz jej nazwę.
 
-![image](https://user-images.githubusercontent.com/82805891/158180638-d20524e6-29aa-4e24-a54f-79713dd6e043.png)
+![configuration image](https://user-images.githubusercontent.com/82805891/175174300-b8702354-1261-499d-9693-61eaa1b32e8f.png)
 
 Jeżeli używasz Windowsa polecam zainstalować Windows Terminal lub jakikolwiek inny niż cmd emulator terminala, aby zwiększyć wygodę użytkowania.
 
 ## Instalacja
 
 ### Windows
+
+<sub>__Nie daj sobie mydlić oczu__! Interfejs curses nie jest wspierany na Windowsie. Dostępna jest czysto konsolowa wersja, która osiąga ten sam cel, ale nie jest tak ładna i funkcjonalna.</sub>
 
 Aby uruchomić program, potrzebujesz Pythona 3.7 lub nowszego.<br>
 Pobierz Pythona z oficjalnej strony: https://www.python.org/downloads/<br>
@@ -78,7 +80,7 @@ Aby zaktualizować program zachowując swoją konfigurację i zawartość pliku 
 
 Nowa wersja zostanie zapisana w folderze wyżej jako "anki-dodawacz-{wersja}".
 
-Obecnie `update.py` działa na Linuxie i Windowsie 10.
+Obecnie `update.py` działa na Linuxie i Windowsie.
 
 ### Konfiguracja notatek
 
@@ -132,5 +134,7 @@ Aby rozpocząć nagrywanie dodaj `-rec` po wyszukiwanej frazie.
 ## Kod
 
 Jest to mój pierwszy projekt. Jestem otwarty na wszelkie sugestie i uwagi. Mam nadzieję, że narzędzie okaże się pomocne.
+
+Na chwilę obecną, interfejs curses potrzebuje więcej testowania i brakuje mu wsparcia na Windowsie.
 
 Użyte biblioteki: BeautifulSoup4 (MIT), colorama (BSD), lxml (BSD), urllib3 (MIT)

@@ -1,42 +1,69 @@
-# This file has to be moved to the project's main directory in order to work.
-# I have no idea how to get imports to work without fiddling with the sys.path.
-# AFAIK it's possible to do.
+import pytest
+
 from src.Dictionaries.audio_dictionaries import diki_audio
 
 # British English pronunciation
-gb_link = 'https://www.diki.pl/images-common/en/mp3/'
+gb = 'https://www.diki.pl/images-common/en/mp3/'
 # American English pronunciation
-ame_link = 'https://www.diki.pl/images-common/en-ame/mp3/'
+ame = 'https://www.diki.pl/images-common/en-ame/mp3/'
 
 
-def test_diki():
-    t = diki_audio
-    assert t('mince') == f'{gb_link}mince.mp3'
-    assert t('a blot on the landscape') == f'{gb_link}a_blot_on_the_landscape.mp3'
-    assert t('(as) light as a feather') == f'{gb_link}as_light_as_a_feather.mp3'
-    assert t('asdf') == ''
-
-    assert t('zip (up) your lip(s)!') == f'{gb_link}zip_your_lip.mp3'
-    assert t(' burst the bubble of (someone)  ') == f'{gb_link}burst_somebodys_bubble.mp3'
-    assert t('account for') == f'{gb_link}account_for_somebody.mp3'
-    assert t('abide by') == f'{gb_link}abide_by_something.mp3'
-    assert t('an open marriage') == f'{gb_link}open_marriage.mp3'
-    assert t('cast lots') == f'{gb_link}cast_lots.mp3'
-    assert t('a lot of bunk') == f'{gb_link}bunk.mp3'
-    assert t('(as) thick as mince') == f'{gb_link}thick.mp3'
-    assert t('new_wine_in_old_bottles') == f'{ame_link}new_wine_in_old_bottles.mp3'
-
-    assert t('tap out', '-n') == f'{gb_link}tap_out.mp3'
-    assert t('tap out', '-a') == f'{gb_link}tap_out.mp3'
-
-    assert t('invalid', '-a') == f'{gb_link}invalid-a.mp3'
-    assert t('invalid', '-n') == f'{gb_link}invalid-n.mp3'
-    assert t('invalid', '') == f'{gb_link}invalid.mp3'
-
-    assert t('concert', '-v') == f'{gb_link}concert-v.mp3'
-    assert t('concert', '') == f'{gb_link}concert.mp3'
-    assert t('concert', 'asdf') == f'{gb_link}concert.mp3'
+@pytest.mark.parametrize(
+    ('phrase', 'expected'),
+    (
+        ('mince', f'{gb}mince.mp3'),
+        ('a blot on the landscape', f'{gb}a_blot_on_the_landscape.mp3'),
+        ('(as) light as a feather', f'{gb}as_light_as_a_feather.mp3'),
+        ('zip (up) your lip(s)', f'{gb}zip_your_lip.mp3'),
+        ('burst the bubble of (someone)', f'{gb}burst_somebodys_bubble.mp3'),
+        ('account for', f'{gb}account_for_somebody.mp3'),
+        ('abide by', f'{gb}abide_by_something.mp3'),
+        ('an open marriage', f'{gb}open_marriage.mp3'),
+        ('cast lots', f'{gb}cast_lots.mp3'),
+        ('a lot of bunk', f'{gb}bunk.mp3'),
+        ('(as) thick as mince', f'{gb}thick.mp3'),
+        ('baloney', f'{gb}baloney.mp3'),
+    )
+)
+def test_diki_no_flag_gb(phrase, expected):
+    assert diki_audio(phrase) == expected
 
 
-if __name__ == '__main__':
-    test_diki()
+@pytest.mark.parametrize(
+    ('phrase', 'expected'),
+    (
+        ('new wine in old bottles', f'{ame}new_wine_in_old_bottles.mp3'),
+    )
+)
+def test_diki_no_flag_ame(phrase, expected):
+    assert diki_audio(phrase) == expected
+
+
+@pytest.mark.parametrize(
+    ('phrase', 'expected'),
+    (
+        ('', ''),
+        ('asdf', ''),
+    )
+)
+def test_diki_incorrect_phrase(phrase, expected):
+    assert diki_audio(phrase) == expected
+
+
+@pytest.mark.parametrize(
+    ('phrase', 'flag', 'expected'),
+    (
+        ('invalid', '-a', f'{gb}invalid-a.mp3'),
+        ('invalid', '-n', f'{gb}invalid-n.mp3'),
+        ('invalid', '', f'{gb}invalid.mp3'),
+        ('concert', '-v', f'{gb}concert-v.mp3'),
+        ('concert', '', f'{gb}concert.mp3'),
+        ('concert', 'asdf', f'{gb}concert.mp3'),
+        ('concert', 'v', f'{gb}concert.mp3'),
+        ('concert', '--v', f'{gb}concert.mp3'),
+        ('tap out', '-n', f'{gb}tap_out.mp3'),
+        ('tap out', '-a', f'{gb}tap_out.mp3'),
+    )
+)
+def test_diki_with_flag(phrase, flag, expected):
+    assert diki_audio(phrase, flag) == expected

@@ -17,68 +17,25 @@
 
 from __future__ import annotations
 
-import binascii
+import functools
 import os
-import shutil
 import sys
 from itertools import chain, repeat
-from subprocess import DEVNULL, PIPE, Popen
-from typing import Generator, Iterable, NoReturn, Optional, Sequence
+from typing import Generator, NoReturn, Optional, Sequence, NamedTuple
 
-import src.anki_interface as anki
-import src.commands as c
 import src.ffmpeg_interface as ffmpeg
-import src.help as h
 from src.Dictionaries.ahdictionary import ask_ahdictionary
-from src.Dictionaries.audio_dictionaries import ahd_audio, diki_audio, lexico_audio
-from src.Dictionaries.dictionary_base import Dictionary, stringify_columns
+from src.Dictionaries.dictionary_base import Dictionary, filter_dictionary
 from src.Dictionaries.farlex import ask_farlex
 from src.Dictionaries.lexico import ask_lexico
-from src.Dictionaries.utils import (ClearScreen, get_width_per_column, hide, http,
-                                    wrap_lines)
-from src.Dictionaries.wordnet import WordNet, ask_wordnet
+from src.Dictionaries.utils import http, less_print
+from src.Dictionaries.wordnet import ask_wordnet
 from src.__version__ import __version__
-from src.colors import (BOLD, DEFAULT, GEX, R, YEX, def1_c, delimit_c, err_c, etym_c,
-                        exsen_c, phrase_c, pos_c, syn_c)
-from src.data import (HORIZONTAL_BAR, LINUX, ON_WINDOWS_CMD, ROOT_DIR, WINDOWS,
-                      boolean_cmd_to_msg, cmd_to_msg_usage, config)
-from src.input_fields import sentence_input
-
-required_arg_commands = {
-    # commands that take arguments
-    '--delete-last': c.delete_cards, '--delete-recent': c.delete_cards,
-    '-textwrap': c.set_text_value_commands,
-    '-textwidth': c.set_width_settings,
-    '-colviewat': c.set_width_settings,
-    '-columns': c.set_width_settings,
-    '-indent': c.set_width_settings,
-    '-note': c.set_free_value_commands,
-    '-deck': c.set_free_value_commands,
-    '-tags': c.set_free_value_commands,
-    '-hideas': c.set_free_value_commands,
-    '--audio-path': c.set_audio_path, '-ap': c.set_audio_path,
-    '-tsc': c.set_text_value_commands,
-    '-dict': c.set_text_value_commands,
-    '-dict2': c.set_text_value_commands,
-    '-thes': c.set_text_value_commands,
-    '-dupescope': c.set_text_value_commands,
-    '-audio': c.set_text_value_commands,
-    '-recqual': c.set_text_value_commands,
-    '--field-order': c.change_field_order, '-fo': c.change_field_order,
-    '-color': c.set_colors, '-c': c.set_colors,
-    '-cd': c.set_input_field_defaults,
-}
-no_arg_commands = {
-    '--audio-device': ffmpeg.set_audio_device,
-    '-refresh': anki.refresh_cached_notes,
-    '--add-note': anki.add_note_to_anki,
-    '--help': h.quick_help, '-help': h.quick_help, '-h': h.quick_help,
-    '--help-bulk': h.bulk_help, '--help-define-all': h.bulk_help,
-    '--help-commands': h.commands_help, '--help-command': h.commands_help,
-    '--help-config': h.commands_help, '--help-conf': h.commands_help,
-    '--help-recording': h.recording_help, '--help-rec': h.recording_help,
-    '-config': c.print_config_representation, '-conf': c.print_config_representation
-}
+from src.colors import BOLD, Color, DEFAULT, R
+from src.commands import INTERACTIVE_COMMANDS, HELP_ARG_COMMANDS, NO_HELP_ARG_COMMANDS
+from src.console_main import console_ui_entry
+from src.data import LINUX, WINDOWS, config
+from src.input_fields import ConsoleInputField
 
 # Completer doesn't work on Windows.
 # It should work on macOS, but I haven't tested it yet.
@@ -86,526 +43,285 @@ if LINUX:
     from src.completer import Completer
     tab_completion = Completer(
         tuple(chain(
-            boolean_cmd_to_msg,
-            cmd_to_msg_usage,
-            no_arg_commands,
-            ('-b', '--browse', '--define-all')
+            INTERACTIVE_COMMANDS,
+            NO_HELP_ARG_COMMANDS,
+            HELP_ARG_COMMANDS,
+            ('--define-all',)
         ))
     )
 else:
     from contextlib import nullcontext as tab_completion
 
 
-def search_interface() -> str:
+def search_field() -> str:
+    # Returns a non-empty string.
+    while True:
+        try:
+            word = input('Search $ ').strip()
+        except EOFError:
+            sys.stdout.write('\r')
+        else:
+            if word:
+                return word
+
+
+def dispatch_command(s: str) -> bool:
+    # Returns whether command was dispatched or not.
+    args = s.split()
+    cmd = args[0]
+    if cmd in NO_HELP_ARG_COMMANDS:
+        result = NO_HELP_ARG_COMMANDS[cmd](*args)
+    elif cmd in INTERACTIVE_COMMANDS:
+        result = INTERACTIVE_COMMANDS[cmd](ConsoleInputField(), *args)
+    elif cmd in HELP_ARG_COMMANDS:
+        func, note, usage = HELP_ARG_COMMANDS[cmd]
+        if (len(args) == 1 or
+           (len(args) == 2 and args[1].strip(' -').lower() in ('h', 'help'))
+        ):
+            sys.stdout.write(f'{Color.heed}{note}{R}\n{cmd} {usage}\n')
+            return True
+        else:
+            result = func(*args)
+    else:
+        return False
+
+    if result.error:
+        sys.stdout.write(f'{Color.err}{result.error}\n')
+    if result.reason:
+        sys.stdout.write(result.reason)
+        sys.stdout.write('\n')
+    if result.output:
+        less_print(result.output)
+
+    return True
+
+
+def search() -> str:
     while True:
         with tab_completion():
-            word = input('Search $ ').strip()
-            if not word:
-                continue
+            typed = search_field()
 
-        args = word.split()
-        cmd = args[0]
-        if cmd in no_arg_commands:
-            err = no_arg_commands[cmd]()
-            if err is not None:
-                print(f'{err_c}{err}')
-            continue
-        elif cmd in ('-b', '--browse'):
-            err = anki.gui_browse_cards(query=args[1:])
-            if err is not None:
-                print(f'{err_c}{err}')
-            continue
-
-        if cmd in boolean_cmd_to_msg:
-            method = c.boolean_commands
-            message, usage = boolean_cmd_to_msg[cmd], '{on|off}'
-        elif cmd in required_arg_commands:
-            method = required_arg_commands[cmd]
-            message, usage = cmd_to_msg_usage[cmd]
-        else:
-            return word
-
-        try:
-            if args[1].strip('-').lower() in ('h', 'help'):
-                raise IndexError
-        except IndexError:  # Print help
-            print(f'{YEX}{message}\n'
-                  f'{R}{cmd} {usage}')
-
-            # Print additional information
-            if cmd in ('-ap', '--audio-path'):
-                print(f'{BOLD}Current audio path:\n'
-                      f'{DEFAULT}{config["audio_path"]}\n')
-            elif cmd in ('-fo', '--field-order'):
-                c.display_field_order()
-            elif cmd in ('-c', '-color'):
-                c.color_command()
-            elif cmd == '-cd':
-                print(f'{BOLD}Field names:{DEFAULT}\n'
-                      f'def, exsen, pos, etym, syn, all\n')
-        else:
-            err = method(*args, message=message)
-            if err is not None:
-                print(f'{err_c}{err}')
+        dispatched = dispatch_command(typed)
+        if not dispatched:
+            return typed
 
 
-DICT_DISPATCH = {
-    'ahd': ask_ahdictionary,
-    'lexico': ask_lexico, 'l': ask_lexico,
-    'idioms': ask_farlex, 'idiom': ask_farlex, 'i': ask_farlex,
-    '-': lambda _: None
+class QueryNotFound(Exception):
+    pass
+
+
+DICT_FLAG_TO_QUERY_KEY = {
+    'ahd': '_ahd',
+    'idioms': '_farlex', 'idiom': '_farlex', 'i': '_farlex',
+    'lexico': '_lexico', 'l': '_lexico',
+    'wordnet': '_wordnet', 'wnet': '_wordnet',
 }
-def get_dictionaries(
-        query: str, dict_flags: Optional[Sequence[str]] = None
-) -> list[Dictionary] | None:
-    if dict_flags is None or not dict_flags:
-        dict_flags = [config['dict']]
+# Every dictionary has its individual key to avoid cluttering cache
+# with identical dictionaries that were called with the same query
+# but different "dictionary flag", which acts as nothing more but
+# an alias.
+DICTIONARY_LOOKUP = {
+    '_ahd': ask_ahdictionary,
+    '_farlex': ask_farlex,
+    '_lexico': ask_lexico,
+    '_wordnet': ask_wordnet,
+}
+@functools.lru_cache(maxsize=None)
+def query_dictionary(key: str, query: str) -> Dictionary | NoReturn:
+    # raises "QueryNotFound" instead of returning to avoid caching None values.
+    # Caching them is hardly useful, because:
+    # - it is unlikely that user wants to lookup again the word that
+    #   they misspelled or that is not in the dictionary.
+    # - also, it helps avoid a nasty bug that prevents the user to re-lookup
+    #   a query after they lost the Internet connection.
+    result = DICTIONARY_LOOKUP[key](query)
+    if result is None:
+        raise QueryNotFound
+    return result
 
+
+def get_dictionaries(
+        query: str, flags: Optional[Sequence[str]] = None
+) -> list[Dictionary] | None:
+    if flags is None or not flags:
+        flags = [config['-dict']]
+
+    none_keys = set()
     result = []
-    for flag in dict_flags:
-        dictionary = DICT_DISPATCH[flag](query)
-        if dictionary is not None:
-            result.append(dictionary)
+    for flag in flags:
+        key = DICT_FLAG_TO_QUERY_KEY[flag]
+        if key not in none_keys:
+            try:
+                result.append(query_dictionary(key, query))
+            except QueryNotFound:
+                none_keys.add(key)
 
     if result:
         return result
-
-    if config['dict2'] == '-':
+    if config['-dict2'] == '-':
+        return None
+    fallback_key = DICT_FLAG_TO_QUERY_KEY[config['-dict2']]
+    if fallback_key in none_keys:
         return None
 
-    print(f'{YEX}Querying the fallback dictionary...')
-    fallback_dict = DICT_DISPATCH[config['dict2']](query)
-    if fallback_dict is not None:
-        return [fallback_dict]
-
-    if config['dict'] != 'idioms' and config['dict2'] != 'idioms':
-        print(f"{YEX}To ask the idioms dictionary use {R}`{query} -i`")
-    return None
-
-
-def get_thesaurus(query: str) -> Dictionary | None:
-    if config['thes'] == '-':
-        # Returning WordNet just for its input_cycle.
-        return WordNet()
-
-    return ask_wordnet(
-        query.split()[0] if 'also' in query.split() else query
-    )
-
-
-def save_audio_url(audio_url: str) -> str | NoReturn:
-    _, _, filename = audio_url.rpartition('/')
-    audio_content = http.urlopen('GET', audio_url).data
-    audio_path = config['audio_path']
-
-    # Use AnkiConnect to save audio files if 'collection.media' path isn't given.
-    # However, specifying the audio_path is preferred as it's way faster.
-    if config['ankiconnect'] and os.path.basename(audio_path) != 'collection.media':
-        response = anki.invoke('storeMediaFile',
-                               filename=filename,
-                               data=binascii.b2a_base64(  # convert to base64 string
-                                    audio_content, newline=False).decode())
-        if not response.error:
-            return f'[sound:{filename}]'
-
+    print(f'{Color.heed}Querying the fallback dictionary...')
     try:
-        with open(os.path.join(audio_path, filename), 'wb') as file:
-            file.write(audio_content)
-        return f'[sound:{filename}]'
-    except FileNotFoundError:
-        print(f"{err_c}Saving audio {R}{filename}{err_c} failed\n"
-              f"Current audio path: {R}{audio_path}\n"
-              f"{err_c}Make sure the directory exists and try again\n")
-        return ''
-    except Exception:
-        print(f'{err_c}Unexpected error occurred while saving audio')
-        raise
-
-
-def _from_diki(phrase: str, flags: Optional[Iterable[str]] = None) -> str:
-    if flags is None:
-        flags = []
-    flag = ''
-    for f in flags:
-        if f in {'n', 'v', 'a', 'adj', 'noun', 'verb', 'adjective'}:
-            flag = '-' + f[0]
-            break
-    url = diki_audio(phrase, flag)
-    return save_audio_url(url) if url else ''
-
-
-def save_audio(
-        dictionary_name: str,
-        audio_url: str,
-        phrase: str,
-        flags: Optional[Iterable[str]] = None
-) -> str:
-    server = config['audio']
-    if server == '-':
-        return ''
-
-    # Farlex has no audio, so we try to get it from diki.
-    if server == 'diki' or dictionary_name == 'farlex':
-        return _from_diki(phrase, flags)
-
-    if server == 'auto' or dictionary_name == server:
-        if audio_url:
-            return save_audio_url(audio_url)
-        else:
-            print(f'{err_c}This dictionary does not have the pronunciation for {R}{phrase}\n'
-                  f'{YEX}Querying diki...')
-            return _from_diki(phrase, flags)
-
-    if server == 'ahd':
-        audio_url = ahd_audio(phrase)
-    elif server == 'lexico':
-        audio_url = lexico_audio(phrase)
+        result.append(query_dictionary(fallback_key, query))
+    except QueryNotFound:
+        return None
     else:
-        raise AssertionError('unreachable')
-
-    return save_audio_url(audio_url) if audio_url else ''
+        return result
 
 
-def format_definitions(definitions: str) -> str:
-    styles = (
-        ('', ''),
-        ('<span style="opacity: .6;">', '</span>'),
-        ('<small style="opacity: .4;">', '</small>'),
-        ('<small style="opacity: .2;"><sub>', '</sub></small>')
-    )
-    formatted = []
-    style_no = len(styles)
-    for i, item in enumerate(definitions.split('<br>'), start=1):
-        style_i = style_no - 1 if i > style_no else i - 1
-        prefix, suffix = styles[style_i]
-
-        prefix += f'<small style="color: #4EAA72;">{i}.</small>  '
-        formatted.append(prefix + item + suffix)
-
-    return '<br>'.join(formatted)
+class Query(NamedTuple):
+    query:       str
+    sentence:    str
+    dict_flags:  list[str]
+    query_flags: list[str]
+    record:      bool
 
 
-def save_card_to_file(field_values: dict[str, str]) -> None:
-    with open('cards.txt', 'a', encoding='utf-8') as f:
-        f.write('\t'.join(field_values[field] for field in config['fieldorder']) + '\n')
-    print(f'{GEX}Card successfully saved to a file\n')
+class QuerySettings:
+    __slots__ = 'queries', 'user_sentence', 'recording_filename'
 
+    def __init__(self,
+            queries: list[Query], user_sentence: str, recording_filename: str
+    ) -> None:
+        self.queries = queries
+        self.user_sentence = user_sentence
+        self.recording_filename = recording_filename
 
-def get_config_terminal_size() -> tuple[int, int]:
-    term_width, term_height = shutil.get_terminal_size()
-    config_width, flag = config['textwidth']
-
-    if flag == '* auto' or config_width > term_width:
-        # cmd always reports wrong width by 1 cell.
-        if ON_WINDOWS_CMD:
-            term_width -= 1
-        return term_width, term_height
-    return config_width, term_height
-
-
-def _display_in_less(s: str) -> None:
-    executable = shutil.which('less')
-    if executable is None:
-        if WINDOWS:
-            print(
-                f"'less'{err_c} is not available in %PATH% or in the current directory.\n"
-                f"You can grab the latest Windows executable from:\n"
-                f"{R}https://github.com/jftuga/less-Windows/releases\n"
-            )
-        else:
-            print(f"{err_c}Could not find the 'less' executable.\n")
-        return
-
-    # r - accept escape sequences. `-R` does not produce desirable results on Windows.
-    # F - do not open the pager if output fits on the screen.
-    # K - exit on SIGINT. *This is important not to break keyboard input.
-    # Q - be quiet.
-    # X - do not clear the screen after exiting from the pager.
-    if WINDOWS:
-        env = {'LESSCHARSET': 'UTF-8'}
-        options = '-rFKQX'
-    else:
-        env = None
-        options = '-RFKQX'
-    with Popen((executable, options), stdin=PIPE, stderr=DEVNULL, env=env) as process:
-        try:
-            process.communicate(s.encode())
-        except:
-            process.kill()
-
-        # less returns 2 on SIGINT.
-        return_code = process.poll()
-        if return_code and return_code != 2:
-            print(f"{err_c}Could not open the pager as: 'less {options}'\n")
-
-
-def _display(s: str) -> None:
-    if config['less']:
-        if config['top']:
-            with ClearScreen():
-                _display_in_less(s)
-        else:
-            _display_in_less(s)
-    elif config['top']:
-        with ClearScreen():
-            sys.stdout.write(s)
-    else:
-        sys.stdout.write(s)
-
-
-def display_dictionary(dictionary: Dictionary) -> None:
-    if not dictionary.contents:
-        return
-
-    width, height = get_config_terminal_size()
-    ncols, state = config['columns']
-    if state == '* auto':
-        ncols = None
-
-    columns, col_width, last_col_fill =\
-        dictionary.prepare_to_print(
-            ncols, width, height - 3,
-            config['colviewat'][0],
-            config['textwrap'],
-            config['indent'][0],
-            config['showsign']
+    def __repr__(self) -> str:
+        return (
+            f'{type(self).__name__}('
+            f'queries={self.queries!r}, '
+            f'user_sentence={self.user_sentence!r}, '
+            f'recording_filename={self.recording_filename!r})'
         )
-    raw_str = stringify_columns(columns, col_width, last_col_fill)
-    _display(raw_str + '\n')
 
 
-def display_many_dictionaries(dictionaries: list[Dictionary]) -> None:
-    width, height = get_config_terminal_size()
-    col_width, last_col_fill = get_width_per_column(width, len(dictionaries))
-
-    columns = []
-    for d in dictionaries:
-        formatted = d.format_dictionary(
-            col_width, config['textwrap'], config['indent'][0], config['showsign']
-        )
-        columns.append([line.lstrip('$!') for line in formatted])
-
-    raw_str = stringify_columns(columns, col_width, last_col_fill, ('║', '╥'))
-    _display(raw_str + '\n')
-
-
-def display_card(field_values: dict[str, str]) -> None:
-    # field coloring
-    color_of = {
-        'def': def1_c, 'syn': syn_c, 'exsen': exsen_c,
-        'phrase': phrase_c, 'pz': '', 'pos': pos_c,
-        'etym': etym_c, 'audio': '', 'recording': '',
-    }
-    textwidth, _ = get_config_terminal_size()
-    delimit = textwidth * HORIZONTAL_BAR
-    adjusted_textwidth = int(0.95 * textwidth)
-    padding = (textwidth - adjusted_textwidth) // 2 * " "
-
-    print(f'\n{delimit_c}{delimit}')
-    for field_number, field in enumerate(config['fieldorder']):
-        if field == '-':
-            continue
-
-        for line in field_values[field].split('<br>'):
-            for subline in wrap_lines(line, config['textwrap'], adjusted_textwidth, 0, 0):
-                print(f'{color_of[field]}{padding}{subline}')
-
-        if field_number + 1 == config['fieldorder_d']:  # d = delimitation
-            print(f'{delimit_c}{delimit}')
-
-    print(f'{delimit_c}{delimit}')
-
-
-def parse_query(full_query: str) -> tuple[list[tuple[str, str]], str]:
-    # Returns:
-    #   - list of queries and not-parsed flags,
-    #   - sentence (if provided)
-
-    query_separators = (',', ';', '==')
-    chars_to_strip = ' ' + ''.join(query_separators)
+def parse_query(full_query: str) -> list[Query] | None:
+    separators = ',;'
+    chars_to_strip = ' ' + separators
 
     full_query = full_query.strip(chars_to_strip)
     if not full_query:
-        return [('', '')], ''
+        return None
 
-    if '<' in full_query and '>' in full_query:
-        _query, _, flag_str = full_query.partition(' -')
-        left, _, temp = full_query.partition('<')
-        _query, _, right = temp.rpartition('>')
-        return (
-            [(_query.strip(), flag_str.strip())], left + _query + right
+    result = []
+    for field in max(map(str.split, repeat(full_query), separators), key=len):
+        field = field.strip(chars_to_strip)
+        if not field:
+            continue
+
+        query, *flags = field.split(' -')
+        emph_start = query.find('<')
+        emph_stop = query.rfind('>')
+        if ~emph_start and ~emph_stop and emph_start < emph_stop:
+            sentence = (
+                query[:emph_start]
+                + '{{' + query[emph_start + 1:emph_stop] + '}}'
+                + query[emph_stop + 1:]
+            )
+            query = query[emph_start + 1:emph_stop]
+        else:
+            sentence = ''
+
+        dict_flags = []
+        query_flags = []
+        record = False
+        for flag in flags:
+            flag = flag.strip(' -')
+            if not flag:
+                continue
+
+            if flag in {'rec', 'record'}:
+                record = True
+            elif flag in DICT_FLAG_TO_QUERY_KEY:
+                dict_flags.append(flag)
+            elif flag in {'c', 'compare'}:
+                d1, d2 = config['-dict'], config['-dict2']
+                if d1 in DICT_FLAG_TO_QUERY_KEY:
+                    dict_flags.append(d1)
+                if d2 in DICT_FLAG_TO_QUERY_KEY:
+                    dict_flags.append(d2)
+            else:
+                query_flags.append(flag)
+
+        result.append(
+            Query(query.strip(), sentence, dict_flags, query_flags, record)
         )
 
-    queries_flags = []
-    for field in max(map(str.split, repeat(full_query), query_separators), key=len):
-        field = field.strip(chars_to_strip)
-        if field:
-            _query, _, flag_str = field.partition(' -')
-            queries_flags.append((_query.strip(), flag_str.strip()))
-
-    return queries_flags, ''
+    return result
 
 
-def parse_flags(s: str) -> tuple[list[str], list[str], list[str]]:
-    dict_flags, rec_flags, other_flags = [], [], []
-    for flag in filter(None, s.split(' -')):
-        flag = flag.strip(' -')
-        if flag in {'ahd', 'i', 'idiom', 'idioms', 'farlex', 'l', 'lexico'}:
-            dict_flags.append(flag)
-        elif flag in {'c', 'compare'}:
-            dict_flags.extend((config['dict'], config['dict2']))
-        elif flag in {'rec', 'record'}:
-            rec_flags.append(flag)
-        else:
-            other_flags.append(flag)
+def main_dispatch(query: str) -> None:
+    parsed = parse_query(query)
+    if parsed is None:
+        return
 
-    if config['fsubdefs']:
-        other_flags.append('f')
+    dictionaries: list[Dictionary] = []
+    recorded = False
+    user_sentence = recording_filename = ''
+    for query, sentence, dict_flags, query_flags, record in parsed:
+        if sentence and not user_sentence:
+            user_sentence = sentence
+        if record and not recorded:
+            recording_filename = ffmpeg.capture_audio(query)
+            recorded = True
 
-    return dict_flags, rec_flags, other_flags
-
-
-def main_loop(query: str) -> None:
-    field_values = {
-        'def': '',
-        'syn': '',
-        'exsen': '',
-        'phrase': '',
-        'pz': '',
-        'pos': '',
-        'etym': '',
-        'audio': '',
-        'recording': '',
-        '-': '',
-    }
-
-    _query_and_flags_list, sentence = parse_query(query)
-
-    # Parse flags
-    record_query = ''
-    query_and_flags_list = []
-    for _query, _flag_str in _query_and_flags_list:
-        dict_flags, rec, other = parse_flags(_flag_str)
-        if rec and not record_query:
-            record_query = _query
-        query_and_flags_list.append((_query, dict_flags, other))
-
-    if record_query:
-        field_values['recording'] = ffmpeg.capture_audio(record_query)
-
-    # Retrieve dictionaries,
-    # keep `other_flags` of current_dictionary for the `save_audio` function.
-    dictionaries = []
-    other_flags = None
-    for _query, _dict_flags, _other_flags in query_and_flags_list:
-        if other_flags is None:
-            other_flags = _other_flags
-        dicts = get_dictionaries(_query, _dict_flags)
+        dicts = get_dictionaries(query, dict_flags)
         if dicts is not None:
-            for d in dicts:
-                d.filter_contents(_other_flags)
-                dictionaries.append(d)
-
-    if not dictionaries:
-        return
-
-    # Display dictionaries
-    current_dict = dictionaries[0]
-    if len(dictionaries) > 1:
-        display_many_dictionaries(dictionaries)
-    else:
-        display_dictionary(current_dict)
-
-    if not config['createcards']:
-        if config['thes'] == 'wordnet':
-            # Use the first phrase to always make the correct query.
-            # e.g. preferred -> prefer
-            d = ask_wordnet(current_dict.phrases[0])
-            if d is not None:
-                display_dictionary(d)
-        return
-
-    # Ask for inputs
-    if config['pz'] and not sentence:
-        sentence = sentence_input()  # type: ignore[assignment]
-        if sentence is None:
-            return
-
-    dictionary_contents = current_dict.input_cycle()
-    if dictionary_contents is None:
-        return
-
-    field_values.update(dictionary_contents)
-
-    phrase = field_values['phrase']
-    if current_dict.allow_thesaurus:
-        thesaurus = get_thesaurus(phrase)
-        if thesaurus is None:
-            return
-
-        display_dictionary(thesaurus)
-        thesaurus_contents = thesaurus.input_cycle()
-        if thesaurus_contents is not None:
-            field_values.update(thesaurus_contents)
-
-    field_values['audio'] = save_audio(
-        current_dict.name, field_values['audio'], phrase, other_flags
-    )
-    # Format card content
-    if sentence:
-        field_values['pz'] = sentence
-    else:
-        if config['tsc'] != '-':
-            if field_values['exsen']:
-                field_values['pz'] = field_values['exsen']
-                field_values['exsen'] = ''
+            if query_flags:
+                dictionaries.extend(
+                    map(filter_dictionary, dicts, repeat(query_flags))
+                )
             else:
-                if config['tsc'] == 'strict':
-                    field_values['pz'] = phrase
-                    field_values['phrase'] = ''
+                dictionaries.extend(dicts)
 
-    # Hide chosen phrase in content
-    for elem in ('pz', 'def', 'exsen', 'syn'):
-        content = field_values[elem]
-        if content and config[f'u{elem}']:
-            field_values[elem] = hide(
-                content, phrase, config['hideas'],
-                hide_prepositions=config['upreps'],
-                keep_endings=config['keependings']
-            )
+    if dictionaries:
+        settings = QuerySettings(parsed, user_sentence, recording_filename)
+    else:
+        return
 
-    if config['cardpreview']:
-        display_card(field_values)
+    if config['-curses']:
+        try:
+            from src.curses_main import curses_ui_entry
+        except ImportError:
+            if WINDOWS:
+                sys.stdout.write(
+                    f'{Color.err}The curses module could not be imported:{R}\n'
+                    f'to use the console front-end type: -curses off\n'
+                    f'Windows is not officially supported,\n'
+                    f'but there are a few things you can try:\n'
+                    f' - install CygWin or MinGW32,\n'
+                    f' - install WSL and run it from there,\n'
+                    f' - pip install windows-curses (works, but broken),\n'
+                    f' - install Linux or some other Unix-like OS\n'
+                    f'   (changing an entire operating system just to run\n'
+                    f'   this program is a chad move for sure :^)\n\n'
+                )
+                return
+            else:
+                raise
 
-    # Format card content
-    for key, val in field_values.items():
-        field_values[key] = val.replace("'", "&#39;").replace('"', '&quot;')
-
-    if config['formatdefs']:
-        field_values['def'] = format_definitions(field_values['def'])
-    if '<br>' not in field_values['pz']:
-        field_values['pz'] = field_values['pz'] \
-            .replace('>', '</b>').replace('<', '<b style="color: #91cb7d;">', 1)
-
-    print()
-    if config['ankiconnect']:
-        anki.add_card_to_anki(field_values)
-    if config['savecards']:
-        save_card_to_file(field_values)
+        curses_ui_entry(dictionaries, settings)
+    else:
+        console_ui_entry(dictionaries, settings)
 
 
-def from_define_all_file(_input: str) -> Generator[str, None, None]:
+def from_define_all_file(s: str) -> Generator[str, None, None]:
     # Search for the "define_all" like file.
     for file in os.listdir():
         if file.lower().startswith('define') and 'all' in file.lower():
             define_file = file
             break
     else:
-        print(f'{err_c}Could not find {R}"define_all.txt"{err_c} file.\n'
+        print(f'{Color.err}Could not find {R}"define_all.txt"{Color.err} file.\n'
               f'Create one and paste your list of queries there.')
         return None
 
-    _, _, sep = _input.partition(' ')
+    _, _, sep = s.partition(' ')
     sep = sep.strip()
     if not sep:
         sep = ','
@@ -614,43 +330,38 @@ def from_define_all_file(_input: str) -> Generator[str, None, None]:
         lines = [x.strip().strip(sep) for x in f if x.strip().strip(sep)]
 
     if not lines:
-        print(f'{R}"{define_file}"{err_c} file is empty.')
+        print(f'{R}"{define_file}"{Color.err} file is empty.')
         return None
 
     for line in lines:
-        for _input in line.split(sep):
-            _input = _input.strip()
-            if _input:
-                yield _input
+        for query in line.split(sep):
+            query = query.strip()
+            if query:
+                yield query
 
-    print(f'{YEX}** {R}"{define_file}"{YEX} has been exhausted **\n')
+    print(f'{Color.heed}** {R}"{define_file}"{Color.heed} has been exhausted **')
 
 
 def main() -> NoReturn:
-    if config['audio_path'] == 'Cards_audio':
-        # Providing the absolute path solves an occasional PermissionError on Windows.
-        t = os.path.join(ROOT_DIR, 'Cards_audio')
-        if not os.path.exists(t):
-            os.mkdir(t)
-
-    print(f'{BOLD}- Ankidodawacz v{__version__} -{DEFAULT}\n'
-          'type -h for usage and configuration\n\n')
-
+    sys.stdout.write(
+        f'{BOLD}- Ankidodawacz v{__version__} -{DEFAULT}\n'
+        f'type -h for usage and configuration\n\n\n'
+    )
     while True:
-        users_query = search_interface()
-        if users_query.startswith(('-rec', '--record')):
+        typed = search()
+        if typed.startswith(('-rec', '--record')):
             ffmpeg.capture_audio()
-        elif users_query.startswith('--define-all'):
-            for query in from_define_all_file(users_query):
-                main_loop(query)
+        elif typed.startswith('--define-all'):
+            for query in from_define_all_file(typed):
+                main_dispatch(query)
         else:
-            main_loop(users_query)
+            main_dispatch(typed)
 
 
 if __name__ == '__main__':
     try:
         raise SystemExit(main())
     except (KeyboardInterrupt, EOFError):
-        print()
+        sys.stdout.write('\n')
     finally:
         http.pools.clear()

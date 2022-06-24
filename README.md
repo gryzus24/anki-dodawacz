@@ -2,13 +2,13 @@
 
 ![Polish](https://github.com/gryzus24/anki-dodawacz/blob/main/README.pl.md) • ![English](https://github.com/gryzus24/anki-dodawacz/blob/main/README.md)
 
-A command line dictionary look-up tool with Anki integration.<br>
+A console/curses dictionary look-up tool with Anki integration.<br>
 
-![image](https://user-images.githubusercontent.com/82805891/154151435-3c45caeb-0698-4e24-b874-449ef7ae0a5f.png)
+![curses image](https://user-images.githubusercontent.com/82805891/175177470-bf5048b9-8e01-4288-a28e-741c180d28b6.png)
 
 ## Usage
 
-Search for a word and choose elements by their index.<br>
+Search for a word and select definitions by their index.<br>
 Program saves your choice in a `cards.txt` file which can be manually imported to Anki.<br>
 You can also connect it directly to Anki via AnkiConnect to streamline the process.
 
@@ -20,16 +20,18 @@ You can also connect it directly to Anki via AnkiConnect to streamline the proce
 4. add a premade note `--add-note` or specify your own `-note {note name}`
 5. enable AnkiConnect `-ankiconnect on`
 
-To configure the program further use the `-conf` or `-config` command.<br>
+To configure the program further use the `-conf` command.<br>
 To display usage information for a command just type its name.
 
-![image](https://user-images.githubusercontent.com/82805891/158180355-2e23e404-783a-44ee-83e4-bdf59062af20.png)
+![configuration image](https://user-images.githubusercontent.com/82805891/175174300-b8702354-1261-499d-9693-61eaa1b32e8f.png)
 
 If you are using Windows install Windows Terminal or any other than cmd terminal emulator for better user experience.
 
 ## Installation
 
 ### Windows
+
+<sub>__Beware of false advertising!__ The curses interface is not currently supported on Windows. There is a console interface which achieves the same thing, but isn't as pretty and functional.</sub>
 
 To open the program we need Python 3.7 or newer installed.<br>
 You can download Python from https://www.python.org/downloads/<br>
@@ -99,7 +101,7 @@ Names it definitely understands are:
 ### Custom notes
 
 You can add our custom notes to Anki if AnkiConnect is installed.<br>
-To do that use `--add-note` command.
+To do that use the `--add-note` command.
 
 ![image](https://user-images.githubusercontent.com/82805891/147774842-0f5d9e7e-2fca-4a0c-8f8e-ce4c6294a0b5.png)
 
@@ -116,7 +118,7 @@ Currently supported configurations:
 Official FFmpeg download site: https://www.ffmpeg.org/download.html
 
 To use _ffmpeg_ first we have to add the executable to the system's $PATH or place it alongside `ankidodawacz.py` file in the program's root directory.<br>
-To choose your preferred audio device use `--audio-device` command.
+To choose your preferred audio device use the `--audio-device` command.
 
 If recording doesn't work on Windows:
 - open "Audio mixer" in the sound settings
@@ -133,6 +135,8 @@ To start the recording add the `-rec` option after the search query.
 
 ## Code
 
-This is my first programming project, feel free to contribute if you find the program useful.
+This is my first programming project, suggestions and contributions are welcome!
+
+Currently the curses interface needs more testing and also it's lacking Windows support.
 
 Third-party libraries used: BeautifulSoup4 (MIT), colorama (BSD), lxml (BSD), urllib3 (MIT)
