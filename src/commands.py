@@ -385,11 +385,11 @@ def dupescope_command(cmd: str, *args: str) -> CommandResult:
 
 
 def dict_command(cmd: str, *args: str) -> CommandResult:
-    return commands_set_text('-dict', args, ('ahd', 'lexico', 'idioms', 'wordnet'))
+    return commands_set_text('-dict', args, ('ahd', 'lexico', 'farlex', 'wordnet'))
 
 
 def dict2_command(cmd: str, *args: str) -> CommandResult:
-    return commands_set_text('-dict2', args, ('ahd', 'lexico', 'idioms', 'wordnet', '-'))
+    return commands_set_text('-dict2', args, ('ahd', 'lexico', 'farlex', 'wordnet', '-'))
 
 
 def audio_command(cmd: str, *args: str) -> CommandResult:
@@ -429,8 +429,8 @@ HELP_ARG_COMMANDS: dict[str, tuple[Callable[..., CommandResult], str, str]] = {
     '-columns':     (columns_command, '(Maximum) number of columns when dispatching a dictionary', '{>=1|auto}'),
     '-deck':        (deck_command, 'Deck used for adding cards', '{deck name}'),
     '-default':     (default_command, 'Default value for the definition field (-def)', '{e.g. 1,2,3}'),
-    '-dict':        (dict_command, 'Primary dictionary', '{ahd|lexico|idioms|wordnet}'),
-    '-dict2':       (dict2_command, 'Fallback dictionary', '{ahd|lexico|idioms|wordnet|-}'),
+    '-dict':        (dict_command, 'Primary dictionary', '{ahd|lexico|farlex|wordnet}'),
+    '-dict2':       (dict2_command, 'Fallback dictionary', '{ahd|lexico|farlex|wordnet|-}'),
     '-dupescope':   (dupescope_command, 'Look for duplicates in', '{deck|collection}'),
     '-hideas':      (hideas_command, 'Hide with (default "...")', '{ whatever floats your boat }'),
     '-margin':      (margin_command, "[curses only] Column's left and right margin", '{0-99}'),
@@ -602,7 +602,7 @@ See `--help-console` and `--help-curses` for more information.
 DICTIONARY OPTIONS:
   -ahd             query AH Dictionary
   -l, -lexico      query Lexico
-  -i, -idioms      query Farlex Idioms
+  -i, -farlex      query Farlex Idioms
   -wnet, -wordnet  query WordNet
 
   -c, -compare    query `-dict` and `-dict2` simultaneously,
@@ -706,8 +706,8 @@ Hiding a phrase means replacing it with "..." (default)
 -shortetyms    shorten and simplify etymologies in AH Dictionary
 
 {_title('Sources and recording configuration')}
--dict  {{ahd|lexico|idioms|wordnet}}        primary dictionary
--dict2 {{ahd|lexico|idioms|wordnet|-}}      fallback dictionary
+-dict  {{ahd|lexico|farlex|wordnet}}        primary dictionary
+-dict2 {{ahd|lexico|farlex|wordnet|-}}      fallback dictionary
 -audio {{ahd|lexico|diki|auto|-}}           audio server
 
 --audio-device           configure a recording device

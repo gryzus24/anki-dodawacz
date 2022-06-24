@@ -111,20 +111,20 @@ class QueryNotFound(Exception):
 
 
 DICT_FLAG_TO_QUERY_KEY = {
-    'ahd': '_ahd',
-    'idioms': '_farlex', 'idiom': '_farlex', 'i': '_farlex',
-    'lexico': '_lexico', 'l': '_lexico',
-    'wordnet': '_wordnet', 'wnet': '_wordnet',
+    'ahd': 'ahd',
+    'i': 'farlex', 'farlex': 'farlex',
+    'l': 'lexico', 'lexico': 'lexico',
+    'wnet': 'wordnet', 'wordnet': 'wordnet',
 }
 # Every dictionary has its individual key to avoid cluttering cache
 # with identical dictionaries that were called with the same query
 # but different "dictionary flag", which acts as nothing more but
 # an alias.
 DICTIONARY_LOOKUP = {
-    '_ahd': ask_ahdictionary,
-    '_farlex': ask_farlex,
-    '_lexico': ask_lexico,
-    '_wordnet': ask_wordnet,
+    'ahd': ask_ahdictionary,
+    'farlex': ask_farlex,
+    'lexico': ask_lexico,
+    'wordnet': ask_wordnet,
 }
 @functools.lru_cache(maxsize=None)
 def query_dictionary(key: str, query: str) -> Dictionary | NoReturn:
@@ -146,6 +146,10 @@ def get_dictionaries(
     if flags is None or not flags:
         flags = [config['-dict']]
 
+    # Ideally `none_keys` would be static and kept throughout searches like
+    # "phrase1, phrase1, phrase1", but in normal, non-malicious (źdź,źdź,źdź...),
+    # usage it is never needed, because nobody really queries the same thing
+    # multiple times that is also not in the dictionary.
     none_keys = set()
     result = []
     for flag in flags:
@@ -255,32 +259,34 @@ def parse_query(full_query: str) -> list[Query] | None:
     return result
 
 
-def main_dispatch(query: str) -> None:
-    parsed = parse_query(query)
+def main_dispatch(s: str) -> None:
+    parsed = parse_query(s)
     if parsed is None:
         return
 
     dictionaries: list[Dictionary] = []
     recorded = False
     user_sentence = recording_filename = ''
-    for query, sentence, dict_flags, query_flags, record in parsed:
-        if sentence and not user_sentence:
-            user_sentence = sentence
-        if record and not recorded:
-            recording_filename = ffmpeg.capture_audio(query)
+    valid_queries = []
+    for query in parsed:
+        if query.sentence and not user_sentence:
+            user_sentence = query.sentence
+        if query.record and not recorded:
+            recording_filename = ffmpeg.capture_audio(query.query)
             recorded = True
 
-        dicts = get_dictionaries(query, dict_flags)
+        dicts = get_dictionaries(query.query, query.dict_flags)
         if dicts is not None:
-            if query_flags:
+            valid_queries.append(query)
+            if query.query_flags:
                 dictionaries.extend(
-                    map(filter_dictionary, dicts, repeat(query_flags))
+                    map(filter_dictionary, dicts, repeat(query.query_flags))
                 )
             else:
                 dictionaries.extend(dicts)
 
     if dictionaries:
-        settings = QuerySettings(parsed, user_sentence, recording_filename)
+        settings = QuerySettings(valid_queries, user_sentence, recording_filename)
     else:
         return
 

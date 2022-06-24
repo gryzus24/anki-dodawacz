@@ -34,5 +34,3 @@ class ConsoleInputField:
         d = 'Y/n' if default else 'y/N'
         i = input(f'{prompt} [{d}]: ').strip().lower()
         return STRING_TO_BOOL.get(i, default)
-
-

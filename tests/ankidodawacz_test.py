@@ -106,8 +106,8 @@ def test_parse_query_separators(input_, expected):
         ('mint', ['ahd'], ['ahd']),
         ('best', ['l'], ['lexico']),
         ('best', ['ahd', 'lexico'], ['ahd', 'lexico']),
-        ('leap', ['ahd', 'idioms', 'lexico'], ['ahd', 'lexico']),
-        ('brem', ['ahd', 'l', 'l'], ['lexico' ,'lexico']),
+        ('leap', ['ahd', 'farlex', 'lexico'], ['ahd', 'lexico']),
+        ('brem', ['ahd', 'l', 'l'], ['lexico', 'lexico']),
     )
 
 )
@@ -121,11 +121,11 @@ def test_get_dictionaries(query, flags, expected_dictionary_names):
     ('query', 'flags', 'expected_dictionary_names', 'cache_hit'),
     (
         ('blind', ['ahd'], ['ahd'], False),
-        ('away', ['idioms'], ['farlex'], False),
+        ('away', ['farlex'], ['farlex'], False),
         ('blind', ['ahd'], ['ahd'], True),
         ('alarm', ['l', 'l'], ['lexico', 'lexico'], False),
         ('alarm', ['lexico', 'lexico', 'l', 'lexico'], ['lexico', 'lexico', 'lexico', 'lexico'], True),
-        ('away', ['i', 'idiom'], ['farlex', 'farlex'], True),
+        ('away', ['i', 'farlex'], ['farlex', 'farlex'], True),
     )
 )
 def test_get_dictionaries_with_cache(query, flags, expected_dictionary_names, cache_hit):
