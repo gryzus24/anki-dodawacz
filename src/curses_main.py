@@ -413,15 +413,15 @@ class Notifications:
         if not self.buffer:
             return
 
-        y_topleft = LINES - len(self.buffer)
+        y_start = LINES - len(self.buffer)
         y_bound = LINES // 2
-        if y_topleft < y_bound:
-            buffer = self.buffer[y_bound - y_topleft:]
-            y_topleft = y_bound
+        if y_start < y_bound:
+            buffer = self.buffer[y_bound - y_start:]
+            y_start = y_bound
         else:
             buffer = self.buffer
 
-        win = curses.newwin(len(self.buffer), COLS, y_topleft, 0)
+        win = curses.newwin(len(buffer), COLS, y_start, 0)
         for i, (line, color) in enumerate(buffer):
             line = ' ' + line
             padding = COLS - len(line)
@@ -732,6 +732,21 @@ class Screen:
     }
 
 
+def truncate_if_needed(s: str, n: int, from_: str = 'right') -> str | None:
+    if from_ not in ('right', 'left'):
+        raise ValueError('either from left or right')
+    if len(s) <= n:
+        return s
+    if n <= 2:
+        return None
+    if from_ == 'right':
+        return s[:n-2] + '..'
+    elif from_ == 'left':
+        return '..' + s[2-n:]
+    else:
+        raise AssertionError('unreachable')
+
+
 class call_on(contextlib.ContextDecorator):
     def __init__(self, *, enter: Callable[..., None], exit: Callable[..., None]) -> None:
         self._enter = enter
@@ -823,11 +838,12 @@ class Prompt:
         width = COLS - 1
         offset = width // 3
 
-        headroom = width - len(self.prompt) - 6
-        if headroom < 0:
-            prompt_text = f'..{self.prompt[2-headroom:]}'
+        if self.prompt:
+            prompt_text = truncate_if_needed(self.prompt, width - 6, from_='left')
+            if prompt_text is None:
+                prompt_text = '..' + self.prompt[-1]
         else:
-            prompt_text = self.prompt
+            prompt_text = ''
 
         self.win.move(LINES-1, 0)
         self.win.clrtoeol()
@@ -1004,36 +1020,20 @@ class ScreenBuffer:
         stdscr = self.stdscr
         stdscr.box()
 
-        header_title = screen.dictionary.contents[0][1]
-        # 2 for padding, 2 for brackets, 4 for box drawing characters
-        space = COLS - len(header_title) - 8
-        if space < 0:
-            truncated = header_title[:space-2]
-            if truncated.strip():
-                try:
-                    stdscr.addstr(0, 2, '[ ')
-                    stdscr.addstr(0, 4, f'{truncated}..', curses.A_BOLD)
-                    stdscr.addstr(0, 6 + len(truncated), ' ]')
-                except curses.error:  # window too small
-                    pass
-        else:
-            # curses.error should not happen here, I assert that.
+        header = truncate_if_needed(screen.dictionary.contents[0][1], COLS - 8)
+        if header is not None:
             stdscr.addstr(0, 2, '[ ')
-            stdscr.addstr(0, 4, header_title, curses.A_BOLD)
-            stdscr.addstr(0, 4 + len(header_title), ' ]')
+            stdscr.addstr(0, 4, header, curses.A_BOLD)
+            stdscr.addstr(0, 4 + len(header), ' ]')
 
         nscreens = len(self.screens)
         if nscreens > 1:
-            buffer_hint = f'{self.cursor+1}/{nscreens}'
-            bhint_y = LINES - 1
-            bhint_x = COLS - len(buffer_hint) - 2
-            if bhint_x > 1:
-                try:
-                    stdscr.addch(bhint_y, bhint_x - 1, '╴')
-                    stdscr.addstr(bhint_y, bhint_x, buffer_hint, curses.A_BOLD)
-                    stdscr.addch(bhint_y, bhint_x + len(buffer_hint), '╶')
-                except curses.error:  # window too small
-                    pass
+            buffer_hint = truncate_if_needed(f'{self.cursor+1}/{nscreens}', COLS - 4)
+            if buffer_hint is not None:
+                bhint_x = COLS - len(buffer_hint) - 2
+                stdscr.addch(LINES - 1, bhint_x - 1, '╴')
+                stdscr.addstr(LINES - 1, bhint_x, buffer_hint, curses.A_BOLD)
+                stdscr.addch(LINES - 1, bhint_x + len(buffer_hint), '╶')
 
         shift = BORDER_PAD + screen.col_width
         screen_height = screen.screen_height
