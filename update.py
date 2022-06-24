@@ -98,19 +98,16 @@ def main() -> None:
     finally:
         os.remove(tfile.name)
 
-    print(f"{Color.heed}:: {R}Copying 'config.json'...")
+    print(f"{Color.heed}:: {R}Copying the AnkiConnect configuration")
+    moveable_configs = {
+        '-ankiconnect', '-note', '-deck', '-tags', '-duplicates',
+        '-dupescope', 'audio_path', 'audio_device'
+    }
     with open(os.path.join(out_dir_path, 'config/config.json')) as f:
         new_config = json.load(f)
         for old_key, old_val in config.items():
-            try:
-                new_val = new_config[old_key]
-            except KeyError:
-                continue
-            # To prevent new versions from reading old config data types.
-            if isinstance(new_val, type(old_val)):
+            if old_key in new_config and old_key in moveable_configs:
                 new_config[old_key] = old_val
-            else:
-                print(f"{Color.err}:: {R}Could not copy '{old_key}': incompatible data type")
 
     with open(os.path.join(out_dir_path, 'config/config.json'), 'w') as f:
         json.dump(new_config, f, indent=0)
