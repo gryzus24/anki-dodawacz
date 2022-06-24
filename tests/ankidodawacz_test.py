@@ -60,7 +60,11 @@ def test_parse_query_sentences(input_, expected):
             Query('a', '{{a}} test', ['l', 'lexico'], [], False),
             Query('b', '{{b}} test', [], ['f'], True)
         ]),
-        ('<;>', [
+        ('<,>', [
+            Query('<', '', [], [], False),
+            Query('>', '', [], [], False)
+        ]),
+        ('<,,>', [
             Query('<', '', [], [], False),
             Query('>', '', [], [], False)
         ]),
