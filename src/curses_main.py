@@ -732,19 +732,15 @@ class Screen:
     }
 
 
-def truncate_if_needed(s: str, n: int, from_: str = 'right') -> str | None:
-    if from_ not in ('right', 'left'):
-        raise ValueError('either from left or right')
+def truncate_if_needed(s: str, n: int, *, fromleft: bool = False) -> str | None:
     if len(s) <= n:
         return s
     if n <= 2:
         return None
-    if from_ == 'right':
-        return s[:n-2] + '..'
-    elif from_ == 'left':
+    if fromleft:
         return '..' + s[2-n:]
     else:
-        raise AssertionError('unreachable')
+        return s[:n-2] + '..'
 
 
 class call_on(contextlib.ContextDecorator):
@@ -839,7 +835,7 @@ class Prompt:
         offset = width // 3
 
         if self.prompt:
-            prompt_text = truncate_if_needed(self.prompt, width - 6, from_='left')
+            prompt_text = truncate_if_needed(self.prompt, width - 6, fromleft=True)
             if prompt_text is None:
                 prompt_text = '..' + self.prompt[-1]
         else:
