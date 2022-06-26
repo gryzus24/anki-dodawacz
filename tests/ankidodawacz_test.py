@@ -1,8 +1,6 @@
-import time
-
 import pytest
 
-from ankidodawacz import get_dictionaries, parse_query, Query
+from ankidodawacz import parse_query, Query
 from src.data import config
 
 
@@ -99,67 +97,3 @@ def test_parse_query_sentences(input_, expected):
 def test_parse_query_separators(input_, expected):
     assert parse_query(input_) == expected
 
-
-@pytest.mark.parametrize(
-    ('query', 'flags', 'expected_dictionary_names'),
-    (
-        ('mint', ['ahd'], ['ahd']),
-        ('best', ['l'], ['lexico']),
-        ('best', ['ahd', 'lexico'], ['ahd', 'lexico']),
-        ('leap', ['ahd', 'farlex', 'lexico'], ['ahd', 'lexico']),
-        ('brem', ['ahd', 'l', 'l'], ['lexico', 'lexico']),
-    )
-
-)
-def test_get_dictionaries(query, flags, expected_dictionary_names):
-    result = get_dictionaries(query, flags)
-    assert result is not None
-    assert [x.name for x in result] == expected_dictionary_names
-
-
-@pytest.mark.parametrize(
-    ('query', 'flags', 'expected_dictionary_names', 'cache_hit'),
-    (
-        ('blind', ['ahd'], ['ahd'], False),
-        ('away', ['farlex'], ['farlex'], False),
-        ('blind', ['ahd'], ['ahd'], True),
-        ('alarm', ['l', 'l'], ['lexico', 'lexico'], False),
-        ('alarm', ['lexico', 'lexico', 'l', 'lexico'], ['lexico', 'lexico', 'lexico', 'lexico'], True),
-        ('away', ['i', 'farlex'], ['farlex', 'farlex'], True),
-    )
-)
-def test_get_dictionaries_with_cache(query, flags, expected_dictionary_names, cache_hit):
-    t1 = time.perf_counter()
-    result = get_dictionaries(query, flags)
-    t2 = time.perf_counter()
-    assert result is not None
-    assert [x.name for x in result] == expected_dictionary_names
-    assert (t2 - t1 < 0.001) is cache_hit
-
-
-def test_get_dictionaries_with_fallback():
-    config['-dict'] = 'ahd'
-    config['-dict2'] = 'lexico'
-    result = get_dictionaries('mint', [])
-    assert result is not None
-    assert [x.name for x in result] == ['ahd']
-
-    result = get_dictionaries('breme', [])
-    assert result is not None
-    assert [x.name for x in result] == ['lexico']
-
-    result = get_dictionaries('źdźbło', [])
-    assert result is None
-
-    config['-dict'] = 'ahd'
-    config['-dict2'] = '-'
-    result = get_dictionaries('breme', [])
-    assert result is None
-
-    result = get_dictionaries('źdźbło', [])
-    assert result is None
-
-    config['-dict'] = 'ahd'
-    config['-dict2'] = 'ahd'
-    result = get_dictionaries('źdźbło', [])
-    assert result is None

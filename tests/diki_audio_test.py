@@ -8,6 +8,7 @@ gb = 'https://www.diki.pl/images-common/en/mp3/'
 ame = 'https://www.diki.pl/images-common/en-ame/mp3/'
 
 
+@pytest.mark.skip(reason='run when changing diki')
 @pytest.mark.parametrize(
     ('phrase', 'expected'),
     (
@@ -29,6 +30,7 @@ def test_diki_no_flag_gb(phrase, expected):
     assert diki_audio(phrase) == expected
 
 
+@pytest.mark.skip(reason='run when changing diki')
 @pytest.mark.parametrize(
     ('phrase', 'expected'),
     (
@@ -39,6 +41,7 @@ def test_diki_no_flag_ame(phrase, expected):
     assert diki_audio(phrase) == expected
 
 
+@pytest.mark.skip(reason='run when changing diki')
 @pytest.mark.parametrize(
     ('phrase', 'expected'),
     (
@@ -50,6 +53,7 @@ def test_diki_incorrect_phrase(phrase, expected):
     assert diki_audio(phrase) == expected
 
 
+@pytest.mark.skip(reason='run when changing diki')
 @pytest.mark.parametrize(
     ('phrase', 'flag', 'expected'),
     (
