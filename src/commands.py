@@ -12,7 +12,7 @@ from src.colors import BOLD, Color, DEFAULT, R
 from src.data import LINUX, MAC, ROOT_DIR, WINDOWS, STRING_TO_BOOL, config
 
 if TYPE_CHECKING:
-    from src.input_fields import InputFieldInterface
+    from src.proto import InteractiveCommandHandlerInterface
 
 CONFIG_COLUMNS = tuple(
     zip_longest(
@@ -95,14 +95,14 @@ BOOL_TO_COLOR = {
 }
 
 
-def save_config(c: dict[str, bool | str | int | Sequence[Any]]) -> None:
+def save_config() -> None:
     with open(os.path.join(ROOT_DIR, 'config/config.json'), 'w') as f:
-        json.dump(c, f, indent=0)
+        json.dump(config, f, indent=0)
 
 
 def save_command(entry: str, value: bool | str | int | Sequence[Any]) -> None:
     config[entry] = value
-    save_config(config)
+    save_config()
 
 
 class CommandResult(NamedTuple):
@@ -147,7 +147,9 @@ def _get_collection_paths() -> list[str] | CommandResult:
         )
 
 
-def audio_path_command(implementor: InputFieldInterface, cmd: str, *args: str) -> CommandResult:
+def audio_path_command(
+    implementor: InteractiveCommandHandlerInterface, cmd: str, *args: str
+) -> CommandResult:
     if not args or args[0].lower() == 'auto':
         collection_paths = _get_collection_paths()
         if isinstance(collection_paths, CommandResult):
@@ -158,7 +160,7 @@ def audio_path_command(implementor: InputFieldInterface, cmd: str, *args: str) -
         else:
             for i, col_path in enumerate(collection_paths, 1):
                 user_dir = os.path.basename(os.path.dirname(col_path))
-                implementor.write(f'>{i} "{user_dir}"')
+                implementor.writeln(f'>{Color.index}{i}{R} "{user_dir}"')
             chosen_path = implementor.choose_item(
                 "Which user's collection do you want to use?",
                 collection_paths
@@ -175,12 +177,14 @@ def audio_path_command(implementor: InputFieldInterface, cmd: str, *args: str) -
     return CommandResult()
 
 
-def add_note_command(implementor: InputFieldInterface, cmd: str, *args: str) -> CommandResult:
+def add_note_command(
+    implementor: InteractiveCommandHandlerInterface, cmd: str, *args: str
+) -> CommandResult:
     custom_notes = sorted(os.listdir(os.path.join(ROOT_DIR, 'notes')))
 
-    implementor.write('Available notes:')
+    implementor.writeln(f'{BOLD}Available notes:')
     for i, note in enumerate(custom_notes, 1):
-        implementor.write(f'>{i} "{note[:-5]}"')  # strip ".json"
+        implementor.writeln(f'>{Color.index}{i}{R} "{note[:-5]}"')  # strip ".json"
 
     note_name = implementor.choose_item('Choose a note to add', custom_notes, default=0)
     if note_name is None:
@@ -204,14 +208,16 @@ def add_note_command(implementor: InputFieldInterface, cmd: str, *args: str) -> 
     if response.error:
         return CommandResult(error='Note could not be added', reason=response.body)
 
-    implementor.write('Note added successfully')
+    implementor.writeln(f'{Color.success}Note added successfully')
     if implementor.ask_yes_no(f'Set "{model_name}" as -note?', default=True):
         save_command('-note', model_name)
 
     return CommandResult()
 
 
-def audio_device_command(implementor: InputFieldInterface, cmd: str, *args: str) -> CommandResult:
+def audio_device_command(
+    implementor: InteractiveCommandHandlerInterface, cmd: str, *args: str
+) -> CommandResult:
     try:
         audio_devices = ffmpeg.find_devices()
         if not audio_devices:
@@ -225,9 +231,9 @@ def audio_device_command(implementor: InputFieldInterface, cmd: str, *args: str)
             reason='Place the FFmpeg binary alongside the program or in $PATH'
         )
 
-    implementor.write('Choose your desktop output device:')
+    implementor.writeln(f'{BOLD}Choose your desktop output device:')
     for i, device in enumerate(audio_devices, 1):
-        implementor.write(f'>{i} "{device}"')
+        implementor.writeln(f'>{Color.index}{i}{R} "{device}"')
 
     audio_device = implementor.choose_item('Device', audio_devices)
     if audio_device is None:
@@ -266,7 +272,7 @@ def boolean_command(cmd: str, *args: str) -> CommandResult:
     else:
         config[cmd] = value
 
-    save_config(config)
+    save_config()
 
     return CommandResult()
 
@@ -585,7 +591,7 @@ def _title(s: str) -> str:
 HELP_TEXT = f"""\
 {_title('Search')}
 USAGE:
-  Search $ QUERY [OPTIONS...] [separator] [QUERY2] [OPTIONS...] ...
+  Search $ QUERY [OPTIONS...], [QUERY2] [OPTIONS...], ...
 
 Enter your queries into the search box or save them to the "define_all" file.
 See `--help-define-all` for more information.
@@ -776,8 +782,6 @@ To create a card, type definition's indices into the input field.
   0 or -s    skip input field
   -sc        skip creating card
 
-To add your own text to the field precede it with a "/".
-
 {BOLD}{79 * '─'}{DEFAULT}
 -conf, -config      show current configuration and more options
 --help-config       show full config/commands help
@@ -791,7 +795,7 @@ HELP_CURSES_TEXT = f"""\
 {_title('Curses')}
 Simple and minimalist interface with vim'n'emacs-like keybindings for
 navigation and mouse support for selecting definitions.
-Windows is not supported yet.
+Windows OS is not supported yet.
 
 Commands and their preferred keybindings are self-explanatory and discoverable
 by increasing the terminal window size. Here is their full documentation.
@@ -830,8 +834,7 @@ Filtering/searching the dictionary:
   ^J Enter  restore the original dictionary
 
 Miscellaneous:
-  - :       open the command prompt for issuing commands listed by `-conf`
-            that means some commands, like `-conf` itself, do not work
+  - :       open the command prompt for issuing commands
   ^L        redraw the screen, useful when screen gets corrupted somehow
   F8        change the number of columns currently displayed
 
@@ -909,10 +912,10 @@ Official FFmpeg download site: https://www.ffmpeg.org/download.html
 
 To use ffmpeg first we have to add the executable to the system's $PATH or
 place it alongside "ankidodawacz.py" file in the program's root directory.
-To choose your preferred audio device use `--audio-device` command.
+To choose your preferred audio device use the `--audio-device` command.
 
 If recording doesn't work on Windows:
-  - open "Audio mixer" in the sound settings
+  - open the "Audio mixer" in the sound settings
   - tick the "Listen to this device" in the audio mixer properties
   - allow applications to use the microphone
 

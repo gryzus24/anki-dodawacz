@@ -1,23 +1,19 @@
 from __future__ import annotations
 
-import collections
-import contextlib
 import curses
-import os
 import shutil
-from itertools import islice, zip_longest, repeat
-from typing import (
-    Callable, Iterable, Optional,
-    Reversible, Sequence, Any, TYPE_CHECKING
-)
+from collections import Counter
+from itertools import islice, zip_longest
+from typing import Callable, Optional, TypeVar, Reversible, Sequence, TYPE_CHECKING
 
 import src.anki_interface as anki
-import src.cards as cards
 from src.Dictionaries.dictionary_base import filter_dictionary
 from src.Dictionaries.utils import wrap_and_pad
+from src.cards import create_and_add_card
 from src.colors import Color as _Color
 from src.commands import INTERACTIVE_COMMANDS, NO_HELP_ARG_COMMANDS, HELP_ARG_COMMANDS, CommandResult
-from src.data import CARD_SAVE_LOCATION, STRING_TO_BOOL, HORIZONTAL_BAR, LINUX, config
+from src.data import STRING_TO_BOOL, HORIZONTAL_BAR, LINUX, config
+from src.term_utils import display_in_less
 
 if TYPE_CHECKING:
     from ankidodawacz import QuerySettings
@@ -30,18 +26,11 @@ BUTTON5_PRESSED = 2097152
 # Custom color pairs.
 BLACK_ON_GREEN = 31
 BLACK_ON_RED = 32
-
-ANSI_COLORS = (
-    '\033[39m',
-    '\033[30m', '\033[31m', '\033[32m', '\033[33m',
-    '\033[34m', '\033[35m', '\033[36m', '\033[37m',
-    '\033[90m', '\033[91m', '\033[92m', '\033[93m',
-    '\033[94m', '\033[95m', '\033[96m', '\033[97m',
-)
+BLACK_ON_YELLOW = 33
 
 
 class _CursesColor:
-    _lookup = None
+    _lookup = _attrs = None
 
     # It's better to wait for "curses.COLORS" variable to become available,
     # instead of fiddling with terminfo or some environment variables to
@@ -59,12 +48,193 @@ class _CursesColor:
         # Curses does not throw an error when accessing uninitialized color pairs.
         # Wrap colors only when things may break.
         if ncolors == 8 or ncolors == 16777216:
-            self._lookup = {k: curses.color_pair(i % 8) for i, k in enumerate(ANSI_COLORS)}
+            self._lookup = {
+                '\033[39m': curses.color_pair(0),
+                '\033[30m': curses.color_pair(1), '\033[90m': curses.color_pair(1),
+                '\033[31m': curses.color_pair(2), '\033[91m': curses.color_pair(2),
+                '\033[32m': curses.color_pair(3), '\033[92m': curses.color_pair(3),
+                '\033[33m': curses.color_pair(4), '\033[93m': curses.color_pair(4),
+                '\033[34m': curses.color_pair(5), '\033[94m': curses.color_pair(5),
+                '\033[35m': curses.color_pair(6), '\033[95m': curses.color_pair(6),
+                '\033[36m': curses.color_pair(7), '\033[96m': curses.color_pair(7),
+                '\033[37m': curses.color_pair(8), '\033[97m': curses.color_pair(8),
+            }
         else:
-            self._lookup = {k: curses.color_pair(i) for i, k in enumerate(ANSI_COLORS)}
+            self._lookup = {
+                '\033[39m': curses.color_pair(0),
+                '\033[30m': curses.color_pair(1), '\033[90m': curses.color_pair(9),
+                '\033[31m': curses.color_pair(2), '\033[91m': curses.color_pair(10),
+                '\033[32m': curses.color_pair(3), '\033[92m': curses.color_pair(11),
+                '\033[33m': curses.color_pair(4), '\033[93m': curses.color_pair(12),
+                '\033[34m': curses.color_pair(5), '\033[94m': curses.color_pair(13),
+                '\033[35m': curses.color_pair(6), '\033[95m': curses.color_pair(14),
+                '\033[36m': curses.color_pair(7), '\033[96m': curses.color_pair(15),
+                '\033[37m': curses.color_pair(8), '\033[97m': curses.color_pair(16),
+            }
+        self._attrs = {k.strip('\033m'): v for k, v in self._lookup.items()}
+
+    def parse_ansi_str(self, s: str) -> list[list[tuple[str, int]]]:
+        if self._attrs is None:
+            raise RuntimeError('setup_colors has not been called')
+
+        result: list[list[tuple[str, int]]] = [[]]
+        reading = False
+        text = a_code = ''
+        attr = 0
+        for ch in s:
+            if ch == '\n':
+                result[-1].append((text, attr))
+                result.append([])
+                text = ''
+            elif ch == '\b':
+                text = text[:-1]
+            elif ch == '\033':
+                reading = True
+                result[-1].append((text, attr))
+                text = ''
+            elif reading:
+                if ch == 'm':
+                    try:
+                        attr = self._attrs[a_code]
+                    except KeyError:
+                        if a_code == '[1':
+                            attr |= curses.A_BOLD
+                        elif a_code == '[0':
+                            attr ^= curses.A_BOLD
+                    a_code = ''
+                    reading = False
+                else:
+                    a_code += ch
+            else:
+                text += ch
+
+        result[-1].append((text, attr))
+
+        return result
 
 
 Color = _CursesColor()
+
+
+# TODO: Writer is not really useful on its own, because we want to have
+#       at least some control over drawing in the ScreenBuffer.
+#       We should consider merging it with the Status class.
+class Writer:
+    def __init__(self,
+            win: curses._CursesWindow, screen_coverage: float, margin_bottom: int
+    ) -> None:
+        if screen_coverage < 0 or screen_coverage > 1:
+            raise ValueError(
+                f'Invalid screen_coverage, expected: float 0-1, got: {screen_coverage!r}'
+            )
+        if margin_bottom < 0:
+            raise ValueError(
+                f'Invalid margin_bottom, expected: unsigned int, got: {margin_bottom!r}'
+            )
+
+        self.win = win
+        self.screen_coverage = screen_coverage
+        self.margin_bottom = margin_bottom
+        self.buffer: list[list[tuple[str, int]]] = []
+
+    def writeln(self, s: str) -> None:
+        self.buffer.extend(Color.parse_ansi_str(s))
+
+    def newline(self, s: str, pair_number: int) -> None:
+        self.buffer.append([(s, curses.color_pair(pair_number))])
+
+    @property
+    def visible_buffer(self) -> list[list[tuple[str, int]]]:
+        height = int(LINES * self.screen_coverage)
+        if height <= 0:
+            return []
+        if len(self.buffer) > height:
+            return self.buffer[-height:]
+        else:
+            return self.buffer
+
+    def flush(self) -> None:
+        if not self.buffer:
+            return
+
+        lines = self.visible_buffer
+        for y, line in enumerate(lines, LINES - self.margin_bottom - len(lines)):
+            x = 0
+            try:
+                self.win.hline(y, x, ' ', COLS)
+                for text, attr in line:
+                    self.win.addstr(y, x, text, attr)
+                    x += len(text)
+            except curses.error:  # text too long or LINES too small
+                pass
+
+
+class Status:
+    def __init__(self, win: curses._CursesWindow, *, persistence: int) -> None:
+        self.writer = Writer(win, 0.9, 0)
+        self.persistence = persistence if persistence > 0 else 1
+        self.lock = False
+        self.ticks = 1
+
+    def _pad(self, s: str) -> str:
+        return ' ' + s.ljust(COLS - 1)
+
+    def notify(self, line: str, pair_number: int) -> None:
+        self.ticks = 1
+        if not self.writer.buffer:
+            return self.writer.newline(self._pad(line), pair_number)
+
+        last_line, last_color = self.writer.buffer[-1][-1]
+        if last_color != curses.color_pair(pair_number):
+            return self.writer.newline(self._pad(line), pair_number)
+
+        new_line = self._pad(f'{last_line.strip()}  {line.strip()}')
+        if len(new_line) > COLS:
+            new_line = new_line[-COLS:]
+        self.writer.buffer[-1][-1] = (new_line, curses.color_pair(pair_number))
+
+    def writeln(self, s: str) -> None:
+        self.ticks = 1
+        self.writer.writeln(s)
+
+    def newline(self, s: str, pair_number: int) -> None:
+        self.ticks = 1
+        self.writer.newline(s, pair_number)
+
+    def success(self, s: str) -> None:
+        self.notify(s, BLACK_ON_GREEN)
+
+    def nlerror(self, s: str) -> None:
+        self.newline(self._pad(s), BLACK_ON_RED)
+
+    def error(self, s: str) -> None:
+        self.notify(s, BLACK_ON_RED)
+
+    def addstr(self, s: str) -> None:
+        for line in s.splitlines():
+            self.newline(' ' + line, 0)
+
+    def clear_on_any_key(self) -> None:  # currently unused
+        self.ticks = self.persistence
+
+    def draw_if_available(self) -> None:
+        self.writer.flush()
+        if not self.lock and self.ticks >= self.persistence:
+            self.writer.buffer.clear()
+        else:
+            self.ticks += 1
+
+
+class CardWriter:
+    def __init__(self, status: Status) -> None:
+        self.status = status
+
+    def writeln(self, s: str) -> None:
+        self.status.writeln(s)
+
+    def preview_card(self, card: dict[str, str]) -> None:
+        # TODO: Find a nice and concise way to preview cards in curses.
+        pass
 
 
 def format_dictionary(
@@ -275,47 +445,6 @@ def format_dictionary(
     return boxes, lines_total
 
 
-def create_and_add_card_to_anki(
-        dictionary: Dictionary,
-        notify: Notifications,
-        definition_indices: list[int],
-        settings: QuerySettings
-) -> None:
-    grouped_by_phrase = dictionary.group_phrases_to_definitions(definition_indices)
-    if not grouped_by_phrase:
-        notify.error('This dictionary does not support creating cards')
-        return
-
-    ok_response = None
-    ncards_added = 0
-    for card, audio_error, error_info in cards.cards_from_definitions(
-            dictionary, grouped_by_phrase, settings
-    ):
-        if audio_error is not None:
-            notify.nlerror(audio_error)
-            notify.add_lines(error_info, curses.color_pair(0))
-
-        card = cards.format_and_prepare_card(card)
-
-        if config['-ankiconnect']:
-            response = anki.add_card_to_anki(card)
-            if response.error:
-                notify.nlerror(f'({card["phrase"]}) Could not add card:')
-                notify.addstr(response.body)
-            else:
-                ncards_added += 1
-                if ok_response is None:
-                    ok_response = response
-
-        if config['-savecards']:
-            cards.save_card_to_file(CARD_SAVE_LOCATION, card)
-            notify.success(f'Card saved to a file: {os.path.basename(CARD_SAVE_LOCATION)!r}')
-
-    if ok_response is not None:
-        notify.nlsuccess(f'Successfully added {ncards_added} card{"s" if ncards_added > 1 else ""}')
-        notify.addstr(ok_response.body)
-
-
 BORDER_PAD = 1
 
 def draw_help(stdscr: curses._CursesWindow) -> None:
@@ -360,84 +489,6 @@ def draw_help(stdscr: curses._CursesWindow) -> None:
         pass
 
 
-class Notifications:
-    def __init__(self, *, persistence: int) -> None:
-        self.persistence = persistence if persistence > 0 else 1
-        self.ticks = 1
-        # (message, color_pair_number)
-        self.buffer: list[tuple[str, int]] = []
-
-    def add_lines(self, lines: Iterable[str], color_pair: int) -> None:
-        self.ticks = 1
-        self.buffer.extend(zip(lines, repeat(color_pair)))
-
-    def append_line(self, line: str, color_pair: int) -> None:
-        self.ticks = 1
-        if not self.buffer:
-            return self.buffer.append((line, color_pair))
-
-        last_line, last_color = self.buffer[-1]
-        if last_color != color_pair:
-            return self.buffer.append((line, color_pair))
-
-        new_line = f'{last_line}  {line}'
-        space_missing = COLS - len(new_line) - 2*BORDER_PAD
-        if space_missing < 0:
-            self.buffer[-1] = (
-                # this uses this idiom: a[-n:]
-                new_line[-len(new_line) - space_missing:],
-                color_pair
-            )
-        else:
-            self.buffer[-1] = (new_line, color_pair)
-
-    def nlsuccess(self, s: str) -> None:
-        self.add_lines([s], curses.color_pair(BLACK_ON_GREEN))
-
-    def success(self, s: str) -> None:
-        self.append_line(s, curses.color_pair(BLACK_ON_GREEN))
-
-    def nlerror(self, s: str) -> None:
-        self.add_lines([s], curses.color_pair(BLACK_ON_RED))
-
-    def error(self, s: str) -> None:
-        self.append_line(s, curses.color_pair(BLACK_ON_RED))
-
-    def addstr(self, s: str) -> None:
-        self.add_lines(s.splitlines(), curses.color_pair(0))
-
-    def clear_on_next_draw(self) -> None:
-        self.ticks = self.persistence
-
-    def draw_if_available(self) -> None:
-        if not self.buffer:
-            return
-
-        y_start = LINES - len(self.buffer)
-        y_bound = LINES // 2
-        if y_start < y_bound:
-            buffer = self.buffer[y_bound - y_start:]
-            y_start = y_bound
-        else:
-            buffer = self.buffer
-
-        win = curses.newwin(len(buffer), COLS, y_start, 0)
-        for i, (line, color) in enumerate(buffer):
-            line = ' ' + line
-            padding = COLS - len(line)
-            if padding < 0:
-                line = line[:COLS-2] + '..'
-            else:
-                line += padding * ' '
-            win.insstr(i, 0, line, color)
-
-        win.noutrefresh()
-        if self.ticks >= self.persistence:
-            self.buffer.clear()
-        else:
-            self.ticks += 1
-
-
 def corollary_boxes_to_toggle_on() -> set[str]:
     result = {'PHRASE'}
     if config['-audio'] != '-':
@@ -455,6 +506,11 @@ AUTO_COLUMN_WIDTH = 47
 MINIMUM_TEXT_WIDTH = 26
 
 
+def _read_columns_config() -> int:
+    val = config['-columns']
+    return 0 if 'auto' in val else int(val)
+
+
 def _one_to_five(n: int) -> int:
     if n < 1:
         return 1
@@ -464,20 +520,18 @@ def _one_to_five(n: int) -> int:
 
 
 def _create_layout(
-        dictionary: Dictionary,
-        expected_columns: int,
-        screen_height: int,
-        margin: int
+    dictionary: Dictionary, height: int
 ) -> tuple[list[list[curses._CursesWindow]], list[list[curses._CursesWindow]], int, int]:
     width = COLS - 2*BORDER_PAD + 1
 
-    if expected_columns > 0:
-        min_columns = max_columns = _one_to_five(expected_columns)
+    config_columns = _read_columns_config()
+    if config_columns > 0:
+        min_columns = max_columns = _one_to_five(config_columns)
     else:  # auto
         min_columns = 1
         max_columns = _one_to_five(width // AUTO_COLUMN_WIDTH)
 
-    height = screen_height
+    margin = config['-margin']
     while True:
         col_width = (width // min_columns) - 1
         col_text_width = col_width - 2*margin
@@ -543,27 +597,24 @@ def _create_layout(
 class Screen:
     def __init__(self, dictionary: Dictionary) -> None:
         self._orig_dictionary = self.dictionary = dictionary
-
-        state = config['-columns']
-        self.column_state = 0 if 'auto' in state else int(state)
-        self.bottom_margin = 0 if config['-nohelp'] else 2
+        self.margin_bottom = 0 if config['-nohelp'] else 2
 
         self._boxes, self.columns, self.col_width, self.margin = _create_layout(
-            dictionary, self.column_state, self.screen_height, config['-margin']
+            dictionary, self.screen_height
         )
 
-        self._ptoggled: collections.Counter[int] = collections.Counter()
+        self._ptoggled: Counter[int] = Counter()
         self._box_states = [curses.A_NORMAL] * len(self._boxes)
         self._scroll_i = 0
 
     @property
     def screen_height(self) -> int:
-        r = LINES - self.bottom_margin - 2*BORDER_PAD
+        r = LINES - self.margin_bottom - 2*BORDER_PAD
         return r if r > 0 else 0
 
     def update_for_redraw(self) -> None:
         self._boxes, self.columns, self.col_width, self.margin = _create_layout(
-            self.dictionary, self.column_state, self.screen_height, config['-margin']
+            self.dictionary, self.screen_height
         )
         a_normal = curses.A_NORMAL
         for lines, state in zip(self._boxes, self._box_states):
@@ -576,7 +627,7 @@ class Screen:
         return r if r > 0 else 0
 
     def draw(self) -> None:
-        # scroll_pos can be bigger than eof if self.bottom_margin
+        # scroll_pos can be bigger than eof if self.margin_bottom
         # has decreased or window has been resized.
         eof = self._get_scroll_EOF()
         if self._scroll_i > eof:
@@ -743,42 +794,18 @@ def truncate_if_needed(s: str, n: int, *, fromleft: bool = False) -> str | None:
         return s[:n-2] + '..'
 
 
-class call_on(contextlib.ContextDecorator):
-    def __init__(self, *, enter: Callable[..., None], exit: Callable[..., None]) -> None:
-        self._enter = enter
-        self._exit = exit
+T = TypeVar('T')
+class InteractiveCommandHandler:
+    def __init__(self, screen_buffer: ScreenBuffer) -> None:
+        self.prompt = Prompt(screen_buffer)
 
-    __enter__ = lambda self: self._enter()
-    __exit__ = lambda self, *_: self._exit()
+    def writeln(self, s: str) -> None:
+        self.prompt.screen_buffer.status.writeln(s)
 
-
-def prompt_run_enter() -> None:
-    curses.raw()
-    try:
-        curses.curs_set(1)
-    except curses.error:
-        pass
-
-
-def prompt_run_exit() -> None:
-    curses.cbreak()
-    try:
-        curses.curs_set(0)
-    except curses.error:
-        pass
-
-
-class CursesInputField:
-    def __init__(self, sb: ScreenBuffer) -> None:
-        self.prompt_inst = Prompt(sb)
-
-    def write(self, s: str) -> None:
-        self.prompt_inst.line_buffer.append(s)
-
-    def choose_item(self, prompt_name: str, seq: Sequence[Any], default: int = 1) -> Any | None:
-        self.prompt_inst.prompt = f'{prompt_name} [{default}]: '
-        self.prompt_inst.exit_if_empty = False
-        typed = self.prompt_inst.run()
+    def choose_item(self, prompt_name: str, seq: Sequence[T], default: int = 1) -> T | None:
+        self.prompt.prompt = f'{prompt_name} [{default}]: '
+        self.prompt.exit_if_empty = False
+        typed = self.prompt.run()
         if typed is None:
             return None
         typed = typed.strip()
@@ -792,9 +819,9 @@ class CursesInputField:
 
     def ask_yes_no(self, prompt_name: str, *, default: bool) -> bool:
         d = 'Y/n' if default else 'y/N'
-        self.prompt_inst.prompt = f'{prompt_name} [{d}]: '
-        self.prompt_inst.exit_if_empty = False
-        typed = self.prompt_inst.run()
+        self.prompt.prompt = f'{prompt_name} [{d}]: '
+        self.prompt.exit_if_empty = False
+        typed = self.prompt.run()
         if typed is None:
             return default
         return STRING_TO_BOOL.get(typed.strip().lower(), default)
@@ -805,28 +832,16 @@ class Prompt:
             screen_buffer: ScreenBuffer,
             prompt: str = '', *,
             pretype: str = '',
-            lines: Optional[list[str]] = None,
             exit_if_empty: bool = True,
     ) -> None:
         self.win = screen_buffer.stdscr
-        self.screen_buffer = screen_buffer
+        self.screen_buffer: ScreenBuffer = screen_buffer  # mypy bug?
         self.prompt: str = prompt
-        self.line_buffer: list[str] = lines or []
         self.exit_if_empty: bool = exit_if_empty
-        self._entered = [*pretype]
         self._cursor = len(pretype)
+        self._entered = [*pretype]
 
-    def _draw_line_buffer(self) -> None:
-        y, x = LINES-2, 0
-        if y <= len(self.line_buffer):
-            return
-        for line in reversed(self.line_buffer):
-            self.win.move(y, x)
-            self.win.clrtoeol()
-            self.win.insstr(y, x, line)
-            y -= 1
-
-    def _draw_prompt(self) -> None:
+    def draw_prompt(self) -> None:
         # prevents going into an infinite loop on some terminals.
         if COLS < 2:
             return
@@ -844,8 +859,8 @@ class Prompt:
         self.win.move(LINES-1, 0)
         self.win.clrtoeol()
 
-        bogus_cursor = self._cursor + len(prompt_text)
-        if bogus_cursor < width:
+        visual_cursor = self._cursor + len(prompt_text)
+        if visual_cursor < width:
             self.win.insstr(LINES-1, 0, prompt_text)
             if len(self._entered) > width - len(prompt_text):
                 text = f'{"".join(self._entered[:width - len(prompt_text)])}>'
@@ -853,10 +868,10 @@ class Prompt:
                 text = ''.join(self._entered)
             text_x = len(prompt_text)
         else:
-            while bogus_cursor >= width:
-                bogus_cursor = bogus_cursor - width + offset
+            while visual_cursor >= width:
+                visual_cursor = visual_cursor - width + offset
 
-            start = self._cursor - bogus_cursor
+            start = self._cursor - visual_cursor
             if start + width > len(self._entered):
                 text = f'<{"".join(self._entered[start + 1:start + width])}'
             else:
@@ -864,18 +879,11 @@ class Prompt:
             text_x = 0
 
         self.win.insstr(LINES-1, text_x, text)
-        self.win.move(LINES-1, bogus_cursor)
+        self.win.move(LINES-1, visual_cursor)
 
     def _clear(self) -> None:
         self._entered.clear()
         self._cursor = 0
-
-    def draw(self) -> None:
-        self.win.erase()
-        self.screen_buffer.draw()
-
-        self._draw_line_buffer()
-        self._draw_prompt()
 
     def resize(self) -> None:
         self.screen_buffer.resize()
@@ -953,11 +961,11 @@ class Prompt:
         11: control_k,
     }
 
-    @call_on(enter=prompt_run_enter, exit=prompt_run_exit)
-    def run(self) -> str | None:
+    def _run(self) -> str | None:
         prompt_commands = Prompt.COMMANDS
         while True:
-            self.draw()
+            self.screen_buffer.draw()
+            self.draw_prompt()
 
             c = get_key(self.win)
             if 32 <= c <= 126:  # printable ascii
@@ -974,62 +982,74 @@ class Prompt:
             ):
                 return None
 
+    def run(self) -> str | None:
+        self.screen_buffer.status.lock = True
+        curses.raw()
+        try:
+            curses.curs_set(1)
+        except curses.error:
+            pass
+        try:
+            return self._run()
+        finally:
+            try:
+                curses.curs_set(0)
+            except curses.error:
+                pass
+            curses.cbreak()
+            self.screen_buffer.status.lock = False
+
 
 class ScreenBuffer:
     def __init__(self, stdscr: curses._CursesWindow, screens: Sequence[Screen]) -> None:
         self.stdscr = stdscr
         self.screens = screens
-        self.cursor = 0
-        self.nohelp = config['-nohelp']
+        self.status = Status(stdscr, persistence=3)
+        self._cursor = 0
 
     @property
     def current(self) -> Screen:
-        return self.screens[self.cursor]
+        return self.screens[self._cursor]
 
     def next(self) -> Screen:
-        if self.cursor < len(self.screens) - 1:
-            self.cursor += 1
+        if self._cursor < len(self.screens) - 1:
+            self._cursor += 1
         return self.current
 
     def previous(self) -> Screen:
-        if self.cursor > 0:
-            self.cursor -= 1
+        if self._cursor > 0:
+            self._cursor -= 1
         return self.current
 
-    def cycle_column_state(self) -> str:
-        col_state = self.current.column_state
-        if col_state > 4:
-            col_state = 0
-        else:
-            col_state += 1
+    def _draw_status_bar(self, y: int) -> None:
+        stdscr = self.stdscr
+        stdscr.addch(y, 0, curses.ACS_LLCORNER)
+        stdscr.hline(y, 1, curses.ACS_HLINE, COLS - 2)
+        try:
+            stdscr.addch(y, COLS - 1, curses.ACS_LRCORNER)
+        except curses.error:  # it's idiomatic I guess
+            pass
 
-        for screen in self.screens:
-            screen.column_state = col_state
-            screen.update_for_redraw()
+        nscreens = len(self.screens)
+        if nscreens < 2:
+            return
+        screen_hint = truncate_if_needed(f'{self._cursor+1}/{nscreens}', COLS - 4)
+        if screen_hint is None:
+            return
+        hint_x = COLS - len(screen_hint) - 2
+        stdscr.addch(y, hint_x - 1, '╴')
+        stdscr.addstr(y, hint_x, screen_hint, Color.delimit | curses.A_BOLD)
+        stdscr.addch(y, hint_x + len(screen_hint), '╶')
 
-        if col_state > 0:
-            return str(col_state)
-        else:
-            return 'Auto'
-
-    def draw_border(self, screen: Screen) -> None:
+    def _draw_border(self, screen: Screen) -> None:
         stdscr = self.stdscr
         stdscr.box()
 
         header = truncate_if_needed(screen.dictionary.contents[0][1], COLS - 8)
         if header is not None:
             stdscr.addstr(0, 2, '[ ')
-            stdscr.addstr(0, 4, header, curses.A_BOLD)
+            stdscr.addstr(0, 4, header, Color.delimit | curses.A_BOLD)
             stdscr.addstr(0, 4 + len(header), ' ]')
-
-        nscreens = len(self.screens)
-        if nscreens > 1:
-            buffer_hint = truncate_if_needed(f'{self.cursor+1}/{nscreens}', COLS - 4)
-            if buffer_hint is not None:
-                bhint_x = COLS - len(buffer_hint) - 2
-                stdscr.addch(LINES - 1, bhint_x - 1, '╴')
-                stdscr.addstr(LINES - 1, bhint_x, buffer_hint, curses.A_BOLD)
-                stdscr.addch(LINES - 1, bhint_x + len(buffer_hint), '╶')
 
         shift = BORDER_PAD + screen.col_width
         screen_height = screen.screen_height
@@ -1039,22 +1059,36 @@ class ScreenBuffer:
         except curses.error:
             pass
 
-        stdscr.bkgd(0, Color.delimit)
-
     def draw(self) -> None:
+        stdscr = self.stdscr
         screen = self.current
-        if self.nohelp:
-            screen.bottom_margin = 0
-        else:
-            screen.bottom_margin = 2
-            draw_help(self.stdscr)
 
-        self.draw_border(screen)
-        self.stdscr.noutrefresh()
+        stdscr.erase()
+        stdscr.attrset(Color.delimit)
+
+        # a little bit hacky, but to prevent flickering, we have to ensure
+        # that 'screen.draw' comes last.
+        v_buf_height = len(
+            self.status.writer.visible_buffer
+        ) + self.status.writer.margin_bottom
+        if v_buf_height < 3:
+            if config['-nohelp']:
+                screen.margin_bottom = v_buf_height
+            else:
+                screen.margin_bottom = 2
+                draw_help(stdscr)
+        else:
+            screen.margin_bottom = v_buf_height
+
+        self._draw_border(screen)
+        self._draw_status_bar(LINES - v_buf_height - 1)
+        self.status.draw_if_available()
+
+        stdscr.noutrefresh()
         screen.draw()
 
     def resize(self) -> None:
-        global LINES, COLS
+        global COLS, LINES
         COLS, LINES = shutil.get_terminal_size()
 
         # prevents malloc() errors from ncurses on 32-bit binaries.
@@ -1070,6 +1104,15 @@ class ScreenBuffer:
 
         self.stdscr.clearok(True)
 
+    def rearrange_columns(self) -> None:
+        state = _read_columns_config()
+        config['-columns'] = 'auto' if state > 4 else str(state + 1)
+
+        for screen in self.screens:
+            screen.update_for_redraw()
+
+        self.status.success(config['-columns'].capitalize())
+
     def search_prompt(self, screen: Screen) -> None:
         typed = Prompt(self, 'Filter (~n, ~/n):', pretype=' ').run()
         if typed is None:
@@ -1081,7 +1124,24 @@ class ScreenBuffer:
         screen.dictionary = filter_dictionary(screen._orig_dictionary, (typed,))
         screen.update_for_redraw()
 
-    def command_prompt(self, screen: Screen) -> CommandResult | None:
+    def _display_command_result_output(self, s: str) -> None:
+        stdscr = self.stdscr
+
+        self.status.writer.buffer.clear()
+        if s.count('\n') < self.status.writer.screen_coverage * LINES - 2:
+            self.status.writeln(s)
+            return
+
+        stdscr.erase()
+        stdscr.refresh()
+        err = display_in_less(s)
+        if err is None:
+            stdscr.clearok(True)
+        else:
+            self.status.nlerror('Could not open less:')
+            self.status.addstr(err)
+
+    def command_prompt(self, screen: Screen) -> None:
         typed = Prompt(self, '$ ', pretype='-').run()
         if typed is None:
             return None
@@ -1092,17 +1152,33 @@ class ScreenBuffer:
             result = NO_HELP_ARG_COMMANDS[cmd](*args)
         elif cmd in HELP_ARG_COMMANDS:
             func, note, usage = HELP_ARG_COMMANDS[cmd]
-            result = func(*args)
+            if (len(args) == 1 or
+               (len(args) == 2 and args[1].strip(' -').lower() in ('h', 'help'))
+            ):
+                self.status.notify(note, BLACK_ON_YELLOW)
+                self.status.addstr(f'{cmd} {usage}')
+                return
+            else:
+                result = func(*args)
         elif cmd in INTERACTIVE_COMMANDS:
-            result = INTERACTIVE_COMMANDS[cmd](CursesInputField(self), *args)
+            # change margin_bottom to leave one line for the prompt.
+            self.status.writer.margin_bottom = 1
+            result = INTERACTIVE_COMMANDS[cmd](InteractiveCommandHandler(self), *args)
+            self.status.writer.margin_bottom = 0
+            self.status.writer.buffer.clear()
         elif typed.strip('-'):
-            return CommandResult(error='Not a command')
+            result = CommandResult(error='Not a command')
         else:
-            return None
+            return
+
+        if result.output:
+            self._display_command_result_output(result.output)
+        if result.error:
+            self.status.nlerror(result.error)
+        if result.reason:
+            self.status.addstr(result.reason)
 
         screen.update_for_redraw()
-
-        return result
 
 
 # Unfortunately Python's readline api does not expose functions and variables
@@ -1140,13 +1216,9 @@ def _curses_main(
 
     screen_buffer = ScreenBuffer(stdscr, tuple(map(Screen, dictionaries)))
     screen = screen_buffer.current
-    notify = Notifications(persistence=3)
-
     screen_commands = Screen.COMMANDS
     while True:
-        stdscr.erase()
         screen_buffer.draw()
-        notify.draw_if_available()
         curses.doupdate()
 
         c = curses.keyname(get_key(stdscr))
@@ -1154,14 +1226,10 @@ def _curses_main(
             break
         elif c in screen_commands:
             screen_commands[c](screen)
-        elif c == b'KEY_MOUSE':
-            _, x, y, _, bstate = curses.getmouse()
-            if bstate & curses.BUTTON1_PRESSED:
-                screen.mark_box_at(y, x)
-            elif bstate & curses.BUTTON4_PRESSED:
-                screen.move_up()
-            elif bstate & BUTTON5_PRESSED:
-                screen.move_down()
+        elif c in (b'h', b'KEY_LEFT'):
+            screen = screen_buffer.previous()
+        elif c in (b'l', b'KEY_RIGHT'):
+            screen = screen_buffer.next()
         elif c in screen.KEYBOARD_SELECTOR_CHARS:
             screen.mark_box_by_selector(c)
         elif c == b'KEY_RESIZE':
@@ -1169,41 +1237,44 @@ def _curses_main(
             screen_buffer.resize()
         elif c == b'^L':
             screen_buffer.resize()
-        elif c in (b'h', b'KEY_LEFT'):
-            screen = screen_buffer.previous()
-        elif c in (b'l', b'KEY_RIGHT'):
-            screen = screen_buffer.next()
-        elif c in (b'-', b':'):
-            result = screen_buffer.command_prompt(screen)
-            if result is not None:
-                if result.error:
-                    notify.nlerror(result.error)
-                if result.reason:
-                    notify.addstr(result.reason)
-                notify.clear_on_next_draw()
+        elif c == b'KEY_F(8)':
+            screen_buffer.rearrange_columns()
         elif c == b'/':
             screen_buffer.search_prompt(screen)
+        elif c in (b'-', b':'):
+            screen_buffer.command_prompt(screen)
+        elif c == b'KEY_MOUSE':
+            _, x, y, _, bstate = curses.getmouse()
+            # TODO: make middle mouse paste selection and
+            #       'p' paste phrase from current Anki card (if possible in AnkiConnect)
+            #       and query dictionaries.
+            if bstate & curses.BUTTON1_PRESSED:
+                screen.mark_box_at(y, x)
+            elif bstate & curses.BUTTON4_PRESSED:
+                screen.move_up()
+            elif bstate & BUTTON5_PRESSED:
+                screen.move_down()
         elif c == b'KEY_F(1)':
-            screen_buffer.nohelp = not screen_buffer.nohelp
-        elif c == b'KEY_F(8)':
-            current = screen_buffer.cycle_column_state()
-            notify.success(current)
+            config['-nohelp'] = not config['-nohelp']
         elif c == b'B':
             response = anki.gui_browse_cards()
             if response.error:
-                notify.nlerror('Could not open the card browser:')
-                notify.addstr(response.body)
+                screen_buffer.status.nlerror('Could not open the card browser:')
+                screen_buffer.status.addstr(response.body)
             else:
-                notify.success('Anki card browser opened')
+                screen_buffer.status.success('Anki card browser opened')
         elif c == b'C':
             selection_data = screen.get_indices_of_selected_boxes()
             if selection_data:
-                create_and_add_card_to_anki(
-                    screen.dictionary, notify, selection_data, settings
+                create_and_add_card(
+                    CardWriter(screen_buffer.status),
+                    screen.dictionary,
+                    selection_data,
+                    settings
                 )
                 screen.deselect_all()
             else:
-                notify.error('Nothing selected')
+                screen_buffer.status.error('Nothing selected')
 
 
 def curses_ui_entry(dictionaries: list[Dictionary], settings: QuerySettings) -> None:
@@ -1248,12 +1319,12 @@ def curses_ui_entry(dictionaries: list[Dictionary], settings: QuerySettings) -> 
 
         curses.init_pair(31, curses.COLOR_BLACK, curses.COLOR_GREEN)
         curses.init_pair(32, curses.COLOR_BLACK, curses.COLOR_RED)
+        curses.init_pair(33, curses.COLOR_BLACK, curses.COLOR_YELLOW)
 
         return _curses_main(stdscr, dictionaries, settings)
     finally:
         if 'stdscr' in locals():
-            # Repaint the whole window to prevent a flash
+            # Clear the whole window to prevent a flash
             # of contents from the previous draw.
             stdscr.clear()
-            stdscr.refresh()
             curses.endwin()

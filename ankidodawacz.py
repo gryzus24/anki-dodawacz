@@ -21,21 +21,21 @@ import functools
 import os
 import sys
 from itertools import chain, repeat
-from typing import Generator, NoReturn, Optional, Sequence, NamedTuple
+from typing import Generator, NoReturn, Optional, Sequence, NamedTuple, TypeVar
 
 import src.ffmpeg_interface as ffmpeg
 from src.Dictionaries.ahdictionary import ask_ahdictionary
 from src.Dictionaries.dictionary_base import Dictionary, filter_dictionary
 from src.Dictionaries.farlex import ask_farlex
 from src.Dictionaries.lexico import ask_lexico
-from src.Dictionaries.utils import http, less_print
+from src.Dictionaries.utils import http
 from src.Dictionaries.wordnet import ask_wordnet
 from src.__version__ import __version__
 from src.colors import BOLD, Color, DEFAULT, R
 from src.commands import INTERACTIVE_COMMANDS, HELP_ARG_COMMANDS, NO_HELP_ARG_COMMANDS
 from src.console_main import console_ui_entry
-from src.data import LINUX, WINDOWS, config
-from src.input_fields import ConsoleInputField
+from src.data import LINUX, WINDOWS, STRING_TO_BOOL, config
+from src.term_utils import less_print
 
 # Completer doesn't work on Windows.
 # It should work on macOS, but I haven't tested it yet.
@@ -65,6 +65,30 @@ def search_field() -> str:
                 return word
 
 
+T = TypeVar('T')
+class InteractiveCommandHandler:
+    @staticmethod
+    def writeln(s: str) -> None:
+        print(s)
+
+    @staticmethod
+    def choose_item(prompt: str, seq: Sequence[T], *, default: int = 1) -> T | None:
+        i = input(f"{prompt} [{default}]: ").strip()
+        try:
+            choice = int(i) if i else default
+        except ValueError:
+            return None
+        if 0 < choice <= len(seq):
+            return seq[choice - 1]
+        return None
+
+    @staticmethod
+    def ask_yes_no(prompt: str, *, default: bool) -> bool:
+        d = 'Y/n' if default else 'y/N'
+        i = input(f'{prompt} [{d}]: ').strip().lower()
+        return STRING_TO_BOOL.get(i, default)
+
+
 def dispatch_command(s: str) -> bool:
     # Returns whether command was dispatched or not.
     args = s.split()
@@ -72,7 +96,7 @@ def dispatch_command(s: str) -> bool:
     if cmd in NO_HELP_ARG_COMMANDS:
         result = NO_HELP_ARG_COMMANDS[cmd](*args)
     elif cmd in INTERACTIVE_COMMANDS:
-        result = INTERACTIVE_COMMANDS[cmd](ConsoleInputField(), *args)
+        result = INTERACTIVE_COMMANDS[cmd](InteractiveCommandHandler(), *args)
     elif cmd in HELP_ARG_COMMANDS:
         func, note, usage = HELP_ARG_COMMANDS[cmd]
         if (len(args) == 1 or
@@ -188,9 +212,7 @@ class Query(NamedTuple):
 class QuerySettings:
     __slots__ = 'queries', 'user_sentence', 'recording_filename'
 
-    def __init__(self,
-            queries: list[Query], user_sentence: str, recording_filename: str
-    ) -> None:
+    def __init__(self, queries: list[Query], user_sentence: str, recording_filename: str) -> None:
         self.queries = queries
         self.user_sentence = user_sentence
         self.recording_filename = recording_filename

@@ -1,15 +1,14 @@
 from __future__ import annotations
 
-import os
 import shutil
 from itertools import islice, zip_longest
 from typing import Optional, Sequence, TYPE_CHECKING
 
-import src.anki_interface as anki
-import src.cards as cards
-from src.Dictionaries.utils import wrap_and_pad, wrap_lines, less_print
+from src.Dictionaries.utils import wrap_and_pad, wrap_lines
+from src.cards import CARD_FIELDS_SAVE_ORDER, create_and_add_card
 from src.colors import BOLD, Color, DEFAULT, R
-from src.data import CARD_SAVE_LOCATION, HORIZONTAL_BAR, config
+from src.data import HORIZONTAL_BAR, config
+from src.term_utils import less_print
 
 if TYPE_CHECKING:
     from ankidodawacz import QuerySettings
@@ -192,7 +191,6 @@ def format_dictionary(dictionary: Dictionary, column_width: int) -> list[str]:
 
     index = 0
     for op, *body in dictionary.contents:
-        # sys.stdout.write(f'{op}\n{body}\n'); continue  # DEBUG
         if 'DEF' in op:
             index += 1
             index_len = len(str(index))
@@ -325,29 +323,6 @@ def display_many_dictionaries(dictionaries: list[Dictionary]) -> None:
     less_print(stringify_columns(columns, col_width, last_col_fill, ("║", "╥")))
 
 
-def display_card(card: dict[str, str]) -> None:
-    color_of = {
-        'def': Color.def1, 'syn': Color.syn, 'sen': '',
-        'phrase': Color.phrase, 'exsen': Color.exsen, 'pos': Color.pos,
-        'etym': Color.etym, 'audio': '', 'recording': '',
-    }
-    textwidth, _ = shutil.get_terminal_size()
-    delimit = textwidth * HORIZONTAL_BAR
-    adjusted_textwidth = int(0.95 * textwidth)
-    padding = (textwidth - adjusted_textwidth) // 2 * " "
-
-    print(f'\n{Color.delimit}{delimit}')
-    for i, field in enumerate(cards.CARD_FIELDS_SAVE_ORDER, 1):
-        for line in card[field].split('<br>'):
-            for subline in wrap_lines(line, config['-textwrap'], adjusted_textwidth, 0, 0):
-                print(f'{color_of[field]}{padding}{subline}')
-
-        if i == 3:  # d = delimitation
-            print(f'{Color.delimit}{delimit}')
-
-    print(f'{Color.delimit}{delimit}')
-
-
 def parse_input(input_: str, max_: int) -> list[int] | None:
     input_ = input_.replace(' ', '')
     if input_ in ('0', '-0', '-s'):
@@ -428,13 +403,41 @@ def sentence_input() -> str | None:
             return sentence
 
 
+class CardWriter:
+    @staticmethod
+    def writeln(s: str) -> None:
+        print(s)
+
+    @staticmethod
+    def preview_card(card: dict[str, str]) -> None:
+        color_of = {
+            'def': Color.def1, 'syn': Color.syn, 'sen': '',
+            'phrase': Color.phrase, 'exsen': Color.exsen, 'pos': Color.pos,
+            'etym': Color.etym, 'audio': '', 'recording': '',
+        }
+        textwidth, _ = shutil.get_terminal_size()
+        delimit = textwidth * HORIZONTAL_BAR
+        adjusted_textwidth = int(0.95 * textwidth)
+        padding = (textwidth - adjusted_textwidth) // 2 * " "
+
+        print(f'\n{Color.delimit}{delimit}')
+        for i, field in enumerate(CARD_FIELDS_SAVE_ORDER, 1):
+            for line in card[field].split('<br>'):
+                for subline in wrap_lines(line, config['-textwrap'], adjusted_textwidth, 0, 0):
+                    print(f'{color_of[field]}{padding}{subline}')
+
+            if i == 3:
+                print(f'{Color.delimit}{delimit}')
+
+        print(f'{Color.delimit}{delimit}')
+
+
 def console_ui_entry(dictionaries: list[Dictionary], settings: QuerySettings) -> None:
-    # Display dictionaries
-    current_dict = dictionaries[0]
+    dictionary = dictionaries[0]
     if len(dictionaries) > 1:
         display_many_dictionaries(dictionaries)
     else:
-        display_dictionary(current_dict)
+        display_dictionary(dictionary)
 
     if config['-sen'] and not settings.user_sentence:
         user_sentence = sentence_input()
@@ -451,57 +454,18 @@ def console_ui_entry(dictionaries: list[Dictionary], settings: QuerySettings) ->
     else:
         user_input = default_value
 
-    user_definition = ''
-    if user_input.startswith('/'):
-        user_definition = user_input[1:]
-        choices = [1]
-    else:
-        ret = parse_input(
-            user_input,
-            current_dict.count(lambda y: 'DEF' in y[0] or y[0] == 'SYN')
-        )
-        if ret is None:
-            if config['-def']:
-                print(f'{Color.success}Skipped!')
-            return
-        else:
-            choices = ret
-
-    grouped_by_phrase = current_dict.group_phrases_to_definitions(
-        current_dict.into_indices(choices, lambda y: 'DEF' in y[0] or y[0] == 'SYN')
+    choices = parse_input(
+        user_input,
+        dictionary.count(lambda y: 'DEF' in y[0] or y[0] == 'SYN')
     )
-    if not grouped_by_phrase:
-        print(f'{Color.heed}This dictionary does not support creating cards\nSkipping...')
+    if choices is None:
+        if config['-def']:
+            print(f'{Color.success}Skipped!')
         return
 
-    for card, audio_error, error_info in cards.cards_from_definitions(
-            current_dict, grouped_by_phrase, settings
-    ):
-        if audio_error is not None:
-            print(f'{Color.err}{audio_error}')
-            for x in error_info:
-                print(x)
+    definition_indices = dictionary.into_indices(
+        choices, lambda y: 'DEF' in y[0] or y[0] == 'SYN'
+    )
+    create_and_add_card(CardWriter(), dictionary, definition_indices, settings)
+    print()
 
-        if user_definition:
-            card['def'] = user_definition
-
-        if config['-cardpreview']:
-            display_card(card)
-
-        card = cards.format_and_prepare_card(card)
-
-        print()
-        if config['-ankiconnect']:
-            response = anki.add_card_to_anki(card)
-            if response.error:
-                print(f'{Color.err}Card could not be added to Anki:\n{R}{response.body}\n')
-            else:
-                print(f'{Color.success}Card successfully added to Anki')
-                for item in response.body.split('\n'):
-                    a, b = item.split(': ')
-                    print(f'{Color.heed}{a}: {R}{b}')
-                print('> open card browser: `-b`\n')
-
-        if config['-savecards']:
-            cards.save_card_to_file(CARD_SAVE_LOCATION, card)
-            print(f'{Color.success}Card saved to a file: {os.path.basename(CARD_SAVE_LOCATION)!r}\n')
