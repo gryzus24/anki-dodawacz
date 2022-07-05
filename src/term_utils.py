@@ -1,12 +1,11 @@
 from __future__ import annotations
 
-import sys
 import shutil
+import sys
 from subprocess import Popen, PIPE, DEVNULL, call
 from typing import Any
 
 from src.data import WINDOWS, ON_WINDOWS_CMD, POSIX, ON_TERMUX, config
-
 
 if WINDOWS:
     # There has to exist a less hacky way of doing `clear -x` on Windows.
