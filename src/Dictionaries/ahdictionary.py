@@ -51,7 +51,6 @@ def _extract_phrase_and_phonetic_spelling(raw_string: str) -> tuple[str, str]:
     # in phonetic spelling
     _in = False
     raw_string = raw_string.strip()
-    # print(raw_string)
     for elem in raw_string.split():
         _elem = elem.strip(',').replace('·', '')
         if not _elem or _elem.isnumeric():
@@ -244,6 +243,8 @@ def ask_ahdictionary(query: str) -> Dictionary | None:
                 def_type = 'DEF'
                 for subdef in sd_tags:
                     tag_text = subdef.text.strip()
+                    # 6 DEF of "mid" is a false positive here.
+                    # TODO: fix stripping of letters and numbers (no regex, too slow)
                     if tag_text.find('.') < 3:
                         tag_text = tag_text.lstrip('abcdefghijklmnop1234567890').lstrip('. ')
                     if not def_label:

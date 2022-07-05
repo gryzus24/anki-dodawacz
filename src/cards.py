@@ -302,7 +302,7 @@ def create_and_add_card(
                 for item in response.body.split('\n'):
                     a, b = item.split(': ')
                     implementor.writeln(f'{Color.heed}{a}: {R}{b}')
-                implementor.writeln(f'{Color.heed}>{R} open card browser: `-b`\n')
+                implementor.writeln(f'{Color.heed}>{R} open card browser: -b\n')
 
         if config['-savecards']:
             save_card_to_file(CARD_SAVE_LOCATION, card)
