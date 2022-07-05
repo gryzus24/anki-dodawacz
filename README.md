@@ -46,7 +46,7 @@ mkdir %HOMEPATH%\Downloads\Ankidodawacz && cd %HOMEPATH%\Downloads\Ankidodawacz 
 ```
 The program will be downloaded into the Downloads\Ankidodawacz directory.
 
-#### or do what the command does manually:
+#### or do what the command does, but manually:
 Go to Releases (tags) -> Tags<br>
 download and extract the .zip archive.
 
