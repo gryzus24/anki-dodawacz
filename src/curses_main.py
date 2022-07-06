@@ -214,9 +214,6 @@ class Status:
         for line in s.splitlines():
             self.newline(' ' + line, 0)
 
-    def clear_on_any_key(self) -> None:  # currently unused
-        self.ticks = self.persistence
-
     def draw_if_available(self) -> None:
         self.writer.flush()
         if not self.lock and self.ticks >= self.persistence:
@@ -771,7 +768,7 @@ class Screen:
     def page_up(self) -> None:
         self.move_up(self.screen_height - 2)
 
-    COMMANDS: dict[bytes, Callable[..., None]] = {
+    ACTIONS: dict[bytes, Callable[..., None]] = {
         b'^J': restore_original_dictionary,
         b'd': deselect_all,
         b'j': move_down, b'^N': move_down, b'KEY_DOWN': move_down,
@@ -797,14 +794,13 @@ def truncate_if_needed(s: str, n: int, *, fromleft: bool = False) -> str | None:
 T = TypeVar('T')
 class InteractiveCommandHandler:
     def __init__(self, screen_buffer: ScreenBuffer) -> None:
-        self.prompt = Prompt(screen_buffer)
+        self.prompt = Prompt(screen_buffer, exit_if_empty=False)
 
     def writeln(self, s: str) -> None:
         self.prompt.screen_buffer.status.writeln(s)
 
     def choose_item(self, prompt_name: str, seq: Sequence[T], default: int = 1) -> T | None:
         self.prompt.prompt = f'{prompt_name} [{default}]: '
-        self.prompt.exit_if_empty = False
         typed = self.prompt.run()
         if typed is None:
             return None
@@ -818,9 +814,7 @@ class InteractiveCommandHandler:
         return None
 
     def ask_yes_no(self, prompt_name: str, *, default: bool) -> bool:
-        d = 'Y/n' if default else 'y/N'
-        self.prompt.prompt = f'{prompt_name} [{d}]: '
-        self.prompt.exit_if_empty = False
+        self.prompt.prompt = f'{prompt_name} [{"Y/n" if default else "y/N"}]: '
         typed = self.prompt.run()
         if typed is None:
             return default
@@ -948,7 +942,7 @@ class Prompt:
     def control_k(self) -> None:
         self._entered = self._entered[:self._cursor]
 
-    COMMANDS = {
+    ACTIONS = {
         410: resize,              12: resize,       # ^L
         curses.KEY_BACKSPACE: backspace,
         curses.KEY_LEFT: left,    2: left,          # KEY_LEFT, ^B
@@ -962,7 +956,7 @@ class Prompt:
     }
 
     def _run(self) -> str | None:
-        prompt_commands = Prompt.COMMANDS
+        prompt_actions = Prompt.ACTIONS
         while True:
             self.screen_buffer.draw()
             self.draw_prompt()
@@ -970,8 +964,8 @@ class Prompt:
             c = get_key(self.win)
             if 32 <= c <= 126:  # printable ascii
                 self.type(c)
-            elif c in prompt_commands:
-                prompt_commands[c](self)
+            elif c in prompt_actions:
+                prompt_actions[c](self)
             elif c in (7, 10):  # ^J, \n
                 ret = ''.join(self._entered)
                 self._clear()
@@ -1004,7 +998,7 @@ class ScreenBuffer:
     def __init__(self, stdscr: curses._CursesWindow, screens: Sequence[Screen]) -> None:
         self.stdscr = stdscr
         self.screens = screens
-        self.status = Status(stdscr, persistence=3)
+        self.status = Status(stdscr, persistence=2)
         self._cursor = 0
 
     @property
@@ -1216,7 +1210,7 @@ def _curses_main(
 
     screen_buffer = ScreenBuffer(stdscr, tuple(map(Screen, dictionaries)))
     screen = screen_buffer.current
-    screen_commands = Screen.COMMANDS
+    screen_actions = Screen.ACTIONS
     while True:
         screen_buffer.draw()
         curses.doupdate()
@@ -1224,8 +1218,8 @@ def _curses_main(
         c = curses.keyname(get_key(stdscr))
         if c in (b'q', b'Q', b'^X'):
             break
-        elif c in screen_commands:
-            screen_commands[c](screen)
+        elif c in screen_actions:
+            screen_actions[c](screen)
         elif c in (b'h', b'KEY_LEFT'):
             screen = screen_buffer.previous()
         elif c in (b'l', b'KEY_RIGHT'):
@@ -1245,9 +1239,8 @@ def _curses_main(
             screen_buffer.command_prompt(screen)
         elif c == b'KEY_MOUSE':
             _, x, y, _, bstate = curses.getmouse()
-            # TODO: make middle mouse paste selection and
-            #       'p' paste phrase from current Anki card (if possible in AnkiConnect)
-            #       and query dictionaries.
+            # TODO: make middle mouse paste selection and 'p' paste phrase
+            #       from current Anki card and query dictionaries.
             if bstate & curses.BUTTON1_PRESSED:
                 screen.mark_box_at(y, x)
             elif bstate & curses.BUTTON4_PRESSED:
