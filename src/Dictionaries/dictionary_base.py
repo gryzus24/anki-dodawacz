@@ -1,7 +1,7 @@
 from __future__ import annotations
 
-import collections
 import sys
+from collections import defaultdict
 from itertools import compress
 from typing import Callable, Optional, Sequence, TypedDict
 
@@ -113,15 +113,20 @@ def filter_dictionary(dictionary: Dictionary, flags: Sequence[str]) -> Dictionar
             raise AssertionError(f'unreachable {op!r}')
 
     result = []
+    skip_header = False
     last_titled_header = None
     for header in header_contents:
         header_entry = header['header']
-        if header_entry is not None and header_entry[1]:
-            if header_entry[1] == 'Synonyms':
-                continue
-            if header_entry[1] == 'Idioms' and label_flags:
-                continue
-            last_titled_header = header_entry
+        if header_entry is not None:
+            skip_header = (
+                (header_entry[1] == 'Idioms' and bool(label_flags)) or
+                header_entry[1] == 'Synonyms'
+            )
+            if not skip_header and header_entry[1]:
+                last_titled_header = header_entry
+
+        if skip_header:
+            continue
 
         last_label_skipped = last_def_skipped = False
         last_label_i = last_def_i = None
@@ -283,8 +288,8 @@ class Dictionary:
 
     def group_phrases_to_definitions(self,
             indices: list[int]
-    ) -> collections.defaultdict[int, list[int]] | None:
-        result = collections.defaultdict(list)
+    ) -> defaultdict[int, list[int]] | None:
+        result = defaultdict(list)
         phrase_indices = self.phrase_indices
         for di in indices:
             for pi in reversed(phrase_indices):
