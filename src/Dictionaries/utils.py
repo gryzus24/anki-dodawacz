@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import sys
-from typing import Any, Callable, NoReturn, Optional, TypeVar
+from typing import Any, Callable, Optional
 
 from src.colors import R, Color
 from src.data import USER_AGENT
@@ -34,31 +34,23 @@ from urllib3.exceptions import ConnectTimeoutError, NewConnectionError
 
 http = urllib3.PoolManager(timeout=10, headers=USER_AGENT)
 
-T = TypeVar('T')
-def handle_connection_exceptions(func: Callable[..., T]) -> Callable[..., NoReturn | T | None]:
-    def wrapper(*args: Any, **kwargs: Any) -> NoReturn | T | None:
-        try:
-            return func(*args, **kwargs)
-        except Exception as e:
-            if isinstance(e.__context__, NewConnectionError):
-                print(f'{Color.err}Could not establish connection,\n'
-                      'check your Internet connection and try again.')
-                return None
-            elif isinstance(e.__context__, ConnectTimeoutError):
-                print(f'{Color.err}Connection timed out.')
-                return None
-            else:
-                print(f'{Color.err}An unexpected error occurred in {func.__qualname__}.')
-                raise
 
-    return wrapper
-
-
-@handle_connection_exceptions
 def request_soup(
         url: str, fields: Optional[dict[str, str]] = None, **kw: Any
-) -> BeautifulSoup:
-    r = http.request_encode_url('GET', url, fields=fields, **kw)
+) -> BeautifulSoup | str:
+    try:
+        r = http.request_encode_url('GET', url, fields=fields, **kw)
+    except Exception as e:
+        if isinstance(e.__context__, NewConnectionError):
+            return (
+                'Could not establish connection,\n'
+                'check your Internet connection and try again.'
+            )
+        elif isinstance(e.__context__, ConnectTimeoutError):
+            return 'Connection timed out.'
+        else:
+            raise
+
     # At the moment only WordNet uses other than UTF-8 encoding (iso-8859-1),
     # so as long as there are no decoding problems we'll use UTF-8.
     return BeautifulSoup(r.data.decode(), 'lxml')

@@ -5,15 +5,16 @@ from src.Dictionaries.utils import request_soup
 from src.colors import Color, R
 
 
-def ask_farlex(query: str) -> Dictionary | None:
-    soup = request_soup('https://idioms.thefreedictionary.com/' + query)
-    if soup is None:
-        return None
+def ask_farlex(query: str) -> Dictionary | str:
+    soup_or_error = request_soup('https://idioms.thefreedictionary.com/' + query)
+    if isinstance(soup_or_error, str):
+        return soup_or_error
+    else:
+        soup = soup_or_error
 
     relevant_content = soup.find('section', {'data-src': 'FarlexIdi'})
     if relevant_content is None:
-        print(f'{Color.err}Could not find {R}"{query}"{Color.err} in Farlex Idioms')
-        return None
+        return f'{Color.err}Could not find {R}"{query}"{Color.err} in Farlex Idioms'
 
     farlex = Dictionary(name='farlex')
 

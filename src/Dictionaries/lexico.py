@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import sys
 from typing import Any
 
 from src.Dictionaries.dictionary_base import Dictionary
@@ -48,7 +49,7 @@ def get_label(block_: Any) -> str:
 ##
 _previous_query = None
 
-def ask_lexico(query: str) -> Dictionary | None:
+def ask_lexico(query: str) -> Dictionary | str:
     def add_def(
             definition_: Any, example_: str = '', label_: str = '', deftype: str = 'DEF'
     ) -> None:
@@ -63,18 +64,21 @@ def ask_lexico(query: str) -> Dictionary | None:
 
     query = query.strip(' ?/.#')
     if not query:
-        print(f'{Color.err}Invalid query')
-        return None
+        return f'{Color.err}Invalid query'
 
-    soup = request_soup('https://www.lexico.com/definition/' + query)
-    if soup is None:
-        return None
+    soup_or_error = request_soup('https://www.lexico.com/definition/' + query)
+    if isinstance(soup_or_error, str):
+        return soup_or_error
+    else:
+        soup = soup_or_error
 
     main_div = soup.find('div', class_='entryWrapper')
     if main_div is None:  # lexico probably denied access
         import time
-        print(f'{Color.err}Lexico could not handle this many requests...\n'
-              f'Try again in 1-5 minutes')
+        sys.stderr.write(
+            f'{Color.err}Lexico could not handle this many requests...\n'
+            f'Try again in 1-5 minutes\n'
+        )
         time.sleep(2.5)
         raise SystemExit(1)
 
@@ -82,8 +86,7 @@ def ask_lexico(query: str) -> Dictionary | None:
     if page_check.get_text(strip=True) == 'HomeEnglish':
         new_query_tag = main_div.find('a', class_='no-transition')
         if new_query_tag is None:
-            print(f'{Color.err}Could not find {R}"{query}"{Color.err} in Lexico')
-            return None
+            return f'{Color.err}Could not find {R}"{query}"{Color.err} in Lexico'
         else:
             _previous_query = query  # global
             _, _, revive = new_query_tag.get('href').rpartition('/')

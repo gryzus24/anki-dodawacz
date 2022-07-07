@@ -11,12 +11,13 @@ from src.Dictionaries.dictionary_base import filter_dictionary
 from src.Dictionaries.utils import wrap_and_pad
 from src.cards import create_and_add_card
 from src.colors import Color as _Color
-from src.commands import INTERACTIVE_COMMANDS, NO_HELP_ARG_COMMANDS, HELP_ARG_COMMANDS, CommandResult
+from src.commands import INTERACTIVE_COMMANDS, NO_HELP_ARG_COMMANDS, HELP_ARG_COMMANDS
 from src.data import STRING_TO_BOOL, HORIZONTAL_BAR, LINUX, config
+from src.search import search_dictionaries
 from src.term_utils import display_in_less
 
 if TYPE_CHECKING:
-    from ankidodawacz import QuerySettings
+    from src.search import QuerySettings
     from src.Dictionaries.dictionary_base import Dictionary
 
 # Pythons < 3.10 do not define BUTTON5_PRESSED.
@@ -222,12 +223,24 @@ class Status:
             self.ticks += 1
 
 
-class CardWriter:
-    def __init__(self, status: Status) -> None:
-        self.status = status
+class RefreshWriter:
+    def __init__(self, screen_buffer: ScreenBuffer) -> None:
+        self.screen_buffer = screen_buffer
 
     def writeln(self, s: str) -> None:
-        self.status.writeln(s)
+        self.screen_buffer.status.writeln(s)
+        self.screen_buffer.draw()
+        curses.doupdate()
+
+
+class CardWriter:
+    def __init__(self, screen_buffer: ScreenBuffer) -> None:
+        self.screen_buffer = screen_buffer
+
+    def writeln(self, s: str) -> None:
+        self.screen_buffer.status.writeln(s)
+        self.screen_buffer.draw()
+        curses.doupdate()
 
     def preview_card(self, card: dict[str, str]) -> None:
         # TODO: Find a nice and concise way to preview cards in curses.
@@ -447,13 +460,14 @@ BORDER_PAD = 1
 def draw_help(stdscr: curses._CursesWindow) -> None:
     top_line = [
         ('F1', ' Help '), ('j/k', ' Move down/up '), ('1-9', ' Select cell '),
-        ('B ', ' Card browser '), ('/ ', ' Filter/Search '), ('g ', ' Go top '),
-        ('^L', ' Redraw screen '),
+        ('B ', ' Card browser '), ('; ', ' Search prompt '), ('^L', ' Redraw screen '),
+        ('g ', ' Go top '),  # ('p ', ' Paste from selection '),
     ]
     bot_line = [
         ('q ', ' Exit '), ('h/l', ' Swap screens '), ('d ', ' Deselect all '),
-        ('C ', ' Create cards '), ('^J', ' Reset filters '), ('G ', ' Go EOF '),
-        ('- ', ' Exec commands '), ('F8', ' Rearrange columns '),
+        ('C ', ' Create cards '), ('/ ', ' Filter prompt '), ('^J', ' Reset filters '),
+        ('G ', ' Go EOF '),  # ('P ', ' Paste current phrase '),
+        ('F8', ' Rearrange columns '),
     ]
 
     top_bot_pairs = []
@@ -886,11 +900,6 @@ class Prompt:
         self._entered.insert(self._cursor, chr(c))
         self._cursor += 1
 
-    def backspace(self) -> None:
-        if self._cursor > 0:
-            self._cursor -= 1
-            del self._entered[self._cursor]
-
     def left(self) -> None:
         if self._cursor > 0:
             self._cursor -= 1
@@ -942,9 +951,13 @@ class Prompt:
     def control_k(self) -> None:
         self._entered = self._entered[:self._cursor]
 
+    def backspace(self) -> None:
+        if self._cursor > 0:
+            self._cursor -= 1
+            del self._entered[self._cursor]
+
     ACTIONS = {
         410: resize,              12: resize,       # ^L
-        curses.KEY_BACKSPACE: backspace,
         curses.KEY_LEFT: left,    2: left,          # KEY_LEFT, ^B
         curses.KEY_RIGHT: right,  6: right,         # KEY_RIGHT, ^F
         curses.KEY_DC: delete,    4: delete,        # Del, ^D
@@ -964,17 +977,19 @@ class Prompt:
             c = get_key(self.win)
             if 32 <= c <= 126:  # printable ascii
                 self.type(c)
+            elif c in (3, 27):  # ^C, ESC
+                return None
             elif c in prompt_actions:
                 prompt_actions[c](self)
+            elif c == curses.KEY_BACKSPACE:
+                if self._entered:
+                    self.backspace()
+                elif self.exit_if_empty:
+                    return None
             elif c in (7, 10):  # ^J, \n
                 ret = ''.join(self._entered)
                 self._clear()
                 return ret
-
-            if (c in (3, 27) or  # ^C, ESC
-               (self.exit_if_empty and not self._entered)
-            ):
-                return None
 
     def run(self) -> str | None:
         self.screen_buffer.status.lock = True
@@ -1000,6 +1015,13 @@ class ScreenBuffer:
         self.screens = screens
         self.status = Status(stdscr, persistence=2)
         self._cursor = 0
+
+    @classmethod
+    def initialize(
+        cls, stdscr: curses._CursesWindow, dictionaries: list[Dictionary]
+    ) -> tuple[ScreenBuffer, Screen]:
+        inst = cls(stdscr, tuple(map(Screen, dictionaries)))
+        return inst, inst.current
 
     @property
     def current(self) -> Screen:
@@ -1107,8 +1129,8 @@ class ScreenBuffer:
 
         self.status.success(config['-columns'].capitalize())
 
-    def search_prompt(self, screen: Screen) -> None:
-        typed = Prompt(self, 'Filter (~n, ~/n):', pretype=' ').run()
+    def dictionary_filtering_prompt(self, screen: Screen) -> None:
+        typed = Prompt(self, 'Filter (~n, ~/n): ').run()
         if typed is None:
             return
         typed = typed.lstrip()
@@ -1135,12 +1157,8 @@ class ScreenBuffer:
             self.status.nlerror('Could not open less:')
             self.status.addstr(err)
 
-    def command_prompt(self, screen: Screen) -> None:
-        typed = Prompt(self, '$ ', pretype='-').run()
-        if typed is None:
-            return None
-
-        args = typed.split()
+    def _dispatch_command(self, s: str) -> bool:
+        args = s.split()
         cmd = args[0]
         if cmd in NO_HELP_ARG_COMMANDS:
             result = NO_HELP_ARG_COMMANDS[cmd](*args)
@@ -1151,7 +1169,7 @@ class ScreenBuffer:
             ):
                 self.status.notify(note, BLACK_ON_YELLOW)
                 self.status.addstr(f'{cmd} {usage}')
-                return
+                return True
             else:
                 result = func(*args)
         elif cmd in INTERACTIVE_COMMANDS:
@@ -1160,10 +1178,11 @@ class ScreenBuffer:
             result = INTERACTIVE_COMMANDS[cmd](InteractiveCommandHandler(self), *args)
             self.status.writer.margin_bottom = 0
             self.status.writer.buffer.clear()
-        elif typed.strip('-'):
-            result = CommandResult(error='Not a command')
+        elif cmd.startswith('-'):
+            self.status.nlerror('No such command')
+            return True
         else:
-            return
+            return False
 
         if result.output:
             self._display_command_result_output(result.output)
@@ -1172,7 +1191,33 @@ class ScreenBuffer:
         if result.reason:
             self.status.addstr(result.reason)
 
-        screen.update_for_redraw()
+        return True
+
+    def search_prompt(
+        self, screen: Screen, *, command_pretype: bool
+    ) -> tuple[ScreenBuffer, Screen, QuerySettings] | None:
+        pretype = '-' if command_pretype else ''
+        typed = Prompt(self, 'Search $ ', pretype=pretype).run()
+        if typed is None:
+            return None
+        typed = typed.strip()
+        if not typed:
+            return None
+
+        if self._dispatch_command(typed):
+            screen.update_for_redraw()
+            return None
+
+        ret = search_dictionaries(RefreshWriter(self), typed)
+        if ret is None:
+            return None
+
+        dictionaries, settings = ret
+        new_screen_buffer, new_screen = ScreenBuffer.initialize(
+            self.stdscr, dictionaries
+        )
+
+        return new_screen_buffer, new_screen, settings
 
 
 # Unfortunately Python's readline api does not expose functions and variables
@@ -1198,8 +1243,8 @@ COLS = LINES = 0
 
 def _curses_main(
         stdscr: curses._CursesWindow,
-        dictionaries: list[Dictionary],
-        settings: QuerySettings
+        _dictionaries: list[Dictionary],
+        _settings: QuerySettings
 ) -> None:
     global COLS, LINES
     COLS, LINES = shutil.get_terminal_size()
@@ -1208,8 +1253,8 @@ def _curses_main(
     # character into the buffer. Let's always start with a fresh buffer.
     curses.flushinp()
 
-    screen_buffer = ScreenBuffer(stdscr, tuple(map(Screen, dictionaries)))
-    screen = screen_buffer.current
+    settings = _settings
+    screen_buffer, screen = ScreenBuffer.initialize(stdscr, _dictionaries)
     screen_actions = Screen.ACTIONS
     while True:
         screen_buffer.draw()
@@ -1217,7 +1262,7 @@ def _curses_main(
 
         c = curses.keyname(get_key(stdscr))
         if c in (b'q', b'Q', b'^X'):
-            break
+            return
         elif c in screen_actions:
             screen_actions[c](screen)
         elif c in (b'h', b'KEY_LEFT'):
@@ -1234,9 +1279,11 @@ def _curses_main(
         elif c == b'KEY_F(8)':
             screen_buffer.rearrange_columns()
         elif c == b'/':
-            screen_buffer.search_prompt(screen)
-        elif c in (b'-', b':'):
-            screen_buffer.command_prompt(screen)
+            screen_buffer.dictionary_filtering_prompt(screen)
+        elif c in (b'-', b';', b':'):
+            ret = screen_buffer.search_prompt(screen, command_pretype=c == b'-')
+            if ret is not None:  # new query
+                screen_buffer, screen, settings = ret
         elif c == b'KEY_MOUSE':
             _, x, y, _, bstate = curses.getmouse()
             # TODO: make middle mouse paste selection and 'p' paste phrase
@@ -1260,7 +1307,7 @@ def _curses_main(
             selection_data = screen.get_indices_of_selected_boxes()
             if selection_data:
                 create_and_add_card(
-                    CardWriter(screen_buffer.status),
+                    CardWriter(screen_buffer),
                     screen.dictionary,
                     selection_data,
                     settings
@@ -1271,9 +1318,8 @@ def _curses_main(
 
 
 def curses_ui_entry(dictionaries: list[Dictionary], settings: QuerySettings) -> None:
+    stdscr = curses.initscr()
     try:
-        stdscr = curses.initscr()
-
         try:
             # make the cursor invisible
             curses.curs_set(0)
@@ -1316,8 +1362,7 @@ def curses_ui_entry(dictionaries: list[Dictionary], settings: QuerySettings) -> 
 
         return _curses_main(stdscr, dictionaries, settings)
     finally:
-        if 'stdscr' in locals():
-            # Clear the whole window to prevent a flash
-            # of contents from the previous draw.
-            stdscr.erase()
-            curses.endwin()
+        # Clear the whole window to prevent a flash
+        # of contents from the previous draw.
+        stdscr.erase()
+        curses.endwin()

@@ -5,14 +5,15 @@ from src.Dictionaries.utils import request_soup
 from src.colors import Color, R
 
 
-def ask_wordnet(query: str) -> Dictionary | None:
-    soup = request_soup('http://wordnetweb.princeton.edu/perl/webwn', {'s': query})
-    if soup is None:
-        return None
+def ask_wordnet(query: str) -> Dictionary | str:
+    soup_or_error = request_soup('http://wordnetweb.princeton.edu/perl/webwn', {'s': query})
+    if isinstance(soup_or_error, str):
+        return soup_or_error
+    else:
+        soup = soup_or_error
 
     if soup.h3.text.startswith(('Your', 'Sorry')):
-        print(f'{Color.err}Could not find {R}"{query}"{Color.err} on WordNet')
-        return None
+        return f'{Color.err}Could not find {R}"{query}"{Color.err} on WordNet'
 
     wordnet = Dictionary(name='wordnet')
 

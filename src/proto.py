@@ -15,4 +15,3 @@ class InteractiveCommandHandlerInterface(WriterInterface, Protocol):
 
 class CardWriterInterface(WriterInterface, Protocol):
     def preview_card(self, card: dict[str, str]) -> None: ...
-

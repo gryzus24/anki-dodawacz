@@ -164,23 +164,22 @@ def _shorten_etymology(_input: str) -> str:
 #
 # American Heritage Dictionary
 ##
-def ask_ahdictionary(query: str) -> Dictionary | None:
+def ask_ahdictionary(query: str) -> Dictionary | str:
     query = query.strip(' \'";')
     if not query:
-        print(f'{Color.err}Invalid query')
-        return None
+        return f'{Color.err}Invalid query'
 
-    soup = request_soup('https://www.ahdictionary.com/word/search.html', {'q': query})
-    if soup is None:
-        return None
+    soup_or_error = request_soup('https://www.ahdictionary.com/word/search.html', {'q': query})
+    if isinstance(soup_or_error, str):
+        return soup_or_error
+    else:
+        soup = soup_or_error
 
     try:
         if soup.find('div', {'id': 'results'}).text == 'No word definition found':
-            print(f'{Color.err}Could not find {R}"{query}"{Color.err} in AH Dictionary')
-            return None
+            return f'{Color.err}Could not find {R}"{query}"{Color.err} in AH Dictionary'
     except AttributeError:
-        print(f'{Color.err}AH Dictionary is probably down:\n{R}{soup.prettify()}')
-        return None
+        return f'{Color.err}AH Dictionary is probably down:\n{R}{soup.prettify()}'
 
     ahd = Dictionary(name='ahd')
 

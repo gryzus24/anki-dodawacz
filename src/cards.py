@@ -5,13 +5,13 @@ import os
 from typing import Iterable, Optional, TYPE_CHECKING
 
 import src.anki_interface as anki
-from src.Dictionaries.audio_dictionaries import ahd_audio, diki_audio, lexico_audio
+from src.Dictionaries.audio_dictionaries import ahd_audio, diki_audio, lexico_audio, AudioDictionaryResult
 from src.Dictionaries.utils import http
 from src.colors import Color, R
 from src.data import ROOT_DIR, CARD_SAVE_LOCATION, config
 
 if TYPE_CHECKING:
-    from ankidodawacz import QuerySettings
+    from src.search import QuerySettings
     from src.Dictionaries.dictionary_base import Dictionary
     from src.proto import CardWriterInterface
 
@@ -36,7 +36,7 @@ def save_card_to_file(path: str, card: dict[str, str]) -> None:
         f.write('\n')
 
 
-def _query_diki(phrase: str, flags: Optional[Iterable[str]] = None) -> str:
+def _query_diki(phrase: str, flags: Optional[Iterable[str]] = None) -> AudioDictionaryResult:
     if flags is not None:
         for f in flags:
             if f in {'n', 'v', 'a', 'adj', 'noun', 'verb', 'adjective'}:
@@ -50,24 +50,24 @@ def check_audio_url(
         dictionary_name: str,
         phrase: str,
         flags: Optional[Iterable[str]] = None
-) -> str:
+) -> AudioDictionaryResult:
     server = config['-audio']
     if server == '-':
-        return ''
+        return AudioDictionaryResult('', error=False)
 
     if audio_url:
         if server == 'auto' or dictionary_name == server:
-            return audio_url
+            return AudioDictionaryResult(audio_url, error=False)
         elif server == 'ahd':
-            audio_url = ahd_audio(phrase)
+            audio_result = ahd_audio(phrase)
         elif server == 'lexico':
-            audio_url = lexico_audio(phrase)
+            audio_result = lexico_audio(phrase)
         elif server == 'diki':
             return _query_diki(phrase, flags)
         else:
             raise AssertionError('unreachable')
-        if audio_url:
-            return audio_url
+        if not audio_result.error:
+            return AudioDictionaryResult(audio_url, error=False)
 
     return _query_diki(phrase, flags)
 
@@ -247,24 +247,28 @@ def create_and_add_card(
         if not config['-etym']:
             card['etym'] = ''
 
-        audio_url = check_audio_url(
+        audio_result = check_audio_url(
             audio_url, dictionary.name, phrase, settings.queries[0].query_flags
         )
-        if audio_url:
+        if audio_result.error:
+            audio_tag = ''
+            if audio_result.body:
+                implementor.writeln(f'{Color.err}{audio_result.body}')
+            else:
+                implementor.writeln(f'{Color.err}No audio available for {phrase!r}')
+        elif not audio_result.body:
+            audio_tag = ''
+        else:
             audio_path = config['audio_path']
             if config['-ankiconnect'] and os.path.basename(audio_path) != 'collection.media':
                 # Use AnkiConnect to save audio files if [collection.media] path isn't given.
                 # However, specifying the audio path is preferred as it's way faster.
-                audio_tag, err = audio_to_anki(audio_url)
+                audio_tag, err = audio_to_anki(audio_result.body)
             else:
-                audio_tag, err = audio_to_file(audio_url, audio_path)
+                audio_tag, err = audio_to_file(audio_result.body, audio_path)
             if err is not None:
                 implementor.writeln(f'{Color.err}Could not save audio:')
                 implementor.writeln(err)
-        else:
-            audio_tag = ''
-            if config['-audio'] != '-':
-                implementor.writeln(f'{Color.err}No audio available for {phrase!r}')
 
         card['audio'] = audio_tag
 
@@ -307,4 +311,3 @@ def create_and_add_card(
         if config['-savecards']:
             save_card_to_file(CARD_SAVE_LOCATION, card)
             implementor.writeln(f'{Color.success}Card saved to a file: {R}{os.path.basename(CARD_SAVE_LOCATION)!r}')
-

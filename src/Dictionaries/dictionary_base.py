@@ -273,9 +273,8 @@ class Dictionary:
         raise ValueError('out of bounds')
 
     def into_indices(self,
-            relative_inputs: list[int],
-            key: Callable[[Sequence[str]], bool]
-     ) -> list[int]:
+            relative_inputs: list[int], key: Callable[[Sequence[str]], bool]
+    ) -> list[int]:
         result = []
         counter = 0
         for i, entry in enumerate(self.contents):

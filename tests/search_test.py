@@ -1,7 +1,7 @@
 import pytest
 
-from ankidodawacz import parse_query, Query
 from src.data import config
+from src.search import parse_query, Query
 
 
 @pytest.mark.parametrize(
@@ -96,4 +96,3 @@ def test_parse_query_sentences(input_, expected):
 )
 def test_parse_query_separators(input_, expected):
     assert parse_query(input_) == expected
-

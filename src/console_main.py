@@ -11,7 +11,7 @@ from src.data import HORIZONTAL_BAR, config
 from src.term_utils import less_print
 
 if TYPE_CHECKING:
-    from ankidodawacz import QuerySettings
+    from src.search import QuerySettings
     from src.Dictionaries.dictionary_base import Dictionary
 
 

@@ -827,16 +827,19 @@ Selection and Anki:
   B         open the Anki card browser
   C         create card(s) from the selection
 
-Filtering/searching the dictionary:
+Dictionary filtering:
   /         open the filter prompt (this is just like the flags when querying)
             e.g.  entering "n"   : searches for labels starting with "n"
                   entering "/To" : searches for definitions containing "To"
   ^J Enter  restore the original dictionary
 
+Searching:
+  ; :       open the search prompt for issuing commands and searching
+  -         ... and insert a '-' character
+
 Miscellaneous:
-  - :       open the command prompt for issuing commands
   ^L        redraw the screen, useful when screen gets corrupted somehow
-  F8        change the number of columns currently displayed
+  F8        cycle through the valid `-columns` values and update the screen
 
 {BOLD}{79 * '─'}{DEFAULT}
 -conf, -config      show current configuration and more options
