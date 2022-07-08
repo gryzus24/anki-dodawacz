@@ -1020,13 +1020,6 @@ class ScreenBuffer:
         self.status = Status(stdscr, persistence=2)
         self._cursor = 0
 
-    @classmethod
-    def initialize(
-        cls, stdscr: curses._CursesWindow, dictionaries: list[Dictionary]
-    ) -> tuple[ScreenBuffer, Screen]:
-        inst = cls(stdscr, tuple(map(Screen, dictionaries)))
-        return inst, inst.current
-
     @property
     def current(self) -> Screen:
         return self.screens[self._cursor]
@@ -1061,7 +1054,8 @@ class ScreenBuffer:
         stdscr.addstr(y, hint_x, screen_hint, Color.delimit | curses.A_BOLD)
         stdscr.addch(y, hint_x + len(screen_hint), '╶')
 
-    def _draw_border(self, screen: Screen) -> None:
+    def _draw_border(self) -> None:
+        screen = self.current
         stdscr = self.stdscr
         stdscr.box()
 
@@ -1100,7 +1094,7 @@ class ScreenBuffer:
         else:
             screen.margin_bottom = v_buf_height
 
-        self._draw_border(screen)
+        self._draw_border()
         self._draw_status_bar(LINES - v_buf_height - 1)
         self.status.draw_if_available()
 
@@ -1133,7 +1127,7 @@ class ScreenBuffer:
 
         self.status.success(config['-columns'].capitalize())
 
-    def dictionary_filtering_prompt(self, screen: Screen) -> None:
+    def filter_prompt(self) -> None:
         typed = Prompt(self, 'Filter (~n, ~/n): ').run()
         if typed is None:
             return
@@ -1141,6 +1135,7 @@ class ScreenBuffer:
         if not typed:
             return
 
+        screen = self.current
         screen.dictionary = filter_dictionary(screen._orig_dictionary, (typed,))
         screen.update_for_redraw()
 
@@ -1197,9 +1192,7 @@ class ScreenBuffer:
 
         return True
 
-    def search_prompt(self,
-            screen: Screen, *, pretype: str = ''
-    ) -> tuple[ScreenBuffer, Screen, QuerySettings] | None:
+    def search_prompt(self, *, pretype: str = '') -> tuple[ScreenBuffer, QuerySettings] | None:
         pretype = ' '.join(pretype.split())
         typed = Prompt(self, 'Search $ ', pretype=pretype).run()
         if typed is None:
@@ -1209,7 +1202,7 @@ class ScreenBuffer:
             return None
 
         if self._dispatch_command(typed):
-            screen.update_for_redraw()
+            self.current.update_for_redraw()
             return None
 
         ret = search_dictionaries(RefreshWriter(self), typed)
@@ -1217,11 +1210,16 @@ class ScreenBuffer:
             return None
 
         dictionaries, settings = ret
-        new_screen_buffer, new_screen = ScreenBuffer.initialize(
-            self.stdscr, dictionaries
-        )
 
-        return new_screen_buffer, new_screen, settings
+        return ScreenBuffer(self.stdscr, tuple(map(Screen, dictionaries))), settings
+
+    ACTIONS = {
+        b'l': next,     b'KEY_RIGHT': next,
+        b'h': previous, b'KEY_LEFT': previous,
+        b'^L': resize,
+        b'KEY_F(8)': rearrange_columns,
+        b'/': filter_prompt,
+    }
 
 
 def primary_selection(status: Status) -> str | None:
@@ -1298,56 +1296,49 @@ def _curses_main(
     curses.flushinp()
 
     settings = _settings
-    screen_buffer, screen = ScreenBuffer.initialize(stdscr, _dictionaries)
-    screen_actions = Screen.ACTIONS
+    screen_buffer = ScreenBuffer(stdscr, tuple(map(Screen, _dictionaries)))
     while True:
         screen_buffer.draw()
         curses.doupdate()
 
         c = curses.keyname(get_key(stdscr))
-        if c in (b'q', b'Q', b'^X'):
-            return
-        elif c in screen_actions:
-            screen_actions[c](screen)
-        elif c in (b'h', b'KEY_LEFT'):
-            screen = screen_buffer.previous()
-        elif c in (b'l', b'KEY_RIGHT'):
-            screen = screen_buffer.next()
-        elif c in screen.KEYBOARD_SELECTOR_CHARS:
-            screen.mark_box_by_selector(c)
+        if c in Screen.ACTIONS:
+            Screen.ACTIONS[c](screen_buffer.current)
+        elif c in Screen.KEYBOARD_SELECTOR_CHARS:
+            screen_buffer.current.mark_box_by_selector(c)
+        elif c in ScreenBuffer.ACTIONS:
+            ScreenBuffer.ACTIONS[c](screen_buffer)
         elif c == b'KEY_RESIZE':
             curses.napms(50)
             screen_buffer.resize()
-        elif c == b'^L':
-            screen_buffer.resize()
-        elif c == b'KEY_F(8)':
-            screen_buffer.rearrange_columns()
-        elif c == b'/':
-            screen_buffer.dictionary_filtering_prompt(screen)
+        elif c == b'KEY_MOUSE':
+            _, x, y, _, bstate = curses.getmouse()
+            if bstate & curses.BUTTON1_PRESSED:  # left mouse
+                screen_buffer.current.mark_box_at(y, x)
+            elif bstate & curses.BUTTON4_PRESSED:  # mouse wheel
+                screen_buffer.current.move_up()
+            elif bstate & BUTTON5_PRESSED:  # mouse wheel
+                screen_buffer.current.move_down()
+            elif (
+                # Not sure what's the difference between PRESSED and CLICKED
+                # clicking the mouse wheel reports PRESSED, but clicking the
+                # "middle mouse" on a laptop reports CLICKED.
+                (bstate & curses.BUTTON2_PRESSED) or
+                (bstate & curses.BUTTON2_CLICKED)
+            ):
+                pretype = primary_selection(screen_buffer.status)
+                if pretype is None:
+                    continue
+                ret = screen_buffer.search_prompt(pretype=pretype)
+                if ret is not None:  # new query
+                    screen_buffer, settings = ret
         elif c in SEARCH_ENTER_ACTIONS:
             pretype = SEARCH_ENTER_ACTIONS[c](screen_buffer.status)
             if pretype is None:
                 continue
-            ret = screen_buffer.search_prompt(screen, pretype=pretype)
+            ret = screen_buffer.search_prompt(pretype=pretype)
             if ret is not None:  # new query
-                screen_buffer, screen, settings = ret
-        elif c == b'KEY_MOUSE':
-            _, x, y, _, bstate = curses.getmouse()
-            if bstate & curses.BUTTON1_PRESSED:  # left mouse
-                screen.mark_box_at(y, x)
-            elif bstate & curses.BUTTON4_PRESSED:  # mouse wheel
-                screen.move_up()
-            elif bstate & BUTTON5_PRESSED:  # mouse wheel
-                screen.move_down()
-            elif bstate & curses.BUTTON2_PRESSED:  # middle mouse
-                pretype = primary_selection(screen_buffer.status)
-                if pretype is None:
-                    continue
-                ret = screen_buffer.search_prompt(screen, pretype=pretype)
-                if ret is not None:  # new query
-                    screen_buffer, screen, settings = ret
-        elif c == b'KEY_F(1)':
-            config['-nohelp'] = not config['-nohelp']
+                screen_buffer, settings = ret
         elif c == b'B':
             response = anki.gui_browse_cards()
             if response.error:
@@ -1356,17 +1347,22 @@ def _curses_main(
             else:
                 screen_buffer.status.success('Anki card browser opened')
         elif c == b'C':
-            selection_data = screen.get_indices_of_selected_boxes()
+            _screen = screen_buffer.current
+            selection_data = _screen.get_indices_of_selected_boxes()
             if selection_data:
                 create_and_add_card(
                     CardWriter(screen_buffer),
-                    screen.dictionary,
+                    _screen.dictionary,
                     selection_data,
                     settings
                 )
-                screen.deselect_all()
+                _screen.deselect_all()
             else:
                 screen_buffer.status.error('Nothing selected')
+        elif c == b'KEY_F(1)':
+            config['-nohelp'] = not config['-nohelp']
+        elif c in (b'q', b'Q', b'^X'):
+            return
 
 
 def curses_ui_entry(dictionaries: list[Dictionary], settings: QuerySettings) -> None:
