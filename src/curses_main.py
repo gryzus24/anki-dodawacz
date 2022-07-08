@@ -4,6 +4,7 @@ import curses
 import shutil
 from collections import Counter
 from itertools import islice, zip_longest
+from subprocess import Popen, PIPE, DEVNULL
 from typing import Callable, Optional, TypeVar, Reversible, Sequence, TYPE_CHECKING
 
 import src.anki_interface as anki
@@ -460,14 +461,13 @@ BORDER_PAD = 1
 def draw_help(stdscr: curses._CursesWindow) -> None:
     top_line = [
         ('F1', ' Help '), ('j/k', ' Move down/up '), ('1-9', ' Select cell '),
-        ('B ', ' Card browser '), ('; ', ' Search prompt '), ('^L', ' Redraw screen '),
-        ('g ', ' Go top '),  # ('p ', ' Paste from selection '),
+        ('B ', ' Card browser '), ('; ', ' Search '), ('g ', ' Go top '),
+        ('p ', ' Paste from selection '), ('^L', ' Redraw screen '),
     ]
     bot_line = [
         ('q ', ' Exit '), ('h/l', ' Swap screens '), ('d ', ' Deselect all '),
-        ('C ', ' Create cards '), ('/ ', ' Filter prompt '), ('^J', ' Reset filters '),
-        ('G ', ' Go EOF '),  # ('P ', ' Paste current phrase '),
-        ('F8', ' Rearrange columns '),
+        ('C ', ' Create cards '), ('/ ', ' Filter '), ('G ', ' Go EOF '),
+        ('P ', ' Paste current phrase '), ('^J', ' Reset filters '), ('F8', ' Rearrange columns '),
     ]
 
     top_bot_pairs = []
@@ -986,10 +986,14 @@ class Prompt:
                     self.backspace()
                 elif self.exit_if_empty:
                     return None
-            elif c in (7, 10):  # ^J, \n
+            elif (
+                c in (7, 10) or  # ^J, \n
+                (c == curses.KEY_MOUSE and curses.getmouse()[4] & curses.BUTTON3_PRESSED)
+            ):
                 ret = ''.join(self._entered)
                 self._clear()
                 return ret
+
 
     def run(self) -> str | None:
         self.screen_buffer.status.lock = True
@@ -1179,7 +1183,7 @@ class ScreenBuffer:
             self.status.writer.margin_bottom = 0
             self.status.writer.buffer.clear()
         elif cmd.startswith('-'):
-            self.status.nlerror('No such command')
+            self.status.nlerror(f'{cmd}: command not found')
             return True
         else:
             return False
@@ -1193,10 +1197,10 @@ class ScreenBuffer:
 
         return True
 
-    def search_prompt(
-        self, screen: Screen, *, command_pretype: bool
+    def search_prompt(self,
+            screen: Screen, *, pretype: str = ''
     ) -> tuple[ScreenBuffer, Screen, QuerySettings] | None:
-        pretype = '-' if command_pretype else ''
+        pretype = ' '.join(pretype.split())
         typed = Prompt(self, 'Search $ ', pretype=pretype).run()
         if typed is None:
             return None
@@ -1219,6 +1223,47 @@ class ScreenBuffer:
 
         return new_screen_buffer, new_screen, settings
 
+
+def primary_selection(status: Status) -> str | None:
+    for prog, option in (('xsel', None), ('xclip', '-o')):
+        exe = shutil.which(prog)
+        if exe is None:
+            continue
+
+        args = exe if option is None else (exe, option)
+        with Popen(args, stdout=PIPE, stderr=DEVNULL, encoding='UTF-8') as proc:
+            stdout, _ = proc.communicate()
+
+        stdout = stdout.strip()
+        if stdout:
+            return stdout
+        else:
+            status.error('Primary selection is empty')
+            return None
+
+    status.nlerror('Cannot access the primary selection')
+    status.addstr('Install xsel or xclip and try again')
+
+    return None
+
+
+def current_anki_phrase(status: Status) -> str | None:
+    result = anki.currently_reviewed_phrase()
+    if result.error:
+        status.nlerror('Paste from the "Phrase" field failed:')
+        status.addstr(result.body)
+        return None
+
+    return result.body
+
+
+SEARCH_ENTER_ACTIONS = {
+    b'p': primary_selection,
+    b'P': current_anki_phrase,
+    b'-': lambda _: '-',
+    b';': lambda _: '',
+    b':': lambda _: '',
+}
 
 # Unfortunately Python's readline api does not expose functions and variables
 # responsible for signal handling, which makes it impossible to reconcile
@@ -1280,20 +1325,28 @@ def _curses_main(
             screen_buffer.rearrange_columns()
         elif c == b'/':
             screen_buffer.dictionary_filtering_prompt(screen)
-        elif c in (b'-', b';', b':'):
-            ret = screen_buffer.search_prompt(screen, command_pretype=c == b'-')
+        elif c in SEARCH_ENTER_ACTIONS:
+            pretype = SEARCH_ENTER_ACTIONS[c](screen_buffer.status)
+            if pretype is None:
+                continue
+            ret = screen_buffer.search_prompt(screen, pretype=pretype)
             if ret is not None:  # new query
                 screen_buffer, screen, settings = ret
         elif c == b'KEY_MOUSE':
             _, x, y, _, bstate = curses.getmouse()
-            # TODO: make middle mouse paste selection and 'p' paste phrase
-            #       from current Anki card and query dictionaries.
-            if bstate & curses.BUTTON1_PRESSED:
+            if bstate & curses.BUTTON1_PRESSED:  # left mouse
                 screen.mark_box_at(y, x)
-            elif bstate & curses.BUTTON4_PRESSED:
+            elif bstate & curses.BUTTON4_PRESSED:  # mouse wheel
                 screen.move_up()
-            elif bstate & BUTTON5_PRESSED:
+            elif bstate & BUTTON5_PRESSED:  # mouse wheel
                 screen.move_down()
+            elif bstate & curses.BUTTON2_PRESSED:  # middle mouse
+                pretype = primary_selection(screen_buffer.status)
+                if pretype is None:
+                    continue
+                ret = screen_buffer.search_prompt(screen, pretype=pretype)
+                if ret is not None:  # new query
+                    screen_buffer, screen, settings = ret
         elif c == b'KEY_F(1)':
             config['-nohelp'] = not config['-nohelp']
         elif c == b'B':

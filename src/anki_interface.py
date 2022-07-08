@@ -81,7 +81,7 @@ AC_BASE_FIELDS = (
 
 
 class AnkiResponse(NamedTuple):
-    body: str
+    body: Any
     error: bool
 
 
@@ -118,23 +118,33 @@ def invoke(action: str, **params: Any) -> AnkiResponse:
 
     err = err.lower()
     if err.startswith('model was not found:'):
-        msg = f'Could not find note: {config["-note"]}\n' \
-              f'To change the note use `-note {{note name}}`'
+        msg = (
+            f'Could not find note: {config["-note"]}\n'
+            f'To change the note use `-note {{note name}}`'
+        )
     elif err.startswith('deck was not found'):
-        msg = f'Could not find deck: {config["-deck"]}\n' \
-              f'To change the deck use `-deck {{deck name}}`\n' \
-              f'If deck name seems correct, change its name in Anki\n' \
-              f'to use single spaces.'
+        msg = (
+            f'Could not find deck: {config["-deck"]}\n'
+            f'To change the deck use `-deck {{deck name}}`\n'
+            f'If deck name seems correct, change its name in Anki\n'
+            f'to use single spaces.'
+        )
     elif err.startswith('cannot create note because it is empty'):
-        msg = f'First field empty.\n' \
-              f'Check if {config["-note"]} contains required fields\n' \
-              f'or if field names have been changed, use `-refresh`'
+        msg = (
+            f'First field empty.\n'
+            f'Check if {config["-note"]} contains required fields\n'
+            f'or if field names have been changed, use `-refresh`'
+        )
     elif err.startswith('cannot create note because it is a duplicate'):
-        msg = f'Duplicate.\n' \
-              f'To allow duplicates use `-duplicates {{on|off}}`\n' \
-              f'or change the scope of checking for them `-dupescope {{deck|collection}}`'
+        msg = (
+            f'Duplicate.\n'
+            f'To allow duplicates use `-duplicates {{on|off}}`\n'
+            f'or change the scope of checking for them `-dupescope {{deck|collection}}`'
+        )
     elif err.startswith('model name already exists'):
         msg = 'Note with this name already exists.'
+    elif err.startswith('gui review is not currently active'):
+        msg = 'Action available only in review mode.'
     elif err.startswith(('collection is not available', "'nonetype' object has no attribute")):
         msg = 'Check if Anki is fully open.'
     else:
@@ -199,6 +209,22 @@ def gui_browse_cards(query: str = 'added:1') -> AnkiResponse:
         return response
 
     return AnkiResponse('Anki card browser opened', error=False)
+
+
+def currently_reviewed_phrase() -> AnkiResponse:
+    response = invoke('guiCurrentCard')
+    if response.error:
+        return response
+
+    fields = response.body['fields']
+    phrase_like = [x[0] for x in AC_BASE_FIELDS if x[1] == 'phrase']
+    for key, value in fields.items():
+        key = key.lower()
+        for p in phrase_like:
+            if p in key:
+                return AnkiResponse(value['value'], error=False)
+
+    return AnkiResponse('Could not find the "Phrase" field', error=True)
 
 
 def add_card_to_anki(field_values: dict[str, str]) -> AnkiResponse:

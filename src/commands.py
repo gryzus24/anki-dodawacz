@@ -836,6 +836,10 @@ Dictionary filtering:
 Searching:
   ; :       open the search prompt for issuing commands and searching
   -         ... and insert a '-' character
+  p wheel   insert primary selection into the search prompt
+            (uses xsel or xclip, Xorg only)
+  P         insert contents of the "Phrase" field from the currently reviewed
+            Anki card
 
 Miscellaneous:
   ^L        redraw the screen, useful when screen gets corrupted somehow
