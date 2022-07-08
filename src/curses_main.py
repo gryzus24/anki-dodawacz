@@ -1225,14 +1225,13 @@ class ScreenBuffer:
 
 
 def primary_selection(status: Status) -> str | None:
-    for prog, option in (('xsel', None), ('xclip', '-o')):
+    for prog, option in (('xsel', '-p'), ('xclip', '-o')):
         exe = shutil.which(prog)
         if exe is None:
             continue
 
-        args = exe if option is None else (exe, option)
-        with Popen(args, stdout=PIPE, stderr=DEVNULL, encoding='UTF-8') as proc:
-            stdout, _ = proc.communicate()
+        with Popen((exe, option), stdout=PIPE, stderr=DEVNULL, encoding='UTF-8') as p:
+            stdout, _ = p.communicate()
 
         stdout = stdout.strip()
         if stdout:

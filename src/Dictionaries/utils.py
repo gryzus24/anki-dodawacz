@@ -19,10 +19,11 @@ finally:
 
 if (*map(int, __version__.split('.')),) < (4, 10, 0):
     sys.stderr.write(
-         f'{Color.err}-----------------------------------------------------------------{R}\n'
+         f'{Color.err}----------------------------------------------------------------{R}\n'
          'Your version of beautifulsoup is out of date, please update:\n'
          'pip install -U beautifulsoup4\n'
-         'And while you are at it, kindly, uninstall the soupsieve package:\n'
+         'If you are using a virtual environment, you can safely uninstall\n'
+         'the soupsieve package to speed up the startup of the program:\n'
          'pip uninstall soupsieve\n'
     )
     raise SystemExit
