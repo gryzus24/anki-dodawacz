@@ -461,13 +461,13 @@ BORDER_PAD = 1
 def draw_help(stdscr: curses._CursesWindow) -> None:
     top_line = [
         ('F1', ' Help '), ('j/k', ' Move down/up '), ('1-9', ' Select cell '),
-        ('B ', ' Card browser '), ('; ', ' Search '), ('g ', ' Go top '),
-        ('p ', ' Paste from selection '), ('^L', ' Redraw screen '),
+        ('B ', ' Card browser '), ('g ', ' Go top '), ('^F', ' Filter '),
+        ('p ', ' Paste from selection '), ('^J', ' Reset filters '),
     ]
     bot_line = [
         ('q ', ' Exit '), ('h/l', ' Swap screens '), ('d ', ' Deselect all '),
-        ('C ', ' Create cards '), ('/ ', ' Filter '), ('G ', ' Go EOF '),
-        ('P ', ' Paste current phrase '), ('^J', ' Reset filters '), ('F8', ' Rearrange columns '),
+        ('C ', ' Create cards '), ('G ', ' Go EOF '), ('; ', ' Search '),
+        ('P ', ' Paste current phrase '), ('^L', ' Redraw screen '), ('F8', ' Rearrange columns '),
     ]
 
     top_bot_pairs = []
@@ -1218,7 +1218,7 @@ class ScreenBuffer:
         b'h': previous, b'KEY_LEFT': previous,
         b'^L': resize,
         b'KEY_F(8)': rearrange_columns,
-        b'/': filter_prompt,
+        b'^F': filter_prompt, b'KEY_F(4)': filter_prompt,
     }
 
 

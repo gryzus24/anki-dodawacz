@@ -828,10 +828,10 @@ Selection and Anki:
   C         create card(s) from the selection
 
 Dictionary filtering:
-  /         open the filter prompt (this is just like the flags when querying)
+  ^F F4     open the filter prompt (this is just like the flags when querying)
             e.g.  entering "n"   : searches for labels starting with "n"
                   entering "/To" : searches for definitions containing "To"
-  ^J Enter  restore the original dictionary
+  ^J Enter  reset filters - restore the original, queried dictionary
 
 Searching:
   ; :       open the search prompt for issuing commands and searching
