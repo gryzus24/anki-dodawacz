@@ -420,7 +420,7 @@ class CardWriter:
         adjusted_textwidth = int(0.95 * textwidth)
         padding = (textwidth - adjusted_textwidth) // 2 * " "
 
-        print(f'\n{Color.delimit}{delimit}')
+        print(f'{Color.delimit}{delimit}')
         for i, field in enumerate(CARD_FIELDS_SAVE_ORDER, 1):
             for line in card[field].split('<br>'):
                 for subline in wrap_lines(line, config['-textwrap'], adjusted_textwidth, 0, 0):

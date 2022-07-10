@@ -199,8 +199,8 @@ def gui_browse_cards(query: str = 'added:1') -> None:
 def currently_reviewed_phrase() -> str:
     for key, value in invoke('guiCurrentCard')['fields'].items():
         key = key.lower()
-        for scheme in PHRASE_SCHEMAS:
-            if scheme in key:
+        for schema in PHRASE_SCHEMAS:
+            if schema in key:
                 return value['value']
 
     raise AnkiError('Could not find the "Phrase-like" field')

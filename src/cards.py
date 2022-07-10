@@ -307,7 +307,6 @@ def create_and_add_card(
 
         card = format_and_prepare_card(card)
 
-        implementor.writeln('')
         if config['-ankiconnect']:
             try:
                 response = anki.add_card_to_anki(card)
