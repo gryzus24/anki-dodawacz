@@ -428,7 +428,7 @@ HELP_ARG_COMMANDS: dict[str, tuple[Callable[..., CommandResult], str, str]] = {
     '-less':        (boolean_command, '[console] Use a pager (less) to display dictionaries', '{on/off}'),
     '-cardpreview': (boolean_command, '[console] Preview created cards', '{on/off}'),
     '-showsign':    (boolean_command, 'Show a ">" before main definitions', '{on/off}'),
-    '-ankiconnect': (boolean_command, 'Use AnkiConnect to add cards', '{on/off}'),
+    '-ankiconnect': (boolean_command, 'Use Anki-Connect to add cards', '{on/off}'),
     '-duplicates':  (boolean_command, 'Allow duplicates', '{on/off}'),
     '-curses':      (boolean_command, 'Use the ncurses backend to interact with dictionaries', '{on/off}'),
     '-nohelp':      (boolean_command, '[curses] Hide usage help (F1) by default', '{on/off}'),
@@ -644,12 +644,12 @@ make the word {BOLD}{Color.success}Emphasized{R}{DEFAULT}.
 e.g.  Search $ This is a sentence with a word <embedded> inside.
 
 {_title('Audio and Anki configuration')}
-{BOLD}1.{DEFAULT} open Anki and install the AnkiConnect add-on (2055492159)
-{BOLD}2.{DEFAULT} use `-ap auto` or `-ap {{path}}` to add "collection.media" path so that the
+{BOLD}1.{DEFAULT} open Anki and install the Anki-Connect add-on (2055492159)
+{BOLD}2.{DEFAULT} use `-ap auto` or `-ap {{path}}` to add your "collection.media" path so that the
    program knows where to save audio files
 {BOLD}3.{DEFAULT} specify your deck `-deck {{deck name}}`
 {BOLD}4.{DEFAULT} add a premade note `--add-note` or specify your own `-note {{note name}}`
-{BOLD}5.{DEFAULT} enable AnkiConnect `-ankiconnect on`
+{BOLD}5.{DEFAULT} enable Anki-Connect `-ankiconnect on`
 
 {BOLD}{79 * '─'}{DEFAULT}
 -conf, -config      show current configuration and more options
@@ -733,8 +733,8 @@ Hiding a phrase means replacing it with "..." (default)
                            9 : worst
                            4 : recommended
 
-{_title('AnkiConnect configuration')}
--ankiconnect           use AnkiConnect to add cards
+{_title('Anki-Connect configuration')}
+-ankiconnect           use Anki-Connect to add cards
 -duplicates            allow duplicates
 -dupescope             look for duplicates in:
                         deck, collection
@@ -772,7 +772,7 @@ then creates a card and displays a simple preview.
 
 Created cards are saved to the "cards.txt" file and their audio files
 to the directory specified by the `-ap` command ("Cards_audio" by default).
-If AnkiConnect is configured and enabled (`-ankiconnect on`) it adds the card
+If Anki-Connect is configured and enabled (`-ankiconnect on`) it adds the card
 directly to Anki.
 
 If you have "less" installed you can use it to handle dictionary display for

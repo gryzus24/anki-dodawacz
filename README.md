@@ -10,15 +10,15 @@ A console/curses dictionary look-up tool with Anki integration.<br>
 
 Search for a word and select definitions by their index.<br>
 Program saves your choice in a `cards.txt` file which can be manually imported to Anki.<br>
-You can also connect it directly to Anki via AnkiConnect to streamline the process.
+You can also connect it directly to Anki via Anki-Connect to streamline the process.
 
-#### AnkiConnect configuration
+#### Anki-Connect configuration
 
-1. open Anki and install the AnkiConnect add-on (2055492159)
-2. use `-ap auto` or `-ap {path}` to add "collection.media" path so that the program knows where to save audio files
+1. open Anki and install the Anki-Connect add-on (2055492159)
+2. use `-ap auto` or `-ap {path}` to add your "collection.media" path so that the program knows where to save audio files
 3. specify your deck `-deck {deck name}`
 4. add a premade note `--add-note` or specify your own `-note {note name}`
-5. enable AnkiConnect `-ankiconnect on`
+5. enable Anki-Connect `-ankiconnect on`
 
 To configure the program further use the `-conf` command.<br>
 To display usage information for a command just type its name.
@@ -100,7 +100,7 @@ Names it definitely understands are:
 
 ### Custom notes
 
-You can add our custom notes to Anki if AnkiConnect is installed.<br>
+You can add our custom notes to Anki if Anki-Connect is installed.<br>
 To do that use the `--add-note` command.
 
 ![image](https://user-images.githubusercontent.com/82805891/147774842-0f5d9e7e-2fca-4a0c-8f8e-ce4c6294a0b5.png)

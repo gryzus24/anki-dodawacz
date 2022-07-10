@@ -98,7 +98,7 @@ def main() -> None:
     finally:
         os.remove(tfile.name)
 
-    print(f"{Color.heed}:: {R}Copying the AnkiConnect configuration")
+    print(f"{Color.heed}:: {R}Copying the Anki-Connect configuration")
     moveable_configs = {
         '-ankiconnect', '-note', '-deck', '-tags', '-duplicates',
         '-dupescope', 'audio_path', 'audio_device'

@@ -10,15 +10,15 @@ Zintegrowany z Anki, terminalowy program do przeglądania słowników.<br>
 
 Wyszukaj słowo i wybierz definicje po ich indeksach.<br>
 Program zapisze Twój wybór w pliku `cards.txt`, który może być manualnie zaimportowany do Anki.<br>
-Możesz także połączyć program z Anki poprzez AnkiConnect co znacznie uprości proces dodawania.
+Możesz także połączyć program z Anki poprzez Anki-Connect co znacznie uprości proces dodawania.
 
-#### Konfiguracja AnkiConnect
+#### Konfiguracja Anki-Connect
 
-1. otwórz Anki i zainstaluj dodatek AnkiConnect (2055492159)
+1. otwórz Anki i zainstaluj dodatek Anki-Connect (2055492159)
 2. wpisz `-ap auto` lub `-ap {ścieżka}`, aby dodać ścieżkę do folderu "collection.media", aby program wiedział gdzie zapisywać pliki audio
 3. wybierz swoją talię `-deck {nazwa talii}`
 4. dodaj wbudowaną notatkę `--add-note` lub wybierz swoją własną `-note {nazwa notatki}`
-5. włącz AnkiConnect `-ankiconnect on`
+5. włącz Anki-Connect `-ankiconnect on`
 
 Aby wyświetlić więcej opcji konfiguracji wpisz `-conf`<br>
 Aby wyświetlić użycie dla danej komendy po prostu wpisz jej nazwę.
