@@ -6,8 +6,8 @@ from typing import Iterable, Optional, TYPE_CHECKING
 
 import src.anki_interface as anki
 from src.Dictionaries.audio_dictionaries import ahd_audio, diki_audio, lexico_audio
-from src.Dictionaries.utils import http
 from src.Dictionaries.dictionary_base import DictionaryError
+from src.Dictionaries.utils import http
 from src.colors import Color, R
 from src.data import ROOT_DIR, CARD_SAVE_LOCATION, config
 

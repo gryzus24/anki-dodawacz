@@ -203,7 +203,7 @@ def dictionary_content_check(dictionary, _word):
         elif 'DEF' in op:
             def_index += 1
             if len(body) != 3:
-                log(f'!! | len(body != 3')
+                log('!! | len(body) != 3')
                 continue
             _def, _exsen, _label = body
             if is_funny(_def):
