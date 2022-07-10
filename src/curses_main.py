@@ -1245,13 +1245,12 @@ def primary_selection(status: Status) -> str | None:
 
 
 def current_anki_phrase(status: Status) -> str | None:
-    result = anki.currently_reviewed_phrase()
-    if result.error:
+    try:
+        return anki.currently_reviewed_phrase()
+    except anki.AnkiError as e:
         status.nlerror('Paste from the "Phrase" field failed:')
-        status.addstr(result.body)
+        status.addstr(str(e))
         return None
-
-    return result.body
 
 
 SEARCH_ENTER_ACTIONS = {
@@ -1340,10 +1339,11 @@ def _curses_main(
             if ret is not None:  # new query
                 screen_buffer, settings = ret
         elif c == b'B':
-            response = anki.gui_browse_cards()
-            if response.error:
+            try:
+                anki.gui_browse_cards()
+            except anki.AnkiError as e:
                 screen_buffer.status.nlerror('Could not open the card browser:')
-                screen_buffer.status.addstr(response.body)
+                screen_buffer.status.addstr(str(e))
             else:
                 screen_buffer.status.success('Anki card browser opened')
         elif c == b'C':

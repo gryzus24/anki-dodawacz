@@ -574,11 +574,15 @@ def refresh_command(cmd: str, *args: str) -> CommandResult:
 
 
 def browse_command(cmd: str, *args: str) -> CommandResult:
-    response = anki.gui_browse_cards(' '.join(args) if args else 'added:1')
-    if response.error:
-        return CommandResult(error='Could not open the card browser:', reason=response.body)
-
-    return CommandResult()
+    try:
+        anki.gui_browse_cards(' '.join(args) if args else 'added:1')
+    except anki.AnkiError as e:
+        return CommandResult(
+            error='Could not open the card browser:',
+            reason=str(e)
+        )
+    else:
+        return CommandResult()
 
 
 def _title(s: str) -> str:

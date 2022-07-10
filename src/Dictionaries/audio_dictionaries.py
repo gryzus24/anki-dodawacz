@@ -1,16 +1,11 @@
 from __future__ import annotations
 
-from typing import NamedTuple
-
+from src.Dictionaries.dictionary_base import DictionaryError
 from src.Dictionaries.utils import http, request_soup
+from src.colors import Color, R
 
 
-class AudioDictionaryResult(NamedTuple):
-    body: str
-    error: bool
-
-
-def diki_audio(raw_phrase: str, flag: str = '') -> AudioDictionaryResult:
+def diki_audio(raw_phrase: str, flag: str = '') -> str:
     diki_phrase = raw_phrase.lower()\
         .replace('(', '').replace(')', '').replace("'", "") \
         .replace(' or something', '')\
@@ -23,18 +18,18 @@ def diki_audio(raw_phrase: str, flag: str = '') -> AudioDictionaryResult:
 
     # First try British pronunciation, then American.
     if http.urlopen('HEAD', url).status == 200:
-        return AudioDictionaryResult(url, error=False)
+        return url
     if http.urlopen('HEAD', url_ame).status == 200:
-        return AudioDictionaryResult(url_ame, error=False)
+        return url_ame
 
     if flag:
         # Try the same but without the flag
         url = f'https://www.diki.pl/images-common/en/mp3/{diki_phrase}.mp3'
         url_ame = f'https://www.diki.pl/images-common/en-ame/mp3/{diki_phrase}.mp3'
         if http.urlopen('HEAD', url).status == 200:
-            return AudioDictionaryResult(url, error=False)
+            return url
         if http.urlopen('HEAD', url_ame).status == 200:
-            return AudioDictionaryResult(url_ame, error=False)
+            return url_ame
 
     def shorten_to_possessive(*ignore: str) -> str:
         verb, _, rest = diki_phrase.partition('_the_')
@@ -72,34 +67,26 @@ def diki_audio(raw_phrase: str, flag: str = '') -> AudioDictionaryResult:
 
         url = f'https://www.diki.pl/images-common/en/mp3/{diki_phrase}.mp3'
         if http.urlopen('HEAD', url).status == 200:
-            return AudioDictionaryResult(url, error=False)
+            return url
 
-    return AudioDictionaryResult(f'No audio for {raw_phrase}', error=True)
-
-
-def ahd_audio(query: str) -> AudioDictionaryResult:
-    soup_or_error = request_soup('https://www.ahdictionary.com/word/search.html?q=' + query)
-    if isinstance(soup_or_error, str):
-        return AudioDictionaryResult(soup_or_error, error=True)
-    else:
-        soup = soup_or_error
-
-    audio_url = soup.dictionary.find('a', {'target': '_blank'})['href']
-    if audio_url == 'http://www.hmhco.com':
-        return AudioDictionaryResult(f'No audio in AHD for {query}', error=True)
-
-    return AudioDictionaryResult('https://www.ahdictionary.com' + audio_url, error=False)
+    raise DictionaryError(f'{Color.err}Diki: no audio for {R}{raw_phrase!r}')
 
 
-def lexico_audio(query: str) -> AudioDictionaryResult:
-    soup_or_error = request_soup('https://www.lexico.com/definition/' + query.replace(' ', '_'))
-    if isinstance(soup_or_error, str):
-        return AudioDictionaryResult(soup_or_error, error=True)
-    else:
-        soup = soup_or_error
+def ahd_audio(query: str) -> str:
+    soup = request_soup('https://www.ahdictionary.com/word/search.html?q=' + query)
 
-    audio_url = soup.dictionary.find('audio')
+    check = soup.find('a', {'target': '_blank'})
+    if check is None or check['href'] == 'http://www.hmhco.com':
+        raise DictionaryError(f'{Color.err}AHD: no audio for {R}{query!r}')
+
+    return 'https://www.ahdictionary.com' + check['href']
+
+
+def lexico_audio(query: str) -> str:
+    soup = request_soup('https://www.lexico.com/definition/' + query.replace(' ', '_'))
+
+    audio_url = soup.find('audio')
     if audio_url is None:
-        return AudioDictionaryResult(f'No audio in Lexico for {query}', error=True)
+        raise DictionaryError(f'{Color.err}Lexico: no audio for {R}{query!r}')
 
-    return AudioDictionaryResult(audio_url['src'], error=False)
+    return audio_url['src']

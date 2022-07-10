@@ -1,10 +1,8 @@
-# The API offered by this module is not type safe and pretty bad.
-# TODO: make it cleaner.
 from __future__ import annotations
 
 import json
 import os
-from typing import Any, NamedTuple
+from typing import Any, Literal
 
 from urllib3.exceptions import NewConnectionError
 
@@ -82,13 +80,20 @@ AC_BASE_FIELDS = (
 )
 
 
-class AnkiResponse(NamedTuple):
-    body: Any
-    error: bool
+class AnkiError(Exception):
+    pass
 
 
-def invoke(action: str, **params: Any) -> AnkiResponse:
-    request_json = json.dumps(
+INVOKE_ACTIONS = Literal[
+    'addNote',
+    'createModel',
+    'guiBrowse',
+    'guiCurrentCard',
+    'modelFieldNames',
+    'storeMediaFile',
+]
+def invoke(action: INVOKE_ACTIONS, **params: Any) -> Any:
+    json_request = json.dumps(
         {'action': action, 'params': params, 'version': 6}
     ).encode()
 
@@ -98,61 +103,49 @@ def invoke(action: str, **params: Any) -> AnkiResponse:
                 'POST',
                 'http://127.0.0.1:8765',
                 retries=False,
-                body=request_json
+                body=json_request
             ).data.decode()
         )
     except NewConnectionError:
-        return AnkiResponse(
-            'Could not connect with Anki\n'
-            'Open Anki and try again.',
-            error=True)
-
-    if len(response) != 2:
-        raise Exception('response has an unexpected number of fields')
-    if 'error' not in response:
-        raise Exception('response is missing required error field')
-    if 'result' not in response:
-        raise Exception('response is missing required result field')
+        raise AnkiError('Could not connect with Anki\nOpen Anki and try again.')
 
     err = response['error']
     if err is None:
-        return AnkiResponse(response['result'], error=False)
+        return response['result']
 
     err = err.lower()
     if err.startswith('model was not found:'):
-        msg = (
+        raise AnkiError(
             f'Could not find note: {config["-note"]}\n'
             f'To change the note use `-note {{note name}}`'
         )
     elif err.startswith('deck was not found'):
-        msg = (
+        raise AnkiError(
             f'Could not find deck: {config["-deck"]}\n'
             f'To change the deck use `-deck {{deck name}}`\n'
-            f'If deck name seems correct, change its name in Anki\n'
-            f'to use single spaces.'
+            f'If the deck name seems correct, change its name in Anki\n'
+            f'so that it uses single spaces.'
         )
     elif err.startswith('cannot create note because it is empty'):
-        msg = (
-            f'First field empty.\n'
+        raise AnkiError(
+            f"First field empty.\n"
             f'Check if {config["-note"]} contains required fields\n'
             f'or if field names have been changed, use `-refresh`'
         )
     elif err.startswith('cannot create note because it is a duplicate'):
-        msg = (
-            f'Duplicate.\n'
-            f'To allow duplicates use `-duplicates {{on|off}}`\n'
-            f'or change the scope of checking for them `-dupescope {{deck|collection}}`'
+        raise AnkiError(
+            'Duplicate.\n'
+            'To allow duplicates use `-duplicates {on|off}`\n'
+            'or change the scope of checking for them `-dupescope {deck|collection}`'
         )
     elif err.startswith('model name already exists'):
-        msg = 'Note with this name already exists.'
+        raise AnkiError('Note with this name already exists.')
     elif err.startswith('gui review is not currently active'):
-        msg = 'Action available only in review mode.'
+        raise AnkiError('Action available only in review mode.')
     elif err.startswith(('collection is not available', "'nonetype' object has no attribute")):
-        msg = 'Check if Anki is fully open.'
+        raise AnkiError('Check if Anki is fully open.')
     else:
         raise Exception(response['error'])
-
-    return AnkiResponse(msg, error=True)
 
 
 def save_ac_config(c: dict[str, str | int | tuple[str, int]]) -> None:
@@ -160,83 +153,58 @@ def save_ac_config(c: dict[str, str | int | tuple[str, int]]) -> None:
         json.dump(c, f, indent=2)
 
 
-def cache_current_note(*, refresh: bool = False) -> AnkiResponse:
+def cache_current_note(*, refresh: bool = False) -> None:
     model_name = config['-note']
-    response = invoke('modelFieldNames', modelName=model_name)
-    if response.error:
-        return response
 
-    # tries to recognize familiar fields and arranges them
-    organized_fields = {}
-    for mfield in response.body:
+    # Tries to recognize familiar fields and arranges them.
+    for field_name in invoke('modelFieldNames', modelName=model_name):
+        first_word_of_field_name = field_name.lower().partition(' ')[0]
         for scheme, base in AC_BASE_FIELDS:
-            if scheme in mfield.lower().partition(' ')[0]:
-                organized_fields[mfield] = base
-                break
+            if scheme in first_word_of_field_name:
+                config_ac[model_name] = {field_name: base}
+                save_ac_config(config_ac)
+                return
 
-    # So that blank notes are not saved in ankiconnect.json
-    if not organized_fields:
-        return AnkiResponse(
-            f'Check if note {model_name} contains required fields\n'
-            f'or if field names have been changed, use `-refresh`',
-            error=not refresh
+    if not refresh:
+        raise AnkiError(
+            f'Check if the note "{model_name}" contains required fields\n'
+            f'or if its field names have been changed, use `-refresh`',
         )
 
-    config_ac[model_name] = organized_fields
-    save_ac_config(config_ac)
 
-    return AnkiResponse('Note cached successfully', error=False)
-
-
-def refresh_cached_notes() -> AnkiResponse:
+def refresh_cached_notes() -> None:
     global config_ac
     config_ac = {}
 
-    response = cache_current_note(refresh=True)
-    if response.error:
+    try:
+        cache_current_note(refresh=True)
+    except AnkiError:
         try:
             save_ac_config(config_ac)
         except FileNotFoundError:
-            return AnkiResponse(
-                '"ankiconnect.json" file does not exist',
-                error=True
-            )
-
-    return AnkiResponse(f'Notes refreshed', error=False)
+            raise AnkiError('The "ankiconnect.json" file does not exist')
 
 
-def gui_browse_cards(query: str = 'added:1') -> AnkiResponse:
-    response = invoke('guiBrowse', query=query)
-    if response.error:
-        return response
-
-    return AnkiResponse('Anki card browser opened', error=False)
+def gui_browse_cards(query: str = 'added:1') -> None:
+    invoke('guiBrowse', query=query)
 
 
-def currently_reviewed_phrase() -> AnkiResponse:
-    response = invoke('guiCurrentCard')
-    if response.error:
-        return response
-
-    fields = response.body['fields']
-    phrase_like = [x[0] for x in AC_BASE_FIELDS if x[1] == 'phrase']
-    for key, value in fields.items():
+PHRASE_SCHEMES = [x[0] for x in AC_BASE_FIELDS if x[1] == 'phrase']
+def currently_reviewed_phrase() -> str:
+    for key, value in invoke('guiCurrentCard')['fields'].items():
         key = key.lower()
-        for p in phrase_like:
-            if p in key:
-                return AnkiResponse(value['value'], error=False)
+        for scheme in PHRASE_SCHEMES:
+            if scheme in key:
+                return value['value']
 
-    return AnkiResponse('Could not find the "Phrase" field', error=True)
+    raise AnkiError('Could not find the "Phrase-like" field')
 
 
-def add_card_to_anki(field_values: dict[str, str]) -> AnkiResponse:
+def add_card_to_anki(field_values: dict[str, str]) -> str:
     note_name = config['-note']
 
-    # So that familiar notes aren't reorganized
     if note_name not in config_ac:
-        response = cache_current_note()
-        if response.error:
-            return response
+        cache_current_note()
 
     note_from_config = config_ac.get(note_name, {})
     fields_to_add = {
@@ -244,23 +212,21 @@ def add_card_to_anki(field_values: dict[str, str]) -> AnkiResponse:
         for anki_field_name, base in note_from_config.items()
     }
     tags = config['-tags'].lstrip('-')
-    response = invoke('addNote',
-                      note={
-                          'deckName': config['-deck'],
-                          'modelName': note_name,
-                          'fields': fields_to_add,
-                          'options': {
-                              'allowDuplicate': config['-duplicates'],
-                              'duplicateScope': config['-dupescope']
-                          },
-                          'tags': tags.split(', ')
-                      })
-    if response.error:
-        return response
+    invoke('addNote',
+        note={
+            'deckName': config['-deck'],
+            'modelName': note_name,
+            'fields': fields_to_add,
+            'options': {
+                'allowDuplicate': config['-duplicates'],
+                'duplicateScope': config['-dupescope']
+             },
+            'tags': tags.split(', ')
+        }
+    )
 
-    return AnkiResponse(
+    return (
         f'Deck: {config["-deck"]}\n'
         f'Note: {note_name}\n'
-        f'Tags: {tags}',
-        error=False
+        f'Tags: {tags}'
     )
