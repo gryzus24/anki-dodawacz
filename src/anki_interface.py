@@ -14,15 +14,15 @@ from src.data import ROOT_DIR, config
 # takes care of some edge cases
 try:
     with open(os.path.join(ROOT_DIR, 'config/ankiconnect.json')) as f:
-        config_ac = json.load(f)
+        ankiconnect_config = json.load(f)
 except (FileNotFoundError, json.JSONDecodeError):
     with open(os.path.join(ROOT_DIR, 'config/ankiconnect.json'), 'w') as f:
         f.write('{}')
-    config_ac = {}
+    ankiconnect_config = {}
 
 # fields used for Anki note recognition
-AC_BASE_FIELDS = (
-    # The most common field name schemes
+SCHEMA_TO_FIELD = (
+    # The most common field name schemas come first.
     ('def',         'def'),
     ('syn',         'syn'),
     ('disamb',      'syn'),
@@ -79,11 +79,14 @@ AC_BASE_FIELDS = (
     ('sentencerec',   'recording'),
 )
 
+PHRASE_SCHEMAS = [x[0] for x in SCHEMA_TO_FIELD if x[1] == 'phrase']
+
 
 class AnkiError(Exception):
     pass
 
 
+# TODO: Add typing overloads.
 INVOKE_ACTIONS = Literal[
     'addNote',
     'createModel',
@@ -148,39 +151,43 @@ def invoke(action: INVOKE_ACTIONS, **params: Any) -> Any:
         raise Exception(response['error'])
 
 
-def save_ac_config(c: dict[str, str | int | tuple[str, int]]) -> None:
+def save_ankiconnect_config() -> None:
     with open(os.path.join(ROOT_DIR, 'config/ankiconnect.json'), 'w') as f:
-        json.dump(c, f, indent=2)
+        json.dump(ankiconnect_config, f, indent=1)
 
 
-def cache_current_note(*, refresh: bool = False) -> None:
+def cache_current_note(*, ignore_errors: bool = False) -> None:
     model_name = config['-note']
 
     # Tries to recognize familiar fields and arranges them.
+    result = {}
     for field_name in invoke('modelFieldNames', modelName=model_name):
         first_word_of_field_name = field_name.lower().partition(' ')[0]
-        for scheme, base in AC_BASE_FIELDS:
+        for scheme, base in SCHEMA_TO_FIELD:
             if scheme in first_word_of_field_name:
-                config_ac[model_name] = {field_name: base}
-                save_ac_config(config_ac)
-                return
+                result[field_name] = base
+                break
 
-    if not refresh:
+    if result:
+        ankiconnect_config[model_name] = result
+        save_ankiconnect_config()
+    elif not ignore_errors:
         raise AnkiError(
+            f'Incompatible note.\n'
             f'Check if the note "{model_name}" contains required fields\n'
             f'or if its field names have been changed, use `-refresh`',
         )
 
 
 def refresh_cached_notes() -> None:
-    global config_ac
-    config_ac = {}
+    global ankiconnect_config
+    ankiconnect_config = {}
 
     try:
-        cache_current_note(refresh=True)
+        cache_current_note(ignore_errors=True)
     except AnkiError:
         try:
-            save_ac_config(config_ac)
+            save_ankiconnect_config()
         except FileNotFoundError:
             raise AnkiError('The "ankiconnect.json" file does not exist')
 
@@ -189,11 +196,10 @@ def gui_browse_cards(query: str = 'added:1') -> None:
     invoke('guiBrowse', query=query)
 
 
-PHRASE_SCHEMES = [x[0] for x in AC_BASE_FIELDS if x[1] == 'phrase']
 def currently_reviewed_phrase() -> str:
     for key, value in invoke('guiCurrentCard')['fields'].items():
         key = key.lower()
-        for scheme in PHRASE_SCHEMES:
+        for scheme in PHRASE_SCHEMAS:
             if scheme in key:
                 return value['value']
 
@@ -203,16 +209,17 @@ def currently_reviewed_phrase() -> str:
 def add_card_to_anki(field_values: dict[str, str]) -> str:
     note_name = config['-note']
 
-    if note_name not in config_ac:
+    if note_name not in ankiconnect_config:
         cache_current_note()
 
-    note_from_config = config_ac.get(note_name, {})
+    note_from_config = ankiconnect_config.get(note_name, {})
     fields_to_add = {
         anki_field_name: field_values[base]
         for anki_field_name, base in note_from_config.items()
     }
     tags = config['-tags'].lstrip('-')
-    invoke('addNote',
+    invoke(
+        'addNote',
         note={
             'deckName': config['-deck'],
             'modelName': note_name,
@@ -221,7 +228,7 @@ def add_card_to_anki(field_values: dict[str, str]) -> str:
                 'allowDuplicate': config['-duplicates'],
                 'duplicateScope': config['-dupescope']
              },
-            'tags': tags.split(', ')
+            'tags': tags.split(',')
         }
     )
 

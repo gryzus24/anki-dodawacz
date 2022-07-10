@@ -153,7 +153,8 @@ def audio_path_command(
     if not args or args[0].lower() == 'auto':
         collection_paths = _get_collection_paths()
         if isinstance(collection_paths, CommandResult):
-            return collection_paths  # propagate errors
+            # there was an error, propagate
+            return collection_paths
 
         if len(collection_paths) == 1:
             result_path = collection_paths.pop()
@@ -194,19 +195,20 @@ def add_note_command(
         note_config = json.load(f)
 
     model_name = note_config['modelName']
-    response = anki.invoke(
-        'createModel',
-        modelName=model_name,
-        inOrderFields=note_config['fields'],
-        css=note_config['css'],
-        cardTemplates=[{
-            'Name': note_config['cardName'],
-            'Front': note_config['front'],
-            'Back': note_config['back']
-        }]
-    )
-    if response.error:
-        return CommandResult(error='Note could not be added', reason=response.body)
+    try:
+        anki.invoke(
+            'createModel',
+            modelName=model_name,
+            inOrderFields=note_config['fields'],
+            css=note_config['css'],
+            cardTemplates=[{
+                'Name': note_config['cardName'],
+                'Front': note_config['front'],
+                'Back': note_config['back']
+            }]
+        )
+    except anki.AnkiError as e:
+        return CommandResult(error='Note could not be added', reason=str(e))
 
     implementor.writeln(f'{Color.success}Note added successfully')
     if implementor.ask_yes_no(f'Set "{model_name}" as -note?', default=True):
