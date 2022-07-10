@@ -1,20 +1,16 @@
 from __future__ import annotations
 
-from src.Dictionaries.dictionary_base import Dictionary
+from src.Dictionaries.dictionary_base import Dictionary, DictionaryError
 from src.Dictionaries.utils import request_soup
 from src.colors import Color, R
 
 
-def ask_farlex(query: str) -> Dictionary | str:
-    soup_or_error = request_soup('https://idioms.thefreedictionary.com/' + query)
-    if isinstance(soup_or_error, str):
-        return soup_or_error
-    else:
-        soup = soup_or_error
+def ask_farlex(query: str) -> Dictionary:
+    soup = request_soup('https://idioms.thefreedictionary.com/' + query)
 
     relevant_content = soup.find('section', {'data-src': 'FarlexIdi'})
     if relevant_content is None:
-        return f'{Color.err}Could not find {R}"{query}"{Color.err} in Farlex Idioms'
+        raise DictionaryError(f'{Color.err}Could not find {R}"{query}"{Color.err} in Farlex Idioms')
 
     farlex = Dictionary(name='farlex')
 

@@ -3,7 +3,7 @@ from __future__ import annotations
 from itertools import filterfalse
 from typing import Any, Callable, Iterable, TypeVar
 
-from src.Dictionaries.dictionary_base import Dictionary
+from src.Dictionaries.dictionary_base import Dictionary, DictionaryError
 from src.Dictionaries.utils import request_soup
 from src.colors import Color, R
 from src.data import config
@@ -164,22 +164,22 @@ def _shorten_etymology(_input: str) -> str:
 #
 # American Heritage Dictionary
 ##
-def ask_ahdictionary(query: str) -> Dictionary | str:
+def ask_ahdictionary(query: str) -> Dictionary:
     query = query.strip(' \'";')
     if not query:
-        return f'{Color.err}Invalid query'
+        raise DictionaryError(f'{Color.err}Invalid query')
 
-    soup_or_error = request_soup('https://www.ahdictionary.com/word/search.html', {'q': query})
-    if isinstance(soup_or_error, str):
-        return soup_or_error
-    else:
-        soup = soup_or_error
+    soup = request_soup('https://www.ahdictionary.com/word/search.html', {'q': query})
 
     try:
         if soup.find('div', {'id': 'results'}).text == 'No word definition found':
-            return f'{Color.err}Could not find {R}"{query}"{Color.err} in AH Dictionary'
+            raise DictionaryError(
+                f'{Color.err}Could not find {R}"{query}"{Color.err} in AH Dictionary'
+            )
     except AttributeError:
-        return f'{Color.err}AH Dictionary is probably down:\n{R}{soup.prettify()}'
+        raise DictionaryError(
+            f'{Color.err}ahdictionary.com might be down:\n{R}{soup.prettify()}'
+        )
 
     ahd = Dictionary(name='ahd')
 

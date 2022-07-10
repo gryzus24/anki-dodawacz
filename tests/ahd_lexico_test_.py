@@ -2,21 +2,19 @@
 from __future__ import annotations
 
 import json
+import os
 import random
 import sys
 
 from src.Dictionaries.ahdictionary import ask_ahdictionary
 from src.Dictionaries.lexico import ask_lexico
 from src.colors import Color, R
-from src.data import config
+from src.data import ROOT_DIR, config
 
 # SETUP:
-#   move this file to the project's root directory.
-#   load a file with a bunch of words. (`\n` delimited .txt or directly iterable .json)
+#   prepare a file with a bunch of words. (`\n` delimited .txt or directly iterable .json)
 #   specify a reasonable sample size.
-#   run with `python` or `pytest -sv (--full-trace if looking for crashes)`
-#
-#   `rm _ahd_lexico_test.py; cp tests/_ahd_lexico_test.py . && pytest -sv --full-trace _ahd_lexico_test.py`
+#   run with `python -m` or `pytest -sv (--full-trace if looking for crashes)`
 #
 # PROBLEMATIC AHD QUERIES:
 #   gift-wrap : 'or' in inflections
@@ -31,6 +29,7 @@ from src.data import config
 #   better : '.' in inflections
 #   flagellate: 'also' in labels
 #   roughhouse: 'also' in labels
+#   mid : a lonely dot as a definition
 
 WORDS_FILE_PATH = None
 SAMPLE_SIZE = 80
@@ -38,6 +37,7 @@ SAMPLE_SIZE = 80
 # 'ALL', 'INFO', 'ERROR'
 LOG_LEVEL = 'ALL'
 SAVE_TESTED_WORDS_TO_FILE = True
+TESTED_WORDS_SAVE_PATH = os.path.join(ROOT_DIR, '_tested_words.json')
 BUFFER_SIZE = SAMPLE_SIZE // 4
 
 # Problematic queries.
@@ -120,10 +120,10 @@ class Setup:
 
         if SAVE_TESTED_WORDS_TO_FILE:
             try:
-                with open('_tested_words.json') as f:
+                with open(TESTED_WORDS_SAVE_PATH) as f:
                     tested_words: dict[str, list] = json.load(f)
             except (FileNotFoundError, json.JSONDecodeError):
-                with open('_tested_words.json', 'w') as f:
+                with open(TESTED_WORDS_SAVE_PATH, 'w') as f:
                     f.write('{}')
             else:
                 sys.stdout.write(f'Total words tested : {Color.success}{len(tested_words)}\n')
@@ -161,9 +161,9 @@ class Setup:
     def _flush_buffer(self):
         self.tested_words.update(self.buffer)
         self.buffer.clear()
-        sys.stdout.write('\nSaving buffer to _tested_words.json...')
+        sys.stdout.write(f'\nSaving buffer to {TESTED_WORDS_SAVE_PATH}...')
         sys.stdout.flush()
-        with open('_tested_words.json', 'w') as f:
+        with open(TESTED_WORDS_SAVE_PATH, 'w') as f:
             json.dump(self.tested_words, f, sort_keys=True, ensure_ascii=False)
         sys.stdout.write(' Saved.\n\n')
 

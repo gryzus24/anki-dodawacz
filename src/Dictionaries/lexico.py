@@ -3,7 +3,7 @@ from __future__ import annotations
 import sys
 from typing import Any
 
-from src.Dictionaries.dictionary_base import Dictionary
+from src.Dictionaries.dictionary_base import Dictionary, DictionaryError
 from src.Dictionaries.utils import request_soup
 from src.colors import Color, R
 
@@ -49,7 +49,7 @@ def get_label(block_: Any) -> str:
 ##
 _previous_query = None
 
-def ask_lexico(query: str) -> Dictionary | str:
+def ask_lexico(query: str) -> Dictionary:
     def add_def(
             definition_: Any, example_: str = '', label_: str = '', deftype: str = 'DEF'
     ) -> None:
@@ -64,13 +64,9 @@ def ask_lexico(query: str) -> Dictionary | str:
 
     query = query.strip(' ?/.#')
     if not query:
-        return f'{Color.err}Invalid query'
+        raise DictionaryError(f'{Color.err}Invalid query')
 
-    soup_or_error = request_soup('https://www.lexico.com/definition/' + query)
-    if isinstance(soup_or_error, str):
-        return soup_or_error
-    else:
-        soup = soup_or_error
+    soup = request_soup('https://www.lexico.com/definition/' + query)
 
     main_div = soup.find('div', class_='entryWrapper')
     if main_div is None:  # lexico probably denied access
@@ -86,10 +82,10 @@ def ask_lexico(query: str) -> Dictionary | str:
     if page_check.get_text(strip=True) == 'HomeEnglish':
         new_query_tag = main_div.find('a', class_='no-transition')
         if new_query_tag is None:
-            return f'{Color.err}Could not find {R}"{query}"{Color.err} in Lexico'
+            raise DictionaryError(f'{Color.err}Could not find {R}"{query}"{Color.err} in Lexico')
         else:
             _previous_query = query  # global
-            _, _, revive = new_query_tag.get('href').rpartition('/')
+            _, _, revive = new_query_tag['href'].rpartition('/')
             return ask_lexico(revive)
 
     lexico = Dictionary(name='lexico')

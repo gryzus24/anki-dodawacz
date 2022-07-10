@@ -1,11 +1,13 @@
 from __future__ import annotations
 
+import functools
 from itertools import repeat
 from typing import Optional, Sequence, NamedTuple, TYPE_CHECKING
 
 import src.ffmpeg_interface as ffmpeg
 from src.Dictionaries.ahdictionary import ask_ahdictionary
 from src.Dictionaries.dictionary_base import Dictionary
+from src.Dictionaries.dictionary_base import DictionaryError
 from src.Dictionaries.dictionary_base import filter_dictionary
 from src.Dictionaries.farlex import ask_farlex
 from src.Dictionaries.lexico import ask_lexico
@@ -33,17 +35,11 @@ DICTIONARY_LOOKUP = {
     'lexico': ask_lexico,
     'wordnet': ask_wordnet,
 }
-_cache: dict[tuple[str, str], Dictionary] = {}
-def query_dictionary(key: str, query: str) -> Dictionary | str:
-    if (key, query) in _cache:
-        return _cache[key, query]
-
-    dictionary_or_error = DICTIONARY_LOOKUP[key](query)
-    if isinstance(dictionary_or_error, Dictionary):
-        # cache only successful queries
-        _cache[key, query] = dictionary_or_error
-
-    return dictionary_or_error
+@functools.lru_cache(maxsize=None)
+def query_dictionary(key: str, query: str) -> Dictionary:
+    # Lookup might raise a DictionaryError or a ConnectionError.
+    # Only successful queries will be cached.
+    return DICTIONARY_LOOKUP[key](query)
 
 
 def get_dictionaries(
@@ -61,12 +57,14 @@ def get_dictionaries(
     for flag in flags:
         key = DICT_FLAG_TO_QUERY_KEY[flag]
         if key not in none_keys:
-            dictionary_or_error = query_dictionary(key, query)
-            if isinstance(dictionary_or_error, str):
+            try:
+                result.append(query_dictionary(key, query))
+            except DictionaryError as e:
                 none_keys.add(key)
-                writer.writeln(f'{Color.err}{dictionary_or_error}')
-            else:
-                result.append(dictionary_or_error)
+                writer.writeln(str(e))
+            except ConnectionError as e:
+                writer.writeln(str(e))
+                return None
 
     if result:
         return result
@@ -77,12 +75,12 @@ def get_dictionaries(
         return None
 
     writer.writeln(f'{Color.heed}Querying the fallback dictionary...')
-    dictionary_or_error = query_dictionary(fallback_key, query)
-    if isinstance(dictionary_or_error, str):
-        writer.writeln(f'{Color.err}{dictionary_or_error}')
+    try:
+        result.append(query_dictionary(fallback_key, query))
+    except (DictionaryError, ConnectionError) as e:
+        writer.writeln(str(e))
         return None
 
-    result.append(dictionary_or_error)
     return result
 
 

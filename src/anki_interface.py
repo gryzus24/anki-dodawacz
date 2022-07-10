@@ -1,3 +1,5 @@
+# The API offered by this module is not type safe and pretty bad.
+# TODO: make it cleaner.
 from __future__ import annotations
 
 import json
@@ -13,11 +15,11 @@ from src.data import ROOT_DIR, config
 # of saved notes without restarting the program and
 # takes care of some edge cases
 try:
-    with open(os.path.join(ROOT_DIR, 'config/ankiconnect.json')) as af:
-        config_ac = json.load(af)
+    with open(os.path.join(ROOT_DIR, 'config/ankiconnect.json')) as f:
+        config_ac = json.load(f)
 except (FileNotFoundError, json.JSONDecodeError):
-    with open(os.path.join(ROOT_DIR, 'config/ankiconnect.json'), 'w') as af:
-        af.write('{}')
+    with open(os.path.join(ROOT_DIR, 'config/ankiconnect.json'), 'w') as f:
+        f.write('{}')
     config_ac = {}
 
 # fields used for Anki note recognition

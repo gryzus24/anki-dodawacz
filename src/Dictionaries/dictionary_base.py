@@ -6,6 +6,11 @@ from itertools import compress
 from typing import Callable, Optional, Sequence, TypedDict
 
 
+# Raised by implementors of dictionaries.
+class DictionaryError(Exception):
+    pass
+
+
 class EntryGroup(TypedDict):
     after: list[Sequence[str]]
     before: list[Sequence[str]]
@@ -29,7 +34,7 @@ def multi_split(string: str, splits: set[str]) -> list[str]:
     return result
 
 
-def should_skip(label: str, flags: tuple[str, ...]) -> bool:
+def _should_skip(label: str, flags: tuple[str, ...]) -> bool:
     labels = tuple(multi_split(label, {' ', '.', '&'}))
     for label in labels:
         if label.startswith(flags):
@@ -140,7 +145,7 @@ def filter_dictionary(dictionary: Dictionary, flags: Sequence[str]) -> Dictionar
                     # we keep a reference to the label to change it to False.
                     _skip_label = True
                 else:
-                    _skip_label = should_skip(entry[1].lower(), label_flags)
+                    _skip_label = _should_skip(entry[1].lower(), label_flags)
                 skips.append(_skip_label)
                 last_label_skipped = _skip_label
             elif 'DEF' in op:
@@ -158,7 +163,7 @@ def filter_dictionary(dictionary: Dictionary, flags: Sequence[str]) -> Dictionar
                         else:
                             raise AssertionError(f'unreachable {op!r}')
                     else:
-                        _skip_def = should_skip(entry[3].lower(), label_flags)
+                        _skip_def = _should_skip(entry[3].lower(), label_flags)
 
                     if word_flags and _skip_def:
                         for word in word_flags:

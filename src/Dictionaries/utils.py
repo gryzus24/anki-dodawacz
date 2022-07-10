@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import sys
-from typing import Any, Callable, Optional
+from typing import Any, Callable, Optional, NoReturn
 
 from src.colors import R, Color
 from src.data import USER_AGENT
@@ -23,7 +23,7 @@ if (*map(int, __version__.split('.')),) < (4, 10, 0):
          'Your version of beautifulsoup is out of date, please update:\n'
          'pip install -U beautifulsoup4\n'
          'If you are using a virtual environment, you can safely uninstall\n'
-         'the soupsieve package to speed up the startup of the program:\n'
+         'the soupsieve package to slightly speed up program startup:\n'
          'pip uninstall soupsieve\n'
     )
     raise SystemExit
@@ -38,17 +38,17 @@ http = urllib3.PoolManager(timeout=10, headers=USER_AGENT)
 
 def request_soup(
         url: str, fields: Optional[dict[str, str]] = None, **kw: Any
-) -> BeautifulSoup | str:
+) -> BeautifulSoup | NoReturn:
     try:
         r = http.request_encode_url('GET', url, fields=fields, **kw)
     except Exception as e:
         if isinstance(e.__context__, NewConnectionError):
-            return (
-                'Could not establish connection,\n'
-                'check your Internet connection and try again.'
+            raise ConnectionError(
+                f'{Color.err}Could not establish a connection,\n'
+                f'check your network connection and try again.'
             )
         elif isinstance(e.__context__, ConnectTimeoutError):
-            return 'Connection timed out.'
+            raise ConnectionError(f'{Color.err}Connection timed out.')
         else:
             raise
 
