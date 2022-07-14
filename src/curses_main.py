@@ -5,7 +5,7 @@ import shutil
 from collections import Counter
 from itertools import islice, zip_longest
 from subprocess import Popen, PIPE, DEVNULL
-from typing import Callable, Optional, TypeVar, Reversible, Sequence, TYPE_CHECKING
+from typing import Callable, TypeVar, Reversible, Sequence, TYPE_CHECKING
 
 import src.anki_interface as anki
 from src.Dictionaries.dictionary_base import filter_dictionary
@@ -300,7 +300,7 @@ def format_dictionary(
 
     def _into_boxes(
             fl_string_color_pairs: Reversible[tuple[str, int]],
-            rest: Optional[tuple[list[str], int]] = None
+            rest: tuple[list[str], int] | None = None
     ) -> list[curses._CursesWindow]:
         result = []
         _box = curses.newwin(1, column_width)
@@ -1340,7 +1340,7 @@ def _curses_main(
                 screen_buffer, settings = ret
         elif c == b'B':
             try:
-                anki.gui_browse_cards()
+                anki.invoke('guiBrowse', query='added:1')
             except anki.AnkiError as e:
                 screen_buffer.status.nlerror('Could not open the card browser:')
                 screen_buffer.status.addstr(str(e))

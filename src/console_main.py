@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import shutil
 from itertools import islice, zip_longest
-from typing import Optional, Sequence, TYPE_CHECKING
+from typing import Sequence, TYPE_CHECKING
 
 from src.Dictionaries.utils import wrap_and_pad, wrap_lines
 from src.cards import CARD_FIELDS_SAVE_ORDER, create_and_add_card
@@ -22,7 +22,7 @@ def get_width_per_column(width: int, ncols: int) -> tuple[int, int]:
 
 
 def get_display_parameters(
-        dictionary: Dictionary, width: int, height: int, ncolumns: Optional[int] = None
+        dictionary: Dictionary, width: int, height: int, ncolumns: int | None = None
 ) -> tuple[int, int, int]:
     # width:  screen width in columns.
     # wrap_height:  wrap into columns when dictionary takes up this many rows.

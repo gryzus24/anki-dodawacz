@@ -4,7 +4,7 @@ import json
 import os
 import sys
 from itertools import zip_longest
-from typing import Any, Sequence, NamedTuple, Optional, Callable, TYPE_CHECKING
+from typing import Any, Sequence, NamedTuple, Callable, TYPE_CHECKING
 
 import src.anki_interface as anki
 import src.ffmpeg_interface as ffmpeg
@@ -331,7 +331,7 @@ def tags_command(cmd: str, *args: str) -> CommandResult:
 
 
 def set_numeric_commands(
-        cmd: str, args: Sequence[str], *, lower: int, upper: int, default: Optional[int] = None
+        cmd: str, args: Sequence[str], *, lower: int, upper: int, default: int | None = None
 ) -> CommandResult:
     if not args:
         return CommandResult(
@@ -569,15 +569,66 @@ def config_command(*args: str) -> CommandResult:
     return CommandResult(output=''.join(result))
 
 
-def refresh_command(cmd: str, *args: str) -> CommandResult:
-    # Ignore any output for now.
-    anki.refresh_cached_notes()
-    return CommandResult()
+def check_note_command(cmd: str, *args: str) -> CommandResult:
+    model_name = config['-note']
+
+    try:
+        model = anki.models.get_model(model_name, refresh=True)
+    except anki.AnkiError as e:
+        return CommandResult(
+            error='Could not check note compatibility:',
+            reason=str(e)
+        )
+
+    f_offset = len('Field name')
+    v_offset = len('Value')
+    for key, val in model.items():
+        if len(key) > f_offset:
+            f_offset = len(key)
+        if val is not None and len(val) > v_offset:
+            v_offset = len(val)
+
+    result = [
+        f'{BOLD}Note: {DEFAULT}{model_name}\n\n',
+        f'{BOLD}{"Field name":{f_offset}s}  Value {DEFAULT}\n',
+        f'{f_offset * "-"}  {v_offset * "-"}\n',
+    ]
+    all_none = True
+    for key, val in model.items():
+        if val is None:
+            result.append(f'{key:{f_offset}s}  ?\n')
+        else:
+            all_none = False
+            result.append(f'{key:{f_offset}s}  {val}\n')
+
+    if all_none:
+        result.append(f'\n{anki.models.error_incompatible(model_name)}\n')
+
+    return CommandResult(output=''.join(result))
+
+
+def scheme_command(cmd: str, *args: str) -> CommandResult:
+    return CommandResult(
+        output=(
+            f'{BOLD}'
+            f'Field name       Value{DEFAULT}\n'
+            f'---------------  ------------\n'
+            f'Definitions      def\n'
+            f'Synonyms         syn\n'
+            f'Sentence         sen\n'
+            f'Phrase           phrase\n'
+            f'Examples         exsen\n'
+            f'Parts of speech  pos\n'
+            f'Etymology        etym\n'
+            f'Audio            audio\n'
+            f'Recording        recording\n'
+        )
+    )
 
 
 def browse_command(cmd: str, *args: str) -> CommandResult:
     try:
-        anki.gui_browse_cards(' '.join(args) if args else 'added:1')
+        anki.invoke('guiBrowse', query=' '.join(args) if args else 'added:1')
     except anki.AnkiError as e:
         return CommandResult(
             error='Could not open the card browser:',
@@ -645,10 +696,14 @@ e.g.  Search $ This is a sentence with a word <embedded> inside.
 
 {_title('Audio and Anki configuration')}
 {BOLD}1.{DEFAULT} open Anki and install the Anki-Connect add-on (2055492159)
-{BOLD}2.{DEFAULT} use `-ap auto` or `-ap {{path}}` to add your "collection.media" path so that the
-   program knows where to save audio files
+{BOLD}2.{DEFAULT} use `-ap auto` or `-ap {{path}}` to add your "collection.media" path so that
+   the program knows where to save audio files
 {BOLD}3.{DEFAULT} specify your deck `-deck {{deck name}}`
-{BOLD}4.{DEFAULT} add a premade note `--add-note` or specify your own `-note {{note name}}`
+{BOLD}4a.{DEFAULT} add a premade note `--add-note`
+{BOLD}4b.{DEFAULT} or use your own `-note {{note name}}`
+  {BOLD}-{DEFAULT} check its compatibility with the supported fields `--check-note`
+  {BOLD}-{DEFAULT} name the fields on your Anki note according to the naming scheme `-scheme`
+  {BOLD}-{DEFAULT} use the `--check-note` again to reflect the changes in the program
 {BOLD}5.{DEFAULT} enable Anki-Connect `-ankiconnect on`
 
 {BOLD}{79 * '─'}{DEFAULT}
@@ -744,8 +799,11 @@ Hiding a phrase means replacing it with "..." (default)
 -tags {{tags|-}}         Anki tags (separated by commas)
 
 --add-note             add a custom note to the current user's collection
--refresh               refresh cached notes (if the note has been changed
-                       in Anki)
+--check-note           see what values are assigned to current note's fields
+                       and refresh the note if the names of the fields in Anki
+                       have been changed
+-scheme                show an example naming scheme for Anki notes and what
+                       values they assign
 
 -b, --browse [query]   open the card browser with "added:1" or [query]
 
@@ -976,7 +1034,8 @@ NO_HELP_ARG_COMMANDS: dict[str, Callable[..., CommandResult]] = {
     '-color': color_command,
     '-config': config_command,
     '-conf': config_command,
-    '-refresh': refresh_command,
+    '--check-note': check_note_command,
+    '-scheme': scheme_command,
     '-b': browse_command,
     '--browse': browse_command,
     '-h': help_command,

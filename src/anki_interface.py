@@ -1,28 +1,18 @@
 from __future__ import annotations
 
+import atexit
 import json
 import os
-from typing import Any, Literal
+from typing import Any, Literal, overload
 
 from urllib3.exceptions import NewConnectionError
 
 from src.Dictionaries.utils import http
 from src.data import ROOT_DIR, config
 
-# Module global configuration allows for hard refresh
-# of saved notes without restarting the program and
-# takes care of some edge cases
-try:
-    with open(os.path.join(ROOT_DIR, 'config/ankiconnect.json')) as f:
-        ankiconnect_config = json.load(f)
-except (FileNotFoundError, json.JSONDecodeError):
-    with open(os.path.join(ROOT_DIR, 'config/ankiconnect.json'), 'w') as f:
-        f.write('{}')
-    ankiconnect_config = {}
-
 # fields used for Anki note recognition
-SCHEMA_TO_FIELD = (
-    # The most common field name schemas come first.
+SCHEME_TO_FIELD = (
+    # The most common field name scheme.
     ('def',         'def'),
     ('syn',         'syn'),
     ('disamb',      'syn'),
@@ -44,6 +34,7 @@ SCHEMA_TO_FIELD = (
     ('nagr',        'recording'),
 
     # Others
+    ('front', 'def'),
     ('gloss', 'def'),
     ('wyjaś', 'def'),
     ('wyjas', 'def'),
@@ -56,6 +47,7 @@ SCHEMA_TO_FIELD = (
     ('illust',    'exsen'),
     ('exsen',     'exsen'),
 
+    ('back', 'phrase'),
     ('slowo', 'phrase'),
     ('fraz',  'phrase'),
     ('word',  'phrase'),
@@ -72,21 +64,23 @@ SCHEMA_TO_FIELD = (
     ('dzwiek', 'audio'),
     ('sound',  'audio'),
     ('media',  'audio'),
-
-    ('sentence_a',    'recording'),
-    ('sentenceaudio', 'recording'),
-    ('sentence_r',    'recording'),
-    ('sentencerec',   'recording'),
 )
 
-PHRASE_SCHEMAS = [x[0] for x in SCHEMA_TO_FIELD if x[1] == 'phrase']
+PHRASE_SCHEMES = [x[0] for x in SCHEME_TO_FIELD if x[1] == 'phrase']
 
 
 class AnkiError(Exception):
     pass
 
 
-# TODO: Add typing overloads.
+class FirstFieldEmptyError(AnkiError):
+    pass
+
+
+class IncompatibleModelError(AnkiError):
+    pass
+
+
 INVOKE_ACTIONS = Literal[
     'addNote',
     'createModel',
@@ -95,6 +89,12 @@ INVOKE_ACTIONS = Literal[
     'modelFieldNames',
     'storeMediaFile',
 ]
+@overload
+def invoke(action: Literal['modelFieldNames'], **params: Any) -> list[str]: ...
+@overload
+def invoke(action: INVOKE_ACTIONS, **params: Any) -> Any: ...
+
+
 def invoke(action: INVOKE_ACTIONS, **params: Any) -> Any:
     json_request = json.dumps(
         {'action': action, 'params': params, 'version': 6}
@@ -130,10 +130,9 @@ def invoke(action: INVOKE_ACTIONS, **params: Any) -> Any:
             f'so that it uses single spaces.'
         )
     elif err.startswith('cannot create note because it is empty'):
-        raise AnkiError(
+        raise FirstFieldEmptyError(
             f"First field empty.\n"
-            f'Check if {config["-note"]} contains required fields\n'
-            f'or if field names have been changed, use `-refresh`'
+            f"To check what fields are assigned to your note use `--check-note`"
         )
     elif err.startswith('cannot create note because it is a duplicate'):
         raise AnkiError(
@@ -151,89 +150,103 @@ def invoke(action: INVOKE_ACTIONS, **params: Any) -> Any:
         raise Exception(response['error'])
 
 
-def save_ankiconnect_config() -> None:
-    with open(os.path.join(ROOT_DIR, 'config/ankiconnect.json'), 'w') as f:
-        json.dump(ankiconnect_config, f, indent=1)
-
-
-def cache_current_note(*, ignore_errors: bool = False) -> None:
-    model_name = config['-note']
-
-    # Tries to recognize familiar fields and arranges them.
-    result = {}
-    for field_name in invoke('modelFieldNames', modelName=model_name):
-        first_word_of_field_name = field_name.lower().partition(' ')[0]
-        for scheme, base in SCHEMA_TO_FIELD:
-            if scheme in first_word_of_field_name:
-                result[field_name] = base
-                break
-
-    if result:
-        ankiconnect_config[model_name] = result
-        save_ankiconnect_config()
-    elif not ignore_errors:
-        raise AnkiError(
-            f'Incompatible note.\n'
-            f'Check if the note "{model_name}" contains required fields\n'
-            f'or if its field names have been changed, use `-refresh`',
-        )
-
-
-def refresh_cached_notes() -> None:
-    global ankiconnect_config
-    ankiconnect_config = {}
-
-    try:
-        cache_current_note(ignore_errors=True)
-    except AnkiError:
-        try:
-            save_ankiconnect_config()
-        except FileNotFoundError:
-            raise AnkiError('The "ankiconnect.json" file does not exist')
-
-
-def gui_browse_cards(query: str = 'added:1') -> None:
-    invoke('guiBrowse', query=query)
-
-
 def currently_reviewed_phrase() -> str:
     for key, value in invoke('guiCurrentCard')['fields'].items():
         key = key.lower()
-        for schema in PHRASE_SCHEMAS:
-            if schema in key:
+        for scheme in PHRASE_SCHEMES:
+            if scheme in key:
                 return value['value']
 
     raise AnkiError('Could not find the "Phrase-like" field')
 
 
-def add_card_to_anki(field_values: dict[str, str]) -> str:
-    note_name = config['-note']
+def map_scheme_to_fields(model_name: str) -> dict[str, str | None]:
+    result: dict[str, str | None] = {}
+    for field_name in invoke('modelFieldNames', modelName=model_name):
+        first_word_of_field_name = field_name.lower().partition(' ')[0]
+        for scheme, base in SCHEME_TO_FIELD:
+            if scheme in first_word_of_field_name:
+                result[field_name] = base
+                break
+        else:
+            result[field_name] = None
 
-    if note_name not in ankiconnect_config:
-        cache_current_note()
+    return result
 
-    note_from_config = ankiconnect_config.get(note_name, {})
-    fields_to_add = {
-        anki_field_name: field_values[base]
-        for anki_field_name, base in note_from_config.items()
-    }
-    tags = config['-tags'].lstrip('-')
+
+class _AnkiModels:
+    def __init__(self) -> None:
+        self._model_cache: dict[str, dict[str, str | None]] | None = None
+
+    @staticmethod
+    def error_incompatible(model_name: str) -> str:
+        return (
+            f'Note {model_name!r} has no compatible fields.\n'
+            f'To fix this, you can:\n'
+            f'- add one of the built-in notes with `--add-note`,\n'
+            f"- or rename the fields of the current note to use\n"
+            f"  the supported names that are listed by `-scheme`,\n"
+            f'  after renaming, use the `--check-note` command\n'
+            f'  to reflect the changes in the program.'
+        )
+
+    def _save_models(self, path: str) -> None:
+        with open(path, 'w') as f:
+            json.dump(self._model_cache, f, indent=1)
+
+    def get_model(self, model_name: str, refresh: bool = False) -> dict[str, str | None]:
+        if self._model_cache is None:
+            path = os.path.join(ROOT_DIR, 'config/ankiconnect.json')
+            try:
+                with open(path) as f:
+                    self._model_cache = json.load(f)
+            except (FileNotFoundError, json.JSONDecodeError):
+                self._model_cache = {}
+            atexit.register(self._save_models, path)
+
+        if not refresh and model_name in self._model_cache:
+            return self._model_cache[model_name]
+
+        mapping = map_scheme_to_fields(model_name)
+        self._model_cache[model_name] = mapping
+        return mapping
+
+
+models = _AnkiModels()
+
+
+def _add_note(model_name: str, card: dict[str, str], model: dict[str, str | None]) -> None:
+    fields = {k: card[v] for k, v in model.items() if v is not None}
+    if not fields:
+        raise IncompatibleModelError(models.error_incompatible(model_name))
+
     invoke(
         'addNote',
         note={
             'deckName': config['-deck'],
-            'modelName': note_name,
-            'fields': fields_to_add,
+            'modelName': model_name,
+            'fields': fields,
             'options': {
                 'allowDuplicate': config['-duplicates'],
                 'duplicateScope': config['-dupescope']
-             },
-            'tags': tags.split(',')
+            },
+            'tags': config['-tags'].split(',')
         }
     )
 
+
+def add_card_to_anki(card: dict[str, str]) -> str:
+    model_name = config['-note']
+
+    try:
+        _add_note(model_name, card, models.get_model(model_name))
+    except (FirstFieldEmptyError, IncompatibleModelError):
+        # If the user renamed the fields with wrong names to good names
+        # and then forgot to apply the change with --check-note, we can save it.
+        _add_note(model_name, card, models.get_model(model_name, refresh=True))
+
     return (
         f'Deck: {config["-deck"]}\n'
-        f'Note: {note_name}\n'
-        f'Tags: {tags}'
+        f'Note: {model_name}\n'
+        f'Tags: {config["-tags"]}'
     )

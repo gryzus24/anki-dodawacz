@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import sys
-from typing import Any, Callable, Optional, NoReturn
+from typing import Any, Callable, NoReturn
 
 from src.colors import R, Color
 from src.data import USER_AGENT
@@ -37,7 +37,7 @@ http = urllib3.PoolManager(timeout=10, headers=USER_AGENT)
 
 
 def request_soup(
-        url: str, fields: Optional[dict[str, str]] = None, **kw: Any
+        url: str, fields: dict[str, str] | None = None, **kw: Any
 ) -> BeautifulSoup | NoReturn:
     try:
         r = http.request_encode_url('GET', url, fields=fields, **kw)

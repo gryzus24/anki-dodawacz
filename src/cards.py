@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import binascii
 import os
-from typing import Iterable, Optional, TYPE_CHECKING
+from typing import Iterable, TYPE_CHECKING
 
 import src.anki_interface as anki
 from src.Dictionaries.audio_dictionaries import ahd_audio, diki_audio, lexico_audio
@@ -37,7 +37,7 @@ def save_card_to_file(path: str, card: dict[str, str]) -> None:
         f.write('\n')
 
 
-def _query_diki(phrase: str, flags: Optional[Iterable[str]] = None) -> str:
+def _query_diki(phrase: str, flags: Iterable[str] | None = None) -> str:
     if flags is not None:
         for f in flags:
             if f in {'n', 'v', 'a', 'adj', 'noun', 'verb', 'adjective'}:
@@ -51,7 +51,7 @@ def check_audio_url(
         audio_url: str,
         dictionary_name: str,
         phrase: str,
-        flags: Optional[Iterable[str]] = None
+        flags: Iterable[str] | None = None
 ) -> str:
     server = config['-audio']
     if server == '-':
@@ -315,7 +315,7 @@ def create_and_add_card(
             else:
                 implementor.writeln(f'{Color.success}Card successfully added to Anki')
                 for item in response.split('\n'):
-                    a, b = item.split(': ')
+                    a, _, b = item.partition(': ')
                     implementor.writeln(f'{Color.heed}{a}: {R}{b}')
                 implementor.writeln(f'{Color.heed}>{R} open card browser: -b\n')
 

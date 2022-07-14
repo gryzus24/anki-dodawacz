@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import functools
 from itertools import repeat
-from typing import Optional, Sequence, NamedTuple, TYPE_CHECKING
+from typing import Sequence, NamedTuple, TYPE_CHECKING
 
 import src.ffmpeg_interface as ffmpeg
 from src.Dictionaries.ahdictionary import ask_ahdictionary
@@ -43,7 +43,7 @@ def query_dictionary(key: str, query: str) -> Dictionary:
 
 
 def get_dictionaries(
-        writer: WriterInterface, query: str, flags: Optional[Sequence[str]] = None
+        writer: WriterInterface, query: str, flags: Sequence[str] | None = None
 ) -> list[Dictionary] | None:
     if flags is None or not flags:
         flags = [config['-dict']]

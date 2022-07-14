@@ -3,7 +3,7 @@ from __future__ import annotations
 import sys
 from collections import defaultdict
 from itertools import compress
-from typing import Callable, Optional, Sequence, TypedDict
+from typing import Callable, Sequence, TypedDict
 
 
 # Raised by implementors of dictionaries.
@@ -211,7 +211,7 @@ def filter_dictionary(dictionary: Dictionary, flags: Sequence[str]) -> Dictionar
 
 
 class Dictionary:
-    def __init__(self, contents: Optional[list[Sequence[str]]] = None, *, name: str) -> None:
+    def __init__(self, contents: list[Sequence[str]] | None = None, *, name: str) -> None:
         self.name = name
         self.contents: list[Sequence[str]] = []
         self.phrase_indices: list[int] = []
