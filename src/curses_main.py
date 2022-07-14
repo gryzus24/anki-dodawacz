@@ -783,7 +783,7 @@ class Screen:
         self.move_up(self.screen_height - 2)
 
     ACTIONS: dict[bytes, Callable[..., None]] = {
-        b'^J': restore_original_dictionary,
+        b'^J': restore_original_dictionary, b'^M': restore_original_dictionary,
         b'd': deselect_all,
         b'j': move_down, b'^N': move_down, b'KEY_DOWN': move_down,
         b'k': move_up,   b'^P': move_up,   b'KEY_UP': move_up,
@@ -969,7 +969,6 @@ class Prompt:
     }
 
     def _run(self) -> str | None:
-        prompt_actions = Prompt.ACTIONS
         while True:
             self.screen_buffer.draw()
             self.draw_prompt()
@@ -979,15 +978,15 @@ class Prompt:
                 self.type(c)
             elif c in (3, 27):  # ^C, ESC
                 return None
-            elif c in prompt_actions:
-                prompt_actions[c](self)
-            elif c == curses.KEY_BACKSPACE:
+            elif c in Prompt.ACTIONS:
+                Prompt.ACTIONS[c](self)
+            elif c in (curses.KEY_BACKSPACE, 8):  # 8 = ^H on Windows
                 if self._entered:
                     self.backspace()
                 elif self.exit_if_empty:
                     return None
             elif (
-                c in (7, 10) or  # ^J, \n
+                c in (7, 10, 13) or  # ^J, \n, (^M for Enter on Windows)
                 (c == curses.KEY_MOUSE and curses.getmouse()[4] & curses.BUTTON3_PRESSED)
             ):
                 ret = ''.join(self._entered)

@@ -657,8 +657,8 @@ First the program queries `-dict` (default: AH Dictionary).
 If query fails it fallbacks to `-dict2` (default: Lexico).
 
 There are two front-ends:
-  Cross-platform: console
-  Unix-like specific: curses
+  console: Cross-platform
+  curses: Unix-like specific, experimental on Windows
 
 See `--help-console` and `--help-curses` for more information.
 
@@ -886,10 +886,10 @@ Navigation:
 
 Selection and Anki:
   1-9 !-)   select definition from 1 to 20, press 0 for the tenth definition
-            hold Shift for the remaining 10 to 20.
+            hold Shift for the remaining 11 to 20.
   d         deselect everything
   B         open the Anki card browser
-  C         create card(s) from the selection
+  C         create card(s) from the selected definitions
 
 Dictionary filtering:
   ^F F4     open the filter prompt (this is just like the flags when querying)
