@@ -89,6 +89,8 @@ INVOKE_ACTIONS = Literal[
     'modelFieldNames',
     'storeMediaFile',
 ]
+# overloads are added on an as-needed basis, some
+# signatures are just too complex to bother typing them.
 @overload
 def invoke(action: Literal['modelFieldNames'], **params: Any) -> list[str]: ...
 @overload
@@ -131,8 +133,8 @@ def invoke(action: INVOKE_ACTIONS, **params: Any) -> Any:
         )
     elif err.startswith('cannot create note because it is empty'):
         raise FirstFieldEmptyError(
-            f"First field empty.\n"
-            f"To check what fields are assigned to your note use `--check-note`"
+            "First field empty.\n"
+            "To check what fields are assigned to your note use `--check-note`"
         )
     elif err.startswith('cannot create note because it is a duplicate'):
         raise AnkiError(
