@@ -112,7 +112,10 @@ def invoke(action: INVOKE_ACTIONS, **params: Any) -> Any:
             ).data.decode()
         )
     except NewConnectionError:
-        raise AnkiError('Could not connect with Anki\nOpen Anki and try again.')
+        raise AnkiError(
+            'Could not connect with Anki.\n'
+            'Check if Anki is running with Anki-Connect installed.'
+        )
 
     err = response['error']
     if err is None:
