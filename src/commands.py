@@ -730,6 +730,9 @@ Type command's name to display usage.
 -curses        use the ncurses backend to interact with dictionaries
 -nohelp        do not show help (F1) by default
 -margin {{0-99}} column's left and right margin
+-hlmode {{      selection highlight mode: HIGHLIGHT(y/n), BOLDEN(y/n)
+  yy|yn|ny|nn
+}}
 
 {_title('Console only commands')}
 -sen           enable/disable sentence field
@@ -908,8 +911,8 @@ Dictionary filtering:
 Searching:
   ; :       open the search prompt for issuing commands and searching
   -         ... and insert a '-' character
-  p wheel   insert primary selection into the search prompt
-            (uses xsel or xclip, Xorg only)
+  p wheel   insert primary selection (on graphical Unix) into the search
+            prompt or the contents of the clipboard (on Windows)
   P         insert contents of the "Phrase" field from the currently reviewed
             Anki card
 

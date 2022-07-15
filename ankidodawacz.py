@@ -120,19 +120,14 @@ def dispatch_query(s: str) -> None:
             from src.curses_main import curses_ui_entry
         except ImportError:
             if WINDOWS:
-                sys.stdout.write(
+                sys.stderr.write(
                     f'{Color.err}The curses module could not be imported:{R}\n'
-                    f'to use the console front-end type: -curses off\n'
-                    f'Windows is not officially supported,\n'
-                    f'but there are a few things you can try:\n'
-                    f' - install CygWin or MinGW32,\n'
-                    f' - install WSL and run it from there,\n'
-                    f' - pip install windows-curses (works, but broken),\n'
-                    f' - install Linux or some other Unix-like OS\n'
-                    f'   (changing an entire operating system just to run\n'
-                    f'   this program is a chad move for sure :^)\n\n'
+                    f'\'windows-curses\' is not installed, you can install it with:\n'
+                    f'pip install windows-curses\n\n'
+                    f'Windows support is experimental, any feedback is welcome.\n'
+                    f'You can always revert back to the pure console mode: -curses off\n'
                 )
-                return
+                raise SystemExit
             else:
                 raise
 
