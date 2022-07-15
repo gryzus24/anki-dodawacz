@@ -133,7 +133,14 @@ Color = _CursesColor()
 
 
 def highlight() -> int:
-    return Color.heed | curses.A_STANDOUT
+    mask = config['-hlmode']
+    result = Color.heed
+    if mask[0] == 'y':
+        result |= curses.A_STANDOUT
+    if mask[1] == 'y':
+        result |= curses.A_BOLD
+
+    return result
 
 
 # TODO: Writer is not really useful on its own, because we want to have
@@ -1200,6 +1207,8 @@ class ScreenBuffer:
         else:
             return False
 
+        # TODO: dedicated dispatch functions for updating
+        #       relevant states after issuing commands?
         if result.output:
             self._display_command_result_output(result.output)
         if result.error:

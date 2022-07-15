@@ -54,5 +54,6 @@
 "-hexsen": false,
 "-hsyn": true,
 "-hpreps": false,
-"-hsen": true
+"-hsen": true,
+"-hlmode": "yn"
 }

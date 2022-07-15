@@ -41,7 +41,7 @@ CONFIG_COLUMNS = tuple(
             '-dict', '-dict2', '-audio', '-recqual',
             '',
             '[curses config.]',
-            '-curses', '-nohelp', '-margin',
+            '-curses', '-nohelp', '-margin', '-hlmode'
         ),
         fillvalue=''
     )
@@ -408,6 +408,10 @@ def tsc_command(cmd: str, *args: str) -> CommandResult:
     return commands_set_text('-tsc', args, ('-', 'std', 'strict'))
 
 
+def hlmode_command(cmd: str, *args: str) -> CommandResult:
+    return commands_set_text('-hlmode', args, ('yy', 'yn', 'ny', 'nn'))
+
+
 HELP_ARG_COMMANDS: dict[str, tuple[Callable[..., CommandResult], str, str]] = {
     '-sen':         (boolean_command, 'Sentence field', '{on/off}'),
     '-def':         (boolean_command, 'Definition field', '{on/off}'),
@@ -441,7 +445,7 @@ HELP_ARG_COMMANDS: dict[str, tuple[Callable[..., CommandResult], str, str]] = {
     '-dict2':       (dict2_command, 'Fallback dictionary', '{ahd|lexico|farlex|wordnet|-}'),
     '-dupescope':   (dupescope_command, 'Look for duplicates in', '{deck|collection}'),
     '-hideas':      (hideas_command, 'Hide with (default "...")', '{ whatever floats your boat }'),
-    '-margin':      (margin_command, "[curses only] Column's left and right margin", '{0-99}'),
+    '-margin':      (margin_command, "[curses] Column's left and right margin", '{0-99}'),
     '-note':        (note_command, 'Note used for adding cards', '{note name}'),
     '-tags':        (tags_command, 'Anki tags', '{tags separated by commas|-}'),
     '-textwrap':    (textwrap_command, 'Text wrapping style', '{justify|regular|-}'),
@@ -461,7 +465,11 @@ HELP_ARG_COMMANDS: dict[str, tuple[Callable[..., CommandResult], str, str]] = {
         '{0-9}\n'
         '(0: best, 9: worst, 4: recommended)'
     ),
-
+    '-hlmode': (
+        hlmode_command,
+        '[curses] Selection highlight mode: HIGHLIGHT(y/n), BOLDEN(y/n)',
+        '{yy|yn|ny|nn}'
+    )
 }
 
 
