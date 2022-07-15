@@ -31,8 +31,6 @@ Jeżeli używasz Windowsa polecam zainstalować Windows Terminal lub jakikolwiek
 
 ### Windows
 
-<sub>__Nie daj sobie mydlić oczu__! Interfejs curses nie jest wspierany na Windowsie. Dostępna jest czysto konsolowa wersja, która osiąga ten sam cel, ale nie jest tak ładna i funkcjonalna.</sub>
-
 Aby uruchomić program, potrzebujesz Pythona 3.7 lub nowszego.<br>
 Pobierz Pythona z oficjalnej strony: https://www.python.org/downloads/<br>
 Przy instalacji zaznacz "Add python to PATH".
@@ -42,7 +40,7 @@ Po zainstalowaniu Pythona:<br>
 #### Za pomocą jednej komendy:
 Wciśnij Win+R, wpisz "cmd" i użyj komendy:
 ```
-mkdir %HOMEPATH%\Downloads\Ankidodawacz && cd %HOMEPATH%\Downloads\Ankidodawacz && curl https://api.github.com/repos/gryzus24/anki-dodawacz/tags | python -c"import json,sys;sys.stdout.write('url '+json.load(sys.stdin)[0]['tarball_url'])" | curl -L -K- -o a && tar -xvzf a --strip-components=1 && del a && pip install --disable-pip-version-check --no-deps beautifulsoup4 colorama lxml urllib3 && python ankidodawacz.py
+mkdir %HOMEPATH%\Downloads\Ankidodawacz && cd %HOMEPATH%\Downloads\Ankidodawacz && curl https://api.github.com/repos/gryzus24/anki-dodawacz/tags | python -c"import json,sys;sys.stdout.write('url '+json.load(sys.stdin)[0]['tarball_url'])" | curl -L -K- -o a && tar -xvzf a --strip-components=1 && del a && pip install --disable-pip-version-check --no-deps beautifulsoup4 colorama lxml urllib3 windows-curses && python ankidodawacz.py
 ```
 Program zostanie pobrany do folderu Pobrane\Ankidodawacz.
 
@@ -51,7 +49,7 @@ Wejdź w Releases (tags) -> Tags<br>
 pobierz i wypakuj .zip archiwum.
 
 Wciśnij Win+R, wpisz "cmd" i użyj komendy, aby zainstalować wymagane biblioteki:<br>
-`pip install --no-deps beautifulsoup4 colorama lxml urllib3`
+`pip install --no-deps beautifulsoup4 colorama lxml urllib3 windows-curses`
 
 Pójdź do folderu z programem:<br>
 `cd <ścieżka do folderu>`<br>
@@ -135,6 +133,6 @@ Aby rozpocząć nagrywanie dodaj `-rec` po wyszukiwanej frazie.
 
 Jest to mój pierwszy projekt. Jestem otwarty na wszelkie sugestie i uwagi. Mam nadzieję, że narzędzie okaże się pomocne.
 
-Na chwilę obecną, interfejs curses potrzebuje więcej testowania i brakuje mu wsparcia na Windowsie.
+Na chwilę obecną, interfejs curses potrzebuje więcej testowania, szczególnie na Windowsie.
 
 Użyte biblioteki: BeautifulSoup4 (MIT), colorama (BSD), lxml (BSD), urllib3 (MIT)
