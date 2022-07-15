@@ -982,14 +982,15 @@ class Prompt:
             del self._entered[self._cursor]
 
     ACTIONS = {
-        410: resize,              12: resize,       # ^L
-        curses.KEY_LEFT: left,    2: left,          # KEY_LEFT, ^B
-        curses.KEY_RIGHT: right,  6: right,         # KEY_RIGHT, ^F
-        curses.KEY_DC: delete,    4: delete,        # Del, ^D
-        curses.KEY_HOME: home,    1: home,          # HOME, ^A
-        curses.KEY_END: end,      5: end,           # END, ^E
-        546: jump_left,           544: jump_left,   # ^LEFT, Alt-LEFT
-        561: jump_right,          559: jump_right,  # ^RIGHT, Alt-RIGHT
+        410: resize,              12: resize,  # KEY_RESIZE, ^L
+        curses.KEY_LEFT: left,    2: left,     # KEY_LEFT, ^B
+        curses.KEY_RIGHT: right,  6: right,    # KEY_RIGHT, ^F
+        curses.KEY_DC: delete,    4: delete,   # Del, ^D
+        curses.KEY_HOME: home,    1: home,     # HOME, ^A
+        curses.KEY_END: end,      5: end,      # END, ^E
+        546: jump_left,  561: jump_right,      # ^LEFT, ^RIGHT
+        544: jump_left,  559: jump_right,      # Alt-LEFT, Alt-RIGHT
+        443: jump_left,  444: jump_right,      # (CTL_LEFT, CTL_RIGHT on Windows)
         11: control_k,
     }
 
