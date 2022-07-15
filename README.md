@@ -31,8 +31,6 @@ If you are using Windows install Windows Terminal or any other than cmd terminal
 
 ### Windows
 
-<sub>__Beware of false advertising!__ The curses interface is not currently supported on Windows. There is a console interface which achieves the same thing, but isn't as pretty and functional.</sub>
-
 To open the program we need Python 3.7 or newer installed.<br>
 You can download Python from https://www.python.org/downloads/<br>
 During installation tick the "Add Python to PATH" box.
@@ -42,7 +40,7 @@ After you have installed Python:<br>
 #### One command approach:
 Press Win+R, type "cmd" and enter the command:<br>
 ```
-mkdir %HOMEPATH%\Downloads\Ankidodawacz && cd %HOMEPATH%\Downloads\Ankidodawacz && curl https://api.github.com/repos/gryzus24/anki-dodawacz/tags | python -c"import json,sys;sys.stdout.write('url '+json.load(sys.stdin)[0]['tarball_url'])" | curl -L -K- -o a && tar -xvzf a --strip-components=1 && del a && pip install --disable-pip-version-check --no-deps beautifulsoup4 colorama lxml urllib3 && python ankidodawacz.py
+mkdir %HOMEPATH%\Downloads\Ankidodawacz && cd %HOMEPATH%\Downloads\Ankidodawacz && curl https://api.github.com/repos/gryzus24/anki-dodawacz/tags | python -c"import json,sys;sys.stdout.write('url '+json.load(sys.stdin)[0]['tarball_url'])" | curl -L -K- -o a && tar -xvzf a --strip-components=1 && del a && pip install --disable-pip-version-check --no-deps beautifulsoup4 colorama lxml urllib3 windows-curses && python ankidodawacz.py
 ```
 The program will be downloaded into the Downloads\Ankidodawacz directory.
 
@@ -51,7 +49,7 @@ Go to Releases (tags) -> Tags<br>
 download and extract the .zip archive.
 
 Press Win+R, type "cmd" and install required libraries:<br>
-`pip install --no-deps beautifulsoup4 colorama lxml urllib3`
+`pip install --no-deps beautifulsoup4 colorama lxml urllib3 windows-curses`
 
 Go to the program's directory:<br>
 `cd <path to extracted archive>`<br>
@@ -137,6 +135,6 @@ To start the recording add the `-rec` option after the search query.
 
 This is my first programming project, suggestions and contributions are welcome!
 
-Currently the curses interface needs more testing and also it's lacking Windows support.
+Currently the curses interface needs more testing, especially on Windows.
 
 Third-party libraries used: BeautifulSoup4 (MIT), colorama (BSD), lxml (BSD), urllib3 (MIT)
