@@ -132,6 +132,10 @@ class _CursesColor:
 Color = _CursesColor()
 
 
+def highlight() -> int:
+    return Color.heed | curses.A_STANDOUT
+
+
 # TODO: Writer is not really useful on its own, because we want to have
 #       at least some control over drawing in the ScreenBuffer.
 #       We should consider merging it with the Status class.
@@ -645,7 +649,7 @@ class Screen:
         for lines, state in zip(self._boxes, self._box_states):
             if state != a_normal:
                 for line in lines:
-                    line.bkgd(0, state)
+                    line.bkgd(state)
 
     def _get_scroll_EOF(self) -> int:
         r = max(map(len, self.columns)) - self.screen_height
@@ -681,15 +685,15 @@ class Screen:
     def _toggle_box(self, i: int, state: int) -> None:
         self._box_states[i] = state
         for line in self._boxes[i]:
-            line.bkgd(0, state)
+            line.bkgd(state)
 
     def _toggle_related_boxes(self, current_state: int, phraseno: int, box_index: int) -> None:
-        if current_state == curses.A_STANDOUT:
+        if current_state == curses.A_NORMAL:
+            self._toggle_box(box_index, highlight())
+            self._ptoggled[phraseno] += 1
+        else:
             self._toggle_box(box_index, curses.A_NORMAL)
             self._ptoggled[phraseno] -= 1
-        else:
-            self._toggle_box(box_index, curses.A_STANDOUT)
-            self._ptoggled[phraseno] += 1
 
         try:
             static_entries_to_index = self.dictionary.static_entries_to_index_from_index(box_index)
@@ -760,7 +764,7 @@ class Screen:
                 return
 
     def get_indices_of_selected_boxes(self) -> list[int]:
-        return [i for i, x in enumerate(self._box_states) if x == curses.A_STANDOUT]
+        return [i for i, x in enumerate(self._box_states) if x != curses.A_NORMAL]
 
     def restore_original_dictionary(self) -> None:
         self.dictionary = self._orig_dictionary
