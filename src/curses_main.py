@@ -1248,25 +1248,44 @@ class ScreenBuffer:
     }
 
 
-def primary_selection(status: Status) -> str | None:
-    for prog, option in (('xsel', '-p'), ('xclip', '-o')):
-        exe = shutil.which(prog)
-        if exe is None:
-            continue
+if WINDOWS:
+    def _selection_command() -> tuple[str, ...] | None:
+        powershell = shutil.which('powershell.exe')
+        if powershell is not None:
+            return powershell, '-Command', 'Get-Clipboard'
+        return None
+else:
+    def _selection_command() -> tuple[str, ...] | None:
+        xsel = shutil.which('xsel')
+        if xsel is not None:
+            return xsel, '-p'
+        xclip = shutil.which('xclip')
+        if xclip is not None:
+            return xclip, '-o'
+        return None
 
-        with Popen((exe, option), stdout=PIPE, stderr=DEVNULL, encoding='UTF-8') as p:
-            stdout, _ = p.communicate()
 
-        stdout = stdout.strip()
-        if stdout:
-            return stdout
-        else:
-            status.error('Primary selection is empty')
+_cmd = None
+def clipboard_or_selection(status: Status) -> str | None:
+    global _cmd
+    if _cmd is None:
+        _cmd = _selection_command()
+        if _cmd is None:
+            if WINDOWS:
+                status.nlerror('Could not access the clipboard')
+            else:
+                status.nlerror('Could not access the primary selection')
+                status.addstr('Install xsel or xclip and try again')
             return None
 
-    status.nlerror('Cannot access the primary selection')
-    status.addstr('Install xsel or xclip and try again')
+    with Popen(_cmd, stdout=PIPE, stderr=DEVNULL, encoding='UTF-8') as p:
+        stdout, _ = p.communicate()
 
+    stdout = stdout.strip()
+    if stdout:
+        return stdout
+
+    status.error(f'{"Clipboard" if WINDOWS else "Primary selection"} is empty')
     return None
 
 
@@ -1280,7 +1299,7 @@ def current_anki_phrase(status: Status) -> str | None:
 
 
 SEARCH_ENTER_ACTIONS = {
-    b'p': primary_selection,
+    b'p': clipboard_or_selection,
     b'P': current_anki_phrase,
     b'-': lambda _: '-',
     b';': lambda _: '',
@@ -1351,7 +1370,7 @@ def _curses_main(
                 (bstate & curses.BUTTON2_PRESSED) or
                 (bstate & curses.BUTTON2_CLICKED)
             ):
-                pretype = primary_selection(screen_buffer.status)
+                pretype = clipboard_or_selection(screen_buffer.status)
                 if pretype is None:
                     continue
                 ret = screen_buffer.search_prompt(pretype=pretype)
