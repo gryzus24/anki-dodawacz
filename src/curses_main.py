@@ -13,7 +13,7 @@ from src.Dictionaries.utils import wrap_and_pad
 from src.cards import create_and_add_card
 from src.colors import Color as _Color
 from src.commands import INTERACTIVE_COMMANDS, NO_HELP_ARG_COMMANDS, HELP_ARG_COMMANDS
-from src.data import STRING_TO_BOOL, HORIZONTAL_BAR, LINUX, config
+from src.data import STRING_TO_BOOL, HORIZONTAL_BAR, LINUX, WINDOWS, config
 from src.search import search_dictionaries
 from src.term_utils import display_in_less
 
@@ -47,9 +47,23 @@ class _CursesColor:
     def setup_colors(self, ncolors: int) -> None:
         if self._lookup is not None:
             return
-        # Curses does not throw an error when accessing uninitialized color pairs.
-        # Wrap colors only when things may break.
-        if ncolors == 8 or ncolors == 16777216:
+
+        if WINDOWS:
+            # For some reason, (RED and BLUE) and (CYAN and YELLOW)
+            # are swapped on windows-curses.
+            self._lookup = {
+                '\033[39m': curses.color_pair(0),
+                '\033[30m': curses.color_pair(1), '\033[90m': curses.color_pair(9),
+                '\033[31m': curses.color_pair(5), '\033[91m': curses.color_pair(13),
+                '\033[32m': curses.color_pair(3), '\033[92m': curses.color_pair(11),
+                '\033[33m': curses.color_pair(7), '\033[93m': curses.color_pair(15),
+                '\033[34m': curses.color_pair(2), '\033[94m': curses.color_pair(10),
+                '\033[35m': curses.color_pair(6), '\033[95m': curses.color_pair(14),
+                '\033[36m': curses.color_pair(4), '\033[96m': curses.color_pair(12),
+                '\033[37m': curses.color_pair(8), '\033[97m': curses.color_pair(16),
+            }
+        elif ncolors == 8 or ncolors == 16777216:
+            # Curses does not throw an error when accessing uninitialized color pairs.
             self._lookup = {
                 '\033[39m': curses.color_pair(0),
                 '\033[30m': curses.color_pair(1), '\033[90m': curses.color_pair(1),
