@@ -161,9 +161,9 @@ def audio_path_command(
         else:
             for i, col_path in enumerate(collection_paths, 1):
                 user_dir = os.path.basename(os.path.dirname(col_path))
-                implementor.writeln(f'>{Color.index}{i}{R} "{user_dir}"')
+                implementor.writeln(f'>{Color.index}{i}{R} {user_dir!r}')
             chosen_path = implementor.choose_item(
-                "Which user's collection do you want to use?",
+                "Which user's collection would you want to use?",
                 collection_paths
             )
             if chosen_path is None:
@@ -178,6 +178,26 @@ def audio_path_command(
     return CommandResult()
 
 
+def _add_from_custom_notes(note_name: str) -> str:
+    with open(os.path.join(ROOT_DIR, f'notes/{note_name}')) as f:
+        note_config = json.load(f)
+
+    model_name = note_config['modelName']
+    anki.invoke(
+        'createModel',
+        modelName=model_name,
+        inOrderFields=note_config['fields'],
+        css=note_config['css'],
+        cardTemplates=[{
+            'Name': note_config['cardName'],
+            'Front': note_config['front'],
+            'Back': note_config['back']
+        }]
+    )
+
+    return model_name
+
+
 def add_note_command(
     implementor: InteractiveCommandHandlerInterface, cmd: str, *args: str
 ) -> CommandResult:
@@ -185,28 +205,14 @@ def add_note_command(
 
     implementor.writeln(f'{BOLD}Available notes:')
     for i, note in enumerate(custom_notes, 1):
-        implementor.writeln(f'>{Color.index}{i}{R} "{note[:-5]}"')  # strip ".json"
+        implementor.writeln(f'>{Color.index}{i}{R} {note[:-5]!r}')  # strip ".json"
 
     note_name = implementor.choose_item('Choose a note to add', custom_notes, default=0)
     if note_name is None:
         return CommandResult(error='Invalid input, leaving...')
 
-    with open(os.path.join(ROOT_DIR, f'notes/{note_name}')) as f:
-        note_config = json.load(f)
-
-    model_name = note_config['modelName']
     try:
-        anki.invoke(
-            'createModel',
-            modelName=model_name,
-            inOrderFields=note_config['fields'],
-            css=note_config['css'],
-            cardTemplates=[{
-                'Name': note_config['cardName'],
-                'Front': note_config['front'],
-                'Back': note_config['back']
-            }]
-        )
+        model_name = _add_from_custom_notes(note_name)
     except anki.AnkiError as e:
         return CommandResult(error='Note could not be added', reason=str(e))
 
@@ -225,7 +231,7 @@ def audio_device_command(
         if not audio_devices:
             return CommandResult(
                 error='No devices found',
-                reason=f'Audio recording might not be available on {sys.platform}'
+                reason=f'Audio recording might be unavailable on {sys.platform}'
             )
     except FileNotFoundError:
         return CommandResult(
@@ -246,11 +252,63 @@ def audio_device_command(
     return CommandResult()
 
 
+def autoconfig_command(
+    implementor: InteractiveCommandHandlerInterface, cmd: str, *args: str
+) -> CommandResult:
+    implementor.writeln(
+        f"{Color.heed}Welcome!{R}\n"
+        f"After completing this quick configuration you will be able to\n"
+        f"create Anki cards blazingly fast!\n\n"
+        f"First, make sure you have Anki up and running.\n"
+        f"Then, you will need the Anki-Connect add-on installed, to do that,\n"
+        f"insert 2055492159 into the Tools > Add-ons > Get Add-ons... text box\n"
+        f"and restart Anki\n"
+    )
+    if not implementor.ask_yes_no('Continue?', default=True):
+        return CommandResult(error='Leaving...')
+
+    implementor.writeln(f"{Color.heed}Next! {R}Adding one of the built-in notes...")
+    try:
+        model_name = _add_from_custom_notes('gryzus-std.json')
+    except anki.AnkiError as e:
+        return CommandResult(error='Note could not be added', reason=str(e))
+    else:
+        implementor.writeln(f"{Color.success}Note set to 'gryzus-std'")
+        save_command('-note', model_name)
+
+    decks = anki.invoke('deckNames')
+    if len(decks) == 1:
+        chosen_deck = decks.pop()
+    else:
+        for i, deck_name in enumerate(decks, 1):
+            implementor.writeln(f'>{Color.index}{i} {R}{deck_name!r}')
+        chosen_deck = implementor.choose_item(
+            "Now, which Anki deck would you like to use", decks
+        )
+        if chosen_deck is None:
+            return CommandResult(error='Invalid input, leaving...')
+
+    save_command('-deck', chosen_deck)
+    implementor.writeln(f'{Color.success}Deck set to {chosen_deck!r}')
+
+    implementor.writeln('Setting the path for saving audio...')
+    result = audio_path_command(implementor, '-ap', 'auto')
+    if result.error is not None:
+        return result
+    else:
+        save_command('-ankiconnect', True)
+
+    implementor.writeln(f'{Color.heed}Configuration complete! {R}Now go and add some cards.')
+
+    return CommandResult()
+
+
 INTERACTIVE_COMMANDS = {
     '--audio-path': audio_path_command,
     '-ap': audio_path_command,
     '--add-note': add_note_command,
     '--audio-device': audio_device_command,
+    '-autoconfig': autoconfig_command,
 }
 
 
@@ -703,6 +761,9 @@ make the word {BOLD}{Color.success}Emphasized{R}{DEFAULT}.
 e.g.  Search $ This is a sentence with a word <embedded> inside.
 
 {_title('Audio and Anki configuration')}
+For quick configuration use: -autoconfig
+
+or if you want more customization:
 {BOLD}1.{DEFAULT} open Anki and install the Anki-Connect add-on (2055492159)
 {BOLD}2.{DEFAULT} use `-ap auto` or `-ap {{path}}` to add your "collection.media" path so that
    the program knows where to save audio files

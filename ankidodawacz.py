@@ -143,8 +143,8 @@ def from_define_all_file(s: str) -> Generator[str, None, None]:
             define_file = file
             break
     else:
-        print(f'{Color.err}Could not find {R}"define_all.txt"{Color.err} file.\n'
-              f'Create one and paste your list of queries there.')
+        print(f"{Color.err}Could not find {R}'define_all.txt'{Color.err} file.\n"
+              f"Create one and paste your list of queries there.")
         return None
 
     _, _, sep = s.partition(' ')
@@ -156,7 +156,7 @@ def from_define_all_file(s: str) -> Generator[str, None, None]:
         lines = [x.strip().strip(sep) for x in f if x.strip().strip(sep)]
 
     if not lines:
-        print(f'{R}"{define_file}"{Color.err} file is empty.')
+        print(f'{R}{define_file!r}{Color.err} file is empty.')
         return None
 
     for line in lines:
@@ -165,7 +165,7 @@ def from_define_all_file(s: str) -> Generator[str, None, None]:
             if query:
                 yield query
 
-    print(f'{Color.heed}** {R}"{define_file}"{Color.heed} has been exhausted **')
+    print(f'{Color.heed}** {R}{define_file!r}{Color.heed} has been exhausted **')
 
 
 def search_field() -> str:
@@ -182,8 +182,9 @@ def search_field() -> str:
 
 def main() -> NoReturn:
     sys.stdout.write(
-        f'{BOLD}- Ankidodawacz v{__version__} -{DEFAULT}\n'
-        f'type -h for usage and configuration\n\n\n'
+        f'{BOLD}Ankidodawacz v{__version__}{DEFAULT}\n'
+        f'Quick configuration: -autoconfig\n'
+        f'Full help and usage: -h\n\n'
     )
     while True:
         with tab_completion():
@@ -194,10 +195,8 @@ def main() -> NoReturn:
         elif typed.startswith('--define-all'):
             for query in from_define_all_file(typed):
                 dispatch_query(query)
-        elif dispatch_command(typed):
-            pass
         else:
-            dispatch_query(typed)
+            dispatch_command(typed) or dispatch_query(typed)
 
 
 if __name__ == '__main__':

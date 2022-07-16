@@ -84,6 +84,7 @@ class IncompatibleModelError(AnkiError):
 INVOKE_ACTIONS = Literal[
     'addNote',
     'createModel',
+    'deckNames',
     'guiBrowse',
     'guiCurrentCard',
     'modelFieldNames',
