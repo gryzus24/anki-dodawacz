@@ -982,43 +982,49 @@ class Prompt:
             del self._entered[self._cursor]
 
     ACTIONS = {
-        410: resize,              12: resize,  # KEY_RESIZE, ^L
-        curses.KEY_LEFT: left,    2: left,     # KEY_LEFT, ^B
-        curses.KEY_RIGHT: right,  6: right,    # KEY_RIGHT, ^F
-        curses.KEY_DC: delete,    4: delete,   # Del, ^D
-        curses.KEY_HOME: home,    1: home,     # HOME, ^A
-        curses.KEY_END: end,      5: end,      # END, ^E
-        546: jump_left,  561: jump_right,      # ^LEFT, ^RIGHT
-        544: jump_left,  559: jump_right,      # Alt-LEFT, Alt-RIGHT
-        443: jump_left,  444: jump_right,      # (CTL_LEFT, CTL_RIGHT on Windows)
-        11: control_k,
+        b'KEY_RESIZE': resize, b'^L': resize,
+        b'KEY_LEFT': left,     b'^B': left,
+        b'KEY_RIGHT': right,   b'^F': right,
+        b'KEY_DC': delete,     b'^D': delete,
+        b'KEY_HOME': home,     b'^A': home,
+        b'KEY_END': end,       b'^E': end,
+        b'^K': control_k,
     }
+    if WINDOWS:
+        ACTIONS[b'CTL_LEFT'] = ACTIONS[b'ALT_LEFT'] = jump_left
+        ACTIONS[b'CTL_RIGHT'] = ACTIONS[b'ALT_RIGHT'] = jump_right
+    else:
+        ACTIONS[b'kLFT5'] = ACTIONS[b'kLFT3'] = jump_left
+        ACTIONS[b'kRIT5'] = ACTIONS[b'kRIT3'] = jump_right
+
 
     def _run(self) -> str | None:
         while True:
             self.screen_buffer.draw()
             self.draw_prompt()
 
-            c = get_key(self.win)
-            if 32 <= c <= 126:  # printable ascii
-                self.type(c)
-            elif c in (3, 27):  # ^C, ESC
+            c_code = get_key(self.win)
+            if 32 <= c_code <= 126:  # printable
+                self.type(c_code)
+                continue
+
+            c = curses.keyname(c_code)
+            if c in (b'^C', b'['):
                 return None
             elif c in Prompt.ACTIONS:
                 Prompt.ACTIONS[c](self)
-            elif c in (curses.KEY_BACKSPACE, 8):  # 8 = ^H on Windows
+            elif c in (b'KEY_BACKSPACE', b'^H'):  # ^H: Backspae^Hce on Windows
                 if self._entered:
                     self.backspace()
                 elif self.exit_if_empty:
                     return None
             elif (
-                c in (7, 10, 13) or  # ^J, \n, (^M for Enter on Windows)
-                (c == curses.KEY_MOUSE and curses.getmouse()[4] & curses.BUTTON3_PRESSED)
+                c in (b'^J', b'^M') or  # ^M: Enter on Windows
+                (c == b'KEY_MOUSE' and curses.getmouse()[4] & curses.BUTTON3_PRESSED)
             ):
                 ret = ''.join(self._entered)
                 self._clear()
                 return ret
-
 
     def run(self) -> str | None:
         self.screen_buffer.status.lock = True
@@ -1127,8 +1133,7 @@ class ScreenBuffer:
         screen.draw()
 
     def resize(self) -> None:
-        global COLS, LINES
-        COLS, LINES = shutil.get_terminal_size()
+        _update_global_lines_cols()
 
         # prevents malloc() errors from ncurses on 32-bit binaries.
         if COLS < 2:
@@ -1137,6 +1142,7 @@ class ScreenBuffer:
         # This is noticeably slow when there are more than 10 screens.
         # Updating lazily doesn't help, because `curses.resize_term` is what
         # takes the majority of the time.
+
         curses.resize_term(LINES, COLS)
         for screen in self.screens:
             screen.update_for_redraw()
@@ -1243,7 +1249,7 @@ class ScreenBuffer:
     ACTIONS = {
         b'l': next,     b'KEY_RIGHT': next,
         b'h': previous, b'KEY_LEFT': previous,
-        b'^L': resize,
+        b'KEY_RESIZE': resize, b'^L': resize,
         b'KEY_F(8)': rearrange_columns,
         b'^F': filter_prompt, b'KEY_F(4)': filter_prompt,
     }
@@ -1306,24 +1312,35 @@ SEARCH_ENTER_ACTIONS = {
     b'/': lambda _: '',
 }
 
-# Unfortunately Python's readline api does not expose functions and variables
+# Unfortunately Python's readline API does not expose functions and variables
 # responsible for signal handling, which makes it impossible to reconcile
-# curses' signal handling with the readline's one, so we have to manage
-# COLS and LINES variables ourselves. Also, when curses is de-initialized,
-# readline's sigwinch handler does not raise "no input", but ungets the
-# correct b'KEY_RESIZE' code as soon as curses comes back. This is worked
-# around by flushing any typeahead in the main function.
+# curses' signal handling with the readline's one.
+# We have to manage COLS and LINES variables ourselves.
 
 if LINUX:
     def get_key(win: curses._CursesWindow) -> int:
         c = win.getch()
-        return 410 if c == -1 else c
+        return 410 if c == -1 else c  # 410: KEY_RESIZE  (546 on Windows?)
 else:
     def get_key(win: curses._CursesWindow) -> int:
         return win.getch()
 
 
 COLS = LINES = 0
+
+if WINDOWS:
+    # We cannot rely on shutil.get_terminal_size to update
+    # LINES and COLS on Windows and as we don't have readline
+    # problems here (it's not imported) we can rely on curses.
+    def _update_global_lines_cols() -> None:
+        global LINES, COLS
+        curses.update_lines_cols()
+        LINES, COLS = curses.LINES, curses.COLS
+else:
+    def _update_global_lines_cols() -> None:
+        global LINES, COLS
+        COLS, LINES = shutil.get_terminal_size()
+
 ###############################################################################
 
 
@@ -1332,10 +1349,9 @@ def _curses_main(
         _dictionaries: list[Dictionary],
         _settings: QuerySettings
 ) -> None:
-    global COLS, LINES
-    COLS, LINES = shutil.get_terminal_size()
+    _update_global_lines_cols()
 
-    # Resizing the terminal while curses in de-initialized inserts the resize
+    # Resizing the terminal after calling curses.endwin inserts the resize
     # character into the buffer. Let's always start with a fresh buffer.
     curses.flushinp()
 
@@ -1352,9 +1368,6 @@ def _curses_main(
             screen_buffer.current.mark_box_by_selector(c)
         elif c in ScreenBuffer.ACTIONS:
             ScreenBuffer.ACTIONS[c](screen_buffer)
-        elif c == b'KEY_RESIZE':
-            curses.napms(50)
-            screen_buffer.resize()
         elif c == b'KEY_MOUSE':
             _, x, y, _, bstate = curses.getmouse()
             if bstate & curses.BUTTON1_PRESSED:  # left mouse
@@ -1458,4 +1471,9 @@ def curses_ui_entry(dictionaries: list[Dictionary], settings: QuerySettings) -> 
         # Clear the whole window to prevent a flash
         # of contents from the previous draw.
         stdscr.erase()
+        # We cannot rely on curses.endwin to bring
+        # everything back to normal on Windows.
+        curses.echo()
+        curses.nocbreak()
         curses.endwin()
+
