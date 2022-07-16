@@ -13,7 +13,8 @@ Program zapisze Twój wybór w pliku `cards.txt`, który może być manualnie za
 Możesz także połączyć program z Anki poprzez Anki-Connect co znacznie uprości proces dodawania.
 
 #### Konfiguracja Anki-Connect
-
+Aby szybko skonfigurować Anki-Connect możesz użyć komendy `-autoconfig`,<br>
+lub zrobić to manualnie:
 1. otwórz Anki i zainstaluj dodatek Anki-Connect (2055492159)
 2. wpisz `-ap auto` lub `-ap {ścieżka}`, aby dodać ścieżkę do folderu "collection.media", aby program wiedział gdzie zapisywać pliki audio
 3. wybierz swoją talię `-deck {nazwa talii}`
