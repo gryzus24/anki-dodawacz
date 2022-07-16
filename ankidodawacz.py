@@ -196,7 +196,7 @@ def main() -> NoReturn:
             for query in from_define_all_file(typed):
                 dispatch_query(query)
         else:
-            dispatch_command(typed) or dispatch_query(typed)
+            dispatch_command(typed) or dispatch_query(typed)  # type: ignore[func-returns-value]
 
 
 if __name__ == '__main__':
