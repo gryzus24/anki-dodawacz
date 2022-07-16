@@ -491,7 +491,7 @@ def draw_help(stdscr: curses._CursesWindow) -> None:
     ]
     bot_line = [
         ('q ', ' Exit '), ('h/l', ' Swap screens '), ('d ', ' Deselect all '),
-        ('C ', ' Create cards '), ('G ', ' Go EOF '), ('; ', ' Search '),
+        ('C ', ' Create cards '), ('G ', ' Go EOF '), ('/ ', ' Search '),
         ('P ', ' Paste current phrase '), ('^L', ' Redraw screen '), ('F8', ' Rearrange columns '),
     ]
 
@@ -1303,8 +1303,7 @@ SEARCH_ENTER_ACTIONS = {
     b'p': clipboard_or_selection,
     b'P': current_anki_phrase,
     b'-': lambda _: '-',
-    b';': lambda _: '',
-    b':': lambda _: '',
+    b'/': lambda _: '',
 }
 
 # Unfortunately Python's readline api does not expose functions and variables

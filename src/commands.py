@@ -909,7 +909,7 @@ Dictionary filtering:
   ^J Enter  reset filters - restore the original, queried dictionary
 
 Searching:
-  ; :       open the search prompt for issuing commands and searching
+  /         open the search prompt for issuing commands and searching
   -         ... and insert a '-' character
   p wheel   insert primary selection (on graphical Unix) into the search
             prompt or the contents of the clipboard (on Windows)
