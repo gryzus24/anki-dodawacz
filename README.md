@@ -13,7 +13,8 @@ Program saves your choice in a `cards.txt` file which can be manually imported t
 You can also connect it directly to Anki via Anki-Connect to streamline the process.
 
 #### Anki-Connect configuration
-
+For a simple and quick setup you can use the `-autoconfig` command,<br>
+or do it manually:
 1. open Anki and install the Anki-Connect add-on (2055492159)
 2. use `-ap auto` or `-ap {path}` to add your "collection.media" path so that the program knows where to save audio files
 3. specify your deck `-deck {deck name}`
