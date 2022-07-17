@@ -1009,7 +1009,7 @@ class Prompt:
                 continue
 
             c = curses.keyname(c_code)
-            if c in (b'^C', b'['):
+            if c in (b'^C', b'^['):
                 return None
             elif c in Prompt.ACTIONS:
                 Prompt.ACTIONS[c](self)
