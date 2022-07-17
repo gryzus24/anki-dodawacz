@@ -1471,9 +1471,5 @@ def curses_ui_entry(dictionaries: list[Dictionary], settings: QuerySettings) -> 
         # Clear the whole window to prevent a flash
         # of contents from the previous draw.
         stdscr.erase()
-        # We cannot rely on curses.endwin to bring
-        # everything back to normal on Windows.
-        curses.echo()
-        curses.nocbreak()
         curses.endwin()
 
