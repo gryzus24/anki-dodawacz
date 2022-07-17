@@ -267,14 +267,15 @@ def autoconfig_command(
     if not implementor.ask_yes_no('Continue?', default=True):
         return CommandResult(error='Leaving...')
 
-    implementor.writeln(f"{Color.heed}Next! {R}Adding one of the built-in notes...")
+    result = []
+    implementor.writeln(f"{Color.heed}:: {R}Adding one of the built-in notes...")
     try:
         model_name = _add_from_custom_notes('gryzus-std.json')
     except anki.AnkiError as e:
         return CommandResult(error='Note could not be added', reason=str(e))
-    else:
-        implementor.writeln(f"{Color.success}Note set to 'gryzus-std'")
-        save_command('-note', model_name)
+
+    save_command('-note', model_name)
+    result.append(f'$ -note {model_name}\n')
 
     decks = anki.invoke('deckNames')
     if len(decks) == 1:
@@ -283,24 +284,27 @@ def autoconfig_command(
         for i, deck_name in enumerate(decks, 1):
             implementor.writeln(f'>{Color.index}{i} {R}{deck_name!r}')
         chosen_deck = implementor.choose_item(
-            "Now, which Anki deck would you like to use", decks
+            'Now, which Anki deck would you like to use', decks
         )
         if chosen_deck is None:
             return CommandResult(error='Invalid input, leaving...')
 
     save_command('-deck', chosen_deck)
-    implementor.writeln(f'{Color.success}Deck set to {chosen_deck!r}')
+    result.append(f'$ -deck {chosen_deck}\n')
 
-    implementor.writeln('Setting the path for saving audio...')
-    result = audio_path_command(implementor, '-ap', 'auto')
-    if result.error is not None:
-        return result
+    implementor.writeln(f'{Color.heed}:: {R}Setting the path for saving audio...')
+    ret = audio_path_command(implementor, '-ap', 'auto')
+    if ret.error is not None:
+        return ret
     else:
-        save_command('-ankiconnect', True)
+        result.append(f'$ --audio-path {config["audio_path"]}\n')
 
-    implementor.writeln(f'{Color.heed}Configuration complete! {R}Now go and add some cards.')
+    save_command('-ankiconnect', True)
+    result.append(f'$ -ankiconnect {config["-ankiconnect"]}\n')
 
-    return CommandResult()
+    result.append(f'{Color.heed}Configuration complete! {R}Now go and add some cards.\n')
+
+    return CommandResult(output=''.join(result))
 
 
 INTERACTIVE_COMMANDS = {
