@@ -69,16 +69,13 @@ SCHEME_TO_FIELD = (
 PHRASE_SCHEMES = [x[0] for x in SCHEME_TO_FIELD if x[1] == 'phrase']
 
 
-class AnkiError(Exception):
-    pass
+class AnkiError(Exception): pass
 
+class FirstFieldEmptyError(AnkiError): pass
 
-class FirstFieldEmptyError(AnkiError):
-    pass
+class IncompatibleModelError(AnkiError): pass
 
-
-class IncompatibleModelError(AnkiError):
-    pass
+class ModelExistsError(AnkiError): pass
 
 
 INVOKE_ACTIONS = Literal[
@@ -147,7 +144,7 @@ def invoke(action: INVOKE_ACTIONS, **params: Any) -> Any:
             'or change the scope of checking for them `-dupescope {deck|collection}`'
         )
     elif err.startswith('model name already exists'):
-        raise AnkiError('Note with this name already exists.')
+        raise ModelExistsError('Note with this name already exists.')
     elif err.startswith('gui review is not currently active'):
         raise AnkiError('Action available only in review mode.')
     elif err.startswith(('collection is not available', "'nonetype' object has no attribute")):

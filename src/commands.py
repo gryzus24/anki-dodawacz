@@ -271,6 +271,9 @@ def autoconfig_command(
     implementor.writeln(f"{Color.heed}:: {R}Adding one of the built-in notes...")
     try:
         model_name = _add_from_custom_notes('gryzus-std.json')
+    except anki.ModelExistsError as e:
+        implementor.writeln(f'{Color.err}{e}')
+        model_name = 'gryzus-std'
     except anki.AnkiError as e:
         return CommandResult(error='Note could not be added', reason=str(e))
 
