@@ -918,6 +918,11 @@ class Prompt:
         self._entered.clear()
         self._cursor = 0
 
+    def _insert_str(self, s: str) -> None:
+        for ch in s:
+            self._entered.insert(self._cursor, ch)
+            self._cursor += 1
+
     def resize(self) -> None:
         self.screen_buffer.resize()
 
@@ -1018,10 +1023,19 @@ class Prompt:
                     self.backspace()
                 elif self.exit_if_empty:
                     return None
-            elif (
-                c in (b'^J', b'^M') or  # ^M: Enter on Windows
-                (c == b'KEY_MOUSE' and curses.getmouse()[4] & curses.BUTTON3_PRESSED)
-            ):
+            elif c == b'KEY_MOUSE':
+                bstate = curses.getmouse()[4]
+                if ((bstate & curses.BUTTON2_PRESSED) or
+                    (bstate & curses.BUTTON2_CLICKED)
+                ):
+                    clip = clipboard_or_selection(self.screen_buffer.status)
+                    if clip is not None:
+                        self._insert_str(clip)
+                elif bstate & curses.BUTTON3_PRESSED:
+                    ret = ''.join(self._entered)
+                    self._clear()
+                    return ret
+            elif c in (b'^J', b'^M'):  # ^M: Enter on Windows
                 ret = ''.join(self._entered)
                 self._clear()
                 return ret
