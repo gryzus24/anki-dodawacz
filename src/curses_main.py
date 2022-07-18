@@ -21,14 +21,24 @@ if TYPE_CHECKING:
     from src.search import QuerySettings
     from src.Dictionaries.dictionary_base import Dictionary
 
-# Pythons < 3.10 do not define BUTTON5_PRESSED.
-# Also, mouse wheel requires ncurses >= 6.
+# Pythons < 3.10 and ncurses < 6 do not
+# define BUTTON5_PRESSED. (mouse wheel down)
 BUTTON5_PRESSED = 2097152
 
 # Custom color pairs.
 BLACK_ON_GREEN = 31
 BLACK_ON_RED = 32
 BLACK_ON_YELLOW = 33
+
+
+def mouse_wheel_clicked(bstate: int) -> bool:
+    # Not sure what's the difference between PRESSED and CLICKED
+    # clicking the mouse wheel reports PRESSED, but clicking the
+    # "middle mouse" on a laptop reports CLICKED.
+    return bool(
+        bstate & curses.BUTTON2_PRESSED or
+        bstate & curses.BUTTON2_CLICKED
+    )
 
 
 class _CursesColor:
@@ -872,10 +882,12 @@ class Prompt:
         self.prompt: str = prompt
         self.exit_if_empty: bool = exit_if_empty
         self._cursor = len(pretype)
-        self._entered = [*pretype]
+        self._entered = pretype
 
     def draw_prompt(self) -> None:
-        # prevents going into an infinite loop on some terminals.
+        # Prevents going into an infinite loop on some terminals, or even
+        # something worse, as the terminal (32-bit xterm)
+        # locks up completely when COLS < 2.
         if COLS < 2:
             return
 
@@ -896,7 +908,7 @@ class Prompt:
         if visual_cursor < width:
             self.win.insstr(LINES-1, 0, prompt_text)
             if len(self._entered) > width - len(prompt_text):
-                text = f'{"".join(self._entered[:width - len(prompt_text)])}>'
+                text = f'{self._entered[:width - len(prompt_text)]}>'
             else:
                 text = ''.join(self._entered)
             text_x = len(prompt_text)
@@ -906,29 +918,26 @@ class Prompt:
 
             start = self._cursor - visual_cursor
             if start + width > len(self._entered):
-                text = f'<{"".join(self._entered[start + 1:start + width])}'
+                text = f'<{self._entered[start + 1:start + width]}'
             else:
-                text = f'<{"".join(self._entered[start + 1:start + width])}>'
+                text = f'<{self._entered[start + 1:start + width]}>'
             text_x = 0
 
         self.win.insstr(LINES-1, text_x, text)
         self.win.move(LINES-1, visual_cursor)
 
     def _clear(self) -> None:
-        self._entered.clear()
+        self._entered = ''
         self._cursor = 0
 
-    def _insert_str(self, s: str) -> None:
-        for ch in s:
-            self._entered.insert(self._cursor, ch)
-            self._cursor += 1
+    def insert(self, s: str) -> None:
+        self._entered = (
+            self._entered[:self._cursor] + s + self._entered[self._cursor:]
+        )
+        self._cursor += len(s)
 
     def resize(self) -> None:
         self.screen_buffer.resize()
-
-    def type(self, c: int) -> None:
-        self._entered.insert(self._cursor, chr(c))
-        self._cursor += 1
 
     def left(self) -> None:
         if self._cursor > 0:
@@ -939,10 +948,9 @@ class Prompt:
             self._cursor += 1
 
     def delete(self) -> None:
-        try:
-            del self._entered[self._cursor]
-        except IndexError:
-            pass
+        self._entered = (
+            self._entered[:self._cursor] + self._entered[self._cursor + 1:]
+        )
 
     def home(self) -> None:
         self._cursor = 0
@@ -984,7 +992,7 @@ class Prompt:
     def backspace(self) -> None:
         if self._cursor > 0:
             self._cursor -= 1
-            del self._entered[self._cursor]
+            self.delete()
 
     ACTIONS = {
         b'KEY_RESIZE': resize, b'^L': resize,
@@ -1002,7 +1010,6 @@ class Prompt:
         ACTIONS[b'kLFT5'] = ACTIONS[b'kLFT3'] = jump_left
         ACTIONS[b'kRIT5'] = ACTIONS[b'kRIT3'] = jump_right
 
-
     def _run(self) -> str | None:
         while True:
             self.screen_buffer.draw()
@@ -1010,7 +1017,7 @@ class Prompt:
 
             c_code = get_key(self.win)
             if 32 <= c_code <= 126:  # printable
-                self.type(c_code)
+                self.insert(chr(c_code))
                 continue
 
             c = curses.keyname(c_code)
@@ -1025,18 +1032,16 @@ class Prompt:
                     return None
             elif c == b'KEY_MOUSE':
                 bstate = curses.getmouse()[4]
-                if ((bstate & curses.BUTTON2_PRESSED) or
-                    (bstate & curses.BUTTON2_CLICKED)
-                ):
+                if mouse_wheel_clicked(bstate):
                     clip = clipboard_or_selection(self.screen_buffer.status)
                     if clip is not None:
-                        self._insert_str(clip)
+                        self.insert(clip)
                 elif bstate & curses.BUTTON3_PRESSED:
-                    ret = ''.join(self._entered)
+                    ret = self._entered
                     self._clear()
                     return ret
             elif c in (b'^J', b'^M'):  # ^M: Enter on Windows
-                ret = ''.join(self._entered)
+                ret = self._entered
                 self._clear()
                 return ret
 
@@ -1390,13 +1395,7 @@ def _curses_main(
                 screen_buffer.current.move_up()
             elif bstate & BUTTON5_PRESSED:  # mouse wheel
                 screen_buffer.current.move_down()
-            elif (
-                # Not sure what's the difference between PRESSED and CLICKED
-                # clicking the mouse wheel reports PRESSED, but clicking the
-                # "middle mouse" on a laptop reports CLICKED.
-                (bstate & curses.BUTTON2_PRESSED) or
-                (bstate & curses.BUTTON2_CLICKED)
-            ):
+            elif mouse_wheel_clicked(bstate):
                 pretype = clipboard_or_selection(screen_buffer.status)
                 if pretype is None:
                     continue
