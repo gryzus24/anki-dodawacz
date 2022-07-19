@@ -1052,7 +1052,7 @@ class Prompt:
         ACTIONS[b'CTL_LEFT'] = ACTIONS[b'ALT_LEFT'] = ctrl_left
         ACTIONS[b'CTL_RIGHT'] = ACTIONS[b'ALT_RIGHT'] = ctrl_right
         ACTIONS[b'^H'] = backspace
-        # TODO: ctrl_backspace action on Windows.
+        ACTIONS[b'^?'] = ctrl_backspace
     else:
         ACTIONS[b'kLFT5'] = ACTIONS[b'kLFT3'] = ctrl_left
         ACTIONS[b'kRIT5'] = ACTIONS[b'kRIT3'] = ctrl_right
