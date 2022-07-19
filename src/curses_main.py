@@ -930,15 +930,10 @@ class Prompt:
         self._entered = ''
         self._cursor = 0
 
-    def insert(self, s: str) -> None:
-        self._entered = (
-            self._entered[:self._cursor] + s + self._entered[self._cursor:]
-        )
-        self._cursor += len(s)
-
     def resize(self) -> None:
         self.screen_buffer.resize()
 
+    # Movement
     def left(self) -> None:
         if self._cursor > 0:
             self._cursor -= 1
@@ -947,68 +942,122 @@ class Prompt:
         if self._cursor < len(self._entered):
             self._cursor += 1
 
-    def delete(self) -> None:
-        self._entered = (
-            self._entered[:self._cursor] + self._entered[self._cursor + 1:]
-        )
-
     def home(self) -> None:
         self._cursor = 0
 
     def end(self) -> None:
         self._cursor = len(self._entered)
 
-    def jump_left(self) -> None:
-        skip = True
+    def _jump_left(self) -> int:
         entered = self._entered
+        nskipped = 0
+        skip = True
         for i in range(self._cursor - 1, -1, -1):
             if entered[i].isspace():
                 if skip:
+                    nskipped += 1
                     continue
-                self._cursor = i + 1
                 break
             else:
+                nskipped += 1
                 skip = False
-        else:
-            self._cursor = 0
 
-    def jump_right(self) -> None:
-        skip = True
+        return nskipped
+
+    def ctrl_left(self) -> None:
+        t = self._cursor - self._jump_left()
+        self._cursor = t if t > 0 else 0
+
+    def _jump_right(self) -> int:
         entered = self._entered
-        for i in range(self._cursor + 1, len(entered)):
+        nskipped = 0
+        skip = True
+        for i in range(self._cursor, len(entered)):
             if entered[i].isspace():
                 if skip:
+                    nskipped += 1
                     continue
-                self._cursor = i
                 break
             else:
+                nskipped += 1
                 skip = False
-        else:
-            self._cursor = len(entered)
 
-    def control_k(self) -> None:
-        self._entered = self._entered[:self._cursor]
+        return nskipped
+
+    def ctrl_right(self) -> None:
+        t = self._cursor + self._jump_right()
+        self._cursor = t if t < len(self._entered) else len(self._entered)
+
+    # Insertion and deletion
+    def insert(self, s: str) -> None:
+        self._entered = (
+            self._entered[:self._cursor] + s + self._entered[self._cursor:]
+        )
+        self._cursor += len(s)
+
+    def _delete_right(self, start: int, n: int) -> None:
+        self._entered = self._entered[:start] + self._entered[start + n:]
+
+    def delete(self) -> None:
+        self._delete_right(self._cursor, 1)
 
     def backspace(self) -> None:
-        if self._cursor > 0:
-            self._cursor -= 1
-            self.delete()
+        if not self._entered and self.exit_if_empty:
+            curses.ungetch(3)  # ^C
+            return
+        if self._cursor <= 0:
+            return
+        self._cursor -= 1
+        self._delete_right(self._cursor, 1)
+
+    def ctrl_backspace(self) -> None:
+        if not self._entered and self.exit_if_empty:
+            curses.ungetch(3)  # ^C
+            return
+        if self._cursor <= 0:
+            return
+        nskipped = self._jump_left()
+        t = self._cursor - nskipped
+        self._cursor = t if t > 0 else 0
+        self._delete_right(self._cursor, nskipped)
+
+    def ctrl_k(self) -> None:
+        self._entered = self._entered[:self._cursor]
+
+    def ctrl_t(self) -> None:
+        left = self._entered.rfind(' ', 0, self._cursor)
+        left = left + 1 if ~left else 0
+
+        right = self._entered.find(' ', self._cursor, len(self._entered))
+        right = right if ~right else len(self._entered)
+        if left == right:
+            # multiple spaces with cursor on top
+            # e.g. 'word [ ]word' or spaces only
+            return
+
+        self._entered = self._entered[left:right]
+        self._cursor = len(self._entered)
 
     ACTIONS = {
         b'KEY_RESIZE': resize, b'^L': resize,
         b'KEY_LEFT': left,     b'^B': left,
         b'KEY_RIGHT': right,   b'^F': right,
-        b'KEY_DC': delete,     b'^D': delete,
         b'KEY_HOME': home,     b'^A': home,
         b'KEY_END': end,       b'^E': end,
-        b'^K': control_k,
+        b'KEY_DC': delete,     b'^D': delete,
+        b'^K': ctrl_k,
+        b'^T': ctrl_t,
     }
     if WINDOWS:
-        ACTIONS[b'CTL_LEFT'] = ACTIONS[b'ALT_LEFT'] = jump_left
-        ACTIONS[b'CTL_RIGHT'] = ACTIONS[b'ALT_RIGHT'] = jump_right
+        ACTIONS[b'CTL_LEFT'] = ACTIONS[b'ALT_LEFT'] = ctrl_left
+        ACTIONS[b'CTL_RIGHT'] = ACTIONS[b'ALT_RIGHT'] = ctrl_right
+        ACTIONS[b'^H'] = backspace
+        # TODO: ctrl_backspace action on Windows.
     else:
-        ACTIONS[b'kLFT5'] = ACTIONS[b'kLFT3'] = jump_left
-        ACTIONS[b'kRIT5'] = ACTIONS[b'kRIT3'] = jump_right
+        ACTIONS[b'kLFT5'] = ACTIONS[b'kLFT3'] = ctrl_left
+        ACTIONS[b'kRIT5'] = ACTIONS[b'kRIT3'] = ctrl_right
+        ACTIONS[b'KEY_BACKSPACE'] = backspace
+        ACTIONS[b'^H'] = ctrl_backspace
 
     def _run(self) -> str | None:
         while True:
@@ -1025,11 +1074,6 @@ class Prompt:
                 return None
             elif c in Prompt.ACTIONS:
                 Prompt.ACTIONS[c](self)
-            elif c in (b'KEY_BACKSPACE', b'^H'):  # ^H: Backspae^Hce on Windows
-                if self._entered:
-                    self.backspace()
-                elif self.exit_if_empty:
-                    return None
             elif c == b'KEY_MOUSE':
                 bstate = curses.getmouse()[4]
                 if mouse_wheel_clicked(bstate):
