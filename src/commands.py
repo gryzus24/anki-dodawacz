@@ -943,16 +943,16 @@ Windows OS is not supported yet.
 Commands and their preferred keybindings are self-explanatory and discoverable
 by increasing the terminal window size. Here is their full documentation.
 
-The ^ symbol denotes "Ctrl".  e.g. ^C means Ctrl-c
-(Case does not matter with Ctrl, but characters typed individually are
-case sensitive)
+The ^ symbol denotes "Ctrl".  E.g. ^C means Ctrl-c
+(case does not matter with Ctrl, but characters typed individually are
+case sensitive).
 
 {_title('Commands and functions')}
 ^C        exit the program
 q Q ^X    return to the search prompt
 F1        toggle help (use `-nohelp on` to toggle it off by default)
 
-Navigation:
+{BOLD}Navigation:{DEFAULT}
   You can use arrows or:
   j ^N       scroll up (move down)
   k ^P       scroll down (move up)
@@ -963,20 +963,20 @@ Navigation:
   g Home     go to the top of the page
   G End      go to the bottom of the page
 
-Selection and Anki:
+{BOLD}Selection and Anki:{DEFAULT}
   1-9 !-)   select definition from 1 to 20, press 0 for the tenth definition
-            hold Shift for the remaining 11 to 20.
+            hold Shift for the remaining 11 to 20
   d         deselect everything
   B         open the Anki card browser
   C         create card(s) from the selected definitions
 
-Dictionary filtering:
+{BOLD}Dictionary filtering:{DEFAULT}
   ^F F4     open the filter prompt (this is just like the flags when querying)
             e.g.  entering "n"   : searches for labels starting with "n"
                   entering "/To" : searches for definitions containing "To"
   ^J Enter  reset filters - restore the original, queried dictionary
 
-Searching:
+{BOLD}Searching:{DEFAULT}
   /         open the search prompt for issuing commands and searching
   -         ... and insert a '-' character
   p wheel   insert primary selection (on graphical Unix) into the search
@@ -984,9 +984,17 @@ Searching:
   P         insert contents of the "Phrase" field from the currently reviewed
             Anki card
 
-Miscellaneous:
+{BOLD}Miscellaneous:{DEFAULT}
   ^L        redraw the screen, useful when screen gets corrupted somehow
   F8        cycle through the valid `-columns` values and update the screen
+
+{BOLD}Prompt:{DEFAULT}
+  Prompt supports basic line editing.
+  Only special/notable shortcuts are listed.
+
+  ^C ESC    exit without submitting
+  ^K        delete everything from the cursor to the end of the line
+  ^T        delete everything except the word under the cursor
 
 {BOLD}{79 * '─'}{DEFAULT}
 -conf, -config      show current configuration and more options
