@@ -1025,17 +1025,21 @@ class Prompt:
         self._entered = self._entered[:self._cursor]
 
     def ctrl_t(self) -> None:
-        left = self._entered.rfind(' ', 0, self._cursor)
+        # Ignore only trailing whitespace to keep things simple.
+        entered = self._entered.rstrip()
+        if self._cursor > len(entered):
+            self._cursor = len(entered)
+
+        left = entered.rfind(' ', 0, self._cursor)
         left = left + 1 if ~left else 0
 
-        right = self._entered.find(' ', self._cursor, len(self._entered))
-        right = right if ~right else len(self._entered)
+        right = entered.find(' ', self._cursor)
+        right = right if ~right else len(entered)
         if left == right:
-            # multiple spaces with cursor on top
-            # e.g. 'word [ ]word' or spaces only
+            # multiple spaces with cursor on top e.g. 'word [ ]word'
             return
 
-        self._entered = self._entered[left:right]
+        self._entered = entered[left:right]
         self._cursor = len(self._entered)
 
     ACTIONS = {
