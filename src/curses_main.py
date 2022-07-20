@@ -13,7 +13,7 @@ from src.Dictionaries.utils import wrap_and_pad
 from src.cards import create_and_add_card
 from src.colors import Color as _Color
 from src.commands import INTERACTIVE_COMMANDS, NO_HELP_ARG_COMMANDS, HELP_ARG_COMMANDS
-from src.data import STRING_TO_BOOL, HORIZONTAL_BAR, LINUX, WINDOWS, config
+from src.data import STRING_TO_BOOL, HORIZONTAL_BAR, LINUX, WINDOWS, ON_TERMUX, config
 from src.search import search_dictionaries
 from src.term_utils import display_in_less
 
@@ -1060,8 +1060,12 @@ class Prompt:
     else:
         ACTIONS[b'kLFT5'] = ACTIONS[b'kLFT3'] = ctrl_left
         ACTIONS[b'kRIT5'] = ACTIONS[b'kRIT3'] = ctrl_right
-        ACTIONS[b'KEY_BACKSPACE'] = backspace
-        ACTIONS[b'^H'] = ctrl_backspace
+        if ON_TERMUX:
+            ACTIONS[b'^?'] = backspace
+            ACTIONS[b'KEY_BACKSPACE'] = ctrl_backspace
+        else:
+            ACTIONS[b'KEY_BACKSPACE'] = backspace
+            ACTIONS[b'^H'] = ctrl_backspace
 
     def _run(self) -> str | None:
         while True:
