@@ -26,8 +26,6 @@ Aby wyświetlić użycie dla danej komendy po prostu wpisz jej nazwę.
 
 ![configuration image](https://user-images.githubusercontent.com/82805891/175174300-b8702354-1261-499d-9693-61eaa1b32e8f.png)
 
-Jeżeli używasz Windowsa polecam zainstalować Windows Terminal lub jakikolwiek inny niż cmd emulator terminala, aby zwiększyć wygodę użytkowania.
-
 ## Instalacja
 
 ### Windows
