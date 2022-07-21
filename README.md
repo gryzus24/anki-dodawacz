@@ -26,8 +26,6 @@ To display usage information for a command just type its name.
 
 ![configuration image](https://user-images.githubusercontent.com/82805891/175174300-b8702354-1261-499d-9693-61eaa1b32e8f.png)
 
-If you are using Windows install Windows Terminal or any other than cmd terminal emulator for better user experience.
-
 ## Installation
 
 ### Windows
