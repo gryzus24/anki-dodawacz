@@ -18,8 +18,8 @@ from src.search import search_dictionaries
 from src.term_utils import display_in_less
 
 if TYPE_CHECKING:
-    from src.search import QuerySettings
     from src.Dictionaries.dictionary_base import Dictionary
+    from src.search import QuerySettings
 
 # Pythons < 3.10 and ncurses < 6 do not
 # define BUTTON5_PRESSED. (mouse wheel down)
@@ -106,27 +106,28 @@ class _CursesColor:
         result: list[list[tuple[str, int]]] = [[]]
         reading = False
         text = a_code = ''
-        attr = 0
+        t_attrs = [0, 0]
         for ch in s:
             if ch == '\n':
-                result[-1].append((text, attr))
+                result[-1].append((text, t_attrs[0] | t_attrs[1]))
                 result.append([])
                 text = ''
             elif ch == '\b':
                 text = text[:-1]
             elif ch == '\033':
                 reading = True
-                result[-1].append((text, attr))
+                result[-1].append((text, t_attrs[0] | t_attrs[1]))
                 text = ''
             elif reading:
                 if ch == 'm':
                     try:
-                        attr = self._attrs[a_code]
+                        t_attrs[0] = self._attrs[a_code]
                     except KeyError:
                         if a_code == '[1':
-                            attr |= curses.A_BOLD
+                            t_attrs[1] = curses.A_BOLD
                         elif a_code == '[0':
-                            attr ^= curses.A_BOLD
+                            t_attrs[1] = 0
+
                     a_code = ''
                     reading = False
                 else:
@@ -134,7 +135,7 @@ class _CursesColor:
             else:
                 text += ch
 
-        result[-1].append((text, attr))
+        result[-1].append((text, t_attrs[0] | t_attrs[1]))
 
         return result
 
@@ -668,16 +669,16 @@ class Screen:
                 for line in lines:
                     line.bkgd(state)
 
-    def _get_scroll_EOF(self) -> int:
+    def _scroll_end(self) -> int:
         r = max(map(len, self.columns)) - self.screen_height
         return r if r > 0 else 0
 
     def draw(self) -> None:
         # scroll_pos can be bigger than eof if self.margin_bottom
         # has decreased or window has been resized.
-        eof = self._get_scroll_EOF()
-        if self._scroll_i > eof:
-            self._scroll_i = eof
+        bound = self._scroll_end()
+        if self._scroll_i > bound:
+            self._scroll_i = bound
 
         columns = self.columns
         from_index = self._scroll_i + 1  # +1 skips headers
@@ -796,9 +797,9 @@ class Screen:
 
     def move_down(self, n: int = 2) -> None:
         self._scroll_i += n
-        eof = self._get_scroll_EOF()
-        if self._scroll_i > eof:
-            self._scroll_i = eof
+        bound = self._scroll_end()
+        if self._scroll_i > bound:
+            self._scroll_i = bound
 
     def move_up(self, n: int = 2) -> None:
         self._scroll_i -= n
@@ -806,7 +807,7 @@ class Screen:
             self._scroll_i = 0
 
     def go_bottom(self) -> None:
-        self._scroll_i = self._get_scroll_EOF()
+        self._scroll_i = self._scroll_end()
 
     def go_top(self) -> None:
         self._scroll_i = 0
@@ -817,7 +818,7 @@ class Screen:
     def page_up(self) -> None:
         self.move_up(self.screen_height - 2)
 
-    ACTIONS: dict[bytes, Callable[..., None]] = {
+    ACTIONS: dict[bytes, Callable[[Screen], None]] = {
         b'^J': restore_original_dictionary, b'^M': restore_original_dictionary,
         b'd': deselect_all,
         b'j': move_down, b'^N': move_down, b'KEY_DOWN': move_down,
@@ -868,6 +869,101 @@ class InteractiveCommandHandler:
         if typed is None:
             return default
         return STRING_TO_BOOL.get(typed.strip().lower(), default)
+
+
+class Pager:
+    def __init__(self, contents: str, *, hscroll_const: float = 0.67) -> None:
+        self._buffer = Color.parse_ansi_str(contents)
+        self._height = len(self._buffer)
+        self._width = max(max(map(lambda x: len(x[0]), line)) for line in self._buffer)
+        self._line = self._col = 0
+
+        self.pad = curses.newpad(self._height, self._width)
+        self.pad.keypad(True)
+        self.hscroll_const = hscroll_const
+
+    @property
+    def _hscroll_value(self) -> int:
+        return int(self.hscroll_const * COLS)
+
+    def _scroll_end(self) -> int:
+        r = self._height - LINES
+        return r if r > 0 else 0
+
+    def draw(self) -> None:
+        if COLS < 2:
+            return
+        self.pad.noutrefresh(self._line, self._col, 0, 0, LINES-1, COLS-1)
+
+    def resize(self) -> None:
+        terminal_resize()
+        bound = self._scroll_end()
+        if self._line > bound:
+            self._line = bound
+        self.pad.clearok(True)
+
+    def move_down(self, n: int = 2) -> None:
+        self._line += n
+        bound = self._scroll_end()
+        if self._line > bound:
+            self._line = bound
+
+    def move_up(self, n: int = 2) -> None:
+        self._line -= n
+        if self._line < 0:
+            self._line = 0
+
+    def move_right(self, n: int | None = None) -> None:
+        bound = self._width - COLS
+        if bound <= 0:
+            return
+        self._col += n or self._hscroll_value
+        if self._col > bound:
+            self._col = bound
+
+    def move_left(self, n: int | None = None) -> None:
+        self._col -= n or self._hscroll_value
+        if self._col < 0:
+            self._col = 0
+
+    def go_bottom(self) -> None:
+        self._line = self._scroll_end()
+
+    def go_top(self) -> None:
+        self._line = 0
+
+    def page_down(self) -> None:
+        self.move_down(LINES - 2)
+
+    def page_up(self) -> None:
+        self.move_up(LINES - 2)
+
+    ACTIONS: dict[bytes, Callable[[Pager], None]] = {
+        b'KEY_RESIZE': resize, b'^L': resize,
+        b'j': move_down,  b'^N': move_down, b'KEY_DOWN': move_down,
+        b'k': move_up,    b'^P': move_up,   b'KEY_UP': move_up,
+        b'l': move_right, b'KEY_RIGHT': move_right,
+        b'h': move_left,  b'KEY_LEFT': move_left,
+        b'G': go_bottom,  b'KEY_END': go_bottom,
+        b'g': go_top,     b'KEY_HOME': go_top,
+        b'KEY_NPAGE': page_down, b'KEY_SNEXT': page_down,
+        b'KEY_PPAGE': page_up,   b'KEY_SPREVIOUS': page_up,
+    }
+
+    def run(self) -> None:
+        for y, line in enumerate(self._buffer):
+            for text, attr in reversed(line):
+                self.pad.insstr(y, 0, text, attr)
+
+        while True:
+            self.draw()
+            curses.doupdate()
+
+            c = curses.keyname(get_key(self.pad))
+            if c in Pager.ACTIONS:
+                Pager.ACTIONS[c](self)
+            elif c == b'q':
+                return
 
 
 class Prompt:
@@ -1204,17 +1300,11 @@ class ScreenBuffer:
         screen.draw()
 
     def resize(self) -> None:
-        _update_global_lines_cols()
-
-        # prevents malloc() errors from ncurses on 32-bit binaries.
-        if COLS < 2:
-            return
-
         # This is noticeably slow when there are more than 10 screens.
-        # Updating lazily doesn't help, because `curses.resize_term` is what
-        # takes the majority of the time.
+        # Updating lazily doesn't help, because terminal_resize takes
+        # the majority of the time.
+        terminal_resize()
 
-        curses.resize_term(LINES, COLS)
         for screen in self.screens:
             screen.update_for_redraw()
 
@@ -1247,16 +1337,10 @@ class ScreenBuffer:
         self.status.writer.buffer.clear()
         if s.count('\n') < self.status.writer.screen_coverage * LINES - 2:
             self.status.writeln(s)
-            return
-
-        stdscr.erase()
-        stdscr.refresh()
-        err = display_in_less(s)
-        if err is None:
-            stdscr.clearok(True)
         else:
-            self.status.nlerror('Could not open less:')
-            self.status.addstr(err)
+            stdscr.erase()
+            stdscr.noutrefresh()
+            Pager(s).run()
 
     def _dispatch_command(self, s: str) -> bool:
         args = s.split()
@@ -1411,6 +1495,15 @@ else:
     def _update_global_lines_cols() -> None:
         global LINES, COLS
         COLS, LINES = shutil.get_terminal_size()
+
+
+def terminal_resize() -> None:
+    _update_global_lines_cols()
+    # prevents malloc() errors from ncurses on 32-bit binaries.
+    if COLS < 2:
+        return
+    curses.resize_term(LINES, COLS)
+
 
 ###############################################################################
 
