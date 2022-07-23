@@ -5,7 +5,7 @@ import shutil
 from collections import Counter
 from itertools import islice, zip_longest
 from subprocess import Popen, PIPE, DEVNULL
-from typing import Callable, TypeVar, Reversible, Sequence, TYPE_CHECKING
+from typing import Callable, TypeVar, Reversible, Sequence, NamedTuple, TYPE_CHECKING
 
 import src.anki_interface as anki
 from src.Dictionaries.dictionary_base import filter_dictionary
@@ -158,6 +158,8 @@ def highlight() -> int:
 #       at least some control over drawing in the ScreenBuffer.
 #       We should consider merging it with the Status class.
 class Writer:
+    __slots__ = 'win', 'screen_coverage', 'margin_bottom', 'buffer'
+
     def __init__(self,
             win: curses._CursesWindow, screen_coverage: float, margin_bottom: int
     ) -> None:
@@ -258,6 +260,19 @@ class Status:
             self.writer.buffer.clear()
         else:
             self.ticks += 1
+
+
+class PromptPrepare:
+    def __init__(self, status: Status) -> None:
+        self.status = status
+
+    def __enter__(self) -> None:
+        self.status.lock = True
+        self.status.writer.margin_bottom = 1
+
+    def __exit__(self, *exc) -> None:
+        self.status.lock = False
+        self.status.writer.margin_bottom = 0
 
 
 class RefreshWriter:
@@ -844,10 +859,13 @@ def truncate_if_needed(s: str, n: int, *, fromleft: bool = False) -> str | None:
 T = TypeVar('T')
 class InteractiveCommandHandler:
     def __init__(self, screen_buffer: ScreenBuffer) -> None:
-        self.prompt = Prompt(screen_buffer, exit_if_empty=False)
+        self.screen_buffer = screen_buffer
+        self.prompt = Prompt(
+            screen_buffer, screen_buffer.stdscr, exit_if_empty=False
+        )
 
     def writeln(self, s: str) -> None:
-        self.prompt.screen_buffer.status.writeln(s)
+        self.screen_buffer.status.writeln(s)
 
     def choose_item(self, prompt_name: str, seq: Sequence[T], default: int = 1) -> T | None:
         self.prompt.prompt = f'{prompt_name} [{default}]: '
@@ -871,40 +889,104 @@ class InteractiveCommandHandler:
         return STRING_TO_BOOL.get(typed.strip().lower(), default)
 
 
+class PagerHighlight(NamedTuple):
+    attr_indices: list[list[int]]
+    span: int
+    jumps: list[int]
+
+
 class Pager:
-    def __init__(self, contents: str, *, hscroll_const: float = 0.67) -> None:
+    def __init__(self,
+            win: curses._CursesWindow,
+            contents: str, *,
+            hscroll_const: float = 0.67
+    ) -> None:
         self._buffer = Color.parse_ansi_str(contents)
         self._height = len(self._buffer)
         self._width = max(max(map(lambda x: len(x[0]), line)) for line in self._buffer)
         self._line = self._col = 0
 
-        self.pad = curses.newpad(self._height, self._width)
-        self.pad.keypad(True)
+        self.win = win
         self.hscroll_const = hscroll_const
 
     @property
     def _hscroll_value(self) -> int:
         return int(self.hscroll_const * COLS)
 
-    def _scroll_end(self) -> int:
+    def _vscroll_end(self) -> int:
         r = self._height - LINES
         return r if r > 0 else 0
 
+    def _hscroll_end(self) -> int:
+        r = self._width - COLS
+        return r if r > 0 else 0
+
     def draw(self) -> None:
-        if COLS < 2:
-            return
-        self.pad.noutrefresh(self._line, self._col, 0, 0, LINES-1, COLS-1)
+        win = self.win
+
+        win.erase()
+        if self._col:
+            for y, line in enumerate(self._buffer[self._line:self._line + LINES]):
+                # TODO: A cleaner way to draw with the col offset?
+                x = 0
+                void = self._col
+                try:
+                    for text, attr in line:
+                        for ch in text:
+                            if void:
+                                void -= 1
+                            else:
+                                win.addch(y, x, ch, attr)
+                                x += 1
+                except curses.error:
+                    pass
+        else:
+            for y, line in enumerate(self._buffer[self._line:self._line + LINES]):
+                for text, attr in reversed(line):
+                    win.insstr(y, 0, text, attr)
+
+        win.noutrefresh()
+
+    def highlight(self, attr_indices: list[list[int]], span: int) -> None:
+        hl_attr = Color.heed | curses.A_REVERSE | curses.A_BOLD
+        for y, x_values in enumerate(
+           attr_indices[self._line:self._line + LINES]
+        ):
+            if not x_values:
+                continue
+            for x in x_values:
+                x_with_offset = x - self._col
+                if x_with_offset < 0:
+                    # x_with_offset < 0 is true only if self._col > 0
+                    # |re  <= highlight even if off-screen
+                    # /more
+                    supplement = x_with_offset + span
+                    if supplement > 0:
+                        self.win.chgat(y, 0, supplement, hl_attr)
+                else:
+                    try:
+                        self.win.chgat(y, x_with_offset, span, hl_attr)
+                    except curses.error:  # window too small.
+                        pass
+
+        self.win.noutrefresh()
 
     def resize(self) -> None:
         terminal_resize()
-        bound = self._scroll_end()
-        if self._line > bound:
-            self._line = bound
-        self.pad.clearok(True)
+
+        vbound = self._vscroll_end()
+        if self._line > vbound:
+            self._line = vbound
+
+        hbound = self._hscroll_end()
+        if self._col > hbound:
+            self._col = hbound
+
+        self.win.clearok(True)
 
     def move_down(self, n: int = 2) -> None:
         self._line += n
-        bound = self._scroll_end()
+        bound = self._vscroll_end()
         if self._line > bound:
             self._line = bound
 
@@ -914,10 +996,8 @@ class Pager:
             self._line = 0
 
     def move_right(self, n: int | None = None) -> None:
-        bound = self._width - COLS
-        if bound <= 0:
-            return
         self._col += n or self._hscroll_value
+        bound = self._hscroll_end()
         if self._col > bound:
             self._col = bound
 
@@ -927,7 +1007,7 @@ class Pager:
             self._col = 0
 
     def go_bottom(self) -> None:
-        self._line = self._scroll_end()
+        self._line = self._vscroll_end()
 
     def go_top(self) -> None:
         self._line = 0
@@ -937,6 +1017,38 @@ class Pager:
 
     def page_up(self) -> None:
         self.move_up(LINES - 2)
+
+    def _get_highlights(self, s: str) -> PagerHighlight | None:
+        against_lowercase = s.islower()
+        s_span = len(s)
+
+        result = []
+        found = False
+        for line in self._buffer:
+            text = ''.join(x[0] for x in line)
+            if against_lowercase:
+                text = text.lower()
+            # TODO: Maybe there is a more efficient way to get indices
+            #       of every occurrence of a substring?
+            indices = []
+            x = text.find(s)
+            while ~x:
+                indices.append(x)
+                x = text.find(s, x + s_span)
+
+            if indices:
+                found = True
+            result.append(indices)
+
+        if not found:
+            return None
+
+        jumps = []
+        for i, x in enumerate(result):
+            if x and i not in jumps:
+                jumps.append(i)
+
+        return PagerHighlight(result, s_span, jumps)
 
     ACTIONS: dict[bytes, Callable[[Pager], None]] = {
         b'KEY_RESIZE': resize, b'^L': resize,
@@ -951,36 +1063,57 @@ class Pager:
     }
 
     def run(self) -> None:
-        for y, line in enumerate(self._buffer):
-            for text, attr in reversed(line):
-                self.pad.insstr(y, 0, text, attr)
-
+        hl = None
         while True:
             self.draw()
+            if hl is not None:
+                self.highlight(hl.attr_indices, hl.span)
             curses.doupdate()
 
-            c = curses.keyname(get_key(self.pad))
-            if c in Pager.ACTIONS:
-                Pager.ACTIONS[c](self)
-            elif c == b'q':
+            c = curses.keyname(get_key(self.win))
+            if c in (b'q', b'Q', b'^X'):
                 return
+            elif c in Pager.ACTIONS:
+                Pager.ACTIONS[c](self)
+            elif c == b'/':
+                typed = Prompt(self, self.win, '/').run()
+                if typed is None:
+                    continue
+                elif not typed:
+                    hl = None
+                else:
+                    hl = self._get_highlights(typed)
+                    if hl is not None:
+                        self._line = hl.jumps[0]
+            elif hl is not None:
+                if c == b'n':
+                    for i in hl.jumps:
+                        if self._line - i < 0:
+                            self._line = i
+                            break
+                elif c == b'N':
+                    for i in reversed(hl.jumps):
+                        if self._line - i > 0:
+                            self._line = i
+                            break
 
 
 class Prompt:
     def __init__(self,
-            screen_buffer: ScreenBuffer,
+            implementor,
+            win: curses._CursesWindow,
             prompt: str = '', *,
             pretype: str = '',
             exit_if_empty: bool = True,
     ) -> None:
-        self.win = screen_buffer.stdscr
-        self.screen_buffer: ScreenBuffer = screen_buffer  # mypy bug?
+        self.implementor = implementor
+        self.win = win
         self.prompt: str = prompt
         self.exit_if_empty: bool = exit_if_empty
         self._cursor = len(pretype)
         self._entered = pretype
 
-    def draw_prompt(self) -> None:
+    def draw_prompt(self, y_draw: int) -> None:
         # Prevents going into an infinite loop on some terminals, or even
         # something worse, as the terminal (32-bit xterm)
         # locks up completely when COLS < 2.
@@ -997,12 +1130,12 @@ class Prompt:
         else:
             prompt_text = ''
 
-        self.win.move(LINES-1, 0)
+        self.win.move(y_draw, 0)
         self.win.clrtoeol()
 
         visual_cursor = self._cursor + len(prompt_text)
         if visual_cursor < width:
-            self.win.insstr(LINES-1, 0, prompt_text)
+            self.win.insstr(y_draw, 0, prompt_text)
             if len(self._entered) > width - len(prompt_text):
                 text = f'{self._entered[:width - len(prompt_text)]}>'
             else:
@@ -1019,15 +1152,15 @@ class Prompt:
                 text = f'<{self._entered[start + 1:start + width]}>'
             text_x = 0
 
-        self.win.insstr(LINES-1, text_x, text)
-        self.win.move(LINES-1, visual_cursor)
+        self.win.insstr(y_draw, text_x, text)
+        self.win.move(y_draw, visual_cursor)
 
     def _clear(self) -> None:
         self._entered = ''
         self._cursor = 0
 
     def resize(self) -> None:
-        self.screen_buffer.resize()
+        self.implementor.resize()
 
     # Movement
     def left(self) -> None:
@@ -1165,8 +1298,8 @@ class Prompt:
 
     def _run(self) -> str | None:
         while True:
-            self.screen_buffer.draw()
-            self.draw_prompt()
+            self.implementor.draw()
+            self.draw_prompt(LINES - 1)
 
             c_code = get_key(self.win)
             if 32 <= c_code <= 126:  # printable
@@ -1194,7 +1327,6 @@ class Prompt:
                 return ret
 
     def run(self) -> str | None:
-        self.screen_buffer.status.lock = True
         curses.raw()
         try:
             curses.curs_set(1)
@@ -1208,7 +1340,6 @@ class Prompt:
             except curses.error:
                 pass
             curses.cbreak()
-            self.screen_buffer.status.lock = False
 
 
 class ScreenBuffer:
@@ -1340,7 +1471,7 @@ class ScreenBuffer:
         else:
             stdscr.erase()
             stdscr.noutrefresh()
-            Pager(s).run()
+            Pager(self.stdscr, s).run()
 
     def _dispatch_command(self, s: str) -> bool:
         args = s.split()
@@ -1359,9 +1490,10 @@ class ScreenBuffer:
                 result = func(*args)
         elif cmd in INTERACTIVE_COMMANDS:
             # change margin_bottom to leave one line for the prompt.
-            self.status.writer.margin_bottom = 1
-            result = INTERACTIVE_COMMANDS[cmd](InteractiveCommandHandler(self), *args)
-            self.status.writer.margin_bottom = 0
+            with PromptPrepare(self.status):
+                result = INTERACTIVE_COMMANDS[cmd](
+                    InteractiveCommandHandler(self), *args
+                )
             self.status.writer.buffer.clear()
         elif cmd.startswith('-'):
             self.status.nlerror(f'{cmd}: command not found')
@@ -1382,7 +1514,7 @@ class ScreenBuffer:
 
     def search_prompt(self, *, pretype: str = '') -> tuple[ScreenBuffer, QuerySettings] | None:
         pretype = ' '.join(pretype.split())
-        typed = Prompt(self, 'Search $ ', pretype=pretype).run()
+        typed = Prompt(self, self.stdscr, 'Search $ ', pretype=pretype).run()
         if typed is None:
             return None
         typed = typed.strip()
