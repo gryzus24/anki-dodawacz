@@ -938,7 +938,6 @@ HELP_CURSES_TEXT = f"""\
 {_title('Curses')}
 Simple and minimalist interface with vim'n'emacs-like keybindings for
 navigation and mouse support for selecting definitions.
-Windows OS is not supported yet.
 
 Commands and their preferred keybindings are self-explanatory and discoverable
 by increasing the terminal window size. Here is their full documentation.
@@ -995,6 +994,13 @@ F1        toggle help (use `-nohelp on` to toggle it off by default)
   ^C ESC    exit without submitting
   ^K        delete everything from the cursor to the end of the line
   ^T        delete everything except the word under the cursor
+
+{BOLD}Pager:{DEFAULT}
+  Pager, apart from basic pager stuff, supports the "smartcase" text search.
+  Keybindings for navigation are the same as already mentioned.
+
+  /         open the text search prompt
+  n N       go to the next/previous closest match
 
 {BOLD}{79 * '─'}{DEFAULT}
 -conf, -config      show current configuration and more options
