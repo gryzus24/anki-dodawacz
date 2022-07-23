@@ -5,7 +5,7 @@ import shutil
 from collections import Counter
 from itertools import islice, zip_longest
 from subprocess import Popen, PIPE, DEVNULL
-from typing import Callable, TypeVar, Reversible, Sequence, NamedTuple, TYPE_CHECKING
+from typing import Any, Callable, TypeVar, Reversible, Sequence, NamedTuple, TYPE_CHECKING
 
 import src.anki_interface as anki
 from src.Dictionaries.dictionary_base import filter_dictionary
@@ -15,10 +15,10 @@ from src.colors import Color as _Color
 from src.commands import INTERACTIVE_COMMANDS, NO_HELP_ARG_COMMANDS, HELP_ARG_COMMANDS
 from src.data import STRING_TO_BOOL, HORIZONTAL_BAR, LINUX, WINDOWS, ON_TERMUX, config
 from src.search import search_dictionaries
-from src.term_utils import display_in_less
 
 if TYPE_CHECKING:
     from src.Dictionaries.dictionary_base import Dictionary
+    from src.proto import DrawAndResizeInterface
     from src.search import QuerySettings
 
 # Pythons < 3.10 and ncurses < 6 do not
@@ -270,7 +270,7 @@ class PromptPrepare:
         self.status.lock = True
         self.status.writer.margin_bottom = 1
 
-    def __exit__(self, *exc) -> None:
+    def __exit__(self, *_: Any) -> None:
         self.status.lock = False
         self.status.writer.margin_bottom = 0
 
@@ -938,7 +938,7 @@ class Pager:
                             else:
                                 win.addch(y, x, ch, attr)
                                 x += 1
-                except curses.error:
+                except curses.error:  # window too small.
                     pass
         else:
             for y, line in enumerate(self._buffer[self._line:self._line + LINES]):
@@ -946,30 +946,6 @@ class Pager:
                     win.insstr(y, 0, text, attr)
 
         win.noutrefresh()
-
-    def highlight(self, attr_indices: list[list[int]], span: int) -> None:
-        hl_attr = Color.heed | curses.A_REVERSE | curses.A_BOLD
-        for y, x_values in enumerate(
-           attr_indices[self._line:self._line + LINES]
-        ):
-            if not x_values:
-                continue
-            for x in x_values:
-                x_with_offset = x - self._col
-                if x_with_offset < 0:
-                    # x_with_offset < 0 is true only if self._col > 0
-                    # |re  <= highlight even if off-screen
-                    # /more
-                    supplement = x_with_offset + span
-                    if supplement > 0:
-                        self.win.chgat(y, 0, supplement, hl_attr)
-                else:
-                    try:
-                        self.win.chgat(y, x_with_offset, span, hl_attr)
-                    except curses.error:  # window too small.
-                        pass
-
-        self.win.noutrefresh()
 
     def resize(self) -> None:
         terminal_resize()
@@ -1019,8 +995,8 @@ class Pager:
         self.move_up(LINES - 2)
 
     def _get_highlights(self, s: str) -> PagerHighlight | None:
-        against_lowercase = s.islower()
-        s_span = len(s)
+        against_lowercase = s.islower()  # smartcase
+        hl_span = len(s)
 
         result = []
         found = False
@@ -1034,7 +1010,7 @@ class Pager:
             x = text.find(s)
             while ~x:
                 indices.append(x)
-                x = text.find(s, x + s_span)
+                x = text.find(s, x + hl_span)
 
             if indices:
                 found = True
@@ -1043,12 +1019,35 @@ class Pager:
         if not found:
             return None
 
-        jumps = []
-        for i, x in enumerate(result):
-            if x and i not in jumps:
-                jumps.append(i)
+        jumps = [i for i, x in enumerate(result) if x]
 
-        return PagerHighlight(result, s_span, jumps)
+        return PagerHighlight(result, hl_span, jumps)
+
+    def highlight(self, attr_indices: list[list[int]], span: int) -> None:
+        win = self.win
+        hl_attr = Color.heed | curses.A_REVERSE | curses.A_BOLD
+
+        for y, x_values in enumerate(
+           attr_indices[self._line:self._line + LINES]
+        ):
+            if not x_values:
+                continue
+            for x in x_values:
+                x_with_offset = x - self._col
+                if x_with_offset < 0:
+                    # x_with_offset < 0 is true only if self._col > 0
+                    # |re  <= highlight even if off-screen
+                    # /more
+                    partial = x_with_offset + span
+                    if partial > 0:
+                        win.chgat(y, 0, partial, hl_attr)
+                else:
+                    try:
+                        win.chgat(y, x_with_offset, span, hl_attr)
+                    except curses.error:  # window too small.
+                        pass
+
+        win.noutrefresh()
 
     ACTIONS: dict[bytes, Callable[[Pager], None]] = {
         b'KEY_RESIZE': resize, b'^L': resize,
@@ -1087,6 +1086,8 @@ class Pager:
                         self._line = hl.jumps[0]
             elif hl is not None:
                 if c == b'n':
+                    # We can use bisect.bisect_right here and so on,
+                    # but this is fast enough.
                     for i in hl.jumps:
                         if self._line - i < 0:
                             self._line = i
@@ -1100,7 +1101,7 @@ class Pager:
 
 class Prompt:
     def __init__(self,
-            implementor,
+            implementor: DrawAndResizeInterface,
             win: curses._CursesWindow,
             prompt: str = '', *,
             pretype: str = '',
@@ -1314,9 +1315,10 @@ class Prompt:
             elif c == b'KEY_MOUSE':
                 bstate = curses.getmouse()[4]
                 if mouse_wheel_clicked(bstate):
-                    clip = clipboard_or_selection(self.screen_buffer.status)
-                    if clip is not None:
-                        self.insert(clip)
+                    try:
+                        self.insert(clipboard_or_selection())
+                    except (ValueError, LookupError):
+                        pass
                 elif bstate & curses.BUTTON3_PRESSED:
                     ret = self._entered
                     self._clear()
@@ -1451,7 +1453,7 @@ class ScreenBuffer:
         self.status.success(config['-columns'].capitalize())
 
     def filter_prompt(self) -> None:
-        typed = Prompt(self, 'Filter (~n, ~/n): ').run()
+        typed = Prompt(self, self.stdscr, 'Filter (~n, ~/n): ').run()
         if typed is None:
             return
         typed = typed.lstrip()
@@ -1461,17 +1463,6 @@ class ScreenBuffer:
         screen = self.current
         screen.dictionary = filter_dictionary(screen._orig_dictionary, (typed,))
         screen.update_for_redraw()
-
-    def _display_command_result_output(self, s: str) -> None:
-        stdscr = self.stdscr
-
-        self.status.writer.buffer.clear()
-        if s.count('\n') < self.status.writer.screen_coverage * LINES - 2:
-            self.status.writeln(s)
-        else:
-            stdscr.erase()
-            stdscr.noutrefresh()
-            Pager(self.stdscr, s).run()
 
     def _dispatch_command(self, s: str) -> bool:
         args = s.split()
@@ -1503,8 +1494,13 @@ class ScreenBuffer:
 
         # TODO: dedicated dispatch functions for updating
         #       relevant states after issuing commands?
-        if result.output:
-            self._display_command_result_output(result.output)
+        outs = result.output
+        if outs:
+            self.status.writer.buffer.clear()
+            if outs.count('\n') < self.status.writer.screen_coverage * LINES - 2:
+                self.status.writeln(outs)
+            else:
+                Pager(self.stdscr, outs).run()
         if result.error:
             self.status.nlerror(result.error)
         if result.reason:
@@ -1560,17 +1556,15 @@ else:
 
 
 _cmd = None
-def clipboard_or_selection(status: Status) -> str | None:
+def clipboard_or_selection() -> str:
     global _cmd
     if _cmd is None:
         _cmd = _selection_command()
         if _cmd is None:
-            if WINDOWS:
-                status.nlerror('Could not access the clipboard')
-            else:
-                status.nlerror('Could not access the primary selection')
-                status.addstr('Install xsel or xclip and try again')
-            return None
+            raise LookupError(
+                'Error reason unknown' if WINDOWS else
+                'Install xsel or xclip and try again'
+            )
 
     with Popen(_cmd, stdout=PIPE, stderr=DEVNULL, encoding='UTF-8') as p:
         stdout, _ = p.communicate()
@@ -1579,11 +1573,26 @@ def clipboard_or_selection(status: Status) -> str | None:
     if stdout:
         return stdout
 
-    status.error(f'{"Clipboard" if WINDOWS else "Primary selection"} is empty')
+    raise ValueError(
+        f'{"Clipboard" if WINDOWS else "Primary selection"} is empty'
+    )
+
+
+def perror_clipboard_or_selection(status: Status) -> str | None:
+    try:
+        return clipboard_or_selection()
+    except ValueError as e:
+        status.error(str(e))
+    except LookupError as e:
+        status.nlerror(
+            f'Could not access the {"clipboard" if WINDOWS else "primary selection"}:'
+        )
+        status.addstr(str(e))
+
     return None
 
 
-def current_anki_phrase(status: Status) -> str | None:
+def perror_currently_reviewed_phrase(status: Status) -> str | None:
     try:
         return anki.currently_reviewed_phrase()
     except anki.AnkiError as e:
@@ -1593,8 +1602,8 @@ def current_anki_phrase(status: Status) -> str | None:
 
 
 SEARCH_ENTER_ACTIONS = {
-    b'p': clipboard_or_selection,
-    b'P': current_anki_phrase,
+    b'p': perror_clipboard_or_selection,
+    b'P': perror_currently_reviewed_phrase,
     b'-': lambda _: '-',
     b'/': lambda _: '',
 }
@@ -1673,7 +1682,7 @@ def _curses_main(
             elif bstate & BUTTON5_PRESSED:  # mouse wheel
                 screen_buffer.current.move_down()
             elif mouse_wheel_clicked(bstate):
-                pretype = clipboard_or_selection(screen_buffer.status)
+                pretype = perror_clipboard_or_selection(screen_buffer.status)
                 if pretype is None:
                     continue
                 ret = screen_buffer.search_prompt(pretype=pretype)
