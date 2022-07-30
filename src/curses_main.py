@@ -1,11 +1,12 @@
 from __future__ import annotations
 
+import contextlib
 import curses
 import shutil
 from collections import Counter
 from itertools import islice, zip_longest
 from subprocess import Popen, PIPE, DEVNULL
-from typing import Callable, TypeVar, Reversible, Sequence, TYPE_CHECKING
+from typing import Callable, TypeVar, Reversible, Sequence, Iterator, NamedTuple, TYPE_CHECKING
 
 import src.anki_interface as anki
 from src.Dictionaries.dictionary_base import filter_dictionary
@@ -15,11 +16,11 @@ from src.colors import Color as _Color
 from src.commands import INTERACTIVE_COMMANDS, NO_HELP_ARG_COMMANDS, HELP_ARG_COMMANDS
 from src.data import STRING_TO_BOOL, HORIZONTAL_BAR, LINUX, WINDOWS, ON_TERMUX, config
 from src.search import search_dictionaries
-from src.term_utils import display_in_less
 
 if TYPE_CHECKING:
-    from src.search import QuerySettings
     from src.Dictionaries.dictionary_base import Dictionary
+    from src.proto import DrawAndResizeInterface
+    from src.search import QuerySettings
 
 # Pythons < 3.10 and ncurses < 6 do not
 # define BUTTON5_PRESSED. (mouse wheel down)
@@ -106,27 +107,28 @@ class _CursesColor:
         result: list[list[tuple[str, int]]] = [[]]
         reading = False
         text = a_code = ''
-        attr = 0
+        t_attrs = [0, 0]
         for ch in s:
             if ch == '\n':
-                result[-1].append((text, attr))
+                result[-1].append((text, t_attrs[0] | t_attrs[1]))
                 result.append([])
                 text = ''
             elif ch == '\b':
                 text = text[:-1]
             elif ch == '\033':
                 reading = True
-                result[-1].append((text, attr))
+                result[-1].append((text, t_attrs[0] | t_attrs[1]))
                 text = ''
             elif reading:
                 if ch == 'm':
                     try:
-                        attr = self._attrs[a_code]
+                        t_attrs[0] = self._attrs[a_code]
                     except KeyError:
                         if a_code == '[1':
-                            attr |= curses.A_BOLD
+                            t_attrs[1] = curses.A_BOLD
                         elif a_code == '[0':
-                            attr ^= curses.A_BOLD
+                            t_attrs[1] = 0
+
                     a_code = ''
                     reading = False
                 else:
@@ -134,7 +136,7 @@ class _CursesColor:
             else:
                 text += ch
 
-        result[-1].append((text, attr))
+        result[-1].append((text, t_attrs[0] | t_attrs[1]))
 
         return result
 
@@ -157,6 +159,8 @@ def highlight() -> int:
 #       at least some control over drawing in the ScreenBuffer.
 #       We should consider merging it with the Status class.
 class Writer:
+    __slots__ = 'win', 'screen_coverage', 'margin_bottom', 'buffer'
+
     def __init__(self,
             win: curses._CursesWindow, screen_coverage: float, margin_bottom: int
     ) -> None:
@@ -212,6 +216,17 @@ class Status:
         self.persistence = persistence if persistence > 0 else 1
         self.lock = False
         self.ticks = 1
+
+    @contextlib.contextmanager
+    def change(self, *, lock: bool, margin_bottom: int) -> Iterator[None]:
+        _orig_mb, _orig_lock = self.writer.margin_bottom, self.lock
+        self.writer.margin_bottom = margin_bottom
+        self.lock = lock
+        try:
+            yield
+        finally:
+            self.lock = _orig_lock
+            self.writer.margin_bottom = _orig_mb
 
     def _pad(self, s: str) -> str:
         return ' ' + s.ljust(COLS - 1)
@@ -668,16 +683,16 @@ class Screen:
                 for line in lines:
                     line.bkgd(state)
 
-    def _get_scroll_EOF(self) -> int:
+    def _scroll_end(self) -> int:
         r = max(map(len, self.columns)) - self.screen_height
         return r if r > 0 else 0
 
     def draw(self) -> None:
         # scroll_pos can be bigger than eof if self.margin_bottom
         # has decreased or window has been resized.
-        eof = self._get_scroll_EOF()
-        if self._scroll_i > eof:
-            self._scroll_i = eof
+        bound = self._scroll_end()
+        if self._scroll_i > bound:
+            self._scroll_i = bound
 
         columns = self.columns
         from_index = self._scroll_i + 1  # +1 skips headers
@@ -796,9 +811,9 @@ class Screen:
 
     def move_down(self, n: int = 2) -> None:
         self._scroll_i += n
-        eof = self._get_scroll_EOF()
-        if self._scroll_i > eof:
-            self._scroll_i = eof
+        bound = self._scroll_end()
+        if self._scroll_i > bound:
+            self._scroll_i = bound
 
     def move_up(self, n: int = 2) -> None:
         self._scroll_i -= n
@@ -806,7 +821,7 @@ class Screen:
             self._scroll_i = 0
 
     def go_bottom(self) -> None:
-        self._scroll_i = self._get_scroll_EOF()
+        self._scroll_i = self._scroll_end()
 
     def go_top(self) -> None:
         self._scroll_i = 0
@@ -817,7 +832,7 @@ class Screen:
     def page_up(self) -> None:
         self.move_up(self.screen_height - 2)
 
-    ACTIONS: dict[bytes, Callable[..., None]] = {
+    ACTIONS: dict[bytes, Callable[[Screen], None]] = {
         b'^J': restore_original_dictionary, b'^M': restore_original_dictionary,
         b'd': deselect_all,
         b'j': move_down, b'^N': move_down, b'KEY_DOWN': move_down,
@@ -843,10 +858,13 @@ def truncate_if_needed(s: str, n: int, *, fromleft: bool = False) -> str | None:
 T = TypeVar('T')
 class InteractiveCommandHandler:
     def __init__(self, screen_buffer: ScreenBuffer) -> None:
-        self.prompt = Prompt(screen_buffer, exit_if_empty=False)
+        self.screen_buffer = screen_buffer
+        self.prompt = Prompt(
+            screen_buffer, screen_buffer.stdscr, exit_if_empty=False
+        )
 
     def writeln(self, s: str) -> None:
-        self.prompt.screen_buffer.status.writeln(s)
+        self.screen_buffer.status.writeln(s)
 
     def choose_item(self, prompt_name: str, seq: Sequence[T], default: int = 1) -> T | None:
         self.prompt.prompt = f'{prompt_name} [{default}]: '
@@ -870,21 +888,281 @@ class InteractiveCommandHandler:
         return STRING_TO_BOOL.get(typed.strip().lower(), default)
 
 
+class PagerHighlight(NamedTuple):
+    hl_map: dict[int, list[int]]
+    nmatches: int
+    span: int
+
+
+class PagerStatus(NamedTuple):
+    message: str
+    expire: bool
+
+
+class Pager:
+    def __init__(self,
+            win: curses._CursesWindow,
+            contents: str, *,
+            hscroll_const: float = 0.67
+    ) -> None:
+        self._buffer = Color.parse_ansi_str(contents)
+        self._height = len(self._buffer)
+        self._width = max(max(map(lambda x: len(x[0]), line)) for line in self._buffer)
+        self._line = self._col = 0
+        self._hl: PagerHighlight | None = None
+        self._status: PagerStatus | None = None
+
+        self.win = win
+        self.hscroll_const = hscroll_const
+
+    @property
+    def _hscroll_value(self) -> int:
+        return int(self.hscroll_const * COLS)
+
+    def _vscroll_end(self) -> int:
+        r = self._height - LINES
+        return r if r > 0 else 0
+
+    def _hscroll_end(self) -> int:
+        r = self._width - COLS
+        return r if r > 0 else 0
+
+    def _draw_hl(self, hl: PagerHighlight) -> None:
+        win = self.win
+        hl_attr = Color.heed | curses.A_REVERSE | curses.A_BOLD
+
+        for line_i in filter(
+            lambda x: x in hl.hl_map, range(self._line, self._line + LINES - 1)
+        ):
+            y = line_i - self._line
+            for x in hl.hl_map[line_i]:
+                x_with_offset = x - self._col
+                if x_with_offset < 0:
+                    # x_with_offset < 0 can be true only if self._col > 0
+                    # |re  <= highlight even if off-screen
+                    # /more
+                    partial = x_with_offset + hl.span
+                    if partial > 0:
+                        win.chgat(y, 0, partial, hl_attr)
+                else:
+                    try:
+                        win.chgat(y, x_with_offset, hl.span, hl_attr)
+                    except curses.error:  # window too small
+                        pass
+
+    def _draw_scroll_hint(self) -> None:
+        loc = f'{self._line},{self._col}'
+        if not self._line:
+            t = f'{loc} <TOP>'
+        elif self._line >= self._vscroll_end():
+            t = f'{loc} <END>'
+        else:
+            perc = round((self._line + LINES) / len(self._buffer) * 100)
+            t = f'{loc}  {perc}% '
+
+        r = truncate_if_needed(t, COLS, fromleft=True)
+        if r is not None:
+            self.win.insstr(LINES - 1, COLS - len(r), r)
+
+    def draw(self) -> None:
+        if COLS < 2:
+            return
+
+        win = self.win
+        win.erase()
+
+        buffer_slice = self._buffer[self._line:self._line + LINES - 1]
+        if self._col:
+            for y, line in enumerate(buffer_slice):
+                # TODO: A cleaner way to draw with the col offset?
+                x = 0
+                void = self._col
+                try:
+                    for text, attr in line:
+                        for ch in text:
+                            if void:
+                                void -= 1
+                            else:
+                                win.addch(y, x, ch, attr)
+                                x += 1
+                except curses.error:  # window too small.
+                    pass
+        else:
+            for y, line in enumerate(buffer_slice):
+                for text, attr in reversed(line):
+                    win.insstr(y, 0, text, attr)
+
+        if len(buffer_slice) < LINES - 1:
+            for y in range(len(buffer_slice), LINES - 1):
+                win.addch(y, 0, '~')
+
+        if self._hl is not None:
+            self._draw_hl(self._hl)
+
+        self._draw_scroll_hint()
+
+        if self._status is not None:
+            s = truncate_if_needed(self._status.message, COLS, fromleft=True)
+            if s is not None:
+                try:
+                    self.win.addstr(LINES - 1, 0, s, curses.A_REVERSE)
+                except curses.error:  # bottom-right corner write
+                    pass
+                if self._status.expire:
+                    self._status = None
+
+        win.noutrefresh()
+
+    def resize(self) -> None:
+        terminal_resize()
+
+        vbound = self._vscroll_end()
+        if self._line > vbound:
+            self._line = vbound
+
+        hbound = self._hscroll_end()
+        if self._col > hbound:
+            self._col = hbound
+
+        self.win.clearok(True)
+
+    def move_down(self, n: int = 2) -> None:
+        self._line += n
+        bound = self._vscroll_end()
+        if self._line > bound:
+            self._line = bound
+
+    def move_up(self, n: int = 2) -> None:
+        self._line -= n
+        if self._line < 0:
+            self._line = 0
+
+    def move_right(self, n: int | None = None) -> None:
+        self._col += n or self._hscroll_value
+        bound = self._hscroll_end()
+        if self._col > bound:
+            self._col = bound
+
+    def move_left(self, n: int | None = None) -> None:
+        self._col -= n or self._hscroll_value
+        if self._col < 0:
+            self._col = 0
+
+    def go_bottom(self) -> None:
+        self._line = self._vscroll_end()
+
+    def go_top(self) -> None:
+        self._line = 0
+
+    def page_down(self) -> None:
+        self.move_down(LINES - 2)
+
+    def page_up(self) -> None:
+        self.move_up(LINES - 2)
+
+    def _get_highlights(self, s: str) -> PagerHighlight | None:
+        against_lowercase = s.islower()
+        hl_span = len(s)
+
+        result = {}
+        nmatches = 0
+        for i, line in enumerate(self._buffer):
+            text = ''.join(x[0] for x in line)
+            if against_lowercase:
+                text = text.lower()
+            # TODO: Maybe there is a more efficient way to get indices
+            #       of every occurrence of a substring?
+            indices = []
+            x = text.find(s)
+            while ~x:
+                nmatches += 1
+                indices.append(x)
+                x = text.find(s, x + hl_span)
+
+            if indices:
+                result[i] = indices
+
+        if not nmatches:
+            return None
+
+        return PagerHighlight(result, nmatches, hl_span)
+
+    def hl_init(self, s: str) -> None:
+        self._hl = self._get_highlights(s)
+        if self._hl is None:
+            self._status = PagerStatus(f'PATTERN NOT FOUND: {s}', expire=True)
+        else:
+            self._line = next(iter(self._hl.hl_map))
+            self._status = PagerStatus(f'MATCHES: {self._hl.nmatches}', expire=False)
+
+    def hl_next(self, hl: PagerHighlight) -> None:
+        for line_i in hl.hl_map:
+            if line_i > self._line:
+                self._line = line_i
+                self._col = 0
+                return
+
+    def hl_prev(self, hl: PagerHighlight) -> None:
+        for line_i in reversed(hl.hl_map):
+            if line_i < self._line:
+                self._line = line_i
+                self._col = 0
+                return
+
+    def hl_clear(self) -> None:
+        self._hl = self._status = None
+
+    ACTIONS: dict[bytes, Callable[[Pager], None]] = {
+        b'KEY_RESIZE': resize, b'^L': resize,
+        b'j': move_down,  b'^N': move_down, b'KEY_DOWN': move_down,
+        b'k': move_up,    b'^P': move_up,   b'KEY_UP': move_up,
+        b'l': move_right, b'KEY_RIGHT': move_right,
+        b'h': move_left,  b'KEY_LEFT': move_left,
+        b'G': go_bottom,  b'KEY_END': go_bottom,
+        b'g': go_top,     b'KEY_HOME': go_top,
+        b'KEY_NPAGE': page_down, b'KEY_SNEXT': page_down,
+        b'KEY_PPAGE': page_up,   b'KEY_SPREVIOUS': page_up,
+    }
+
+    def run(self) -> None:
+        while True:
+            self.draw()
+            curses.doupdate()
+
+            c = curses.keyname(get_key(self.win))
+            if c in (b'q', b'Q', b'^X'):
+                return
+            elif c in Pager.ACTIONS:
+                Pager.ACTIONS[c](self)
+            elif c == b'/':
+                typed = Prompt(self, self.win, '/').run()
+                if typed is not None and typed:
+                    self.hl_init(typed)
+            elif self._hl is not None:
+                if c == b'n':
+                    self.hl_next(self._hl)
+                elif c == b'N':
+                    self.hl_prev(self._hl)
+                elif c in (b'^J', b'^M'):
+                    self.hl_clear()
+
+
 class Prompt:
     def __init__(self,
-            screen_buffer: ScreenBuffer,
+            implementor: DrawAndResizeInterface,
+            win: curses._CursesWindow,
             prompt: str = '', *,
             pretype: str = '',
             exit_if_empty: bool = True,
     ) -> None:
-        self.win = screen_buffer.stdscr
-        self.screen_buffer: ScreenBuffer = screen_buffer  # mypy bug?
+        self.implementor = implementor
+        self.win = win
         self.prompt: str = prompt
         self.exit_if_empty: bool = exit_if_empty
         self._cursor = len(pretype)
         self._entered = pretype
 
-    def draw_prompt(self) -> None:
+    def draw_prompt(self, y_draw: int) -> None:
         # Prevents going into an infinite loop on some terminals, or even
         # something worse, as the terminal (32-bit xterm)
         # locks up completely when COLS < 2.
@@ -901,12 +1179,12 @@ class Prompt:
         else:
             prompt_text = ''
 
-        self.win.move(LINES-1, 0)
+        self.win.move(y_draw, 0)
         self.win.clrtoeol()
 
         visual_cursor = self._cursor + len(prompt_text)
         if visual_cursor < width:
-            self.win.insstr(LINES-1, 0, prompt_text)
+            self.win.insstr(y_draw, 0, prompt_text)
             if len(self._entered) > width - len(prompt_text):
                 text = f'{self._entered[:width - len(prompt_text)]}>'
             else:
@@ -923,15 +1201,15 @@ class Prompt:
                 text = f'<{self._entered[start + 1:start + width]}>'
             text_x = 0
 
-        self.win.insstr(LINES-1, text_x, text)
-        self.win.move(LINES-1, visual_cursor)
+        self.win.insstr(y_draw, text_x, text)
+        self.win.move(y_draw, visual_cursor)
 
     def _clear(self) -> None:
         self._entered = ''
         self._cursor = 0
 
     def resize(self) -> None:
-        self.screen_buffer.resize()
+        self.implementor.resize()
 
     # Movement
     def left(self) -> None:
@@ -1069,8 +1347,8 @@ class Prompt:
 
     def _run(self) -> str | None:
         while True:
-            self.screen_buffer.draw()
-            self.draw_prompt()
+            self.implementor.draw()
+            self.draw_prompt(LINES - 1)
 
             c_code = get_key(self.win)
             if 32 <= c_code <= 126:  # printable
@@ -1085,9 +1363,10 @@ class Prompt:
             elif c == b'KEY_MOUSE':
                 bstate = curses.getmouse()[4]
                 if mouse_wheel_clicked(bstate):
-                    clip = clipboard_or_selection(self.screen_buffer.status)
-                    if clip is not None:
-                        self.insert(clip)
+                    try:
+                        self.insert(clipboard_or_selection())
+                    except (ValueError, LookupError):
+                        pass
                 elif bstate & curses.BUTTON3_PRESSED:
                     ret = self._entered
                     self._clear()
@@ -1098,7 +1377,6 @@ class Prompt:
                 return ret
 
     def run(self) -> str | None:
-        self.screen_buffer.status.lock = True
         curses.raw()
         try:
             curses.curs_set(1)
@@ -1112,7 +1390,6 @@ class Prompt:
             except curses.error:
                 pass
             curses.cbreak()
-            self.screen_buffer.status.lock = False
 
 
 class ScreenBuffer:
@@ -1204,17 +1481,11 @@ class ScreenBuffer:
         screen.draw()
 
     def resize(self) -> None:
-        _update_global_lines_cols()
-
-        # prevents malloc() errors from ncurses on 32-bit binaries.
-        if COLS < 2:
-            return
-
         # This is noticeably slow when there are more than 10 screens.
-        # Updating lazily doesn't help, because `curses.resize_term` is what
-        # takes the majority of the time.
+        # Updating lazily doesn't help, because terminal_resize takes
+        # the majority of the time.
+        terminal_resize()
 
-        curses.resize_term(LINES, COLS)
         for screen in self.screens:
             screen.update_for_redraw()
 
@@ -1230,7 +1501,7 @@ class ScreenBuffer:
         self.status.success(config['-columns'].capitalize())
 
     def filter_prompt(self) -> None:
-        typed = Prompt(self, 'Filter (~n, ~/n): ').run()
+        typed = Prompt(self, self.stdscr, 'Filter (~n, ~/n): ').run()
         if typed is None:
             return
         typed = typed.lstrip()
@@ -1240,23 +1511,6 @@ class ScreenBuffer:
         screen = self.current
         screen.dictionary = filter_dictionary(screen._orig_dictionary, (typed,))
         screen.update_for_redraw()
-
-    def _display_command_result_output(self, s: str) -> None:
-        stdscr = self.stdscr
-
-        self.status.writer.buffer.clear()
-        if s.count('\n') < self.status.writer.screen_coverage * LINES - 2:
-            self.status.writeln(s)
-            return
-
-        stdscr.erase()
-        stdscr.refresh()
-        err = display_in_less(s)
-        if err is None:
-            stdscr.clearok(True)
-        else:
-            self.status.nlerror('Could not open less:')
-            self.status.addstr(err)
 
     def _dispatch_command(self, s: str) -> bool:
         args = s.split()
@@ -1275,9 +1529,10 @@ class ScreenBuffer:
                 result = func(*args)
         elif cmd in INTERACTIVE_COMMANDS:
             # change margin_bottom to leave one line for the prompt.
-            self.status.writer.margin_bottom = 1
-            result = INTERACTIVE_COMMANDS[cmd](InteractiveCommandHandler(self), *args)
-            self.status.writer.margin_bottom = 0
+            with self.status.change(margin_bottom=1, lock=True):
+                result = INTERACTIVE_COMMANDS[cmd](
+                    InteractiveCommandHandler(self), *args
+                )
             self.status.writer.buffer.clear()
         elif cmd.startswith('-'):
             self.status.nlerror(f'{cmd}: command not found')
@@ -1287,8 +1542,13 @@ class ScreenBuffer:
 
         # TODO: dedicated dispatch functions for updating
         #       relevant states after issuing commands?
-        if result.output:
-            self._display_command_result_output(result.output)
+        outs = result.output
+        if outs:
+            self.status.writer.buffer.clear()
+            if outs.count('\n') < self.status.writer.screen_coverage * LINES - 2:
+                self.status.writeln(outs)
+            else:
+                Pager(self.stdscr, outs).run()
         if result.error:
             self.status.nlerror(result.error)
         if result.reason:
@@ -1298,7 +1558,8 @@ class ScreenBuffer:
 
     def search_prompt(self, *, pretype: str = '') -> tuple[ScreenBuffer, QuerySettings] | None:
         pretype = ' '.join(pretype.split())
-        typed = Prompt(self, 'Search $ ', pretype=pretype).run()
+        with self.status.change(margin_bottom=0, lock=True):
+            typed = Prompt(self, self.stdscr, 'Search $ ', pretype=pretype).run()
         if typed is None:
             return None
         typed = typed.strip()
@@ -1344,17 +1605,15 @@ else:
 
 
 _cmd = None
-def clipboard_or_selection(status: Status) -> str | None:
+def clipboard_or_selection() -> str:
     global _cmd
     if _cmd is None:
         _cmd = _selection_command()
         if _cmd is None:
-            if WINDOWS:
-                status.nlerror('Could not access the clipboard')
-            else:
-                status.nlerror('Could not access the primary selection')
-                status.addstr('Install xsel or xclip and try again')
-            return None
+            raise LookupError(
+                'Error reason unknown' if WINDOWS else
+                'Install xsel or xclip and try again'
+            )
 
     with Popen(_cmd, stdout=PIPE, stderr=DEVNULL, encoding='UTF-8') as p:
         stdout, _ = p.communicate()
@@ -1363,11 +1622,26 @@ def clipboard_or_selection(status: Status) -> str | None:
     if stdout:
         return stdout
 
-    status.error(f'{"Clipboard" if WINDOWS else "Primary selection"} is empty')
+    raise ValueError(
+        f'{"Clipboard" if WINDOWS else "Primary selection"} is empty'
+    )
+
+
+def perror_clipboard_or_selection(status: Status) -> str | None:
+    try:
+        return clipboard_or_selection()
+    except ValueError as e:
+        status.error(str(e))
+    except LookupError as e:
+        status.nlerror(
+            f'Could not access the {"clipboard" if WINDOWS else "primary selection"}:'
+        )
+        status.addstr(str(e))
+
     return None
 
 
-def current_anki_phrase(status: Status) -> str | None:
+def perror_currently_reviewed_phrase(status: Status) -> str | None:
     try:
         return anki.currently_reviewed_phrase()
     except anki.AnkiError as e:
@@ -1377,8 +1651,8 @@ def current_anki_phrase(status: Status) -> str | None:
 
 
 SEARCH_ENTER_ACTIONS = {
-    b'p': clipboard_or_selection,
-    b'P': current_anki_phrase,
+    b'p': perror_clipboard_or_selection,
+    b'P': perror_currently_reviewed_phrase,
     b'-': lambda _: '-',
     b'/': lambda _: '',
 }
@@ -1411,6 +1685,15 @@ else:
     def _update_global_lines_cols() -> None:
         global LINES, COLS
         COLS, LINES = shutil.get_terminal_size()
+
+
+def terminal_resize() -> None:
+    _update_global_lines_cols()
+    # prevents malloc() errors from ncurses on 32-bit binaries.
+    if COLS < 2:
+        return
+    curses.resize_term(LINES, COLS)
+
 
 ###############################################################################
 
@@ -1448,7 +1731,7 @@ def _curses_main(
             elif bstate & BUTTON5_PRESSED:  # mouse wheel
                 screen_buffer.current.move_down()
             elif mouse_wheel_clicked(bstate):
-                pretype = clipboard_or_selection(screen_buffer.status)
+                pretype = perror_clipboard_or_selection(screen_buffer.status)
                 if pretype is None:
                     continue
                 ret = screen_buffer.search_prompt(pretype=pretype)

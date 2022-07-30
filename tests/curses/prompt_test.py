@@ -7,13 +7,15 @@ from src.curses_main import Prompt
 stdscr = curses.initscr()
 
 
-class DummyScreenBuffer:
-    def __init__(self, stdscr):
-        self.stdscr = stdscr
+class DummyDrawAndResize:
+    @staticmethod
+    def draw(): pass
+    @staticmethod
+    def resize(): pass
 
 
 def _run_ctrl_t_test(pretype, cursor_index, expected):
-    prompt = Prompt(DummyScreenBuffer(stdscr), 'prompt:', pretype=pretype)  # type: ignore[arg-type]
+    prompt = Prompt(DummyDrawAndResize, stdscr, 'prompt:', pretype=pretype)  # type: ignore[arg-type]
     prompt._cursor = cursor_index
     prompt.ctrl_t()
     assert prompt._entered == expected
