@@ -8,6 +8,10 @@ from typing import Any
 import src.Curses.env as env
 from src.data import WINDOWS, LINUX
 
+# Pythons < 3.10 and ncurses < 6 do not
+# define BUTTON5_PRESSED. (mouse wheel down)
+BUTTON5_PRESSED = 2097152
+
 # Unfortunately Python's readline API does not expose functions and variables
 # responsible for signal handling, which makes it impossible to reconcile
 # curses' signal handling with the readline's one.

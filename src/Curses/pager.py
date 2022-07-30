@@ -6,7 +6,7 @@ from typing import NamedTuple, Callable
 import src.Curses.env as env
 from src.Curses.colors import Color
 from src.Curses.prompt import Prompt
-from src.Curses.utils import get_key, terminal_resize, truncate_if_needed
+from src.Curses.utils import BUTTON5_PRESSED, get_key, terminal_resize, truncate_if_needed
 
 
 class PagerHighlight(NamedTuple):
@@ -255,6 +255,12 @@ class Pager:
                 return
             elif c in Pager.ACTIONS:
                 Pager.ACTIONS[c](self)
+            elif c == b'KEY_MOUSE':
+                _, x, y, _, bstate = curses.getmouse()
+                if bstate & curses.BUTTON4_PRESSED:
+                    self.move_up()
+                elif bstate & BUTTON5_PRESSED:
+                    self.move_down()
             elif c == b'/':
                 typed = Prompt(self, self.win, '/').run()
                 if typed is not None and typed:

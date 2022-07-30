@@ -12,6 +12,7 @@ from src.Curses.colors import Color, init_colors, BLACK_ON_RED, BLACK_ON_GREEN, 
 from src.Curses.pager import Pager
 from src.Curses.prompt import Prompt
 from src.Curses.utils import (
+    BUTTON5_PRESSED,
     clipboard_or_selection,
     get_key,
     hide_cursor,
@@ -31,10 +32,6 @@ from src.search import search_dictionaries
 if TYPE_CHECKING:
     from src.Dictionaries.dictionary_base import Dictionary
     from src.search import QuerySettings
-
-# Pythons < 3.10 and ncurses < 6 do not
-# define BUTTON5_PRESSED. (mouse wheel down)
-BUTTON5_PRESSED = 2097152
 
 
 def highlight() -> int:
