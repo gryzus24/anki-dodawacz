@@ -1,11 +1,12 @@
 from __future__ import annotations
 
+import contextlib
 import curses
 import shutil
 from collections import Counter
 from itertools import islice, zip_longest
 from subprocess import Popen, PIPE, DEVNULL
-from typing import Any, Callable, TypeVar, Reversible, Sequence, NamedTuple, TYPE_CHECKING
+from typing import Callable, TypeVar, Reversible, Sequence, Iterator, NamedTuple, TYPE_CHECKING
 
 import src.anki_interface as anki
 from src.Dictionaries.dictionary_base import filter_dictionary
@@ -216,6 +217,17 @@ class Status:
         self.lock = False
         self.ticks = 1
 
+    @contextlib.contextmanager
+    def change(self, *, lock: bool, margin_bottom: int) -> Iterator[None]:
+        _orig_mb, _orig_lock = self.writer.margin_bottom, self.lock
+        self.writer.margin_bottom = margin_bottom
+        self.lock = lock
+        try:
+            yield
+        finally:
+            self.lock = _orig_lock
+            self.writer.margin_bottom = _orig_mb
+
     def _pad(self, s: str) -> str:
         return ' ' + s.ljust(COLS - 1)
 
@@ -260,19 +272,6 @@ class Status:
             self.writer.buffer.clear()
         else:
             self.ticks += 1
-
-
-class PromptPrepare:
-    def __init__(self, status: Status) -> None:
-        self.status = status
-
-    def __enter__(self) -> None:
-        self.status.lock = True
-        self.status.writer.margin_bottom = 1
-
-    def __exit__(self, *_: Any) -> None:
-        self.status.lock = False
-        self.status.writer.margin_bottom = 0
 
 
 class RefreshWriter:
@@ -966,8 +965,10 @@ class Pager:
             self.win.insstr(LINES - 1, COLS - len(r), r)
 
     def draw(self) -> None:
-        win = self.win
+        if COLS < 2:
+            return
 
+        win = self.win
         win.erase()
 
         buffer_slice = self._buffer[self._line:self._line + LINES - 1]
@@ -1060,13 +1061,15 @@ class Pager:
         self.move_up(LINES - 2)
 
     def _get_highlights(self, s: str) -> PagerHighlight | None:
-        s = s.lower()
+        against_lowercase = s.islower()
         hl_span = len(s)
 
         result = {}
         nmatches = 0
         for i, line in enumerate(self._buffer):
-            text = ''.join(x[0] for x in line).lower()
+            text = ''.join(x[0] for x in line)
+            if against_lowercase:
+                text = text.lower()
             # TODO: Maybe there is a more efficient way to get indices
             #       of every occurrence of a substring?
             indices = []
@@ -1526,7 +1529,7 @@ class ScreenBuffer:
                 result = func(*args)
         elif cmd in INTERACTIVE_COMMANDS:
             # change margin_bottom to leave one line for the prompt.
-            with PromptPrepare(self.status):
+            with self.status.change(margin_bottom=1, lock=True):
                 result = INTERACTIVE_COMMANDS[cmd](
                     InteractiveCommandHandler(self), *args
                 )
@@ -1555,7 +1558,8 @@ class ScreenBuffer:
 
     def search_prompt(self, *, pretype: str = '') -> tuple[ScreenBuffer, QuerySettings] | None:
         pretype = ' '.join(pretype.split())
-        typed = Prompt(self, self.stdscr, 'Search $ ', pretype=pretype).run()
+        with self.status.change(margin_bottom=0, lock=True):
+            typed = Prompt(self, self.stdscr, 'Search $ ', pretype=pretype).run()
         if typed is None:
             return None
         typed = typed.strip()
