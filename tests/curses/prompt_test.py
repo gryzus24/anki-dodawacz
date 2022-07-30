@@ -2,7 +2,7 @@ import pytest
 
 import curses
 
-from src.curses_main import Prompt
+from src.Curses.prompt import Prompt
 
 stdscr = curses.initscr()
 

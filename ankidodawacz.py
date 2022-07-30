@@ -27,7 +27,7 @@ from src.Dictionaries.utils import http
 from src.__version__ import __version__
 from src.colors import BOLD, Color, DEFAULT, R
 from src.commands import INTERACTIVE_COMMANDS, HELP_ARG_COMMANDS, NO_HELP_ARG_COMMANDS
-from src.console_main import console_ui_entry
+from src.console_main import console_entry
 from src.data import LINUX, WINDOWS, STRING_TO_BOOL, config
 from src.search import search_dictionaries
 from src.term_utils import less_print
@@ -117,7 +117,7 @@ def dispatch_query(s: str) -> None:
     dictionaries, settings = ret
     if config['-curses']:
         try:
-            from src.curses_main import curses_ui_entry
+            from src.Curses.curses_main import curses_entry
         except ImportError:
             if WINDOWS:
                 sys.stderr.write(
@@ -131,9 +131,9 @@ def dispatch_query(s: str) -> None:
             else:
                 raise
 
-        curses_ui_entry(dictionaries, settings)
+        curses_entry(dictionaries, settings)
     else:
-        console_ui_entry(dictionaries, settings)
+        console_entry(dictionaries, settings)
 
 
 def from_define_all_file(s: str) -> Generator[str, None, None]:

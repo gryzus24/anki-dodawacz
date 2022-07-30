@@ -432,7 +432,7 @@ class CardWriter:
         print(f'{Color.delimit}{delimit}')
 
 
-def console_ui_entry(dictionaries: list[Dictionary], settings: QuerySettings) -> None:
+def console_entry(dictionaries: list[Dictionary], settings: QuerySettings) -> None:
     dictionary = dictionaries[0]
     if len(dictionaries) > 1:
         display_many_dictionaries(dictionaries)
