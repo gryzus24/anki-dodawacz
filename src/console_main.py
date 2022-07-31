@@ -1,10 +1,11 @@
 from __future__ import annotations
 
+import functools
 import shutil
 from itertools import islice, zip_longest
 from typing import Sequence, TYPE_CHECKING
 
-from src.Dictionaries.utils import wrap_and_pad, wrap_lines
+from src.Dictionaries.utils import wrap_lines
 from src.cards import CARD_FIELDS_SAVE_ORDER, create_and_add_card
 from src.colors import BOLD, Color, DEFAULT, R
 from src.data import HORIZONTAL_BAR, config
@@ -166,26 +167,34 @@ def stringify_columns(
     return result
 
 
+def wrap_and_pad(style: str, textwidth: int, s: str, gap: int, indent: int) -> list[str]:
+    wrapped = wrap_lines(style, textwidth, s, gap, indent)
+    result = [x.ljust(textwidth) for x in wrapped]
+    result[0] = result[0][:-gap]
+
+    return result
+
+
 def format_dictionary(dictionary: Dictionary, column_width: int) -> list[str]:
-    wrap_method = wrap_and_pad(config['-textwrap'], column_width)
+    wrap_method = functools.partial(wrap_and_pad, config['-textwrap'], column_width)
     signed = config['-showsign']
 
     buffer = []
     blank = column_width * ' '
 
-    def _push_chain(_s1: str, _c1: str, _s2: str, _c2: str) -> None:
-        _first_line, _rest = wrap_method(f'{_s1} \0{_s2}', 1, 0)
+    def push_onto_line(s1: str, c1: str, s2: str, c2: str) -> None:
+        _first_line, *_rest = wrap_method(f'{s1} \0{s2}', 1, 0)
         if '\0' in _first_line:
-            _first_line = _first_line.replace('\0', ' ' + _c2)
-            current_color = _c2
+            _first_line = _first_line.replace('\0', ' ' + c2)
+            current_color = c2
         else:
-            current_color = _c1
-        buffer.append(f'! {_c1}{_first_line}')
+            current_color = c1
+        buffer.append(f'! {c1}{_first_line}')
         for _line in _rest:
             if '\0' in _line:
-                _line = _line.replace('\0', ' ' + _c2)
+                _line = _line.replace('\0', ' ' + c2)
                 buffer.append(f'!{current_color}{_line}')
-                current_color = _c2
+                current_color = c2
             else:
                 buffer.append(f'!{current_color}{_line}')
 
@@ -209,7 +218,7 @@ def format_dictionary(dictionary: Dictionary, column_width: int) -> list[str]:
                 _def_s = ''
                 gaps = 1
 
-            first_line, rest = wrap_method(_def, gaps + index_len + label_len, -label_len)
+            first_line, *rest = wrap_method(_def, gaps + index_len + label_len, -label_len)
             def_c = Color.def1 if index % 2 else Color.def2
             buffer.append(f'{_def_s}{Color.index}{index} {Color.label}{_label}{def_c}{first_line}')
             for line in rest:
@@ -217,7 +226,7 @@ def format_dictionary(dictionary: Dictionary, column_width: int) -> list[str]:
 
             if _exsen:
                 for ex in _exsen.split('<br>'):
-                    first_line, rest = wrap_method(ex, gaps + index_len - 1, 1)
+                    first_line, *rest = wrap_method(ex, gaps + index_len - 1, 1)
                     buffer.append(f'${index_len * " "}{(gaps - 1) * " "}{Color.exsen}{first_line}')
                     for line in rest:
                         buffer.append(f'${Color.exsen}{line}')
@@ -226,18 +235,18 @@ def format_dictionary(dictionary: Dictionary, column_width: int) -> list[str]:
             label, inflections = body
             if label:
                 if inflections:
-                    _push_chain(label, Color.label, inflections, Color.inflection)
+                    push_onto_line(label, Color.label, inflections, Color.inflection)
                 else:
-                    first_line, rest = wrap_method(label, 1, 0)
+                    first_line, *rest = wrap_method(label, 1, 0)
                     buffer.append(f'! {Color.label}{first_line}')
                     for line in rest:
                         buffer.append(f'!{Color.label}{line}')
         elif op == 'PHRASE':
             phrase, phon = body
             if phon:
-                _push_chain(phrase, Color.phrase, phon, Color.phon)
+                push_onto_line(phrase, Color.phrase, phon, Color.phon)
             else:
-                first_line, rest = wrap_method(phrase, 1, 0)
+                first_line, *rest = wrap_method(phrase, 1, 0)
                 buffer.append(f'! {Color.phrase}{first_line}')
                 for line in rest:
                     buffer.append(f'!{Color.phrase}{line}')
@@ -251,7 +260,7 @@ def format_dictionary(dictionary: Dictionary, column_width: int) -> list[str]:
             etym = body[0]
             if etym:
                 buffer.append(blank)
-                first_line, rest = wrap_method(etym, 1, 0)
+                first_line, *rest = wrap_method(etym, 1, 0)
                 buffer.append(f' {Color.etym}{first_line}')
                 for line in rest:
                     buffer.append(f'${Color.etym}{line}')
@@ -265,23 +274,23 @@ def format_dictionary(dictionary: Dictionary, column_width: int) -> list[str]:
         elif op == 'AUDIO':
             pass
         elif op == 'SYN':
-            first_line, rest = wrap_method(body[0], 1, 0)
+            first_line, *rest = wrap_method(body[0], 1, 0)
             buffer.append(f'! {Color.syn}{first_line}')
             for line in rest:
                 buffer.append(f'!{Color.syn}{line}')
 
-            first_line, rest = wrap_method(body[1], 2, 0)
+            first_line, *rest = wrap_method(body[1], 2, 0)
             buffer.append(f'!{Color.sign}: {Color.syngloss}{first_line}')
             for line in rest:
                 buffer.append(f'!{Color.syngloss}{line}')
 
             for ex in body[2].split('<br>'):
-                first_line, rest = wrap_method(ex, 1, 1)
+                first_line, *rest = wrap_method(ex, 1, 1)
                 buffer.append(f' {Color.exsen}{first_line}')
                 for line in rest:
                     buffer.append(f'${Color.exsen}{line}')
         elif op == 'NOTE':
-            first_line, rest = wrap_method(body[0], 2, 0)
+            first_line, *rest = wrap_method(body[0], 2, 0)
             buffer.append(f'!{BOLD}{Color.heed}> {R}{first_line}{DEFAULT}')
             for line in rest:
                 buffer.append(f'!{BOLD}{line}{DEFAULT}')
@@ -423,7 +432,7 @@ class CardWriter:
         print(f'{Color.delimit}{delimit}')
         for i, field in enumerate(CARD_FIELDS_SAVE_ORDER, 1):
             for line in card[field].split('<br>'):
-                for subline in wrap_lines(line, config['-textwrap'], adjusted_textwidth, 0, 0):
+                for subline in wrap_lines(config['-textwrap'], adjusted_textwidth, line, 0, 0):
                     print(f'{color_of[field]}{padding}{subline}')
 
             if i == 3:

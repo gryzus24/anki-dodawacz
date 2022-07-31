@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import sys
-from typing import Any, Callable
+from typing import Any
 
 from src.colors import R, Color
 from src.data import USER_AGENT
@@ -128,7 +128,7 @@ def _no_wrap(string: str, textwidth: int, gap: int, indent: int) -> list[str]:
     return result
 
 
-def wrap_lines(s: str, style: str, textwidth: int, gap: int, indent: int) -> list[str]:
+def wrap_lines(style: str, textwidth: int, s: str, gap: int, indent: int) -> list[str]:
     # gap: space left for characters before the start of the
     #        first line and indent for the subsequent lines.
     # indent: additional indent for the remaining lines.
@@ -149,14 +149,3 @@ def wrap_lines(s: str, style: str, textwidth: int, gap: int, indent: int) -> lis
 
     return wrapped
 
-
-def wrap_and_pad(style: str, textwidth: int) -> Callable[[str, int, int], tuple[str, list[str]]]:
-    # Wraps and adds right side padding that matches `textwidth`.
-
-    def call(s: str, gap: int, indent: int) -> tuple[str, list[str]]:
-        fl, *rest = wrap_lines(s, style, textwidth, gap, indent)
-        first_line = fl + (textwidth - len(fl) - gap) * ' '
-        rest = [line + (textwidth - len(line)) * ' ' for line in rest]
-        return first_line, rest
-
-    return call

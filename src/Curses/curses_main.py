@@ -2,9 +2,10 @@ from __future__ import annotations
 
 import contextlib
 import curses
+import functools
 from collections import Counter
 from itertools import islice, zip_longest
-from typing import Callable, TypeVar, Reversible, Sequence, Iterator, TYPE_CHECKING
+from typing import Callable, TypeVar, Sequence, Iterator, TYPE_CHECKING
 
 import src.Curses.env as env
 import src.anki_interface as anki
@@ -23,7 +24,7 @@ from src.Curses.utils import (
     update_global_lines_cols,
 )
 from src.Dictionaries.dictionary_base import filter_dictionary
-from src.Dictionaries.utils import wrap_and_pad
+from src.Dictionaries.utils import wrap_lines
 from src.cards import create_and_add_card
 from src.commands import INTERACTIVE_COMMANDS, NO_HELP_ARG_COMMANDS, HELP_ARG_COMMANDS
 from src.data import STRING_TO_BOOL, HORIZONTAL_BAR, WINDOWS, config
@@ -36,7 +37,7 @@ if TYPE_CHECKING:
 
 def highlight() -> int:
     mask = config['-hlmode']
-    result = Color.heed
+    result = 1
     if mask[0] == 'y':
         result |= curses.A_STANDOUT
     if mask[1] == 'y':
@@ -188,6 +189,35 @@ class CardWriter:
         pass
 
 
+def add_first_line(
+        dest: list[curses._CursesWindow],
+        width: int,
+        elements: Sequence[tuple[str, int]]
+) -> None:
+    box = curses.newwin(1, width)
+    try:
+        for text, color in elements:
+            box.addstr(text, color)
+    except curses.error:  # rightmost character
+        pass
+    dest.append(box)
+
+
+def add_rest(
+        dest: list[curses._CursesWindow],
+        width: int,
+        lines: list[str],
+        color: int
+) -> None:
+    for line in lines:
+        box = curses.newwin(1, width)
+        try:
+            box.addstr(line, color)
+        except curses.error:  # rightmost character
+            pass
+        dest.append(box)
+
+
 def format_dictionary(
         dictionary: Dictionary,
         column_width: int,
@@ -205,55 +235,38 @@ def format_dictionary(
     #  (SYN,    'synonyms', 'gloss', 'examples')
     #  (NOTE,   'note')
 
-    wrap_method = wrap_and_pad(config['-textwrap'], column_width)
+    wrap_method = functools.partial(wrap_lines, config['-textwrap'], column_width)
     signed = config['-showsign']
 
-    boxes = []
+    result = []
     lines_total = 0
 
-    def _push_chain(_s1: str, _c1: int, _s2: str, _c2: int) -> None:
-        _first_line, _rest = wrap_method(f'{_s1} \0{_s2}', 1, 0)
+    def push_onto_line(s1: str, c1: int, s2: str, c2: int) -> None:
+        _first_line, *_rest = wrap_method(f'{s1} \0{s2}', 1, 0)
         left, _, right = _first_line.partition('\0')
         _box = curses.newwin(1, column_width)
         if right:
-            _box.insstr(right, _c2)
-            _box.insstr(' ' + left, _c1)
+            _box.insstr(right, c2)
+            _box.insstr(' ' + left, c1)
             if not _rest:
-                temp_boxes.append(_box)
+                op_boxes.append(_box)
                 return
-            current_color = _c2
+            current_color = c2
         else:
-            _box.insstr(' ' + left, _c1)
-            current_color = _c1
+            _box.insstr(' ' + left, c1)
+            current_color = c1
 
-        temp_boxes.append(_box)
+        op_boxes.append(_box)
         for _line in _rest:
             left, _, right = _line.partition('\0')
             _box = curses.newwin(1, column_width)
             if right:
-                _box.insstr(right, _c2)
-                _box.insstr(left, _c1)
-                current_color = _c2
+                _box.insstr(right, c2)
+                _box.insstr(left, c1)
+                current_color = c2
             else:
                 _box.insstr(left, current_color)
-            temp_boxes.append(_box)
-
-    def _into_boxes(
-            fl_string_color_pairs: Reversible[tuple[str, int]],
-            rest: tuple[list[str], int] | None = None
-    ) -> list[curses._CursesWindow]:
-        result = []
-        _box = curses.newwin(1, column_width)
-        for s, c in reversed(fl_string_color_pairs):
-            _box.insstr(s, c)
-        result.append(_box)
-        if rest is not None:
-            lines, c = rest
-            for line in lines:
-                _box = curses.newwin(1, column_width)
-                _box.insstr(line, c)
-                result.append(_box)
-        return result
+            op_boxes.append(_box)
 
     # This is ugly, but saves on a LOT of __getattr__ calls, which are quite
     # expensive in this case, because we have to translate console's color API
@@ -267,7 +280,7 @@ def format_dictionary(
     index = 0
     for entry in dictionary.contents:
         op = entry[0]
-        temp_boxes = []
+        op_boxes: list[curses._CursesWindow] = []
 
         if 'DEF' in op:
             index += 1
@@ -287,113 +300,127 @@ def format_dictionary(
                 _def_sign = ''
                 gaps = 1
 
-            first_line, rest = wrap_method(_def, gaps + index_len + label_len, -label_len)
             def_color = def1_c if index % 2 else def2_c
-            temp_boxes.extend(_into_boxes(
+
+            first_line, *rest = wrap_method(_def, gaps + index_len + label_len, -label_len)
+            add_first_line(op_boxes, column_width,
                 (
-                   (_def_sign, sign_c),
-                   (f'{index} ', index_c),
-                   (_label, label_c),
-                   (first_line, def_color)
-                ), (rest, def_color)
-            ))
+                    (_def_sign, sign_c),
+                    (f'{index} ', index_c),
+                    (_label, label_c),
+                    (first_line, def_color)
+                )
+            )
+            add_rest(op_boxes, column_width, rest, def_color)
             if _exsen:
                 for ex in _exsen.split('<br>'):
-                    first_line, rest = wrap_method(ex, gaps + index_len - 1, 1)
-                    temp_boxes.extend(_into_boxes(
+                    first_line, *rest = wrap_method(ex, gaps + index_len - 1, 1)
+                    add_first_line(op_boxes, column_width,
                         (
-                           ((index_len + gaps - 1) * ' ', exsen_c),
-                           (first_line, exsen_c)
-                        ), (rest, exsen_c)
-                    ))
+                            ((index_len + gaps - 1) * ' ', exsen_c),
+                            (first_line, exsen_c)
+                        )
+                    )
+                    add_rest(op_boxes, column_width, rest, exsen_c)
         elif op == 'LABEL':
             label, inflections = entry[1], entry[2]
-            temp_boxes.append(curses.newwin(1, column_width))
+            op_boxes.append(curses.newwin(1, column_width))
             if label:
                 if inflections:
-                    _push_chain(label, label_c, inflections, inflection_c)
+                    push_onto_line(label, label_c, inflections, inflection_c)
                 else:
-                    first_line, rest = wrap_method(label, 1, 0)
-                    temp_boxes.extend(_into_boxes(
+                    first_line, *rest = wrap_method(label, 1, 0)
+                    add_first_line(op_boxes, column_width,
                         (
-                           (' ' + first_line, label_c),
-                        ), (rest, label_c)
-                    ))
+                            (' ' + first_line, label_c),
+                        )
+                    )
+                    add_rest(op_boxes, column_width, rest, label_c)
         elif op == 'PHRASE':
             phrase, phon = entry[1], entry[2]
             if phon:
-                _push_chain(phrase, phrase_c, phon, phon_c)
+                push_onto_line(phrase, phrase_c, phon, phon_c)
             else:
-                first_line, rest = wrap_method(phrase, 1, 0)
-                temp_boxes.extend(_into_boxes(
+                first_line, *rest = wrap_method(phrase, 1, 0)
+                add_first_line(op_boxes, column_width,
                     (
-                       (' ' + first_line, phrase_c),
-                    ), (rest, phrase_c)
-                ))
+                        (' ' + first_line, phrase_c),
+                    )
+                )
+                add_rest(op_boxes, column_width, rest, phrase_c)
         elif op == 'HEADER':
             title = entry[1]
             box = curses.newwin(1, column_width)
-            if title:
-                box.insstr(' ]' + column_width * HORIZONTAL_BAR, delimit_c)
-                box.insstr(title, delimit_c | curses.A_BOLD)
-                box.insstr(HORIZONTAL_BAR + '[ ', delimit_c)
-            else:
-                box.insstr(column_width * HORIZONTAL_BAR, delimit_c)
-            temp_boxes.append(box)
+            try:
+                if title:
+                    box.addstr(HORIZONTAL_BAR + '[ ', delimit_c)
+                    box.addstr(title, delimit_c | curses.A_BOLD)
+                    box.addstr(' ]' + column_width * HORIZONTAL_BAR, delimit_c)
+                else:
+                    box.addstr(column_width * HORIZONTAL_BAR, delimit_c)
+            except curses.error:  # rightmost character
+                pass
+            op_boxes.append(box)
         elif op == 'ETYM':
             etym = entry[1]
             if etym:
-                temp_boxes.append(curses.newwin(1, column_width))
-                first_line, rest = wrap_method(etym, 1, 0)
-                temp_boxes.extend(_into_boxes(
+                op_boxes.append(curses.newwin(1, column_width))
+                first_line, *rest = wrap_method(etym, 1, 0)
+                add_first_line(op_boxes, column_width,
                     (
-                       (' ' + first_line, etym_c),
-                    ), (rest, etym_c)
-                ))
+                        (' ' + first_line, etym_c),
+                    )
+                )
+                add_rest(op_boxes, column_width, rest, etym_c)
         elif op == 'POS':
             if entry[1].strip(' |'):
-                temp_boxes.append(curses.newwin(1, column_width))
+                op_boxes.append(curses.newwin(1, column_width))
                 for elem in entry[1:]:
                     pos, phon = elem.split('|')
-                    _push_chain(pos, pos_c, phon, phon_c)
+                    push_onto_line(pos, pos_c, phon, phon_c)
         elif op == 'AUDIO':
             pass
         elif op == 'SYN':
-            first_line, rest = wrap_method(entry[1], 1, 0)
-            temp_boxes.extend(_into_boxes(
+            first_line, *rest = wrap_method(entry[1], 1, 0)
+            add_first_line(op_boxes, column_width,
                 (
-                   (' ' + first_line, syn_c),
-                ), (rest, syn_c)
-            ))
-            first_line, rest = wrap_method(entry[2], 2, 0)
-            temp_boxes.extend(_into_boxes(
+                    (' ' + first_line, syn_c),
+                )
+            )
+            add_rest(op_boxes, column_width, rest, syn_c)
+
+            first_line, *rest = wrap_method(entry[2], 2, 0)
+            add_first_line(op_boxes, column_width,
                 (
-                   (': ', sign_c),
-                   (first_line, syngloss_c)
-                ), (rest, syngloss_c)
-            ))
+                    (': ', sign_c),
+                    (first_line, syngloss_c)
+                )
+            )
+            add_rest(op_boxes, column_width, rest, syngloss_c)
             for ex in entry[3].split('<br>'):
-                first_line, rest = wrap_method(ex, 1, 1)
-                temp_boxes.extend(_into_boxes(
+                first_line, *rest = wrap_method(ex, 1, 1)
+                add_first_line(op_boxes, column_width,
                     (
-                       (' ' + first_line, exsen_c),
-                    ), (rest, exsen_c)
-                ))
+                        (' ' + first_line, exsen_c),
+                    )
+                )
+                add_rest(op_boxes, column_width, rest, exsen_c)
         elif op == 'NOTE':
-            first_line, rest = wrap_method(entry[1], 2, 0)
-            temp_boxes.extend(_into_boxes(
+            first_line, *rest = wrap_method(entry[1], 2, 0)
+            add_first_line(op_boxes, column_width,
                 (
-                   ('> ', heed_c | curses.A_BOLD),
-                   (first_line, 0 | curses.A_BOLD)
-                ), (rest, 0 | curses.A_BOLD)
-            ))
+                    ('> ', heed_c | curses.A_BOLD),
+                    (first_line, curses.A_BOLD)
+                )
+            )
+            add_rest(op_boxes, column_width, rest, curses.A_BOLD)
         else:
             raise AssertionError(f'unreachable dictionary op: {op!r}')
 
-        boxes.append(temp_boxes)
-        lines_total += len(temp_boxes)
+        result.append(op_boxes)
+        lines_total += len(op_boxes)
 
-    return boxes, lines_total
+    return result, lines_total
 
 
 BORDER_PAD = 1
