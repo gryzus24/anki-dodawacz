@@ -57,101 +57,104 @@ def request_soup(
     return BeautifulSoup(r.data.decode(), 'lxml')
 
 
-def wrap_lines(
-        string: str, style: str, textwidth: int, gap: int, indent: int
-) -> list[str]:
+def _regular_wrap(string: str, textwidth: int, gap: int, indent: int) -> list[str]:
+    result = []
+    line = ''
+    current_length = gap
+    for word in string.split():
+        # >= for one character right-side padding
+        word_len = len(word)
+        if current_length + word_len > textwidth:
+            result.append(line.rstrip())
+            current_length = gap + indent + word_len + 1
+            line = word + ' '
+        else:
+            line += word + ' '
+            current_length += word_len + 1
+
+    result.append(line.rstrip())
+
+    return result
+
+
+def _justify_wrap(string: str, textwidth: int, gap: int, indent: int) -> list[str]:
+    result = []
+    line: list[str] = []
+    current_length = gap
+    for word in string.split():
+        word_len = len(word)
+        if current_length + word_len >= textwidth:
+            nwords = len(line)
+            if nwords > 1:
+                i = 0
+                filling = textwidth - current_length
+                # filling shouldn't be negative but just in case.
+                while filling > 0:
+                    if i > nwords - 2:
+                        # go back to the first word
+                        i = 0
+                    line[i] += ' '
+                    filling -= 1
+                    i += 1
+
+            result.append(' '.join(line))
+            line = []
+            current_length = gap + indent
+
+        line.append(word)
+        current_length += word_len + 1
+
+    result.append(' '.join(line))
+
+    return result
+
+
+def _no_wrap(string: str, textwidth: int, gap: int, indent: int) -> list[str]:
+    line = string[:textwidth - gap]
+    if line.endswith(' '):
+        line = line.replace(' ', '  ', 1)
+
+    result = [line.strip()]
+    string_ = string[textwidth - gap:].strip()
+    while string_:
+        llen = textwidth - indent - gap
+        line = string_[:llen]
+        if line.endswith(' '):
+            line = line.replace(' ', '  ', 1)
+
+        result.append(line.strip())
+        string_ = string_[llen:].strip()
+
+    return result
+
+
+def wrap_lines(s: str, style: str, textwidth: int, gap: int, indent: int) -> list[str]:
     # gap: space left for characters before the start of the
     #        first line and indent for the subsequent lines.
     # indent: additional indent for the remaining lines.
     # This comment is wrapped with `gap=5, indent=2`.
 
-    def _indent_and_connect(_lines: list[str]) -> list[str]:
-        for i in range(1, len(_lines)):
-            _lines[i] = (gap + indent) * ' ' + _lines[i]
-        return _lines
-
-    def no_wrap() -> list[str]:
-        line = string[:textwidth - gap]
-        if line.endswith(' '):
-            line = line.replace(' ', '  ', 1)
-
-        lines = [line.strip()]
-        string_ = string[textwidth - gap:].strip()
-        while string_:
-            llen = textwidth - indent - gap
-            line = string_[:llen]
-            if line.endswith(' '):
-                line = line.replace(' ', '  ', 1)
-
-            lines.append(line.strip())
-            string_ = string_[llen:].strip()
-        return _indent_and_connect(lines)
-
-    def trivial_wrap() -> list[str]:
-        lines = []
-        line: list[str] = []
-        current_llen = gap
-        for word in string.split():
-            # >= for one character right-side padding
-            word_len = len(word)
-            if current_llen + word_len >= textwidth:
-                lines.append(' '.join(line))
-                current_llen = gap + indent
-                line = []
-
-            line.append(word)
-            current_llen += word_len + 1
-
-        lines.append(' '.join(line))
-        return _indent_and_connect(lines)
-
-    def justification_wrap() -> list[str]:
-        lines = []
-        line: list[str] = []
-        current_llen = gap
-        for word in string.split():
-            word_len = len(word)
-            if current_llen + word_len >= textwidth:
-                nwords = len(line)
-                if nwords > 1:
-                    i = 0
-                    filling = textwidth - current_llen
-                    # filling shouldn't be negative but just in case.
-                    while filling > 0:
-                        if i > nwords - 2:
-                            # go back to the first word
-                            i = 0
-                        line[i] += ' '
-                        filling -= 1
-                        i += 1
-
-                lines.append(' '.join(line))
-                line = []
-                current_llen = gap + indent
-
-            line.append(word)
-            current_llen += word_len + 1
-
-        lines.append(' '.join(line))
-        return _indent_and_connect(lines)
-
-    # Gap is the gap between indexes and strings
-    if len(string) <= textwidth - gap:
-        return [string]
+    if len(s) <= textwidth - gap:
+        return [s]
 
     if style == 'regular':
-        textwidth += 1
-        return trivial_wrap()
+        wrapped = _regular_wrap(s, textwidth, gap, indent)
     elif style == 'justify':
-        return justification_wrap()
-    return no_wrap()
+        wrapped = _justify_wrap(s, textwidth, gap, indent)
+    else:
+        wrapped = _no_wrap(s, textwidth, gap, indent)
+
+    for i in range(1, len(wrapped)):
+        wrapped[i] = (gap + indent) * ' ' + wrapped[i]
+
+    return wrapped
 
 
 def wrap_and_pad(style: str, textwidth: int) -> Callable[[str, int, int], tuple[str, list[str]]]:
     # Wraps and adds right side padding that matches `textwidth`.
 
-    def call(lines: str, gap: int, indent: int) -> tuple[str, list[str]]:
-        fl, *rest = wrap_lines(lines, style, textwidth, gap, indent)
+    def call(s: str, gap: int, indent: int) -> tuple[str, list[str]]:
+        fl, *rest = wrap_lines(s, style, textwidth, gap, indent)
         first_line = fl + (textwidth - len(fl) - gap) * ' '
         rest = [line + (textwidth - len(line)) * ' ' for line in rest]
         return first_line, rest
