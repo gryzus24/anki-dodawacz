@@ -37,6 +37,8 @@ if TYPE_CHECKING:
 
 def highlight() -> int:
     mask = config['-hlmode']
+    # 1 works just like curses.A_NORMAL, but does not conflict with it
+    # when 'hlmode' is set to 'nn'.
     result = 1
     if mask[0] == 'y':
         result |= curses.A_STANDOUT
