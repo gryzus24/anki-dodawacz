@@ -497,6 +497,40 @@ def _one_to_five(n: int) -> int:
     return n
 
 
+def _estimate_dictionary_height(dictionary: Dictionary, width: int) -> int:
+    wrap_method = functools.partial(wrap_lines, config['-textwrap'], width)
+    result = 0
+    for entry in dictionary.contents:
+        op = entry[0]
+        if 'DEF' in op:
+            result += len(wrap_method(entry[1], 1, 0))
+            if entry[2]:
+                for exsen in entry[2].split('<br>'):
+                    result += len(wrap_method(exsen, 0, 0))
+        elif op == 'LABEL':
+            result += 1
+            if entry[1]:
+                result += 1
+        elif op in ('PHRASE', 'HEADER'):
+            result += 1
+        elif op == 'ETYM':
+            if entry[1]:
+                result += len(wrap_method(entry[1], 0, 0)) + 1
+        elif op == 'POS':
+            if entry[1].strip(' |'):
+                result += len(entry)
+        elif op == 'AUDIO':
+            pass
+        elif op == 'SYN':
+            result += 4
+        elif op == 'NOTE':
+            result += 1
+        else:
+            raise AssertionError(f'unreachable {op!r}')
+
+    return result
+
+
 def _create_layout(
     dictionary: Dictionary, height: int
 ) -> tuple[list[list[curses._CursesWindow]], list[list[curses._CursesWindow]], int, int]:
@@ -521,17 +555,19 @@ def _create_layout(
             if col_text_width < 1:
                 col_text_width = 1
 
-        _boxes, _lines = format_dictionary(dictionary, col_text_width)
-        if (_lines // min_columns < height) or (min_columns >= max_columns):
+        if ((min_columns >= max_columns) or
+            (_estimate_dictionary_height(dictionary, col_text_width) // min_columns < height)
+        ):
+            boxes, lines_total = format_dictionary(dictionary, col_text_width)
             break
         else:
             min_columns += 1
 
     columns: list[list[curses._CursesWindow]] = [[] for _ in range(min_columns)]
     cur = 0
-    max_height = (_lines // min_columns) + 1
+    max_height = (lines_total // min_columns) + 1
     move_ops = []
-    for lines, entry in zip(_boxes, dictionary.contents):
+    for lines, entry in zip(boxes, dictionary.contents):
         op = entry[0]
 
         if len(columns[cur]) < max_height:
@@ -569,7 +605,7 @@ def _create_layout(
 
         columns[cur].extend(lines)
 
-    return _boxes, columns, col_width, margin
+    return boxes, columns, col_width, margin
 
 
 class Screen:
@@ -855,6 +891,9 @@ class ScreenBuffer:
             pass
 
     def draw(self) -> None:
+        if env.COLS < 2:
+            return
+
         stdscr = self.stdscr
         screen = self.current
 
