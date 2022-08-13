@@ -130,7 +130,6 @@ def dispatch_query(s: str) -> None:
                 raise SystemExit
             else:
                 raise
-
         curses_entry(dictionaries, settings)
     else:
         console_entry(dictionaries, settings)

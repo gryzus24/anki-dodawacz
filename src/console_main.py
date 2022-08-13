@@ -5,6 +5,7 @@ import shutil
 from itertools import islice, zip_longest
 from typing import Sequence, TYPE_CHECKING
 
+from src.Dictionaries.dictionary_base import EntrySelector
 from src.Dictionaries.utils import wrap_lines
 from src.cards import CARD_FIELDS_SAVE_ORDER, create_and_add_card
 from src.colors import BOLD, Color, DEFAULT, R
@@ -295,7 +296,7 @@ def format_dictionary(dictionary: Dictionary, column_width: int) -> list[str]:
             for line in rest:
                 buffer.append(f'!{BOLD}{line}{DEFAULT}')
         else:
-            raise AssertionError(f'unreachable dictionary operation: {op!r}')
+            raise AssertionError(f'unreachable: {op!r}')
 
     return buffer
 
@@ -442,11 +443,11 @@ class CardWriter:
 
 
 def console_entry(dictionaries: list[Dictionary], settings: QuerySettings) -> None:
-    dictionary = dictionaries[0]
+    selector = EntrySelector(dictionaries[0])
     if len(dictionaries) > 1:
         display_many_dictionaries(dictionaries)
     else:
-        display_dictionary(dictionary)
+        display_dictionary(selector.dictionary)
 
     if config['-sen'] and not settings.user_sentence:
         user_sentence = sentence_input()
@@ -465,16 +466,20 @@ def console_entry(dictionaries: list[Dictionary], settings: QuerySettings) -> No
 
     choices = parse_input(
         user_input,
-        dictionary.count(lambda y: 'DEF' in y[0] or y[0] == 'SYN')
+        selector.dictionary.count(lambda y: 'DEF' in y[0] or y[0] == 'SYN')
     )
     if choices is None:
         if config['-def']:
             print(f'{Color.success}Skipped!')
         return
 
-    definition_indices = dictionary.into_indices(
-        choices, lambda y: 'DEF' in y[0] or y[0] == 'SYN'
-    )
-    create_and_add_card(CardWriter(), dictionary, definition_indices, settings)
+    for choice in choices:
+        selector.toggle_by_def_index(choice)
+
+    selections = selector.dump_selection()
+    if selections is None:
+        raise AssertionError('unreachable')
+
+    create_and_add_card(CardWriter(), selector.dictionary.name, selections, settings)
     print()
 

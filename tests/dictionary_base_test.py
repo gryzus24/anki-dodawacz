@@ -1,6 +1,11 @@
 import pytest
 
-from src.Dictionaries.dictionary_base import Dictionary, filter_dictionary
+from src.Dictionaries.dictionary_base import (
+    Dictionary,
+    DictionarySelection,
+    EntrySelector,
+    filter_dictionary,
+)
 from src.data import config
 
 config['-shortetyms'] = True
@@ -1149,4 +1154,87 @@ def test_text_and_label_filters():
         ('ETYM', 'Middle English (minte) ← Old English ← Germanic (*mintǫ) ← Latin (menta)')
     ], name='ahd')
     _run_test(ahd_mint_dict, ['/place', 'a', '/artificial', 'n'], expected)
+
+
+def test_dump_selection():
+    selector = EntrySelector(ahd_mint_dict)
+    selector.toggle_by_def_index(1)
+    selector.toggle_by_def_index(2)
+    expected = [DictionarySelection(
+        ('AUDIO', 'https://www.ahdictionary.com/application/resources/wavs/M0321900.wav'),
+        [
+            ('DEF', 'A place where the coins of a country are manufactured by authority of the government.', '', ''),
+            ('DEF', 'A place or source of manufacture or invention.', '', ''),
+        ],
+        ('ETYM', 'Middle English ← Old English (mynet) ← Latin (monēta)'),
+        ('PHRASE', 'mint', '/mɪnt/'),
+        ('POS', 'mint.er n.|')
+    )]
+    assert selector.dump_selection() == expected
+
+    selector = EntrySelector(ahd_mint_dict)
+    selector.toggle_by_def_index(2)
+    selector.toggle_by_def_index(3)
+    expected = [DictionarySelection(
+        ('AUDIO', 'https://www.ahdictionary.com/application/resources/wavs/M0321900.wav'),
+        [
+            ('DEF', 'A place or source of manufacture or invention.', '', ''),
+            ('DEF', 'An abundant amount, especially of money.', '', ''),
+        ],
+        ('ETYM', 'Middle English ← Old English (mynet) ← Latin (monēta)'),
+        ('PHRASE', 'mint', '/mɪnt/'),
+        ('POS', 'mint.er n.|')
+    )]
+    assert selector.dump_selection() == expected
+
+    selector = EntrySelector(ahd_mint_dict)
+    selector.toggle_by_def_index(6)
+    selector.toggle_by_def_index(5)
+    selector.toggle_by_def_index(4)
+    selector.toggle_by_def_index(7)
+    selector.toggle_by_def_index(8)
+    expected = [DictionarySelection(
+        ('AUDIO', 'https://www.ahdictionary.com/application/resources/wavs/M0321900.wav'),
+        [
+            ('DEF', 'To produce (money) by stamping metal; coin.', '', ''),
+            ('DEF', 'To invent or fabricate.', '‘a phrase that was minted for one occasion.’', ''),
+            ('DEF', 'Undamaged as if freshly minted.', '‘The painting was in mint condition.’', ''),
+        ],
+        ('ETYM', 'Middle English ← Old English (mynet) ← Latin (monēta)'),
+        ('PHRASE', 'mint', '/mɪnt/'),
+        ('POS', 'mint.er n.|')
+    ), DictionarySelection(
+        ('AUDIO', 'https://www.ahdictionary.com/application/resources/wavs/M0321900.wav'),
+        [
+            ('DEF', 'A member of the mint family.', '', ''),
+            ('DEF', 'Any of various rhizomatous plants of the genus Mentha of the mint family, characteristically having nearly regular white or purple flowers. Some species are cultivated for their aromatic oil and foliage.', '', ''),
+        ],
+        ('ETYM', 'Middle English (minte) ← Old English ← Germanic (*mintǫ) ← Latin (menta)'),
+        ('PHRASE', 'mint', '/mɪnt/'),
+        ('POS', 'mint.y adj.|'),
+    )]
+    assert selector.dump_selection() == expected
+
+    selector = EntrySelector(ahd_mint_dict)
+    selector.toggle_by_def_index(7)
+    expected = [DictionarySelection(
+        ('AUDIO', 'https://www.ahdictionary.com/application/resources/wavs/M0321900.wav'),
+        [
+            ('DEF', 'A member of the mint family.', '', ''),
+        ],
+        ('ETYM', 'Middle English (minte) ← Old English ← Germanic (*mintǫ) ← Latin (menta)'),
+        ('PHRASE', 'mint', '/mɪnt/'),
+        ('POS', 'mint.y adj.|'),
+    )]
+    assert selector.dump_selection() == expected
+
+
+def test_dump_selection_empty():
+    selector = EntrySelector(ahd_mint_dict)
+    assert selector.dump_selection() == None
+
+    selector = EntrySelector(ahd_mint_dict)
+    selector.toggle_by_def_index(6)
+    selector.toggle_by_def_index(6)
+    assert selector.dump_selection() == None
 

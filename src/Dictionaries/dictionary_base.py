@@ -1,9 +1,8 @@
 from __future__ import annotations
 
 import sys
-from collections import defaultdict
 from itertools import compress
-from typing import Callable, Sequence, TypedDict
+from typing import Callable, Sequence, TypedDict, NamedTuple
 
 
 # Raised by implementors of dictionaries.
@@ -211,26 +210,21 @@ def filter_dictionary(dictionary: Dictionary, flags: Sequence[str]) -> Dictionar
 
 
 class Dictionary:
+    __slots__ = 'name' ,'contents'
+
     def __init__(self, contents: list[Sequence[str]] | None = None, *, name: str) -> None:
+        self.contents: list[Sequence[str]] = [] if contents is None else contents
         self.name = name
-        self.contents: list[Sequence[str]] = []
-        self.phrase_indices: list[int] = []
-        self.static_entries: list[dict[str, int]] = []
-        if contents is not None:
-            # Add in a loop to ensure instructions are valid.
-            for x in contents:
-                self.add(*x)
 
     def __repr__(self) -> str:
         rel_def_i = 0
-        stdout = sys.stdout.write
         for op, *body in self.contents:
             if 'DEF' in op:
                 rel_def_i += 1
-                stdout(f'{rel_def_i} {op:7s}{body}\n')
+                sys.stdout.write(f'{rel_def_i} {op:7s}{body}\n')
             else:
-                stdout(f'{len(str(rel_def_i))*" "} {op:7s}{body}\n')
-        stdout('\n')
+                sys.stdout.write(f'{len(str(rel_def_i))*" "} {op:7s}{body}\n')
+        sys.stdout.write('\n')
         return f'{type(self).__name__}({self.contents}, name={self.name!r})'
 
     def add(self, op: str, body: str, *args: str) -> None:
@@ -250,58 +244,135 @@ class Dictionary:
         #  (SYN,    'synonyms', 'gloss', 'examples')
         #  (NOTE,   'note')*
 
-        op = op.upper()
-        if op == 'PHRASE':
-            self.phrase_indices.append(len(self.contents))
-            self.static_entries.append({'PHRASE': len(self.contents)})
-        elif op in ('AUDIO', 'POS', 'ETYM'):
-            try:
-                self.static_entries[-1][op] = len(self.contents)
-            except IndexError:
-                raise ValueError(f'Cannot add {op!r} before PHRASE')
-
-        self.contents.append((op, body, *args))
+        self.contents.append((op.upper(), body, *args))
 
     def count(self, key: Callable[[Sequence[str]], bool]) -> int:
-        # Count the number of key matches in `self.contents`.
         return sum(map(key, self.contents))
 
-    def static_entries_to_index_from_index(self, n: int) -> dict[str, int]:
-        p_indices = self.phrase_indices
-        if not p_indices:
+
+class DictionarySelection(NamedTuple):
+    audio: Sequence[str] | None
+    content: list[Sequence[str]]
+    etym: Sequence[str] | None
+    phrase: Sequence[str] | None
+    pos: Sequence[str] | None
+
+
+class EntrySelector:
+    def __init__(self, dictionary: Dictionary) -> None:
+        self.dictionary = dictionary
+
+        self._ptoggled: dict[int, int] = {}
+        self._prelated: dict[int, dict[str, int]] = {}
+        self._toggles: list[bool] = []
+
+        for i, entry in enumerate(dictionary.contents):
+            op = entry[0]
+            if op == 'PHRASE':
+                self._ptoggled[i] = 0
+                self._prelated[i] = {'PHRASE': i}
+            elif op in ('AUDIO', 'POS', 'ETYM'):
+                last_index, last_value = self._prelated.popitem()
+                last_value[op] = i
+                self._prelated[last_index] = last_value
+
+            self._toggles.append(False)
+
+    @property
+    def toggles(self) -> list[bool]:
+        return self._toggles
+
+    def find_phrase_index(self, index: int) -> int:
+        if not self._ptoggled:
             raise ValueError('Dictionary has no PHRASE entries')
 
-        for pi in reversed(p_indices):
-            if n >= pi:
-                return self.static_entries[p_indices.index(pi)]
+        for pi in reversed(self._ptoggled):
+            if index >= pi:
+                return pi
 
-        raise ValueError('out of bounds')
+        raise ValueError(f'Out of bounds: {len(self.dictionary.contents)=}, {index=}')
 
-    def into_indices(self,
-            relative_inputs: list[int], key: Callable[[Sequence[str]], bool]
-    ) -> list[int]:
-        result = []
-        counter = 0
-        for i, entry in enumerate(self.contents):
-            if key(entry):
-                counter += 1
-                if counter in relative_inputs:
-                    result.append(i)
+    TOGGLEABLE = {'DEF', 'SUBDEF', 'SYN'}
 
-        return result
+    def _toggle(self, index: int) -> None:
+        pi = self.find_phrase_index(index)
+        self._toggles[index] = not self._toggles[index]
+        self._ptoggled[pi] += 1 if self._toggles[index] else -1
 
-    def group_phrases_to_definitions(self,
-            indices: list[int]
-    ) -> defaultdict[int, list[int]] | None:
-        result = defaultdict(list)
-        phrase_indices = self.phrase_indices
-        for di in indices:
-            for pi in reversed(phrase_indices):
-                if di > pi:
-                    result[pi].append(di)
-                    break
+        for ri in self._prelated[pi].values():
+            self._toggles[ri] = bool(self._ptoggled[pi])
 
-        if not result:
+    def toggle_by_index(self, index: int) -> None:
+        if self.dictionary.contents[index][0] not in self.TOGGLEABLE:
+            raise ValueError(f'{index=} does not point to a toggleable entry')
+
+        self._toggle(index)
+
+    def toggle_by_def_index(self, index: int) -> None:
+        current = 0
+        for i, entry in enumerate(self.dictionary.contents):
+            if entry[0] in self.TOGGLEABLE:
+                current += 1
+            if current == index:
+                self._toggle(i)
+                return
+
+    def _find_unique_audio(self) -> Sequence[str] | None:
+        unique = {
+            entry for entry in self.dictionary.contents if entry[0] == 'AUDIO'
+        }
+        if len(unique) == 1:
+            return unique.pop()
+        else:
             return None
 
+    def dump_selection(self) -> list[DictionarySelection] | None:
+        if True not in self._toggles:
+            return None
+
+        result = []
+
+        # If the dictionary has no AUDIO instruction toggled,
+        # see if there is a common AUDIO instruction to the
+        # whole dictionary and add it instead.
+        unique_audio = self._find_unique_audio()
+
+        content = []
+        audio = etym = phrase = pos = None
+        for i, entry in compress(enumerate(self.dictionary.contents), self._toggles):
+            op = entry[0]
+            if op == 'PHRASE':
+                if phrase is None:
+                    phrase = entry
+                else:
+                    if unique_audio is not None:
+                        audio = unique_audio
+
+                    result.append(
+                        DictionarySelection(audio, content, etym, phrase, pos)
+                    )
+                    content = []
+                    audio = etym = pos = None
+            elif op in self.TOGGLEABLE:
+                content.append(entry)
+            elif op == 'AUDIO':
+                audio = entry
+            elif op == 'ETYM':
+                etym = entry
+            elif op == 'POS':
+                pos = entry
+            else:
+                raise AssertionError(f'unreachable {op!r}')
+
+        if unique_audio is not None:
+            audio = unique_audio
+
+        result.append(DictionarySelection(audio, content, etym, phrase, pos))
+
         return result
+
+    def clear_selection(self) -> None:
+        self._ptoggled = {k: 0 for k in self._ptoggled}
+        for i, _ in enumerate(self._toggles):
+            self._toggles[i] = False
+

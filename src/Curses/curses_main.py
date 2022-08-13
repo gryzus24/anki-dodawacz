@@ -3,7 +3,6 @@ from __future__ import annotations
 import contextlib
 import curses
 import functools
-from collections import Counter
 from itertools import islice, zip_longest
 from typing import Callable, TypeVar, Sequence, Iterator, TYPE_CHECKING
 
@@ -18,12 +17,11 @@ from src.Curses.utils import (
     get_key,
     hide_cursor,
     mouse_wheel_clicked,
-    new_stdscr,
     terminal_resize,
     truncate_if_needed,
     update_global_lines_cols,
 )
-from src.Dictionaries.dictionary_base import filter_dictionary
+from src.Dictionaries.dictionary_base import EntrySelector, filter_dictionary
 from src.Dictionaries.utils import wrap_lines
 from src.cards import create_and_add_card
 from src.commands import INTERACTIVE_COMMANDS, NO_HELP_ARG_COMMANDS, HELP_ARG_COMMANDS
@@ -208,7 +206,7 @@ def add_first_line(
 def add_rest(
         dest: list[curses._CursesWindow],
         width: int,
-        lines: list[str],
+        lines: Sequence[str],
         color: int
 ) -> None:
     for line in lines:
@@ -469,7 +467,7 @@ def draw_help(stdscr: curses._CursesWindow) -> None:
         pass
 
 
-def corollary_boxes_to_toggle_on() -> set[str]:
+def current_related_entries() -> set[str]:
     result = {'PHRASE'}
     if config['-audio'] != '-':
         result.add('AUDIO')
@@ -480,8 +478,6 @@ def corollary_boxes_to_toggle_on() -> set[str]:
     return result
 
 
-COROLLARY_DICTIONARY_OPS = {'PHRASE', 'AUDIO', 'POS', 'ETYM'}
-DIRECTLY_TOGGLEABLE = {'DEF', 'SUBDEF', 'SYN'}
 AUTO_COLUMN_WIDTH = 47
 MINIMUM_TEXT_WIDTH = 26
 
@@ -612,15 +608,15 @@ def _create_layout(
 
 class Screen:
     def __init__(self, dictionary: Dictionary) -> None:
-        self._orig_dictionary = self.dictionary = dictionary
-        self.margin_bottom = 0 if config['-nohelp'] else 2
+        self._orig_dictionary = dictionary
+        self.selector = EntrySelector(dictionary)
 
+        # self.margin_bottom is needed for `self.screen_height`
+        self.margin_bottom = 0 if config['-nohelp'] else 2
         self._boxes, self.columns, self.col_width, self.margin = _create_layout(
             dictionary, self.screen_height
         )
 
-        self._ptoggled: Counter[int] = Counter()
-        self._box_states = [curses.A_NORMAL] * len(self._boxes)
         self._scroll_i = 0
 
     @property
@@ -628,15 +624,31 @@ class Screen:
         r = env.LINES - self.margin_bottom - 2*BORDER_PAD
         return r if r > 0 else 0
 
+    def _refresh_toggles(self) -> None:
+        toggle_hl = highlight()
+        related_entries = current_related_entries()
+
+        contents = self.selector.dictionary.contents
+        for i, toggled in enumerate(self.selector.toggles):
+            if toggled:
+                op = contents[i][0]
+                if op in self.selector.TOGGLEABLE:
+                    hl_attr = toggle_hl
+                elif op in related_entries:
+                    hl_attr = curses.A_BOLD
+                else:
+                    hl_attr = curses.A_NORMAL
+            else:
+                hl_attr = curses.A_NORMAL
+
+            for line in self._boxes[i]:
+                line.bkgd(hl_attr)
+
     def update_for_redraw(self) -> None:
         self._boxes, self.columns, self.col_width, self.margin = _create_layout(
-            self.dictionary, self.screen_height
+            self.selector.dictionary, self.screen_height
         )
-        a_normal = curses.A_NORMAL
-        for lines, state in zip(self._boxes, self._box_states):
-            if state != a_normal:
-                for line in lines:
-                    line.bkgd(state)
+        self._refresh_toggles()
 
     def _scroll_end(self) -> int:
         r = max(map(len, self.columns)) - self.screen_height
@@ -669,36 +681,6 @@ class Screen:
         except curses.error:  # window too small
             pass
 
-    def _toggle_box(self, i: int, state: int) -> None:
-        self._box_states[i] = state
-        for line in self._boxes[i]:
-            line.bkgd(state)
-
-    def _toggle_related_boxes(self, current_state: int, phraseno: int, box_index: int) -> None:
-        if current_state == curses.A_NORMAL:
-            self._toggle_box(box_index, highlight())
-            self._ptoggled[phraseno] += 1
-        else:
-            self._toggle_box(box_index, curses.A_NORMAL)
-            self._ptoggled[phraseno] -= 1
-
-        try:
-            static_entries_to_index = self.dictionary.static_entries_to_index_from_index(box_index)
-        except ValueError:  # Dictionary has no PHRASE entries.
-            return
-
-        # Accounts for the possibility of -pos, -etym etc.
-        # changing state when selections are active.
-        for op in COROLLARY_DICTIONARY_OPS:
-            if op in static_entries_to_index:
-                self._toggle_box(static_entries_to_index[op], curses.A_NORMAL)
-
-        if self._ptoggled[phraseno] > 0:
-            for op in corollary_boxes_to_toggle_on():
-                if op in static_entries_to_index:
-                    self._toggle_box(static_entries_to_index[op], curses.A_BOLD)
-
-
     def mark_box_at(self, y: int, x: int) -> None:
         if y < BORDER_PAD or y > self.screen_height:  # border clicked.
             return
@@ -719,15 +701,15 @@ class Screen:
                 except IndexError:
                     break
 
-        phraseno = 0
-        for i, (state, lines) in enumerate(zip(self._box_states, self._boxes)):
-            op = self.dictionary.contents[i][0]
-            if op == 'PHRASE':
-                phraseno += 1
-            if op in DIRECTLY_TOGGLEABLE:
-                for line in lines:
-                    if id(line) not in not_in_view and line.enclose(y, x):
-                        self._toggle_related_boxes(state, phraseno, i)
+        for i, lines in enumerate(self._boxes):
+            for line in lines:
+                if id(line) not in not_in_view and line.enclose(y, x):
+                    try:
+                        self.selector.toggle_by_index(i)
+                    except ValueError:
+                        return
+                    else:
+                        self._refresh_toggles()
                         return
 
     KEYBOARD_SELECTOR_CHARS = (
@@ -735,34 +717,18 @@ class Screen:
         b'!', b'@', b'#', b'$', b'%', b'^', b'&', b'*', b'(', b')',
     )
     def mark_box_by_selector(self, s: bytes) -> None:
-        box_i = self.KEYBOARD_SELECTOR_CHARS.index(s) + 1
-        cur = phraseno = 0
-        for i, (state, lines) in enumerate(zip(self._box_states, self._boxes)):
-            op = self.dictionary.contents[i][0]
-            if op == 'PHRASE':
-                phraseno += 1
-            if op not in DIRECTLY_TOGGLEABLE:
-                continue
-            if cur == len(self.KEYBOARD_SELECTOR_CHARS):
-                return
-            cur += 1
-            if box_i == cur:
-                self._toggle_related_boxes(state, phraseno, i)
-                return
-
-    def get_indices_of_selected_boxes(self) -> list[int]:
-        return [i for i, x in enumerate(self._box_states) if x != curses.A_NORMAL]
+        self.selector.toggle_by_def_index(
+            self.KEYBOARD_SELECTOR_CHARS.index(s) + 1
+        )
+        self._refresh_toggles()
 
     def restore_original_dictionary(self) -> None:
-        self.dictionary = self._orig_dictionary
+        self.selector = EntrySelector(self._orig_dictionary)
         self.update_for_redraw()
 
     def deselect_all(self) -> None:
-        self._ptoggled.clear()
-        a_normal = curses.A_NORMAL
-        for i, state in enumerate(self._box_states):
-            if state != a_normal:
-                self._toggle_box(i, a_normal)
+        self.selector.clear_selection()
+        self._refresh_toggles()
 
     def move_down(self, n: int = 2) -> None:
         self._scroll_i += n
@@ -878,7 +844,7 @@ class ScreenBuffer:
         stdscr = self.stdscr
         stdscr.box()
 
-        header = truncate_if_needed(screen.dictionary.contents[0][1], env.COLS - 8)
+        header = truncate_if_needed(screen.selector.dictionary.contents[0][1], env.COLS - 8)
         if header is not None:
             stdscr.addstr(0, 2, '[ ')
             stdscr.addstr(0, 4, header, Color.delimit | curses.A_BOLD)
@@ -952,7 +918,9 @@ class ScreenBuffer:
             return
 
         screen = self.current
-        screen.dictionary = filter_dictionary(screen._orig_dictionary, (typed,))
+        screen.selector = EntrySelector(
+            filter_dictionary(screen._orig_dictionary, (typed,))
+        )
         screen.update_for_redraw()
 
     def _dispatch_command(self, s: str) -> bool:
@@ -1116,18 +1084,17 @@ def _curses_main(
             else:
                 screen_buffer.status.success('Anki card browser opened')
         elif c == b'C':
-            _screen = screen_buffer.current
-            selection_data = _screen.get_indices_of_selected_boxes()
-            if selection_data:
+            selections = screen_buffer.current.selector.dump_selection()
+            if selections is None:
+                screen_buffer.status.error('Nothing selected')
+            else:
                 create_and_add_card(
                     CardWriter(screen_buffer),
-                    _screen.dictionary,
-                    selection_data,
+                    screen_buffer.current.selector.dictionary.name,
+                    selections,
                     settings
                 )
-                _screen.deselect_all()
-            else:
-                screen_buffer.status.error('Nothing selected')
+                screen_buffer.current.deselect_all()
         elif c == b'KEY_F(1)':
             config['-nohelp'] = not config['-nohelp']
         elif c in (b'q', b'Q', b'^X'):
@@ -1135,12 +1102,22 @@ def _curses_main(
 
 
 def curses_entry(dictionaries: list[Dictionary], settings: QuerySettings) -> None:
-    with new_stdscr() as stdscr:
+    stdscr = curses.initscr()
+    try:
         hide_cursor()
-        init_colors()
+        stdscr.keypad(True)
 
+        curses.cbreak()
+        curses.noecho()
         curses.mousemask(-1)
         curses.mouseinterval(0)
 
+        init_colors()
+
         _curses_main(stdscr, dictionaries, settings)
+    finally:
+        # Clear the whole window to prevent a flash
+        # of contents from the previous drawing.
+        stdscr.erase()
+        curses.endwin()
 

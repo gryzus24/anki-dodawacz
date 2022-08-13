@@ -13,7 +13,7 @@ from src.data import ROOT_DIR, CARD_SAVE_LOCATION, config
 
 if TYPE_CHECKING:
     from src.search import QuerySettings
-    from src.Dictionaries.dictionary_base import Dictionary
+    from src.Dictionaries.dictionary_base import DictionarySelection
     from src.proto import CardWriterInterface
 
 CARD_FIELDS_SAVE_ORDER = ('def', 'syn', 'sen', 'phrase', 'exsen', 'pos', 'etym', 'audio', 'recording')
@@ -170,59 +170,6 @@ def format_definitions(definition_string: str) -> str:
     return '<br>'.join(formatted)
 
 
-def _map_card_fields_to_values(
-        dictionary: Dictionary, definition_indices: list[int]
-) -> tuple[dict[str, str], str]:
-    card = {k: '' for k in CARD_FIELDS_SAVE_ORDER}
-    contents = dictionary.contents
-    related_entries = dictionary.static_entries_to_index_from_index(definition_indices[0])
-    audio_url = ''
-    for op, i in related_entries.items():
-        entry = contents[i]
-        if op == 'PHRASE':
-            card['phrase'] = entry[1]
-        elif op == 'AUDIO':
-            url = entry[1]
-            if url:
-                audio_url = url
-            else:
-                unique_urls = set()
-                for x in contents:
-                    if x == entry:
-                        break
-                    if x[0] == 'AUDIO' and x[1]:
-                        unique_urls.add(x[1])
-                if len(unique_urls) == 1:
-                    audio_url = unique_urls.pop()
-        elif op == 'POS':
-            card['pos'] = '<br>'.join(
-                x.replace('|', '  ') for x in entry[1:]
-            ).strip()
-        elif op == 'ETYM':
-            card['etym'] = entry[1]
-
-    definitions, example_sentences, synonyms = [], [], []
-    for def_index in definition_indices:
-        entry = contents[def_index]
-        op = entry[0]
-        if 'DEF' in op:
-            _, _def, _exsen, _label = entry
-            if _label:
-                definitions.append(f'{{{_label}}} {_def}')
-            else:
-                definitions.append(_def)
-            if _exsen:
-                example_sentences.append(_exsen)
-        elif op == 'SYN':
-            synonyms.append(entry[2] + ' ' + entry[1])
-
-    card['def'] = '<br>'.join(definitions)
-    card['exsen'] = '<br>'.join(example_sentences)
-    card['syn'] = '<br>'.join(synonyms)
-
-    return card, audio_url
-
-
 def format_and_prepare_card(card: dict[str, str]) -> dict[str, str]:
     card = {k: v.replace("'", "&#39;").replace('"', '&quot;') for k, v in card.items()}
 
@@ -237,32 +184,63 @@ def format_and_prepare_card(card: dict[str, str]) -> dict[str, str]:
     return card
 
 
+def card_from_selection(selection: DictionarySelection) -> tuple[dict[str, str], str]:
+    card = {k: '' for k in CARD_FIELDS_SAVE_ORDER}
+
+    audio, content, etym, phrase, pos = selection
+    if audio is not None:
+        if audio[1]:
+            audio_url = audio[1]
+        else:
+            audio_url = ''
+    else:
+        audio_url = ''
+
+    definitions, example_sentences, synonyms = [], [], []
+    for entry in content:
+        op = entry[0]
+        if 'DEF' in op:
+            _, _def, _exsen, _label = entry
+            if _label:
+                definitions.append(f'{{{_label}}} {_def}')
+            else:
+                definitions.append(_def)
+            if _exsen:
+                example_sentences.append(_exsen)
+        elif op == 'SYN':
+            synonyms.append(entry[2] + ' ' + entry[1])
+
+    card['def'] = '<br>'.join(definitions)
+    if config['-exsen']:
+        card['exsen'] = '<br>'.join(example_sentences)
+    card['syn'] = '<br>'.join(synonyms)
+
+    if etym is not None and config['-etym']:
+        card['etym'] = etym[1]
+    if phrase is not None:
+        card['phrase'] = phrase[1]
+    if pos is not None and config['-pos']:
+        card['pos'] = '<br>'.join(
+            x.replace('|', '  ') for x in pos[1:]
+        ).strip()
+
+    return card, audio_url
+
+
 def create_and_add_card(
-    implementor: CardWriterInterface,
-    dictionary: Dictionary,
-    indices: list[int],
-    settings: QuerySettings
+        implementor: CardWriterInterface,
+        dictionary_name: str,
+        selections: list[DictionarySelection],
+        settings: QuerySettings
 ) -> None:
-    grouped_by_phrase = dictionary.group_phrases_to_definitions(indices)
-    if not grouped_by_phrase:
-        implementor.writeln(f'{Color.heed}This dictionary does not support creating cards\nSkipping...')
-        return
-
-    for phrase_index, definition_indices in grouped_by_phrase.items():
-        phrase = dictionary.contents[phrase_index][1]
-        card, audio_url = _map_card_fields_to_values(dictionary, definition_indices)
-        if not config['-exsen']:
-            card['exsen'] = ''
-        if not config['-pos']:
-            card['pos'] = ''
-        if not config['-etym']:
-            card['etym'] = ''
-
+    for selection in selections:
+        card, audio_url = card_from_selection(selection)
+        phrase = card['phrase']
         try:
             audio_url = check_audio_url(
                 implementor,
                 audio_url,
-                dictionary.name,
+                dictionary_name,
                 phrase,
                 settings.queries[0].query_flags
             )

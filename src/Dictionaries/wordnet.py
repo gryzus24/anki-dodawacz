@@ -14,6 +14,8 @@ def ask_wordnet(query: str) -> Dictionary:
     wordnet = Dictionary(name='wordnet')
 
     wordnet.add('HEADER', 'WordNet')
+    wordnet.add('PHRASE', query, '')
+    wordnet.add('LABEL', '', '')
     for t in soup.find_all('li'):
         _, _, body = t.text.partition('(')
         pos, _, body = body.partition(')')

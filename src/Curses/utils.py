@@ -3,7 +3,6 @@ from __future__ import annotations
 import curses
 import shutil
 from subprocess import Popen, DEVNULL, PIPE
-from typing import Any
 
 import src.Curses.env as env
 from src.data import WINDOWS, LINUX
@@ -106,25 +105,6 @@ def truncate_if_needed(s: str, n: int, *, fromleft: bool = False) -> str | None:
         return '..' + s[2-n:]
     else:
         return s[:n-2] + '..'
-
-
-class new_stdscr:
-    def __init__(self) -> None:
-        self.stdscr = curses.initscr()
-
-    def __enter__(self) -> curses._CursesWindow:
-        curses.cbreak()
-        curses.noecho()
-
-        self.stdscr.keypad(True)
-
-        return self.stdscr
-
-    def __exit__(self, *_: Any) -> None:
-        # Clear the whole window to prevent a flash
-        # of contents from the previous drawing.
-        self.stdscr.erase()
-        curses.endwin()
 
 
 def hide_cursor() -> None:
