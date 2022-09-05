@@ -30,7 +30,7 @@ Aby wyświetlić użycie dla danej komendy po prostu wpisz jej nazwę.
 
 ### Windows
 
-Aby uruchomić program, potrzebujesz Pythona 3.7 lub nowszego.<br>
+Aby uruchomić program, potrzebujesz Pythona 3.8 lub nowszego.<br>
 Pobierz Pythona z oficjalnej strony: https://www.python.org/downloads/<br>
 Przy instalacji zaznacz "Add python to PATH".
 
