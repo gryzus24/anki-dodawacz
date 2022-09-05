@@ -30,7 +30,7 @@ To display usage information for a command just type its name.
 
 ### Windows
 
-To open the program we need Python 3.7 or newer installed.<br>
+To open the program we need Python 3.8 or newer installed.<br>
 You can download Python from https://www.python.org/downloads/<br>
 During installation tick the "Add Python to PATH" box.
 
