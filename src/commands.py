@@ -458,15 +458,15 @@ def dupescope_command(cmd: str, *args: str) -> CommandResult:
 
 
 def dict_command(cmd: str, *args: str) -> CommandResult:
-    return commands_set_text('-dict', args, ('ahd', 'lexico', 'farlex', 'wordnet'))
+    return commands_set_text('-dict', args, ('ahd', 'farlex', 'wordnet'))
 
 
 def dict2_command(cmd: str, *args: str) -> CommandResult:
-    return commands_set_text('-dict2', args, ('ahd', 'lexico', 'farlex', 'wordnet', '-'))
+    return commands_set_text('-dict2', args, ('ahd', 'farlex', 'wordnet', '-'))
 
 
 def audio_command(cmd: str, *args: str) -> CommandResult:
-    return commands_set_text('-audio', args, ('ahd', 'lexico', 'diki', 'auto', '-'))
+    return commands_set_text('-audio', args, ('ahd', 'diki', 'auto', '-'))
 
 
 def tsc_command(cmd: str, *args: str) -> CommandResult:
@@ -502,12 +502,12 @@ HELP_ARG_COMMANDS: dict[str, tuple[Callable[..., CommandResult], str, str]] = {
     '-curses':      (boolean_command, 'Use the ncurses backend to interact with dictionaries', '{on/off}'),
     '-nohelp':      (boolean_command, '[curses] Hide usage help (F1) by default', '{on/off}'),
 
-    '-audio':       (audio_command, 'Audio server', '{ahd|lexico|diki|auto|-}'),
+    '-audio':       (audio_command, 'Audio server', '{ahd|diki|auto|-}'),
     '-columns':     (columns_command, '(Maximum) number of columns when dispatching a dictionary', '{>=1|auto}'),
     '-deck':        (deck_command, 'Deck used for adding cards', '{deck name}'),
     '-default':     (default_command, 'Default value for the definition field (-def)', '{e.g. 1,2,3}'),
-    '-dict':        (dict_command, 'Primary dictionary', '{ahd|lexico|farlex|wordnet}'),
-    '-dict2':       (dict2_command, 'Fallback dictionary', '{ahd|lexico|farlex|wordnet|-}'),
+    '-dict':        (dict_command, 'Primary dictionary', '{ahd|farlex|wordnet}'),
+    '-dict2':       (dict2_command, 'Fallback dictionary', '{ahd|farlex|wordnet|-}'),
     '-dupescope':   (dupescope_command, 'Look for duplicates in', '{deck|collection}'),
     '-hideas':      (hideas_command, 'Hide with (default "...")', '{ whatever floats your boat }'),
     '-margin':      (margin_command, "[curses] Column's left and right margin", '{0-99}'),
@@ -727,7 +727,7 @@ Enter your queries into the search box or save them to the "define_all" file.
 See `--help-define-all` for more information.
 
 First the program queries `-dict` (default: AH Dictionary).
-If query fails it fallbacks to `-dict2` (default: Lexico).
+If query fails it fallbacks to `-dict2` (default: Farlex Idioms).
 
 There are two front-ends:
   console: Cross-platform
@@ -737,12 +737,11 @@ See `--help-console` and `--help-curses` for more information.
 
 DICTIONARY OPTIONS:
   -ahd             query AH Dictionary
-  -l, -lexico      query Lexico
   -i, -farlex      query Farlex Idioms
   -wnet, -wordnet  query WordNet
 
   -c, -compare    query `-dict` and `-dict2` simultaneously,
-                  expands to `-ahd -lexico` by default
+                  expands to `-ahd -farlex` by default
 
 QUERY OPTIONS:
   To search for definitions with specific labels use the starting part of
@@ -852,9 +851,9 @@ Hiding a phrase means replacing it with "..." (default)
 -shortetyms    shorten and simplify etymologies in AH Dictionary
 
 {_title('Sources and recording configuration')}
--dict  {{ahd|lexico|farlex|wordnet}}        primary dictionary
--dict2 {{ahd|lexico|farlex|wordnet|-}}      fallback dictionary
--audio {{ahd|lexico|diki|auto|-}}           audio server
+-dict  {{ahd|farlex|wordnet}}        primary dictionary
+-dict2 {{ahd|farlex|wordnet|-}}      fallback dictionary
+-audio {{ahd|diki|auto|-}}           audio server
 
 --audio-device           configure a recording device
 -rec, --record           start recording (saves recording, without adding it to
@@ -1050,10 +1049,6 @@ formatting options to apply.
   gush -v -/forth
   glib -adj
   ...
-
-{BOLD}NOTE:{DEFAULT} Lexico doesn't tolerate more than 80 queries at once, but it doesn't
-      mean that you should pester AHD or Farlex more for what they allow,
-      please be reasonable.
 
 {BOLD}{79 * '─'}{DEFAULT}
 -conf, -config      show current configuration and more options

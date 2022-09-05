@@ -10,7 +10,7 @@ from src.search import parse_query, Query
         ('test', [Query('test', '', [], [], False)]),
         ('test -n', [Query('test', '', [], ['n'], False)]),
         ('test -rec -ahd -adh', [Query('test', '', ['ahd'], ['adh'], True)]),
-        ('test -b - - --4 --c', [Query('test', '', ['ahd', 'lexico'], ['b', '4'], False)]),
+        ('test -b - - --4 --c', [Query('test', '', ['ahd', 'farlex'], ['b', '4'], False)]),
         ('test  -rec    -ahd-adh', [Query('test', '', [], ['ahd-adh'], True)]),
         # be more lenient with validation, as long as we can
         ('test - ahd  -  / pla ', [Query('test', '', ['ahd'], ['/ pla'], False)]),
@@ -54,8 +54,8 @@ def test_parse_query_sentences(input_, expected):
             Query('...', 'two {{...}}', [], ['b'], False),
             Query('three', '', [config['-dict'], config['-dict2']], ['d'], False)
         ]),
-        ('<a> test -l -lexico;<b> test --rec -f', [
-            Query('a', '{{a}} test', ['l', 'lexico'], [], False),
+        ('<a> test -l -farlex;<b> test --rec -f', [
+            Query('a', '{{a}} test', ['farlex'], ['l'], False),
             Query('b', '{{b}} test', [], ['f'], True)
         ]),
         ('<,>', [

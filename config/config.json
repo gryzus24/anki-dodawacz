@@ -11,7 +11,7 @@
 "sign_c": "\u001b[36m",
 "delimit_c": "\u001b[39m",
 "-dict": "ahd",
-"-dict2": "lexico",
+"-dict2": "farlex",
 "-cardpreview": true,
 "-dupescope": "deck",
 "-duplicates": false,

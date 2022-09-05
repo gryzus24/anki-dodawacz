@@ -81,12 +81,3 @@ def ahd_audio(query: str) -> str:
 
     return 'https://www.ahdictionary.com' + check['href']
 
-
-def lexico_audio(query: str) -> str:
-    soup = request_soup('https://www.lexico.com/definition/' + query.replace(' ', '_'))
-
-    audio_url = soup.find('audio')
-    if audio_url is None:
-        raise DictionaryError(f'{Color.err}Lexico: no audio for {R}{query!r}')
-
-    return audio_url['src']

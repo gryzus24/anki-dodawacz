@@ -7,7 +7,6 @@ import random
 import sys
 
 from src.Dictionaries.ahdictionary import ask_ahdictionary
-from src.Dictionaries.lexico import ask_lexico
 from src.colors import Color, R
 from src.data import ROOT_DIR, config
 
@@ -305,13 +304,6 @@ def ahdictionary_test(word):
     return dictionary_content_check(ahd, word)
 
 
-def lexico_test(word):
-    lexico = ask_lexico(word)
-    if lexico is None:
-        return [('LEX', '', 0, 'Word not found')]
-    return dictionary_content_check(lexico, word)
-
-
 def print_logs(logs, word, col_width):
     for dname, op, index, msg in logs:
         if msg.startswith('OK'):
@@ -333,13 +325,11 @@ def test_main():
         longest_word_len = test.longest_word_len
         for word in test.words:
             ahd_logs = ahdictionary_test(word)
-            # lex_logs = lexico_test(word)
 
-            logs = ahd_logs  # + lex_logs
-            print_logs(logs, word, longest_word_len)
+            print_logs(ahd_logs, word, longest_word_len)
 
             if SAVE_TESTED_WORDS_TO_FILE:
-                test.update_buffer(word, logs)
+                test.update_buffer(word, ahd_logs)
 
 
 if __name__ == '__main__':

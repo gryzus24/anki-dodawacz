@@ -209,28 +209,6 @@ ahd_decrease_dict = Dictionary([
      '‘floodwaters that did not subside until days after the storm passed; anger that subsided with understanding.’')
 ], name='ahd')
 
-lexico_concert_dict = Dictionary([
-    ('HEADER', 'Lexico'),
-    ('PHRASE', 'concert', '/ˈkɒnsət/'),
-    ('LABEL', 'noun', ''),
-    ('DEF', 'A musical performance given in public, typically by several performers or of several compositions.',
-     '‘a pop concert’', 'as modifier'),
-    ('SUBDEF',
-     'Relating to or denoting the performance of music written for opera, ballet, or theatre on its own without the accompanying dramatic action.',
-     '‘the concert version of the fourth interlude from the opera’', 'as modifier'),
-    ('DEF', 'Agreement or harmony.',
-     "‘critics' inability to describe with any precision and concert the characteristics of literature’", 'mass noun'),
-    ('SUBDEF', 'Joint action, especially in the committing of a crime.',
-     '‘they found direct evidence of concert of action’', ''),
-    ('AUDIO', 'https://lex-audio.useremarkable.com/mp3/xconcert__gb_1.mp3'),
-    ('LABEL', 'tr. verb', ''),
-    ('DEF', 'Arrange (something) by mutual agreement or coordination.',
-     '‘they started meeting regularly to concert their parliamentary tactics’', ''),
-    ('AUDIO', 'https://lex-audio.useremarkable.com/mp3/xconcert__gb_2.mp3'),
-    ('ETYM',
-     '[Late 16th century (in the sense ‘unite’): from French concerter, from Italian concertare ‘harmonize’. The noun use, dating from the early 17th century (in the sense ‘a combination of voices or sounds’), is from French concert, from Italian concerto, from concertare.]')
-], name='lexico')
-
 
 def _run_test(full_dictionary, filters, expected):
     result = filter_dictionary(full_dictionary, filters)
@@ -474,28 +452,6 @@ def test_filtering_by_definition_label():
         ('ETYM', 'Middle English (singen) ← Old English (singan)'),
     ], name='ahd')
     _run_test(ahd_sing_dict, ['m'], expected)
-
-    expected = Dictionary([
-        ('HEADER', 'Lexico'),
-        ('PHRASE', 'concert', '/ˈkɒnsət/'),
-        ('AUDIO', 'https://lex-audio.useremarkable.com/mp3/xconcert__gb_1.mp3'),
-        ('LABEL', 'noun', ''),
-        ('DEF', 'A musical performance given in public, typically by several performers or of several compositions.', '‘a pop concert’', 'as modifier'),
-        ('SUBDEF', 'Relating to or denoting the performance of music written for opera, ballet, or theatre on its own without the accompanying dramatic action.', '‘the concert version of the fourth interlude from the opera’', 'as modifier'),
-        ('ETYM', '[Late 16th century (in the sense ‘unite’): from French concerter, from Italian concertare ‘harmonize’. The noun use, dating from the early 17th century (in the sense ‘a combination of voices or sounds’), is from French concert, from Italian concerto, from concertare.]')
-    ], name='lexico')
-    _run_test(lexico_concert_dict, ['modifi'], expected)
-
-    expected = Dictionary([
-        ('HEADER', 'Lexico'),
-        ('PHRASE', 'concert', '/ˈkɒnsət/'),
-        ('AUDIO', 'https://lex-audio.useremarkable.com/mp3/xconcert__gb_1.mp3'),
-        ('LABEL', 'noun', ''),
-        ('DEF', 'Agreement or harmony.', "‘critics' inability to describe with any precision and concert the characteristics of literature’", 'mass noun'),
-        ('SUBDEF', 'Joint action, especially in the committing of a crime.', '‘they found direct evidence of concert of action’', ''),
-        ('ETYM', '[Late 16th century (in the sense ‘unite’): from French concerter, from Italian concertare ‘harmonize’. The noun use, dating from the early 17th century (in the sense ‘a combination of voices or sounds’), is from French concert, from Italian concerto, from concertare.]')
-    ], name='lexico')
-    _run_test(lexico_concert_dict, ['mass___'], expected)
 
 
 def test_filtering_by_main_label_and_definition_label():
@@ -977,22 +933,6 @@ def test_filtering_definitions_by_text_empty_slash():
         ('ETYM', 'Middle English (decresen) ← Old French (decreistre) ← Latin (dēcrēscere)'),
     ], name='ahd')
     _run_test(ahd_decrease_dict, ['/'], expected)
-
-
-@pytest.mark.skip(
-    reason='Lexico sometimes uses AUDIO entries that pertain to LABELS instead of HEADERS, '
-           'we do not account for that so this behavior is undefined while filtering.'
-)
-def test_text_filters_wrong_audio_lexico_fault():
-    expected = Dictionary([
-        ('HEADER', 'Lexico'),
-        ('PHRASE', 'concert', '/ˈkɒnsət/'),
-        ('AUDIO', 'https://lex-audio.useremarkable.com/mp3/xconcert__gb_2.mp3'),  # <<< gb_1.mp3
-        ('LABEL', 'tr. verb', ''),
-        ('DEF', 'Arrange (something) by mutual agreement or coordination.', '‘they started meeting regularly to concert their parliamentary tactics’', ''),
-        ('ETYM', '[Late 16th century (in the sense ‘unite’): from French concerter, from Italian concertare ‘harmonize’. The noun use, dating from the early 17th century (in the sense ‘a combination of voices or sounds’), is from French concert, from Italian concerto, from concertare.]')
-    ], name='lexico')
-    _run_test(lexico_concert_dict, ['/range'], expected)
 
 
 @pytest.mark.skip(

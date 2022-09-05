@@ -10,7 +10,6 @@ from src.Dictionaries.dictionary_base import Dictionary
 from src.Dictionaries.dictionary_base import DictionaryError
 from src.Dictionaries.dictionary_base import filter_dictionary
 from src.Dictionaries.farlex import ask_farlex
-from src.Dictionaries.lexico import ask_lexico
 from src.Dictionaries.wordnet import ask_wordnet
 from src.colors import Color
 from src.data import config
@@ -22,7 +21,6 @@ if TYPE_CHECKING:
 DICT_FLAG_TO_QUERY_KEY = {
     'ahd': 'ahd',
     'i': 'farlex', 'farlex': 'farlex',
-    'l': 'lexico', 'lexico': 'lexico',
     'wnet': 'wordnet', 'wordnet': 'wordnet',
 }
 # Every dictionary has its individual key to avoid cluttering cache
@@ -32,7 +30,6 @@ DICT_FLAG_TO_QUERY_KEY = {
 DICTIONARY_LOOKUP = {
     'ahd': ask_ahdictionary,
     'farlex': ask_farlex,
-    'lexico': ask_lexico,
     'wordnet': ask_wordnet,
 }
 @functools.lru_cache(maxsize=None)

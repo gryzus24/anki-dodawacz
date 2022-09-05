@@ -5,7 +5,7 @@ import os
 from typing import Iterable, TYPE_CHECKING
 
 import src.anki_interface as anki
-from src.Dictionaries.audio_dictionaries import ahd_audio, diki_audio, lexico_audio
+from src.Dictionaries.audio_dictionaries import ahd_audio, diki_audio
 from src.Dictionaries.dictionary_base import DictionaryError
 from src.Dictionaries.utils import http
 from src.colors import Color, R
@@ -69,8 +69,6 @@ def check_audio_url(
     try:
         if server == 'ahd':
             audio_url = ahd_audio(phrase)
-        elif server == 'lexico':
-            audio_url = lexico_audio(phrase)
         else:
             raise AssertionError('unreachable')
     except DictionaryError as e:
