@@ -22,15 +22,12 @@ import sys
 from itertools import chain
 from typing import Generator, NoReturn, Sequence, TypeVar
 
-import src.ffmpeg_interface as ffmpeg
 from src.Dictionaries.utils import http
 from src.__version__ import __version__
-from src.colors import BOLD, Color, DEFAULT, R
+import src.colors as ansi
 from src.commands import INTERACTIVE_COMMANDS, HELP_ARG_COMMANDS, NO_HELP_ARG_COMMANDS
-from src.console_main import console_entry
-from src.data import LINUX, WINDOWS, STRING_TO_BOOL, config
+from src.data import LINUX, WINDOWS, STRING_TO_BOOL
 from src.search import search_dictionaries
-from src.term_utils import less_print
 
 # Completer doesn't work on Windows.
 # It should work on macOS, but I haven't tested it yet.
@@ -85,7 +82,7 @@ def dispatch_command(s: str) -> bool:
         if (len(args) == 1 or
            (len(args) == 2 and args[1].strip(' -').lower() in ('h', 'help'))
         ):
-            sys.stdout.write(f'{Color.heed}{note}{R}\n{cmd} {usage}\n')
+            sys.stdout.write(f'{ansi.HEED}{note}{ansi.R}\n{cmd} {usage}\n')
             return True
         else:
             result = func(*args)
@@ -93,12 +90,12 @@ def dispatch_command(s: str) -> bool:
         return False
 
     if result.error:
-        sys.stdout.write(f'{Color.err}{result.error}\n')
+        sys.stdout.write(f'{ansi.ERR}{result.error}\n')
     if result.reason:
         sys.stdout.write(result.reason)
         sys.stdout.write('\n')
     if result.output:
-        less_print(result.output)
+        print(result.output)
 
     return True
 
@@ -115,24 +112,20 @@ def dispatch_query(s: str) -> None:
         return
 
     dictionaries, settings = ret
-    if config['-curses']:
-        try:
-            from src.Curses.curses_main import curses_entry
-        except ImportError:
-            if WINDOWS:
-                sys.stderr.write(
-                    f'{Color.err}The curses module could not be imported:{R}\n'
-                    f'\'windows-curses\' is not installed, you can install it with:\n'
-                    f'pip install windows-curses\n\n'
-                    f'Windows support is experimental, any feedback is welcome.\n'
-                    f'You can always revert back to the pure console mode: -curses off\n'
-                )
-                raise SystemExit
-            else:
-                raise
-        curses_entry(dictionaries, settings)
-    else:
-        console_entry(dictionaries, settings)
+    try:
+        from src.Curses.curses_main import curses_entry
+    except ImportError:
+        if WINDOWS:
+            sys.stderr.write(
+                f'{ansi.ERR}The curses module could not be imported:{ansi.R}\n'
+                f'\'windows-curses\' is not installed, you can install it with:\n'
+                f'pip install windows-curses\n\n'
+            )
+            raise SystemExit
+        else:
+            raise
+
+    curses_entry(dictionaries, settings)
 
 
 def from_define_all_file(s: str) -> Generator[str, None, None]:
@@ -142,7 +135,7 @@ def from_define_all_file(s: str) -> Generator[str, None, None]:
             define_file = file
             break
     else:
-        print(f"{Color.err}Could not find {R}'define_all.txt'{Color.err} file.\n"
+        print(f"{ansi.ERR}Could not find {ansi.R}'define_all.txt'{ansi.ERR} file.\n"
               f"Create one and paste your list of queries there.")
         return None
 
@@ -155,7 +148,7 @@ def from_define_all_file(s: str) -> Generator[str, None, None]:
         lines = [x.strip().strip(sep) for x in f if x.strip().strip(sep)]
 
     if not lines:
-        print(f'{R}{define_file!r}{Color.err} file is empty.')
+        print(f'{ansi.R}{define_file!r}{ansi.ERR} file is empty.')
         return None
 
     for line in lines:
@@ -164,7 +157,7 @@ def from_define_all_file(s: str) -> Generator[str, None, None]:
             if query:
                 yield query
 
-    print(f'{Color.heed}** {R}{define_file!r}{Color.heed} has been exhausted **')
+    print(f'{ansi.HEED}** {ansi.R}{define_file!r}{ansi.HEED} has been exhausted **')
 
 
 def search_field() -> str:
@@ -181,7 +174,7 @@ def search_field() -> str:
 
 def main() -> NoReturn:
     sys.stdout.write(
-        f'{BOLD}Ankidodawacz v{__version__}{DEFAULT}\n'
+        f'{ansi.BOLD}Ankidodawacz v{__version__}{ansi.DEFAULT}\n'
         f'Quick configuration: -autoconfig\n'
         f'Full help and usage: -h\n\n'
     )
@@ -189,9 +182,7 @@ def main() -> NoReturn:
         with tab_completion():
             typed = search_field()
 
-        if typed.startswith(('-rec', '--record')):
-            ffmpeg.capture_audio()
-        elif typed.startswith('--define-all'):
+        if typed.startswith('--define-all'):
             for query in from_define_all_file(typed):
                 dispatch_query(query)
         else:

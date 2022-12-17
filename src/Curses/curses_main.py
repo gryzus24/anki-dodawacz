@@ -1,10 +1,8 @@
 from __future__ import annotations
 
-import contextlib
 import curses
-import functools
-from itertools import islice, zip_longest
-from typing import Callable, TypeVar, Sequence, Iterator, TYPE_CHECKING
+import contextlib
+from typing import Callable, TypeVar, Sequence, Iterable, NamedTuple, Iterator, TYPE_CHECKING
 
 import src.Curses.env as env
 import src.anki_interface as anki
@@ -21,8 +19,7 @@ from src.Curses.utils import (
     truncate_if_needed,
     update_global_lines_cols,
 )
-from src.Dictionaries.dictionary_base import EntrySelector, filter_dictionary
-from src.Dictionaries.utils import wrap_lines
+from src.Dictionaries.dictionary_base import EntrySelector
 from src.cards import create_and_add_card
 from src.commands import INTERACTIVE_COMMANDS, NO_HELP_ARG_COMMANDS, HELP_ARG_COMMANDS
 from src.data import STRING_TO_BOOL, HORIZONTAL_BAR, WINDOWS, config
@@ -33,136 +30,25 @@ if TYPE_CHECKING:
     from src.search import QuerySettings
 
 
-def highlight() -> int:
-    mask = config['-hlmode']
-    # 1 works just like curses.A_NORMAL, but does not conflict with it
-    # when 'hlmode' is set to 'nn'.
-    result = 1
-    if mask[0] == 'y':
-        result |= curses.A_STANDOUT
-    if mask[1] == 'y':
-        result |= curses.A_BOLD
-
-    return result
+class Attr(NamedTuple):
+    i:    int
+    span: int
+    attr: int
 
 
-# TODO: Writer is not really useful on its own, because we want to have
-#       at least some control over drawing in the ScreenBuffer.
-#       We should consider merging it with the Status class.
-class Writer:
-    __slots__ = 'win', 'screen_coverage', 'margin_bottom', 'buffer'
-
-    def __init__(self,
-            win: curses._CursesWindow, screen_coverage: float, margin_bottom: int
-    ) -> None:
-        if screen_coverage < 0 or screen_coverage > 1:
-            raise ValueError(
-                f'Invalid screen_coverage, expected: float 0-1, got: {screen_coverage!r}'
-            )
-        if margin_bottom < 0:
-            raise ValueError(
-                f'Invalid margin_bottom, expected: unsigned int, got: {margin_bottom!r}'
-            )
-
-        self.win = win
-        self.screen_coverage = screen_coverage
-        self.margin_bottom = margin_bottom
-        self.buffer: list[list[tuple[str, int]]] = []
-
-    def writeln(self, s: str) -> None:
-        self.buffer.extend(Color.parse_ansi_str(s))
-
-    def newline(self, s: str, pair_number: int) -> None:
-        self.buffer.append([(s, curses.color_pair(pair_number))])
-
-    @property
-    def visible_buffer(self) -> list[list[tuple[str, int]]]:
-        height = int(env.LINES * self.screen_coverage)
-        if height <= 0:
-            return []
-        if len(self.buffer) > height:
-            return self.buffer[-height:]
+def compose_attrs(elements: Iterable[tuple[int, int, int]], *, width: int, start: int = 0) -> list[Attr]:
+    attrs = []
+    index = start
+    for span, attr, gap in elements:
+        if index + span > width:
+            if index < width:
+                attrs.append(Attr(index, width - index, attr))
+            break
         else:
-            return self.buffer
+            attrs.append(Attr(index, span, attr))
+            index += span + gap
 
-    def flush(self) -> None:
-        if not self.buffer:
-            return
-
-        lines = self.visible_buffer
-        for y, line in enumerate(lines, env.LINES - self.margin_bottom - len(lines)):
-            x = 0
-            try:
-                self.win.hline(y, x, ' ', env.COLS)
-                for text, attr in line:
-                    self.win.addstr(y, x, text, attr)
-                    x += len(text)
-            except curses.error:  # text too long or env.LINES too small
-                pass
-
-
-class Status:
-    def __init__(self, win: curses._CursesWindow, *, persistence: int) -> None:
-        self.writer = Writer(win, 0.9, 0)
-        self.persistence = persistence if persistence > 0 else 1
-        self.lock = False
-        self.ticks = 1
-
-    @contextlib.contextmanager
-    def change(self, *, lock: bool, margin_bottom: int) -> Iterator[None]:
-        _orig_mb, _orig_lock = self.writer.margin_bottom, self.lock
-        self.writer.margin_bottom = margin_bottom
-        self.lock = lock
-        try:
-            yield
-        finally:
-            self.lock = _orig_lock
-            self.writer.margin_bottom = _orig_mb
-
-    def _pad(self, s: str) -> str:
-        return ' ' + s.ljust(env.COLS - 1)
-
-    def notify(self, line: str, pair_number: int) -> None:
-        self.ticks = 1
-        if not self.writer.buffer:
-            return self.writer.newline(self._pad(line), pair_number)
-
-        last_line, last_color = self.writer.buffer[-1][-1]
-        if last_color != curses.color_pair(pair_number):
-            return self.writer.newline(self._pad(line), pair_number)
-
-        new_line = self._pad(f'{last_line.strip()}  {line.strip()}')
-        if len(new_line) > env.COLS:
-            new_line = new_line[-env.COLS:]
-        self.writer.buffer[-1][-1] = (new_line, curses.color_pair(pair_number))
-
-    def writeln(self, s: str) -> None:
-        self.ticks = 1
-        self.writer.writeln(s)
-
-    def newline(self, s: str, pair_number: int) -> None:
-        self.ticks = 1
-        self.writer.newline(s, pair_number)
-
-    def success(self, s: str) -> None:
-        self.notify(s, BLACK_ON_GREEN)
-
-    def nlerror(self, s: str) -> None:
-        self.newline(self._pad(s), BLACK_ON_RED)
-
-    def error(self, s: str) -> None:
-        self.notify(s, BLACK_ON_RED)
-
-    def addstr(self, s: str) -> None:
-        for line in s.splitlines():
-            self.newline(' ' + line, 0)
-
-    def draw_if_available(self) -> None:
-        self.writer.flush()
-        if not self.lock and self.ticks >= self.persistence:
-            self.writer.buffer.clear()
-        else:
-            self.ticks += 1
+    return attrs
 
 
 class RefreshWriter:
@@ -170,9 +56,9 @@ class RefreshWriter:
         self.screen_buffer = screen_buffer
 
     def writeln(self, s: str) -> None:
-        self.screen_buffer.status.writeln(s)
+        self.screen_buffer.status.error(s)
         self.screen_buffer.draw()
-        curses.doupdate()
+        self.screen_buffer.win.refresh()
 
 
 class CardWriter:
@@ -180,97 +66,50 @@ class CardWriter:
         self.screen_buffer = screen_buffer
 
     def writeln(self, s: str) -> None:
-        self.screen_buffer.status.writeln(s)
+        self.screen_buffer.status.error(s)
         self.screen_buffer.draw()
-        curses.doupdate()
+        self.screen_buffer.win.refresh()
 
     def preview_card(self, card: dict[str, str]) -> None:
         # TODO: Find a nice and concise way to preview cards in curses.
         pass
 
 
-def add_first_line(
-        dest: list[curses._CursesWindow],
-        width: int,
-        elements: Sequence[tuple[str, int]]
-) -> None:
-    box = curses.newwin(1, width)
-    try:
-        for text, color in elements:
-            box.addstr(text, color)
-    except curses.error:  # rightmost character
-        pass
-    dest.append(box)
+class Wrapper:
+    def __init__(self, textwidth: int):
+        self.textwidth = textwidth
+        self._cur = 0
 
+    @property
+    def current_line_pos(self):
+        return self._cur
 
-def add_rest(
-        dest: list[curses._CursesWindow],
-        width: int,
-        lines: Sequence[str],
-        color: int
-) -> None:
-    for line in lines:
-        box = curses.newwin(1, width)
-        try:
-            box.addstr(line, color)
-        except curses.error:  # rightmost character
-            pass
-        dest.append(box)
-
-
-def format_dictionary(
-        dictionary: Dictionary,
-        column_width: int,
-) -> tuple[list[list[curses._CursesWindow]], int]:
-    # Format self.contents' list of (op, body)
-    # into wrapped, colored and padded body lines.
-    # Available instructions:
-    #  (DEF,    'definition', 'example_sentence', 'label')
-    #  (SUBDEF, 'definition', 'example_sentence')
-    #  (LABEL,  'os_label', 'additional_info')
-    #  (PHRASE, 'phrase', 'phonetic_spelling')
-    #  (HEADER, 'filling_character', 'header_title')
-    #  (POS,    'pos|phonetic_spelling', ...)  ## `|` acts as a separator.
-    #  (AUDIO,  'audio_url')
-    #  (SYN,    'synonyms', 'gloss', 'examples')
-    #  (NOTE,   'note')
-
-    wrap_method = functools.partial(wrap_lines, config['-textwrap'], column_width)
-    signed = config['-showsign']
-
-    result = []
-    lines_total = 0
-
-    def push_onto_line(s1: str, c1: int, s2: str, c2: int) -> None:
-        _first_line, *_rest = wrap_method(f'{s1} \0{s2}', 1, 0)
-        left, _, right = _first_line.partition('\0')
-        _box = curses.newwin(1, column_width)
-        if right:
-            _box.insstr(right, c2)
-            _box.insstr(' ' + left, c1)
-            if not _rest:
-                op_boxes.append(_box)
-                return
-            current_color = c2
+    def wrap(self, s: str, initial: str | int, indent: str):
+        if isinstance(initial, str):
+            self._cur = len(initial)
+            line = initial
         else:
-            _box.insstr(' ' + left, c1)
-            current_color = c1
-
-        op_boxes.append(_box)
-        for _line in _rest:
-            left, _, right = _line.partition('\0')
-            _box = curses.newwin(1, column_width)
-            if right:
-                _box.insstr(right, c2)
-                _box.insstr(left, c1)
-                current_color = c2
+            self._cur = initial
+            line = ''
+        for word in s.split():
+            if self._cur + len(word) > self.textwidth:
+                yield line.rstrip()
+                line = indent + word + ' '
+                self._cur = len(indent) + len(word) + 1
             else:
-                _box.insstr(left, current_color)
-            op_boxes.append(_box)
+                line += word + ' '
+                self._cur += len(word) + 1
 
-    # This is ugly, but saves on a LOT of __getattr__ calls, which are quite
-    # expensive in this case, because we have to translate console's color API
-    # to the curses one.
+        yield line.rstrip()
+
+
+class ParsedLine(NamedTuple):
+    op_index: int
+    text: str
+    attrs: list[Attr]
+
+
+def format_dictionary(dictionary: Dictionary, column_width: int) -> list[ParsedLine]:
     def1_c, def2_c, sign_c = Color.def1, Color.def2, Color.sign
     index_c, label_c, exsen_c = Color.index, Color.label, Color.exsen
     inflection_c, phrase_c, phon_c = Color.inflection, Color.phrase, Color.phon
@@ -278,9 +117,11 @@ def format_dictionary(
     syn_c, syngloss_c, heed_c = Color.syn, Color.syngloss, Color.heed
 
     index = 0
-    for entry in dictionary.contents:
+    wrapper = Wrapper(column_width)
+
+    result: list[ParsedLine] = []
+    for i, entry in enumerate(dictionary.contents):
         op = entry[0]
-        op_boxes: list[curses._CursesWindow] = []
 
         if 'DEF' in op:
             index += 1
@@ -293,178 +134,158 @@ def format_dictionary(
             else:
                 label_len = 0
 
-            if signed:
-                _def_sign = ' ' if 'SUB' in op else '>'
-                gaps = 2
-            else:
-                _def_sign = ''
-                gaps = 1
+            sign = ' ' if 'SUB' in op else '>'
 
             def_color = def1_c if index % 2 else def2_c
 
-            first_line, *rest = wrap_method(_def, gaps + index_len + label_len, -label_len)
-            add_first_line(op_boxes, column_width,
+            lines = wrapper.wrap(_def, f'{sign}{index} {_label}', (index_len + 2) * ' ')
+            attrs = compose_attrs(
                 (
-                    (_def_sign, sign_c),
-                    (f'{index} ', index_c),
-                    (_label, label_c),
-                    (first_line, def_color)
-                )
+                    (len(sign), sign_c, 0),
+                    (index_len, index_c, 1),
+                    (label_len, label_c, 0),
+                    (column_width, def_color, 0),
+                ), width=column_width
             )
-            add_rest(op_boxes, column_width, rest, def_color)
+            result.append(ParsedLine(i, next(lines), attrs))
+            for line in lines:
+                result.append(ParsedLine(i, line, [Attr(0, column_width, def_color)]))
+
             if _exsen:
                 for ex in _exsen.split('<br>'):
-                    first_line, *rest = wrap_method(ex, gaps + index_len - 1, 1)
-                    add_first_line(op_boxes, column_width,
-                        (
-                            ((index_len + gaps - 1) * ' ', exsen_c),
-                            (first_line, exsen_c)
-                        )
-                    )
-                    add_rest(op_boxes, column_width, rest, exsen_c)
+                    for line in wrapper.wrap(ex, (index_len + 1) * ' ', (index_len + 2) * ' '):
+                        result.append(ParsedLine(i, line, [Attr(0, column_width, exsen_c)]))
+
         elif op == 'LABEL':
             label, inflections = entry[1], entry[2]
-            op_boxes.append(curses.newwin(1, column_width))
+            result.append(ParsedLine(i, '', [Attr(0, 0, 0)]))
             if label:
                 if inflections:
-                    push_onto_line(label, label_c, inflections, inflection_c)
-                else:
-                    first_line, *rest = wrap_method(label, 1, 0)
-                    add_first_line(op_boxes, column_width,
+                    *lines, last_line = wrapper.wrap(label, ' ', ' ')
+                    for line in lines:
+                        result.append(ParsedLine(i, line, [Attr(0, column_width, label_c)]))
+
+                    mutual_attrs = compose_attrs(
                         (
-                            (' ' + first_line, label_c),
-                        )
+                            (len(last_line), label_c, 1),
+                            (column_width, inflection_c, 0),
+                        ), width=column_width
                     )
-                    add_rest(op_boxes, column_width, rest, label_c)
+                    lines = wrapper.wrap(inflections, wrapper.current_line_pos + 1, ' ')
+                    result.append(ParsedLine(i, last_line + ' ' + next(lines), mutual_attrs))
+
+                    for line in lines:
+                        result.append(ParsedLine(i, line, [Attr(0, column_width, inflection_c)]))
+                else:
+                    for line in wrapper.wrap(label, ' ', ' '):
+                        result.append(ParsedLine(i, line, [Attr(0, column_width, label_c)]))
+
         elif op == 'PHRASE':
             phrase, phon = entry[1], entry[2]
             if phon:
-                push_onto_line(phrase, phrase_c, phon, phon_c)
-            else:
-                first_line, *rest = wrap_method(phrase, 1, 0)
-                add_first_line(op_boxes, column_width,
+                *lines, last_line = wrapper.wrap(phrase, ' ', ' ')
+                for line in lines:
+                    result.append(ParsedLine(i, line, [Attr(0, column_width, phrase_c)]))
+
+                lines = wrapper.wrap(phon, wrapper.current_line_pos + 1, ' ')
+                mutual_attrs = compose_attrs(
                     (
-                        (' ' + first_line, phrase_c),
-                    )
+                        (len(last_line), phrase_c, 1),
+                        (column_width, phon_c, 0),
+                    ), width=column_width
                 )
-                add_rest(op_boxes, column_width, rest, phrase_c)
+                result.append(ParsedLine(i, last_line + ' ' + next(lines), mutual_attrs))
+
+                for line in lines:
+                    result.append(ParsedLine(i, line, [Attr(0, column_width, phon_c)]))
+            else:
+                for line in wrapper.wrap(phrase, ' ', ' '):
+                    result.append(ParsedLine(i, line, [Attr(0, column_width, phrase_c)]))
+
         elif op == 'HEADER':
+            if i == 0:
+                continue
+
             title = entry[1]
-            box = curses.newwin(1, column_width)
-            try:
-                if title:
-                    box.addstr(HORIZONTAL_BAR + '[ ', delimit_c)
-                    box.addstr(title, delimit_c | curses.A_BOLD)
-                    box.addstr(' ]' + column_width * HORIZONTAL_BAR, delimit_c)
-                else:
-                    box.addstr(column_width * HORIZONTAL_BAR, delimit_c)
-            except curses.error:  # rightmost character
-                pass
-            op_boxes.append(box)
+            if title:
+                attrs = compose_attrs(
+                    (
+                        (3, delimit_c, 0),
+                        (len(title), delimit_c | curses.A_BOLD, 0),
+                        (column_width, delimit_c, 0),
+                    ), width=column_width
+                )
+                result.append(
+                    ParsedLine(i, f'{HORIZONTAL_BAR}[ {title} ]{(column_width - len(title) - 5) * HORIZONTAL_BAR}', attrs)
+                )
+            else:
+                result.append(
+                    ParsedLine(i, column_width * HORIZONTAL_BAR, [Attr(0, column_width, delimit_c)])
+                )
+
         elif op == 'ETYM':
             etym = entry[1]
             if etym:
-                op_boxes.append(curses.newwin(1, column_width))
-                first_line, *rest = wrap_method(etym, 1, 0)
-                add_first_line(op_boxes, column_width,
-                    (
-                        (' ' + first_line, etym_c),
-                    )
-                )
-                add_rest(op_boxes, column_width, rest, etym_c)
+                result.append(ParsedLine(i, '', [Attr(0, 0, 0)]))
+                for line in wrapper.wrap(etym, ' ', ' '):
+                    result.append(ParsedLine(i, line, [Attr(0, column_width, etym_c)]))
+
         elif op == 'POS':
             if entry[1].strip(' |'):
-                op_boxes.append(curses.newwin(1, column_width))
+                result.append(ParsedLine(i, '', [Attr(0, 0, 0)]))
                 for elem in entry[1:]:
                     pos, phon = elem.split('|')
-                    push_onto_line(pos, pos_c, phon, phon_c)
+                    *lines, last_line = wrapper.wrap(pos, ' ', ' ')
+                    for line in lines:
+                        result.append(ParsedLine(i, line, [Attr(0, column_width, phrase_c)]))
+
+                    lines = wrapper.wrap(phon, wrapper.current_line_pos + 1, ' ')
+                    mutual_attrs = compose_attrs(
+                        (
+                            (len(last_line), pos_c, 1),
+                            (column_width, phon_c, 0),
+                        ), width=column_width
+                    )
+                    result.append(ParsedLine(i, last_line + ' ' + next(lines), mutual_attrs))
+
+                    for line in lines:
+                        result.append(ParsedLine(i, line, [Attr(0, column_width, phon_c)]))
+
         elif op == 'AUDIO':
             pass
-        elif op == 'SYN':
-            first_line, *rest = wrap_method(entry[1], 1, 0)
-            add_first_line(op_boxes, column_width,
-                (
-                    (' ' + first_line, syn_c),
-                )
-            )
-            add_rest(op_boxes, column_width, rest, syn_c)
 
-            first_line, *rest = wrap_method(entry[2], 2, 0)
-            add_first_line(op_boxes, column_width,
-                (
-                    (': ', sign_c),
-                    (first_line, syngloss_c)
-                )
-            )
-            add_rest(op_boxes, column_width, rest, syngloss_c)
+        elif op == 'SYN':
+            for line in wrapper.wrap(entry[1], ' ', ' '):
+                result.append(ParsedLine(i, line, [Attr(0, column_width, syn_c)]))
+
+            for line in wrapper.wrap(entry[2], ': ', ' '):
+                result.append(ParsedLine(i, line, [Attr(0, column_width, syngloss_c)]))
+
             for ex in entry[3].split('<br>'):
-                first_line, *rest = wrap_method(ex, 1, 1)
-                add_first_line(op_boxes, column_width,
-                    (
-                        (' ' + first_line, exsen_c),
-                    )
-                )
-                add_rest(op_boxes, column_width, rest, exsen_c)
+                for line in wrapper.wrap(ex, ' ', '  '):
+                    result.append(ParsedLine(i, line, [Attr(0, column_width, exsen_c)]))
+
         elif op == 'NOTE':
-            first_line, *rest = wrap_method(entry[1], 2, 0)
-            add_first_line(op_boxes, column_width,
+            lines = wrapper.wrap(entry[1], '> ', '  ')
+            attrs = compose_attrs(
                 (
-                    ('> ', heed_c | curses.A_BOLD),
-                    (first_line, curses.A_BOLD)
-                )
+                    (1, heed_c | curses.A_BOLD, 0),
+                    (column_width, curses.A_BOLD, 0),
+                ), width=column_width
             )
-            add_rest(op_boxes, column_width, rest, curses.A_BOLD)
+            result.append(ParsedLine(i, next(lines), attrs))
+            for line in lines:
+                result.append(ParsedLine(i, line, [Attr(0, column_width, curses.A_BOLD)]))
+
         else:
             raise AssertionError(f'unreachable dictionary op: {op!r}')
 
-        result.append(op_boxes)
-        lines_total += len(op_boxes)
-
-    return result, lines_total
+    return result
 
 
-BORDER_PAD = 1
-
-def draw_help(stdscr: curses._CursesWindow) -> None:
-    top_line = [
-        ('F1', ' Help '), ('j/k', ' Move down/up '), ('1-9', ' Select cell '),
-        ('B ', ' Card browser '), ('g ', ' Go top '), ('^F', ' Filter '),
-        ('p ', ' Paste from selection '), ('^J', ' Reset filters '),
-    ]
-    bot_line = [
-        ('q ', ' Exit '), ('h/l', ' Swap screens '), ('d ', ' Deselect all '),
-        ('C ', ' Create cards '), ('G ', ' Go EOF '), ('/ ', ' Search '),
-        ('P ', ' Paste current phrase '), ('^L', ' Redraw screen '), ('F8', ' Rearrange columns '),
-    ]
-
-    top_bot_pairs = []
-    space_occupied = 0
-    space_to_occupy = env.COLS - 2*BORDER_PAD
-    for top_pair, bot_pair in zip_longest(top_line, bot_line, fillvalue=('', '')):
-        pair_width = max(map(len, (''.join(top_pair), ''.join(bot_pair))))
-        space_occupied += pair_width
-        if space_occupied > space_to_occupy:
-            space_occupied -= pair_width
-            break
-        else:
-            top_bot_pairs.append((top_pair, bot_pair))
-
-    space_left = space_to_occupy - space_occupied
-    try:
-        gap = space_left // (len(top_bot_pairs)-1) * ' '
-    except ZeroDivisionError:
-        gap = ''
-
-    bot_y, top_y = env.LINES-2, env.LINES-3
-    a_standout = curses.A_STANDOUT
-    try:
-        for (top_cmd, top_msg), (bot_cmd, bot_msg) in reversed(top_bot_pairs):
-            stdscr.insstr(top_y, BORDER_PAD, top_msg + gap)
-            stdscr.insstr(top_y, BORDER_PAD, top_cmd, a_standout)
-            stdscr.insstr(bot_y, BORDER_PAD, bot_msg + gap)
-            stdscr.insstr(bot_y, BORDER_PAD, bot_cmd, a_standout)
-    except curses.error:  # window too small, because of env.LINES
-        pass
+AUTO_COLUMN_WIDTH = 52
+BORDER_PAD = MARGIN = 1
+MINIMUM_COLUMN_WIDTH = 26
 
 
 def current_related_entries() -> set[str]:
@@ -478,274 +299,197 @@ def current_related_entries() -> set[str]:
     return result
 
 
-AUTO_COLUMN_WIDTH = 47
-MINIMUM_TEXT_WIDTH = 26
-
-
-def _read_columns_config() -> int:
-    val = config['-columns']
-    return 0 if 'auto' in val else int(val)
-
-
-def _one_to_five(n: int) -> int:
-    if n < 1:
-        return 1
-    if n > 5:
-        return 5
-    return n
-
-
-def _estimate_dictionary_height(dictionary: Dictionary, width: int) -> int:
-    wrap_method = functools.partial(wrap_lines, config['-textwrap'], width)
-    result = 0
-    for entry in dictionary.contents:
-        op = entry[0]
-        if 'DEF' in op:
-            result += len(wrap_method(entry[1], 1, 0))
-            if entry[2]:
-                for exsen in entry[2].split('<br>'):
-                    result += len(wrap_method(exsen, 0, 0))
-        elif op == 'LABEL':
-            result += 1
-            if entry[1]:
-                result += 1
-        elif op in ('PHRASE', 'HEADER'):
-            result += 1
-        elif op == 'ETYM':
-            if entry[1]:
-                result += len(wrap_method(entry[1], 0, 0)) + 1
-        elif op == 'POS':
-            if entry[1].strip(' |'):
-                result += len(entry)
-        elif op == 'AUDIO':
-            pass
-        elif op == 'SYN':
-            result += 4
-        elif op == 'NOTE':
-            result += 1
-        else:
-            raise AssertionError(f'unreachable {op!r}')
-
-    return result
-
-
-def _create_layout(
-    dictionary: Dictionary, height: int
-) -> tuple[list[list[curses._CursesWindow]], list[list[curses._CursesWindow]], int, int]:
+def _create_layout(dictionary: Dictionary, height: int) -> tuple[list[list[ParsedLine]], int]:
     width = env.COLS - 2*BORDER_PAD + 1
+    ndefinitions = dictionary.count(lambda x: 'DEF' in x)
 
-    config_columns = _read_columns_config()
-    if config_columns > 0:
-        min_columns = max_columns = _one_to_five(config_columns)
-    else:  # auto
-        min_columns = 1
-        max_columns = _one_to_five(width // AUTO_COLUMN_WIDTH)
+    if ndefinitions < 6:
+        maxcolumns = 1
+    elif ndefinitions < 12 and len(dictionary.contents) < height:
+        maxcolumns = 2
+    else:
+        maxcolumns = 3
 
-    margin = config['-margin']
-    while True:
-        col_width = (width // min_columns) - 1
-        col_text_width = col_width - 2*margin
-        if col_text_width < MINIMUM_TEXT_WIDTH:
-            margin -= ((MINIMUM_TEXT_WIDTH - col_text_width) // 2)
-            if margin < 0:
-                margin = 0
-            col_text_width = col_width - 2*margin
-            if col_text_width < 1:
-                col_text_width = 1
+    ncolumns = width // AUTO_COLUMN_WIDTH
+    if ncolumns > maxcolumns:
+        ncolumns = maxcolumns
+    elif ncolumns < 1:
+        ncolumns = 1
 
-        if ((min_columns >= max_columns) or
-            (_estimate_dictionary_height(dictionary, col_text_width) // min_columns < height)
-        ):
-            boxes, lines_total = format_dictionary(dictionary, col_text_width)
-            break
-        else:
-            min_columns += 1
+    try:
+        column_width = (width // ncolumns) - 1
+    except ZeroDivisionError:
+        column_width = width
 
-    columns: list[list[curses._CursesWindow]] = [[] for _ in range(min_columns)]
+    lines = format_dictionary(dictionary, column_width - 2*MARGIN)
+    max_column_height = len(lines) // ncolumns - 1
+    column_break = max_column_height
+
+    columns = [[] for _ in range(ncolumns)]
     cur = 0
-    max_height = (lines_total // min_columns) + 1
-    move_ops = []
-    for lines, entry in zip(boxes, dictionary.contents):
-        op = entry[0]
+    for i, line in enumerate(lines):
+        columns[cur].append(line)
 
-        if len(columns[cur]) < max_height:
-            if op in ('LABEL', 'PHRASE', 'HEADER'):
-                move_ops.append((op, len(lines)))
-            elif op == 'AUDIO':
+        op = dictionary.contents[line.op_index][0]
+        if (
+                i > column_break
+            and ('DEF' in op or op == 'ETYM')
+            and i + 1 != len(lines)
+            and line.op_index != lines[i + 1].op_index
+        ):
+            if cur == ncolumns - 1:
                 continue
             else:
-                move_ops.clear()
-        else:
-            if cur < min_columns - 1:
+                column_break += max_column_height
                 cur += 1
-            else:
-                columns[cur].extend(lines)
-                continue
 
-            if op == 'HEADER' and not entry[0]:
-                columns[cur].extend(lines)
-            else:
-                header = curses.newwin(1, col_text_width)
-                header.hline(0, col_text_width)
-                columns[cur].append(header)
+    return columns, column_width
 
-            t_move = []
-            while move_ops:
-                t_op, t_len = move_ops.pop()
-                t_lines = [columns[cur-1].pop() for _ in range(t_len)]
-                if t_op == 'LABEL' and not move_ops:
-                    t_lines.pop()
-                t_move.extend(t_lines)
 
-            columns[cur].extend(reversed(t_move))
-            if op in ('LABEL', 'POS', 'ETYM'):
-                lines = lines[1:]
+class HL(NamedTuple):
+    hls: list[dict[int, list[int]]]
+    nmatches: int
+    hlphrase: str
+    hllast_line: int
 
-        columns[cur].extend(lines)
-
-    return boxes, columns, col_width, margin
+    @property
+    def span(self) -> int:
+        return len(self.hlphrase)
 
 
 class Screen:
-    def __init__(self, dictionary: Dictionary) -> None:
-        self._orig_dictionary = dictionary
+    def __init__(self, win: curses._CursesWindow,  dictionary: Dictionary) -> None:
+        self.win = win
         self.selector = EntrySelector(dictionary)
 
-        # self.margin_bottom is needed for `self.screen_height`
-        self.margin_bottom = 0 if config['-nohelp'] else 2
-        self._boxes, self.columns, self.col_width, self.margin = _create_layout(
-            dictionary, self.screen_height
-        )
+        # self.margin_bot is needed for `self.screen_height`
+        self.margin_bot = 0
+        self.columns, self.column_width = _create_layout(dictionary, self.screen_height)
+        self._hl: HL | None = None
 
-        self._scroll_i = 0
+        self._scroll = 0
 
     @property
     def screen_height(self) -> int:
-        r = env.LINES - self.margin_bottom - 2*BORDER_PAD
+        r = env.LINES - self.margin_bot - 2*BORDER_PAD
         return r if r > 0 else 0
-
-    def _refresh_toggles(self) -> None:
-        toggle_hl = highlight()
-        related_entries = current_related_entries()
-
-        contents = self.selector.dictionary.contents
-        for i, toggled in enumerate(self.selector.toggles):
-            if toggled:
-                op = contents[i][0]
-                if op in self.selector.TOGGLEABLE:
-                    hl_attr = toggle_hl
-                elif op in related_entries:
-                    hl_attr = curses.A_BOLD
-                else:
-                    hl_attr = curses.A_NORMAL
-            else:
-                hl_attr = curses.A_NORMAL
-
-            for line in self._boxes[i]:
-                line.bkgd(hl_attr)
-
-    def update_for_redraw(self) -> None:
-        self._boxes, self.columns, self.col_width, self.margin = _create_layout(
-            self.selector.dictionary, self.screen_height
-        )
-        self._refresh_toggles()
 
     def _scroll_end(self) -> int:
         r = max(map(len, self.columns)) - self.screen_height
         return r if r > 0 else 0
 
+    def adjust_scroll_past_eof(self) -> None:
+        end_of_scroll = self._scroll_end()
+        if self._scroll > end_of_scroll:
+            self._scroll = end_of_scroll
+
     def draw(self) -> None:
-        # scroll_pos can be bigger than eof if self.margin_bottom
-        # has decreased or window has been resized.
-        bound = self._scroll_end()
-        if self._scroll_i > bound:
-            self._scroll_i = bound
+        win = self.win
+        contents = self.selector.dictionary.contents
 
-        columns = self.columns
-        from_index = self._scroll_i + 1  # +1 skips headers
-        try:
-            # hide out of view windows behind the header to prevent
-            # them from stealing clicks in the upper region.
-            for column in columns:
-                for box in islice(column, None, from_index):
-                    box.mvwin(0, 1)
+        related_entries = current_related_entries()
+        hlcolor = Color.heed | curses.A_STANDOUT | curses.A_BOLD 
 
-            col_width, margin = self.col_width, self.margin
-            to_index = from_index + self.screen_height
-            tx = BORDER_PAD
-            for column in columns:
-                for y, box in enumerate(islice(column, from_index, to_index), 1):
-                    box.mvwin(y, tx + margin)
-                    box.noutrefresh()
-                tx += col_width + 1
-        except curses.error:  # window too small
-            pass
+        text_x = BORDER_PAD
+        for col_i, column in enumerate(self.columns):
+            for y, line_i in enumerate(
+                    range(self._scroll, self._scroll + self.screen_height), 1
+            ):
+                try:
+                    op_index, text, attrs = column[line_i]
+                except IndexError:
+                    continue
 
-    def mark_box_at(self, y: int, x: int) -> None:
-        if y < BORDER_PAD or y > self.screen_height:  # border clicked.
+                if self.selector.is_toggled(op_index):
+                    op = contents[op_index][0]
+                    if op in self.selector.TOGGLEABLE:
+                        selection_hl = curses.A_STANDOUT
+                    elif op in related_entries:
+                        selection_hl = curses.A_BOLD
+                    else:
+                        selection_hl = 0
+                else:
+                    selection_hl = 0
+
+                try:
+                    win.addstr(y, MARGIN + text_x, text, selection_hl)
+                    for i, span, attr in attrs:
+                        win.chgat(y, MARGIN + text_x + i, span, attr | selection_hl)
+                except curses.error:  # window too small
+                    return
+
+                if self._hl is None:
+                    continue
+
+                hl_i = y + self._scroll - 1
+                assert hl_i >= 0
+
+                hlmap = self._hl.hls[col_i]
+                if hl_i not in hlmap:
+                    continue
+
+                span = self._hl.span
+                try:
+                    for i in hlmap[hl_i]:
+                        win.chgat(y, MARGIN + text_x + i, span, hlcolor)
+                except curses.error:  # window too small
+                    return
+
+            text_x += self.column_width + 1
+
+    def refresh_layout(self) -> None:
+        self.columns, self.column_width = _create_layout(self.selector.dictionary, self.screen_height)
+        self.adjust_scroll_past_eof()
+        if self._hl is not None:
+            self.highlight(self._hl.hlphrase)
+
+    def mark_box_at(self, click_y: int, click_x: int) -> None:
+        if click_y <= BORDER_PAD:
             return
 
-        # Because scrolling is implemented by moving windows around, these that
-        # are not in view are tucked under the header to not interfere with box
-        # toggling.  We should consider decoupling the scrolling functionality
-        # from box toggling and maybe use a class to represent a Box if more
-        # tightly coupled functionality is needed.  It is impossible to have a
-        # pointer to an immutable type like a `bool` and as far as I know you
-        # cannot remove/reset the top-left corner position from the curses
-        # window.
-        not_in_view = set()
-        for column in self.columns:
-            for i in range(self._scroll_i):
-                try:
-                    not_in_view.add(id(column[i]))
-                except IndexError:
-                    break
+        contents = self.selector.dictionary.contents
 
-        for i, lines in enumerate(self._boxes):
-            for line in lines:
-                if id(line) not in not_in_view and line.enclose(y, x):
-                    try:
-                        self.selector.toggle_by_index(i)
-                    except ValueError:
-                        return
-                    else:
-                        self._refresh_toggles()
-                        return
+        separator_x = 0
+        for column in self.columns:
+            if click_x == separator_x:
+                return
+            elif click_x <= separator_x + self.column_width:
+                assert self._scroll + click_y - 1 >= 0
+                try:
+                    line = column[self._scroll + click_y - 1]
+                except IndexError:
+                    return
+                if contents[line.op_index][0] in self.selector.TOGGLEABLE:
+                    self.selector.toggle_by_index(line.op_index)
+                return
+            else:
+                separator_x += self.column_width + 1
 
     KEYBOARD_SELECTOR_CHARS = (
         b'1', b'2', b'3', b'4', b'5', b'6', b'7', b'8', b'9', b'0',
         b'!', b'@', b'#', b'$', b'%', b'^', b'&', b'*', b'(', b')',
     )
     def mark_box_by_selector(self, s: bytes) -> None:
-        self.selector.toggle_by_def_index(
-            self.KEYBOARD_SELECTOR_CHARS.index(s) + 1
-        )
-        self._refresh_toggles()
-
-    def restore_original_dictionary(self) -> None:
-        self.selector = EntrySelector(self._orig_dictionary)
-        self.update_for_redraw()
+        self.selector.toggle_by_def_index(self.KEYBOARD_SELECTOR_CHARS.index(s) + 1)
 
     def deselect_all(self) -> None:
         self.selector.clear_selection()
-        self._refresh_toggles()
 
     def move_down(self, n: int = 2) -> None:
-        self._scroll_i += n
-        bound = self._scroll_end()
-        if self._scroll_i > bound:
-            self._scroll_i = bound
+        if self._scroll < self._scroll_end():
+            self._scroll += n
+            self.adjust_scroll_past_eof()
 
     def move_up(self, n: int = 2) -> None:
-        self._scroll_i -= n
-        if self._scroll_i < 0:
-            self._scroll_i = 0
+        self._scroll -= n
+        if self._scroll < 0:
+            self._scroll = 0
 
     def go_bottom(self) -> None:
-        self._scroll_i = self._scroll_end()
+        self._scroll = self._scroll_end()
 
     def go_top(self) -> None:
-        self._scroll_i = 0
+        self._scroll = 0
 
     def page_down(self) -> None:
         self.move_down(self.screen_height - 2)
@@ -753,8 +497,67 @@ class Screen:
     def page_up(self) -> None:
         self.move_up(self.screen_height - 2)
 
+    def highlight(self, s: str) -> None:
+        hls: list[dict[int, list[int]]] = []
+        nmatches = 0
+        hllast_line = -1
+        for column in self.columns:
+            hlmap = {}
+            for i, line in enumerate(column):
+                indices = []
+
+                x = line.text.find(s)
+                while ~x:
+                    nmatches += 1
+                    indices.append(x)
+                    x = line.text.find(s, x + len(s))
+
+                if indices:
+                    hlmap[i] = indices
+                    if i > hllast_line:
+                        hllast_line = i
+
+            hls.append(hlmap)
+
+        if nmatches:
+            self._hl = HL(hls, nmatches, s, hllast_line)
+        else:
+            raise ValueError(repr(s))
+
+    @property
+    def highlight_nmatches(self) -> int:
+        if self._hl is None:
+            return 0
+        else:
+            return self._hl.nmatches
+
+    def is_highlight_active(self) -> bool:
+        return self._hl is not None
+
+    def highlight_clear(self) -> None:
+        self._hl = None
+        self.adjust_scroll_past_eof()
+
+    def highlight_next(self) -> None:
+        if self._hl is None:
+            return
+        for i in range(self._scroll + 1, self._hl.hllast_line + 1):
+            for hlmap in self._hl.hls:
+                if i in hlmap:
+                    self._scroll = i
+                    return
+
+    def highlight_prev(self) -> None:
+        if self._hl is None:
+            return
+        for i in range(self._scroll - 1, -1, -1):
+            for hlmap in self._hl.hls:
+                if i in hlmap:
+                    self._scroll = i
+                    return
+
     ACTIONS: dict[bytes, Callable[[Screen], None]] = {
-        b'^J': restore_original_dictionary, b'^M': restore_original_dictionary,
+        b'^J': highlight_clear, b'^M': highlight_clear,
         b'd': deselect_all,
         b'j': move_down, b'^N': move_down, b'KEY_DOWN': move_down,
         b'k': move_up,   b'^P': move_up,   b'KEY_UP': move_up,
@@ -762,6 +565,8 @@ class Screen:
         b'g': go_top,    b'KEY_HOME': go_top,
         b'KEY_NPAGE': page_down, b'KEY_SNEXT': page_down,
         b'KEY_PPAGE': page_up,   b'KEY_SPREVIOUS': page_up,
+        b'n': highlight_next,
+        b'N': highlight_prev,
     }
 
 
@@ -770,7 +575,7 @@ class InteractiveCommandHandler:
     def __init__(self, screen_buffer: ScreenBuffer) -> None:
         self.screen_buffer = screen_buffer
         self.prompt = Prompt(
-            screen_buffer, screen_buffer.stdscr, exit_if_empty=False
+            screen_buffer, screen_buffer.win, exit_if_empty=False
         )
 
     def writeln(self, s: str) -> None:
@@ -798,11 +603,79 @@ class InteractiveCommandHandler:
         return STRING_TO_BOOL.get(typed.strip().lower(), default)
 
 
+class StatusData(NamedTuple):
+    header: str
+    body: str | None
+    color: int
+
+
+class Status:
+    def __init__(self, win: curses._CursesWindow, *, persistence: int) -> None:
+        self.win = win
+        self.persistence = persistence
+        self._content: StatusData | None = None
+        self._ticks = 0
+
+    def put(self, header: str, body: str | None, color: int) -> None:
+        self._ticks = 0
+        self._content = StatusData(header, body, color)
+
+    def error(self, header: str, body: str | None = None) -> None:
+        self.put(header, body, curses.color_pair(BLACK_ON_RED) | curses.A_BOLD)
+
+    def success(self, header: str, body: str | None = None) -> None:
+        self.put(header, body, curses.color_pair(BLACK_ON_GREEN) | curses.A_BOLD)
+
+    def attention(self, header: str, body: str | None = None) -> None:
+        self.put(header, body, curses.color_pair(BLACK_ON_YELLOW) | curses.A_BOLD)
+
+    def clear(self) -> None:
+        self._content = None
+
+    def tick(self) -> None:
+        if self._ticks >= self.persistence:
+            self._content = None
+        else:
+            self._ticks += 1
+
+    def draw_if_available(self) -> bool:
+        if self._content is None or env.LINES < 3:
+            return False
+
+        header, body, color = self._content
+        if body is None:
+            text = truncate_if_needed(header, env.COLS)
+        else:
+            text = truncate_if_needed(header + ' ' + body, env.COLS)
+
+        if text is None:
+            return False
+
+        try:
+            self.win.addstr(env.LINES - 1, 0, text)
+        except curses.error:  # lower-left write
+            pass
+
+        self.win.chgat(env.LINES - 1, 0, len(header), color)
+
+        return True
+
+
+def draw_border(win: curses._CursesWindow, margin_bot: int) -> None:
+    win.box()
+    if margin_bot >= env.LINES - 1:
+        return
+
+    win.move(env.LINES - margin_bot - 2, 0)
+    for _ in range(margin_bot):
+        win.deleteln()
+
+
 class ScreenBuffer:
-    def __init__(self, stdscr: curses._CursesWindow, screens: Sequence[Screen]) -> None:
-        self.stdscr = stdscr
+    def __init__(self, win: curses._CursesWindow, screens: Sequence[Screen]) -> None:
+        self.win = win
         self.screens = screens
-        self.status = Status(stdscr, persistence=2)
+        self.status = Status(win, persistence=7)
         self._cursor = 0
 
     @property
@@ -819,109 +692,120 @@ class ScreenBuffer:
             self._cursor -= 1
         return self.current
 
-    def _draw_status_bar(self, y: int) -> None:
-        stdscr = self.stdscr
-        stdscr.addch(y, 0, curses.ACS_LLCORNER)
-        stdscr.hline(y, 1, curses.ACS_HLINE, env.COLS - 2)
-        try:
-            stdscr.addch(y, env.COLS - 1, curses.ACS_LRCORNER)
-        except curses.error:  # it's idiomatic I guess
-            pass
-
-        nscreens = len(self.screens)
-        if nscreens < 2:
-            return
-        screen_hint = truncate_if_needed(f'{self._cursor+1}/{nscreens}', env.COLS - 4)
-        if screen_hint is None:
-            return
-        hint_x = env.COLS - len(screen_hint) - 2
-        stdscr.addch(y, hint_x - 1, '╴')
-        stdscr.addstr(y, hint_x, screen_hint, Color.delimit | curses.A_BOLD)
-        stdscr.addch(y, hint_x + len(screen_hint), '╶')
-
-    def _draw_border(self) -> None:
+    @contextlib.contextmanager
+    def extra_margin(self, v: int) -> Iterator[None]:
         screen = self.current
-        stdscr = self.stdscr
-        stdscr.box()
+        t = screen.margin_bot
+        screen.margin_bot += v
+        yield
+        screen.margin_bot = t
+
+    def _draw_border(self, margin_bot: int) -> None:
+        screen = self.current
+        win = self.win
+
+        draw_border(win, margin_bot)
 
         header = truncate_if_needed(screen.selector.dictionary.contents[0][1], env.COLS - 8)
         if header is not None:
-            stdscr.addstr(0, 2, '[ ')
-            stdscr.addstr(0, 4, header, Color.delimit | curses.A_BOLD)
-            stdscr.addstr(0, 4 + len(header), ' ]')
+            win.addstr(0, 2, f'[ {header} ]')
+            win.chgat(0, 4, len(header), Color.delimit | curses.A_BOLD)
 
-        shift = BORDER_PAD + screen.col_width
+        shift = BORDER_PAD + screen.column_width
         screen_height = screen.screen_height
         try:
             for i in range(1, len(screen.columns)):
-                stdscr.vline(BORDER_PAD, i * shift, 0, screen_height)
+                win.vline(BORDER_PAD, i * shift, 0, screen_height)
         except curses.error:
             pass
+
+        items = []
+        items_attr_values = []
+
+        if screen.is_highlight_active():
+            match_hint = f'MATCHES: {screen.highlight_nmatches}'
+            items.append(match_hint)
+            items_attr_values.append(
+                (len(match_hint), curses.A_BOLD, 2)
+            )
+
+        if len(self.screens) > 1:
+            screen_hint = f'{self._cursor + 1}/{len(self.screens)}'
+            items.append(screen_hint)
+            items_attr_values.append((len(screen_hint), curses.A_BOLD, 0))
+
+        if not items:
+            return
+
+        btext = truncate_if_needed('╶╴'.join(items), env.COLS - 4)
+        if btext is None:
+            return
+
+        y = env.LINES - margin_bot - 1
+        x = env.COLS - len(btext) - 3
+        win.addstr(y, x, f'╴{btext}╶')
+        for i, span, attr in compose_attrs(
+                items_attr_values,
+                width=env.COLS - 4,
+                start=1
+        ):
+            win.chgat(y, x + i, span, attr)
+
+    def _draw_function_bar(self) -> None:
+        bar = truncate_if_needed('F1 Help  F2 Anki-config', env.COLS)
+        if bar is None:
+            return
+
+        attrs = compose_attrs(
+            (
+                (2, curses.A_STANDOUT | curses.A_BOLD, 7),
+                (2, curses.A_STANDOUT | curses.A_BOLD, 11),
+            ), width=env.COLS
+        )
+        win = self.win
+        y = env.LINES - 1
+
+        try:
+            win.addstr(y, 0, bar)
+        except curses.error:  # left lowermost corner
+            pass
+
+        for index, span, attr in attrs:
+            win.chgat(y, index, span, attr)
 
     def draw(self) -> None:
         if env.COLS < 2:
             return
 
-        stdscr = self.stdscr
+        self.win.erase()
+        self.win.attrset(Color.delimit)
+
         screen = self.current
 
-        stdscr.erase()
-        stdscr.attrset(Color.delimit)
+        if screen.margin_bot < 1:
+            screen.margin_bot = 1
 
-        # a little bit hacky, but to prevent flickering, we have to ensure
-        # that 'screen.draw' comes last.
-        v_buf_height = len(
-            self.status.writer.visible_buffer
-        ) + self.status.writer.margin_bottom
-        if v_buf_height < 3:
-            if config['-nohelp']:
-                screen.margin_bottom = v_buf_height
-            else:
-                screen.margin_bottom = 2
-                draw_help(stdscr)
-        else:
-            screen.margin_bottom = v_buf_height
+        self._draw_border(screen.margin_bot)
+        if not self.status.draw_if_available():
+            self._draw_function_bar()
 
-        self._draw_border()
-        self._draw_status_bar(env.LINES - v_buf_height - 1)
-        self.status.draw_if_available()
-
-        stdscr.noutrefresh()
         screen.draw()
 
     def resize(self) -> None:
-        # This is noticeably slow when there are more than 10 screens.
-        # Updating lazily doesn't help, because terminal_resize takes
-        # the majority of the time.
         terminal_resize()
 
         for screen in self.screens:
-            screen.update_for_redraw()
+            screen.refresh_layout()
 
-        self.stdscr.clearok(True)
+        self.win.clearok(True)
 
-    def rearrange_columns(self) -> None:
-        state = _read_columns_config()
-        config['-columns'] = 'auto' if state > 4 else str(state + 1)
-
-        for screen in self.screens:
-            screen.update_for_redraw()
-
-        self.status.success(config['-columns'].capitalize())
-
-    def filter_prompt(self) -> None:
-        typed = Prompt(self, self.stdscr, 'Filter (~n, ~/n): ').run()
-        if typed is None:
-            return
-        typed = typed.lstrip()
-        if not typed:
-            return
-
-        screen = self.current
-        screen.selector = EntrySelector(
-            filter_dictionary(screen._orig_dictionary, (typed,))
-        )
-        screen.update_for_redraw()
+    def highlight_prompt(self) -> None:
+        typed = Prompt(self, self.win, 'Find in entries: ').run()
+        if typed is not None and typed.strip():
+            try:
+                self.current.highlight(typed)
+            except ValueError as e:
+                self.status.error('Nothing matches', str(e))
 
     def _dispatch_command(self, s: str) -> bool:
         args = s.split()
@@ -933,44 +817,40 @@ class ScreenBuffer:
             if (len(args) == 1 or
                (len(args) == 2 and args[1].strip(' -').lower() in ('h', 'help'))
             ):
-                self.status.notify(note, BLACK_ON_YELLOW)
-                self.status.addstr(f'{cmd} {usage}')
+                self.status.attention(note, f'{cmd} {usage}')
                 return True
             else:
                 result = func(*args)
         elif cmd in INTERACTIVE_COMMANDS:
-            # change margin_bottom to leave one line for the prompt.
-            with self.status.change(margin_bottom=1, lock=True):
-                result = INTERACTIVE_COMMANDS[cmd](
-                    InteractiveCommandHandler(self), *args
-                )
-            self.status.writer.buffer.clear()
+            # change margin_bot to leave one line for the prompt.
+            #with self.status.change(margin_bot=1, lock=True):
+            #    result = INTERACTIVE_COMMANDS[cmd](
+            #        InteractiveCommandHandler(self), *args
+            #    )
+            #self.status.writer.buffer.clear()
+            raise NotImplementedError
         elif cmd.startswith('-'):
-            self.status.nlerror(f'{cmd}: command not found')
+            self.status.error(f'{cmd}: command not found')
             return True
         else:
             return False
 
-        # TODO: dedicated dispatch functions for updating
-        #       relevant states after issuing commands?
-        outs = result.output
-        if outs:
-            self.status.writer.buffer.clear()
-            if outs.count('\n') < self.status.writer.screen_coverage * env.LINES - 2:
-                self.status.writeln(outs)
-            else:
-                Pager(self.stdscr, outs).run()
-        if result.error:
-            self.status.nlerror(result.error)
-        if result.reason:
-            self.status.addstr(result.reason)
+        out, err, reason = result
+        if out:
+            self.status.clear()
+            #if out.count('\n') < self.status.writer.screen_coverage * env.LINES - 2:
+            #    self.status.writeln(out)
+            #else:
+            Pager(self.win, out).run()
+
+        if err:
+            self.status.error(err, reason)
 
         return True
 
     def search_prompt(self, *, pretype: str = '') -> tuple[ScreenBuffer, QuerySettings] | None:
         pretype = ' '.join(pretype.split())
-        with self.status.change(margin_bottom=0, lock=True):
-            typed = Prompt(self, self.stdscr, 'Search $ ', pretype=pretype).run()
+        typed = Prompt(self, self.win, 'Search $ ', pretype=pretype).run()
         if typed is None:
             return None
         typed = typed.strip()
@@ -978,7 +858,7 @@ class ScreenBuffer:
             return None
 
         if self._dispatch_command(typed):
-            self.current.update_for_redraw()
+            self.current.refresh_layout()
             return None
 
         ret = search_dictionaries(RefreshWriter(self), typed)
@@ -987,14 +867,13 @@ class ScreenBuffer:
 
         dictionaries, settings = ret
 
-        return ScreenBuffer(self.stdscr, tuple(map(Screen, dictionaries))), settings
+        return ScreenBuffer(self.win, tuple(Screen(self.win, x) for x in dictionaries)), settings
 
     ACTIONS = {
+        b'KEY_RESIZE': resize, b'^L': resize,
         b'l': next,     b'KEY_RIGHT': next,
         b'h': previous, b'KEY_LEFT': previous,
-        b'KEY_RESIZE': resize, b'^L': resize,
-        b'KEY_F(8)': rearrange_columns,
-        b'^F': filter_prompt, b'KEY_F(4)': filter_prompt,
+        b'^F': highlight_prompt, b'KEY_F(4)': highlight_prompt,
     }
 
 
@@ -1004,10 +883,10 @@ def perror_clipboard_or_selection(status: Status) -> str | None:
     except ValueError as e:
         status.error(str(e))
     except LookupError as e:
-        status.nlerror(
-            f'Could not access the {"clipboard" if WINDOWS else "primary selection"}:'
+        status.error(
+            f'Could not access the {"clipboard" if WINDOWS else "primary selection"}:',
+            str(e)
         )
-        status.addstr(str(e))
 
     return None
 
@@ -1016,8 +895,7 @@ def perror_currently_reviewed_phrase(status: Status) -> str | None:
     try:
         return anki.currently_reviewed_phrase()
     except anki.AnkiError as e:
-        status.nlerror('Paste from the "Phrase" field failed:')
-        status.addstr(str(e))
+        status.error('Paste from the "Phrase" field failed:', str(e))
         return None
 
 
@@ -1027,6 +905,295 @@ SEARCH_ENTER_ACTIONS = {
     b'-': lambda _: '-',
     b'/': lambda _: '',
 }
+
+
+class COption(NamedTuple):
+    name: str
+    description: str
+    constraint: list[str] | None
+
+
+class CColumn(NamedTuple):
+    header: str
+    options: list[COption]
+
+    @property
+    def noptions(self) -> int:
+        return len(self.options)
+
+    def __getitem__(self, key: int) -> COption:
+        return self.options[key]
+
+
+class CRow(NamedTuple):
+    columns: list[CColumn]
+
+    @property
+    def height(self) -> int:
+        return max(x.noptions for x in self.columns) + 1
+
+    def __getitem__(self, key: int) -> CColumn:
+        return self.columns[key]
+
+
+class ConfigMenu:
+    OPTION_NAME_WIDTH = 13
+    OPTION_VALUE_WIDTH = 10
+    COLUMN_WIDTH = OPTION_NAME_WIDTH + OPTION_VALUE_WIDTH
+    COLUMN_PAD = 3
+
+    def __init__(self, win: curses._CursesWindow, column_grid: list[CRow], min_y: int, min_x: int) -> None:
+        self.win = win
+        self.column_grid = column_grid
+        self.min_y = min_y
+        self.min_x = min_x
+        self.margin_bot = 0
+        self._row = self._col = self._line = 0
+
+    @contextlib.contextmanager
+    def extra_margin(self, v: int) -> Iterator[None]:
+        t = self.margin_bot
+        self.margin_bot += v
+        yield
+        self.margin_bot = t
+
+    def _value_of_option(self, option: COption) -> tuple[str, Attr]:
+        if isinstance(config[option.name], bool):
+            if config[option.name]:
+                return 'ON', Attr(0, 2, Color.success)
+            else:
+                return 'OFF', Attr(0, 3, Color.err)
+        else:
+            return str(config[option.name]), Attr(0, 0, 0)
+
+    def _description_of_option(self, option: COption) -> str:
+        if option.constraint is not None:
+            return f'{option.description} ({"/".join(option.constraint)})'
+        else:
+            return option.description
+
+    def draw(self) -> None:
+        if env.COLS < self.min_x or env.LINES < self.min_y:
+            raise ValueError(f'window too small (need at least {self.min_x}x{self.min_y})')
+
+        win = self.win
+        width = env.COLS - 2*BORDER_PAD
+
+        win.erase()
+
+        draw_border(win, self.margin_bot)
+
+        current_option = self.column_grid[self._row][self._col][self._line]
+        optdesc = truncate_if_needed(self._description_of_option(current_option), width)
+        if optdesc is None:
+            return
+
+        value, attr = self._value_of_option(current_option)
+        value = truncate_if_needed(f'-> {value}', width)
+        if value is None:
+            return
+
+        win.addstr(BORDER_PAD, BORDER_PAD, optdesc)
+        win.addstr(BORDER_PAD + 1, BORDER_PAD, value)
+        # TODO: `BORDER_PAD + 3` might break.
+        win.chgat(BORDER_PAD + 1, BORDER_PAD + 3 + attr.i, attr.span, attr.attr)
+        win.hline(BORDER_PAD + 2, BORDER_PAD, curses.ACS_HLINE, width)
+
+        row_y = BORDER_PAD + 3
+        row_x = 1
+        for row_i, row in enumerate(self.column_grid):
+            for col_i, column in enumerate(row.columns):
+                win.addstr(
+                    row_y,
+                    row_x,
+                    f'{column.header:{self.COLUMN_WIDTH}s}',
+                    curses.A_BOLD | curses.A_UNDERLINE
+                )
+                for line_i, option in enumerate(column.options):
+                    if (
+                            self._row == row_i
+                        and self._col == col_i
+                        and self._line == line_i
+                    ):
+                        selection_hl = curses.A_STANDOUT | curses.A_BOLD
+                    else:
+                        selection_hl = 0
+
+                    value, attr = self._value_of_option(option)
+
+                    entry = truncate_if_needed(
+                        f'{option.name:{self.OPTION_NAME_WIDTH}s}{value:{self.OPTION_VALUE_WIDTH}s}',
+                        self.COLUMN_WIDTH
+                    )
+                    if entry is None:
+                        return
+
+                    y = row_y + line_i + 1
+                    win.addstr(y, row_x, entry, selection_hl)
+                    win.chgat(y, row_x + 13 + attr.i, attr.span, attr.attr | selection_hl)
+
+                row_x += self.COLUMN_WIDTH + self.COLUMN_PAD
+
+            row_y += row.height + 1
+            row_x = 1
+
+    def resize(self) -> None:
+        terminal_resize()
+        self.win.clearok(True)
+
+    def _rows_in_current_column(self) -> int:
+        result = 0
+        for row in self.column_grid:
+            try:
+                row[self._col]
+            except IndexError:
+                break
+            else:
+                result += 1
+
+        return result
+
+    def move_down(self) -> None:
+        line_bound = self.column_grid[self._row][self._col].noptions - 1
+        if self._line < line_bound:
+            self._line += 1
+            return
+
+        if self._row < self._rows_in_current_column() - 1:
+            self._row += 1
+            self._line = 0
+
+    def move_up(self) -> None:
+        if self._line > 0:
+            self._line -= 1
+            return
+
+        if self._row > 0:
+            self._row -= 1
+            self._line = self.column_grid[self._row][self._col].noptions - 1
+
+    def move_right(self) -> None:
+        column_bound = max(len(x.columns) for x in self.column_grid) - 1
+        if self._col >= column_bound:
+            return
+
+        self._col += 1
+
+        row_column_bound = self._rows_in_current_column() - 1
+        if self._row > row_column_bound:
+            self._row = row_column_bound
+
+        line_bound = self.column_grid[self._row][self._col].noptions - 1
+        if self._line > line_bound:
+            self._line = line_bound
+
+    def move_left(self) -> None:
+        if self._col <= 0:
+            return
+
+        self._col -= 1
+
+        line_bound = self.column_grid[self._row][self._col].noptions - 1
+        if self._line > line_bound:
+            self._line = line_bound
+
+    def change_selected(self) -> None:
+        name, _, constraint = self.column_grid[self._row][self._col][self._line]
+        if isinstance(config[name], bool):
+            config[name] = not config[name]
+            return
+
+        if not isinstance(config[name], str):
+            return
+
+        if constraint is None:
+            with self.extra_margin(1):
+                typed = Prompt(
+                    self, self.win, 'Enter new value: ', pretype=config[name], exit_if_empty=True
+                ).run()
+            if typed is not None:
+                config[name] = typed.strip()
+        else:
+            config[name] = constraint[
+                (constraint.index(config[name]) + 1) % len(constraint)
+            ]
+
+    ACTIONS: dict[bytes, Callable[[ConfigMenu], None]] = {
+        b'KEY_RESIZE': resize, b'^L': resize,
+        b'j': move_down,  b'KEY_DOWN': move_down,
+        b'k': move_up,    b'KEY_UP': move_up,
+        b'l': move_right, b'KEY_RIGHT': move_right,
+        b'h': move_left,  b'KEY_LEFT': move_left,
+        b'^J': change_selected, b'^M': change_selected,
+    }
+    def run(self) -> None:
+        while True:
+            self.draw()
+
+            c = curses.keyname(get_key(self.win))
+            if c in self.ACTIONS:
+                self.ACTIONS[c](self)
+            elif c in (b'q', b'Q', b'^X', b'KEY_F(2)'):
+                return
+
+
+CONFIG_COLUMNS: list[CRow] = [
+    CRow(
+    [
+        CColumn(
+        'Cards',
+        [
+            COption('-pos', 'Add parts of speech', None),
+            COption('-etym', 'Add etymologies', None),
+            COption('-exsen', 'Add example sentences', None),
+            COption('-formatdefs', 'Add HTML formatting to definitions', None),
+            COption('-hidedef', 'Replace target word with `-hides` in definitions', None),
+            COption('-hidesyn', 'Replace target word with `-hides` in synonyms', None),
+            COption('-hideexsen', 'Replace target word with `-hides` in example sentences', None),
+            COption('-hidepreps', 'Replace all prepositions with `-hides`', None),
+            COption('-hides', 'Sequence of characters to use as target word replacement', None),
+        ]
+        ),
+        CColumn(
+        'Anki-connect',
+        [
+            COption('-note', 'Note used for adding cards', None),
+            COption('-deck', 'Deck used for adding cards', None),
+            COption('-mediapath', 'Audio save location', None),
+            COption('-duplicates', 'Allow duplicates', None),
+            COption('-dupescope', 'Look for duplicates in', ['deck', 'collection']),
+            COption('-tags', 'Anki tags (comma separated list)', None),
+        ]
+        ),
+    ]),
+    CRow(
+    [
+        CColumn(
+        'Sources',
+        [
+            COption('-dict', 'Primary dictionary', ['ahd', 'farlex', 'wordnet']),
+            COption('-dict2', 'Secondary dictionary', ['ahd', 'farlex', 'wordnet', '-']),
+            COption('-audio', 'Audio source', ['auto', 'ahd', 'diki', '-']),
+        ]),
+        CColumn(
+        'Miscellaneous',
+        [
+            COption('-toipa', 'Translate AH Dictionary phonetic spelling into IPA', None),
+            COption('-shortetyms', 'Shorten and simplify etymologies in AH Dictionary', None),
+            COption('-textwrap', 'Text wrapping style', ['regular', 'justify']),
+        ]),
+    ]),
+]
+
+CONFIG_MIN_HEIGHT = (
+      sum(x.height for x in CONFIG_COLUMNS)
+    + (len(CONFIG_COLUMNS) - 1)
+)
+
+CONFIG_MIN_WIDTH = (
+      len(CONFIG_COLUMNS) * ConfigMenu.COLUMN_WIDTH
+    + (len(CONFIG_COLUMNS) - 1) * ConfigMenu.COLUMN_PAD
+)
 
 
 def _curses_main(
@@ -1041,18 +1208,21 @@ def _curses_main(
     curses.flushinp()
 
     settings = _settings
-    screen_buffer = ScreenBuffer(stdscr, tuple(map(Screen, _dictionaries)))
+    screen_buffer = ScreenBuffer(stdscr, tuple(Screen(stdscr, x) for x in _dictionaries))
     while True:
+        screen_buffer.status.tick()
         screen_buffer.draw()
-        curses.doupdate()
 
         c = curses.keyname(get_key(stdscr))
         if c in Screen.ACTIONS:
             Screen.ACTIONS[c](screen_buffer.current)
+
         elif c in Screen.KEYBOARD_SELECTOR_CHARS:
             screen_buffer.current.mark_box_by_selector(c)
+
         elif c in ScreenBuffer.ACTIONS:
             ScreenBuffer.ACTIONS[c](screen_buffer)
+
         elif c == b'KEY_MOUSE':
             _, x, y, _, bstate = curses.getmouse()
             if bstate & curses.BUTTON1_PRESSED:  # left mouse
@@ -1068,6 +1238,7 @@ def _curses_main(
                 ret = screen_buffer.search_prompt(pretype=pretype)
                 if ret is not None:  # new query
                     screen_buffer, settings = ret
+
         elif c in SEARCH_ENTER_ACTIONS:
             pretype = SEARCH_ENTER_ACTIONS[c](screen_buffer.status)
             if pretype is None:
@@ -1075,14 +1246,15 @@ def _curses_main(
             ret = screen_buffer.search_prompt(pretype=pretype)
             if ret is not None:  # new query
                 screen_buffer, settings = ret
+
         elif c == b'B':
             try:
                 anki.invoke('guiBrowse', query='added:1')
             except anki.AnkiError as e:
-                screen_buffer.status.nlerror('Could not open the card browser:')
-                screen_buffer.status.addstr(str(e))
+                screen_buffer.status.error('Could not open the card browser:', str(e))
             else:
                 screen_buffer.status.success('Anki card browser opened')
+
         elif c == b'C':
             selections = screen_buffer.current.selector.dump_selection()
             if selections is None:
@@ -1095,8 +1267,25 @@ def _curses_main(
                     settings
                 )
                 screen_buffer.current.deselect_all()
+
         elif c == b'KEY_F(1)':
-            config['-nohelp'] = not config['-nohelp']
+            screen_buffer.status.attention(
+                'Help commands:', '--help-{config|console|curses|define-all|rec}'
+            )
+
+        elif c == b'KEY_F(2)':
+            try:
+                ConfigMenu(
+                    stdscr,
+                    CONFIG_COLUMNS,
+                    CONFIG_MIN_HEIGHT + 2*BORDER_PAD + 3,
+                    CONFIG_MIN_WIDTH + 2*BORDER_PAD
+                ).run()
+            except ValueError as e:
+                screen_buffer.status.error('Error(F2):', str(e))
+
+            screen_buffer.resize()
+
         elif c in (b'q', b'Q', b'^X'):
             return
 
@@ -1120,4 +1309,3 @@ def curses_entry(dictionaries: list[Dictionary], settings: QuerySettings) -> Non
         # of contents from the previous drawing.
         stdscr.erase()
         curses.endwin()
-

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
-from typing import Sequence, TypeVar, Protocol
+import contextlib
+from typing import Sequence, TypeVar, Protocol, Iterator
 
 
 class WriterInterface(Protocol):
@@ -13,10 +14,11 @@ class InteractiveCommandHandlerInterface(WriterInterface, Protocol):
     def ask_yes_no(self, prompt: str, *, default: bool) -> bool: ...
 
 
-class CardWriterInterface(WriterInterface, Protocol):
-    def preview_card(self, card: dict[str, str]) -> None: ...
-
-
-class DrawAndResizeInterface(Protocol):
+class Drawable(Protocol):
     def draw(self) -> None: ...
     def resize(self) -> None: ...
+
+
+class ScreenHolderInterface(Drawable, Protocol):
+    @contextlib.contextmanager
+    def extra_margin(self, v: int) -> Iterator[None]: ...

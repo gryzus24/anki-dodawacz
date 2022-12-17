@@ -110,10 +110,7 @@ def invoke(action: INVOKE_ACTIONS, **params: Any) -> Any:
             ).data.decode()
         )
     except NewConnectionError:
-        raise AnkiError(
-            'Could not connect with Anki.\n'
-            'Check if Anki is running with Anki-Connect installed.'
-        )
+        raise AnkiError('Could not connect with Anki.')
 
     err = response['error']
     if err is None:
@@ -122,33 +119,24 @@ def invoke(action: INVOKE_ACTIONS, **params: Any) -> Any:
     err = err.lower()
     if err.startswith('model was not found:'):
         raise AnkiError(
-            f'Could not find note: {config["-note"]}\n'
-            f'To change the note use `-note {{note name}}`'
+            f'could not find note: {config["-note"]} (use `-note {{note name}}` to change it).'
         )
     elif err.startswith('deck was not found'):
         raise AnkiError(
-            f'Could not find deck: {config["-deck"]}\n'
-            f'To change the deck use `-deck {{deck name}}`\n'
-            f'If the deck name seems correct, change its name in Anki\n'
-            f'so that it uses single spaces.'
+            f'could not find deck: {config["-deck"]} (use `-deck {{deck name}}` to change it).'
         )
     elif err.startswith('cannot create note because it is empty'):
         raise FirstFieldEmptyError(
-            "First field empty.\n"
-            "To check what fields are assigned to your note use `--check-note`"
+            "first field empty (use `--check-note` to recheck the field assignment)."
         )
     elif err.startswith('cannot create note because it is a duplicate'):
-        raise AnkiError(
-            'Duplicate.\n'
-            'To allow duplicates use `-duplicates {on|off}`\n'
-            'or change the scope of checking for them `-dupescope {deck|collection}`'
-        )
+        raise AnkiError('duplicate (use `-duplicates on` to allow them).')
     elif err.startswith('model name already exists'):
-        raise ModelExistsError('Note with this name already exists.')
+        raise ModelExistsError('note with this name already exists.')
     elif err.startswith('gui review is not currently active'):
-        raise AnkiError('Action available only in review mode.')
+        raise AnkiError('action available only in review mode.')
     elif err.startswith(('collection is not available', "'nonetype' object has no attribute")):
-        raise AnkiError('Check if Anki is fully open.')
+        raise AnkiError('could not connect with Anki.')
     else:
         raise Exception(response['error'])
 
@@ -160,7 +148,7 @@ def currently_reviewed_phrase() -> str:
             if scheme in key:
                 return value['value']
 
-    raise AnkiError('Could not find the "Phrase-like" field')
+    raise AnkiError('could not find the "Phrase-like" field')
 
 
 def map_scheme_to_fields(model_name: str) -> dict[str, str | None]:

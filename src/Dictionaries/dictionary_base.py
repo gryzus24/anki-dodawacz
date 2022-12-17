@@ -33,182 +33,6 @@ def multi_split(string: str, splits: set[str]) -> list[str]:
     return result
 
 
-def _should_skip(label: str, flags: tuple[str, ...]) -> bool:
-    labels = tuple(multi_split(label, {' ', '.', '&'}))
-    for label in labels:
-        if label.startswith(flags):
-            return False
-    for flag in flags:
-        if flag.startswith(labels):
-            return False
-    return True
-
-
-def filter_dictionary(dictionary: Dictionary, flags: Sequence[str]) -> Dictionary:
-    temp = []
-    word_flags = []
-    for flag in flags:
-        flag = flag.lstrip()
-        if flag.startswith('/'):
-            word_flags.append(flag[1:])
-        else:
-            temp.append(flag.lower())
-
-    label_flags = tuple(temp)
-
-    added: set[str] = set()
-    last_header = None
-    header_contents = []
-    for entry in dictionary.contents:
-        op = entry[0]
-        if op in added:
-            # We could use some salvaging methods like copying previous header's
-            # contents or restructuring the original list of contents to make
-            # later retrieval more consistent or something like that.
-            # But to be completely honest, the "ask_dictionary" functions
-            # should be more compliant, i.e. adding only one entry like:
-            # NOTE, AUDIO, ETYM, POS and HEADER per PHRASE. Currently,
-            # Lexico has some problems with this compliance when it comes to
-            # words that have different pronunciations depending on whether
-            # they are nouns, verbs or adjectives (e.g. concert).
-            continue
-        elif op == 'HEADER':
-            last_header = entry
-            if entry[1]:  # header with title
-                added.clear()
-                group: EntryGroup = {
-                    'after': [],
-                    'before': [],
-                    'contents': [],
-                    'header': entry,
-                }
-                header_contents.append(group)
-        elif op == 'PHRASE':
-            added.clear()
-            if last_header is None:
-                group: EntryGroup = {  # type: ignore[no-redef]
-                    'after': [],
-                    'before': [entry],
-                    'contents': [],
-                    'header': None,
-                }
-                header_contents.append(group)
-            else:
-                if last_header[1]:
-                    header_contents[-1]['before'].append(entry)
-                else:
-                    group: EntryGroup = {  # type: ignore[no-redef]
-                        'after': [],
-                        'before': [entry],
-                        'contents': [],
-                        'header': last_header,
-                    }
-                    header_contents.append(group)
-                last_header = None
-        elif op in {'LABEL', 'DEF', 'SUBDEF'}:
-            header_contents[-1]['contents'].append(entry)
-        elif op in {'PHRASE', 'NOTE', 'AUDIO'}:
-            header_contents[-1]['before'].append(entry)
-            added.add(op)
-        elif op in {'POS', 'ETYM', 'SYN'}:
-            header_contents[-1]['after'].append(entry)
-            added.add(op)
-        else:
-            raise AssertionError(f'unreachable {op!r}')
-
-    result = []
-    skip_header = False
-    last_titled_header = None
-    for header in header_contents:
-        header_entry = header['header']
-        if header_entry is not None:
-            skip_header = (
-                (header_entry[1] == 'Idioms' and bool(label_flags)) or
-                header_entry[1] == 'Synonyms'
-            )
-            if not skip_header and header_entry[1]:
-                last_titled_header = header_entry
-
-        if skip_header:
-            continue
-
-        last_label_skipped = last_def_skipped = False
-        last_label_i = last_def_i = None
-        skips = []
-        for i, entry in enumerate(header['contents']):
-            op = entry[0]
-            if op == 'LABEL':
-                last_label_i = i
-                if not entry[1] or not label_flags:
-                    # assume skip, later if the assumption turns out false,
-                    # we keep a reference to the label to change it to False.
-                    _skip_label = True
-                else:
-                    _skip_label = _should_skip(entry[1].lower(), label_flags)
-                skips.append(_skip_label)
-                last_label_skipped = _skip_label
-            elif 'DEF' in op:
-                if op == 'DEF':
-                    last_def_i = i
-
-                if label_flags:
-                    if not last_label_skipped:
-                        _skip_def = False
-                    elif not entry[3]:
-                        if op == 'DEF':
-                            _skip_def = True
-                        elif op == 'SUBDEF':
-                            _skip_def = last_def_skipped
-                        else:
-                            raise AssertionError(f'unreachable {op!r}')
-                    else:
-                        _skip_def = _should_skip(entry[3].lower(), label_flags)
-
-                    if word_flags and _skip_def:
-                        for word in word_flags:
-                            if word in entry[1]:
-                                _skip_def = False
-                                break
-                elif word_flags:
-                    for word in word_flags:
-                        if word in entry[1]:
-                            _skip_def = False
-                            break
-                    else:
-                        _skip_def = True
-                else:
-                    _skip_def = True
-
-                skips.append(_skip_def)
-                if not _skip_def:
-                    if last_label_i is not None:
-                        skips[last_label_i] = False
-                    if op == 'SUBDEF' and last_def_i is not None:
-                        skips[last_def_i] = False
-                if op == 'DEF':
-                    last_def_skipped = _skip_def
-            else:
-                raise AssertionError(f'unreachable {op!r}')
-
-        if False not in skips:
-            continue
-
-        if last_titled_header is not None:
-            result.append(last_titled_header)
-            last_titled_header = None
-        elif header_entry is not None:
-            result.append(header_entry)
-
-        result.extend(header['before'])
-        result.extend(compress(header['contents'], map(lambda x: not x, skips)))
-        result.extend(header['after'])
-
-    if result and result != dictionary.contents:
-        return Dictionary(result, name=dictionary.name)
-    else:
-        return dictionary
-
-
 class Dictionary:
     __slots__ = 'name' ,'contents'
 
@@ -282,15 +106,18 @@ class EntrySelector:
     def toggles(self) -> list[bool]:
         return self._toggles
 
+    def is_toggled(self, index: int) -> bool:
+        return self._toggles[index]
+
     def find_phrase_index(self, index: int) -> int:
         if not self._ptoggled:
-            raise ValueError('Dictionary has no PHRASE entries')
+            raise ValueError('dictionary has no PHRASE entries')
 
         for pi in reversed(self._ptoggled):
             if index >= pi:
                 return pi
 
-        raise ValueError(f'Out of bounds: {len(self.dictionary.contents)=}, {index=}')
+        raise ValueError(f'out of bounds: {len(self.dictionary.contents)=}, {index=}')
 
     TOGGLEABLE = {'DEF', 'SUBDEF', 'SYN'}
 

@@ -4,14 +4,11 @@ import functools
 from itertools import repeat
 from typing import Sequence, NamedTuple, TYPE_CHECKING
 
-import src.ffmpeg_interface as ffmpeg
 from src.Dictionaries.ahdictionary import ask_ahdictionary
 from src.Dictionaries.dictionary_base import Dictionary
 from src.Dictionaries.dictionary_base import DictionaryError
-from src.Dictionaries.dictionary_base import filter_dictionary
 from src.Dictionaries.farlex import ask_farlex
 from src.Dictionaries.wordnet import ask_wordnet
-from src.colors import Color
 from src.data import config
 
 if TYPE_CHECKING:
@@ -71,7 +68,6 @@ def get_dictionaries(
     if fallback_key in none_keys:
         return None
 
-    writer.writeln(f'{Color.heed}Querying the fallback dictionary...')
     try:
         result.append(query_dictionary(fallback_key, query))
     except (DictionaryError, ConnectionError) as e:
@@ -167,25 +163,16 @@ def search_dictionaries(writer: WriterInterface, s: str) -> tuple[list[Dictionar
         return None
 
     dictionaries: list[Dictionary] = []
-    recorded = False
     user_sentence = recording_filename = ''
     valid_queries = []
     for query in parsed:
         if query.sentence and not user_sentence:
             user_sentence = query.sentence
-        if query.record and not recorded:
-            recording_filename = ffmpeg.capture_audio(query.query)
-            recorded = True
 
         dicts = get_dictionaries(writer, query.query, query.dict_flags)
         if dicts is not None:
             valid_queries.append(query)
-            if query.query_flags:
-                dictionaries.extend(
-                    map(filter_dictionary, dicts, repeat(query.query_flags))
-                )
-            else:
-                dictionaries.extend(dicts)
+            dictionaries.extend(dicts)
 
     if not dictionaries:
         return None

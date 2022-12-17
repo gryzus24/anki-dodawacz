@@ -5,7 +5,6 @@ from typing import Any, Callable, Iterable, TypeVar
 
 from src.Dictionaries.dictionary_base import Dictionary, DictionaryError
 from src.Dictionaries.utils import request_soup
-from src.colors import Color, R
 from src.data import config
 
 AHD_IPA_translation = str.maketrans({
@@ -167,19 +166,15 @@ def _shorten_etymology(_input: str) -> str:
 def ask_ahdictionary(query: str) -> Dictionary:
     query = query.strip(' \'";')
     if not query:
-        raise DictionaryError(f'{Color.err}Invalid query')
+        raise DictionaryError(f'Invalid query {query!r}')
 
     soup = request_soup('https://www.ahdictionary.com/word/search.html', {'q': query})
 
     try:
         if soup.find('div', {'id': 'results'}).text == 'No word definition found':
-            raise DictionaryError(
-                f'{Color.err}Could not find {R}"{query}"{Color.err} in AH Dictionary'
-            )
+            raise DictionaryError(f'AHDictionary: {query!r} not found')
     except AttributeError:
-        raise DictionaryError(
-            f'{Color.err}ahdictionary.com might be down:\n{R}{soup.prettify()}'
-        )
+        raise DictionaryError('Error: ahdictionary.com might be down')
 
     ahd = Dictionary(name='ahd')
 

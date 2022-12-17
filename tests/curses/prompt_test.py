@@ -7,7 +7,7 @@ from src.Curses.prompt import Prompt
 stdscr = curses.initscr()
 
 
-class DummyDrawAndResize:
+class DummyScreenHolder:
     @staticmethod
     def draw(): pass
     @staticmethod
@@ -15,7 +15,7 @@ class DummyDrawAndResize:
 
 
 def _run_ctrl_t_test(pretype, cursor_index, expected):
-    prompt = Prompt(DummyDrawAndResize, stdscr, 'prompt:', pretype=pretype)  # type: ignore[arg-type]
+    prompt = Prompt(DummyScreenHolder, stdscr, 'prompt:', pretype=pretype)  # type: ignore[arg-type]
     prompt._cursor = cursor_index
     prompt.ctrl_t()
     assert prompt._entered == expected

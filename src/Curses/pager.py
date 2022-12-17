@@ -132,8 +132,6 @@ class Pager:
                 if self._status.expire:
                     self._status = None
 
-        win.noutrefresh()
-
     def resize(self) -> None:
         terminal_resize()
 
@@ -248,7 +246,6 @@ class Pager:
     def run(self) -> None:
         while True:
             self.draw()
-            curses.doupdate()
 
             c = curses.keyname(get_key(self.win))
             if c in (b'q', b'Q', b'^X'):

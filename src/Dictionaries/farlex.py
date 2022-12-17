@@ -2,7 +2,6 @@ from __future__ import annotations
 
 from src.Dictionaries.dictionary_base import Dictionary, DictionaryError
 from src.Dictionaries.utils import request_soup
-from src.colors import Color, R
 
 
 def ask_farlex(query: str) -> Dictionary:
@@ -10,7 +9,7 @@ def ask_farlex(query: str) -> Dictionary:
 
     relevant_content = soup.find('section', {'data-src': 'FarlexIdi'})
     if relevant_content is None:
-        raise DictionaryError(f'{Color.err}Could not find {R}"{query}"{Color.err} in Farlex Idioms')
+        raise DictionaryError(f'Farlex: {query!r} not found')
 
     farlex = Dictionary(name='farlex')
 

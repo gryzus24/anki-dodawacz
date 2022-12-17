@@ -1,9 +1,9 @@
 from __future__ import annotations
 
 import sys
-from typing import Any
+from typing import Any, Generator
 
-from src.colors import R, Color
+import src.colors as ansi
 from src.data import USER_AGENT
 
 # Silence warnings if soupsieve is not installed, which is good
@@ -19,7 +19,7 @@ finally:
 
 if (*map(int, __version__.split('.')),) < (4, 10, 0):
     sys.stderr.write(
-         f'{Color.err}----------------------------------------------------------------{R}\n'
+         f'{ansi.ERR}----------------------------------------------------------------{ansi.R}\n'
          'Your version of beautifulsoup is out of date, please update:\n'
          'pip install -U beautifulsoup4\n'
          'If you are using a virtual environment, you can safely uninstall\n'
@@ -44,11 +44,11 @@ def request_soup(
     except Exception as e:
         if isinstance(e.__context__, NewConnectionError):
             raise ConnectionError(
-                f'{Color.err}Could not establish a connection,\n'
+                f'{ansi.ERR}Could not establish a connection,\n'
                 f'check your network connection and try again.'
             )
         elif isinstance(e.__context__, ConnectTimeoutError):
-            raise ConnectionError(f'{Color.err}Connection timed out.')
+            raise ConnectionError(f'{ansi.ERR}Connection timed out.')
         else:
             raise
 
@@ -62,7 +62,6 @@ def _regular_wrap(string: str, textwidth: int, gap: int, indent: int) -> list[st
     line = ''
     current_length = gap
     for word in string.split():
-        # >= for one character right-side padding
         word_len = len(word)
         if current_length + word_len > textwidth:
             result.append(line.rstrip())
@@ -128,6 +127,18 @@ def _no_wrap(string: str, textwidth: int, gap: int, indent: int) -> list[str]:
     return result
 
 
+def wrap_stream(textwidth: int, string: str, gap: int, indent: int) -> Generator[str | None, None, None]:
+    current_length = gap
+    for word in string.split():
+        if current_length + len(word) > textwidth:
+            yield None
+            yield word
+            current_length = gap + indent + len(word) + 1
+        else:
+            yield word + ' '
+            current_length += len(word) + 1
+
+
 def wrap_lines(style: str, textwidth: int, s: str, gap: int, indent: int) -> list[str]:
     # gap: space left for characters before the start of the
     #        first line and indent for the subsequent lines.
@@ -145,7 +156,7 @@ def wrap_lines(style: str, textwidth: int, s: str, gap: int, indent: int) -> lis
         wrapped = _no_wrap(s, textwidth, gap, indent)
 
     for i in range(1, len(wrapped)):
-        wrapped[i] = (gap + indent) * ' ' + wrapped[i]
+        wrapped[i] = (indent * ' ') + wrapped[i]
 
     return wrapped
 

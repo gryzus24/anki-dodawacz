@@ -8,13 +8,12 @@ import src.anki_interface as anki
 from src.Dictionaries.audio_dictionaries import ahd_audio, diki_audio
 from src.Dictionaries.dictionary_base import DictionaryError
 from src.Dictionaries.utils import http
-from src.colors import Color, R
 from src.data import ROOT_DIR, CARD_SAVE_LOCATION, config
 
 if TYPE_CHECKING:
     from src.search import QuerySettings
     from src.Dictionaries.dictionary_base import DictionarySelection
-    from src.proto import CardWriterInterface
+    from src.proto import WriterInterface
 
 CARD_FIELDS_SAVE_ORDER = ('def', 'syn', 'sen', 'phrase', 'exsen', 'pos', 'etym', 'audio', 'recording')
 
@@ -104,16 +103,16 @@ def audio_to_anki(audio_content: bytes, filename: str) -> None:
 def save_audio(url: str) -> str:
     audio_content = http.urlopen('GET', url).data
 
-    audio_path = config['audio_path']
+    mediapath = config['-mediapath']
     _, _, filename = url.rpartition('/')
 
-    if config['-ankiconnect'] and os.path.basename(audio_path) != 'collection.media':
+    if config['-ankiconnect'] and os.path.basename(mediapath) != 'collection.media':
         # We Use Anki-Connect to save audio files if [collection.media] path is not
         # given to simplify things for the user who did not provide the audio path.
         # However, specifying it is preferred as it's way faster.
         audio_to_anki(audio_content, filename)
     else:
-        audio_to_file(audio_content, audio_path, filename)
+        audio_to_file(audio_content, mediapath, filename)
 
     return f'[sound:{filename}]'
 
@@ -226,7 +225,7 @@ def card_from_selection(selection: DictionarySelection) -> tuple[dict[str, str],
 
 
 def create_and_add_card(
-        implementor: CardWriterInterface,
+        implementor: WriterInterface,
         dictionary_name: str,
         selections: list[DictionarySelection],
         settings: QuerySettings
@@ -244,14 +243,14 @@ def create_and_add_card(
             )
         except DictionaryError as e:
             implementor.writeln(str(e))
-            implementor.writeln(f'{Color.err}No audio available for {R}{phrase!r}')
+            implementor.writeln(f'No audio available for {phrase!r}')
             tag = ''
         else:
             if audio_url:
                 try:
                     tag = save_audio(audio_url)
                 except (anki.AnkiError, NotADirectoryError) as e:
-                    implementor.writeln(f'{Color.err}Could not save audio:')
+                    implementor.writeln('Could not save audio:')
                     implementor.writeln(str(e))
                     tag = ''
             else:
@@ -278,23 +277,20 @@ def create_and_add_card(
                     hide_prepositions=config['-hpreps']
                 )
 
-        if config['-cardpreview']:
-            implementor.preview_card(card)
-
         card = format_and_prepare_card(card)
 
         if config['-ankiconnect']:
             try:
                 response = anki.add_card_to_anki(card)
             except anki.AnkiError as e:
-                implementor.writeln(f'{Color.err}Card could not be added to Anki:\n{R}{e}\n')
+                implementor.writeln(f'Card could not be added to Anki:\n{e}\n')
             else:
-                implementor.writeln(f'{Color.success}Card successfully added to Anki')
+                implementor.writeln(f'Card successfully added to Anki')
                 for item in response.split('\n'):
                     a, _, b = item.partition(': ')
-                    implementor.writeln(f'{Color.heed}{a}: {R}{b}')
-                implementor.writeln(f'{Color.heed}>{R} open card browser: -b\n')
+                    implementor.writeln(f'{a}: {b}')
+                implementor.writeln('> open card browser: -b\n')
 
         if config['-savecards']:
             save_card_to_file(CARD_SAVE_LOCATION, card)
-            implementor.writeln(f'{Color.success}Card saved to a file: {R}{os.path.basename(CARD_SAVE_LOCATION)!r}')
+            implementor.writeln(f'Card saved to a file: {os.path.basename(CARD_SAVE_LOCATION)!r}')

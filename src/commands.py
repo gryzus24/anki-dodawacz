@@ -7,7 +7,6 @@ from itertools import zip_longest
 from typing import Any, Sequence, NamedTuple, Callable, TYPE_CHECKING
 
 import src.anki_interface as anki
-import src.ffmpeg_interface as ffmpeg
 from src.colors import BOLD, Color, DEFAULT, R
 from src.data import LINUX, MAC, ROOT_DIR, WINDOWS, STRING_TO_BOOL, config
 
@@ -18,17 +17,16 @@ CONFIG_COLUMNS = tuple(
     zip_longest(
         (
             '[card creation co.]',
-            '-sen', '-def', '-default', '-exsen', '-pos', '-etym',
+            '-def', '-exsen', '-pos', '-etym',
             '',
-            '-tsc', '-formatdefs', '-savecards',
+            '-formatdefs', '-savecards',
             '',
             '[phrase hiding co.]',
             '-hsen', '-hdef', '-hexsen', '-hsyn', '-hpreps', '-hideas',
         ),
         (
             '[display configur.]',
-            '-less', '-cardpreview', '-showsign',
-            '-textwrap', '-columns',
+            '-textwrap',
             '',
             '[filtering config.]',
             '-toipa', '-shortetyms',
@@ -38,10 +36,7 @@ CONFIG_COLUMNS = tuple(
         ),
         (
             '[source config.]',
-            '-dict', '-dict2', '-audio', '-recqual',
-            '',
-            '[curses config.]',
-            '-curses', '-nohelp', '-margin', '-hlmode'
+            '-dict', '-dict2', '-audio',
         ),
         fillvalue=''
     )
@@ -147,8 +142,8 @@ def _get_collection_paths() -> list[str] | CommandResult:
         )
 
 
-def audio_path_command(
-    implementor: InteractiveCommandHandlerInterface, cmd: str, *args: str
+def mediapath_command(
+    implementor: InteractiveCommandHandlerInterface, _: str, *args: str
 ) -> CommandResult:
     if not args or args[0].lower() == 'auto':
         collection_paths = _get_collection_paths()
@@ -173,7 +168,7 @@ def audio_path_command(
     else:
         result_path = os.path.expanduser(os.path.normpath(' '.join(args)))
 
-    save_command('audio_path', result_path)
+    save_command('mediapath', result_path)
 
     return CommandResult()
 
@@ -199,7 +194,7 @@ def _add_from_custom_notes(note_name: str) -> str:
 
 
 def add_note_command(
-    implementor: InteractiveCommandHandlerInterface, cmd: str, *args: str
+        implementor: InteractiveCommandHandlerInterface, *_: str
 ) -> CommandResult:
     custom_notes = sorted(os.listdir(os.path.join(ROOT_DIR, 'notes')))
 
@@ -223,37 +218,8 @@ def add_note_command(
     return CommandResult()
 
 
-def audio_device_command(
-    implementor: InteractiveCommandHandlerInterface, cmd: str, *args: str
-) -> CommandResult:
-    try:
-        audio_devices = ffmpeg.find_devices()
-        if not audio_devices:
-            return CommandResult(
-                error='No devices found',
-                reason=f'Audio recording might be unavailable on {sys.platform}'
-            )
-    except FileNotFoundError:
-        return CommandResult(
-            error='Could not locate FFmpeg',
-            reason='Place the FFmpeg binary alongside the program or in $PATH'
-        )
-
-    implementor.writeln(f'{BOLD}Choose your desktop output device:')
-    for i, device in enumerate(audio_devices, 1):
-        implementor.writeln(f'>{Color.index}{i}{R} "{device}"')
-
-    audio_device = implementor.choose_item('Device', audio_devices)
-    if audio_device is None:
-        return CommandResult(error='Invalid input, leaving...')
-
-    save_command('audio_device', audio_device)
-
-    return CommandResult()
-
-
 def autoconfig_command(
-    implementor: InteractiveCommandHandlerInterface, cmd: str, *args: str
+        implementor: InteractiveCommandHandlerInterface, *_: str
 ) -> CommandResult:
     implementor.writeln(
         f"{Color.heed}Welcome!{R}\n"
@@ -296,11 +262,11 @@ def autoconfig_command(
     result.append(f'$ -deck {chosen_deck}\n')
 
     implementor.writeln(f'{Color.heed}:: {R}Setting the path for saving audio...')
-    ret = audio_path_command(implementor, '-ap', 'auto')
+    ret = mediapath_command(implementor, '-ap', 'auto')
     if ret.error is not None:
         return ret
     else:
-        result.append(f'$ --audio-path {config["audio_path"]}\n')
+        result.append(f'$ --audio-path {config["-mediapath"]}\n')
 
     save_command('-ankiconnect', True)
     result.append(f'$ -ankiconnect {config["-ankiconnect"]}\n')
@@ -311,10 +277,8 @@ def autoconfig_command(
 
 
 INTERACTIVE_COMMANDS = {
-    '--audio-path': audio_path_command,
-    '-ap': audio_path_command,
+    '-mediapath': mediapath_command,
     '--add-note': add_note_command,
-    '--audio-device': audio_device_command,
     '-autoconfig': autoconfig_command,
 }
 
@@ -332,10 +296,6 @@ def boolean_command(cmd: str, *args: str) -> CommandResult:
         config['-exsen'] = value
         config['-pos'] = value
         config['-etym'] = value
-    elif cmd == '-cc':
-        config['-sen'] = value
-        config['-def'] = value
-        config['-default'] = '1' if value else '0'
     else:
         config[cmd] = value
 
@@ -344,7 +304,7 @@ def boolean_command(cmd: str, *args: str) -> CommandResult:
     return CommandResult()
 
 
-def columns_command(cmd: str, value: str, *args: str) -> CommandResult:
+def columns_command(cmd: str, value: str, *_: str) -> CommandResult:
     value = value.lower()
     try:
         val = int(value)
@@ -375,23 +335,19 @@ def set_free_text_commands(cmd: str, arguments: Sequence[str], sep: str = ' ') -
     return CommandResult()
 
 
-def hideas_command(cmd: str, *args: str) -> CommandResult:
+def hideas_command(_: str, *args: str) -> CommandResult:
     return set_free_text_commands('-hideas', args)
 
 
-def default_command(cmd: str, *args: str) -> CommandResult:
-    return set_free_text_commands('-default', args)
-
-
-def note_command(cmd: str, *args: str) -> CommandResult:
+def note_command(_: str, *args: str) -> CommandResult:
     return set_free_text_commands('-note', args)
 
 
-def deck_command(cmd: str, *args: str) -> CommandResult:
+def deck_command(_: str, *args: str) -> CommandResult:
     return set_free_text_commands('-deck', args)
 
 
-def tags_command(cmd: str, *args: str) -> CommandResult:
+def tags_command(_: str, *args: str) -> CommandResult:
     return set_free_text_commands('-tags', args, sep=',')
 
 
@@ -423,14 +379,6 @@ def set_numeric_commands(
     return CommandResult()
 
 
-def margin_command(cmd: str, *args: str) -> CommandResult:
-    return set_numeric_commands('-margin', args, lower=0, upper=99, default=1)
-
-
-def recqual_command(cmd: str, *args: str) -> CommandResult:
-    return set_numeric_commands('-recqual', args, lower=0, upper=9, default=4)
-
-
 def commands_set_text(cmd: str, args: Sequence[str], valid_values: Sequence[str]) -> CommandResult:
     if not args:
         return CommandResult(
@@ -449,42 +397,32 @@ def commands_set_text(cmd: str, args: Sequence[str], valid_values: Sequence[str]
     )
 
 
-def textwrap_command(cmd: str, *args: str) -> CommandResult:
+def textwrap_command(_: str, *args: str) -> CommandResult:
     return commands_set_text('-textwrap', args, ('justify', 'regular', '-'))
 
 
-def dupescope_command(cmd: str, *args: str) -> CommandResult:
+def dupescope_command(_: str, *args: str) -> CommandResult:
     return commands_set_text('-dupescope', args, ('deck', 'collection'))
 
 
-def dict_command(cmd: str, *args: str) -> CommandResult:
+def dict_command(_: str, *args: str) -> CommandResult:
     return commands_set_text('-dict', args, ('ahd', 'farlex', 'wordnet'))
 
 
-def dict2_command(cmd: str, *args: str) -> CommandResult:
+def dict2_command(_: str, *args: str) -> CommandResult:
     return commands_set_text('-dict2', args, ('ahd', 'farlex', 'wordnet', '-'))
 
 
-def audio_command(cmd: str, *args: str) -> CommandResult:
+def audio_command(_: str, *args: str) -> CommandResult:
     return commands_set_text('-audio', args, ('ahd', 'diki', 'auto', '-'))
 
 
-def tsc_command(cmd: str, *args: str) -> CommandResult:
-    return commands_set_text('-tsc', args, ('-', 'std', 'strict'))
-
-
-def hlmode_command(cmd: str, *args: str) -> CommandResult:
-    return commands_set_text('-hlmode', args, ('yy', 'yn', 'ny', 'nn'))
-
-
 HELP_ARG_COMMANDS: dict[str, tuple[Callable[..., CommandResult], str, str]] = {
-    '-sen':         (boolean_command, 'Sentence field', '{on/off}'),
     '-def':         (boolean_command, 'Definition field', '{on/off}'),
     '-pos':         (boolean_command, 'Add parts of speech', '{on/off}'),
     '-etym':        (boolean_command, 'Add etymologies', '{on/off}'),
     '-exsen':       (boolean_command, 'Add example sentences', '{on/off}'),
     '-all':         (boolean_command, 'Change values of (-exsen, -pos, -etym)', '{on/off}'),
-    '-cc':          (boolean_command, 'Create cards (changes -sen, -def and -default)', '{on/off}'),
     '-formatdefs':  (boolean_command, 'Definition formatting', '{on/off}'),
     '-savecards':   (boolean_command, 'Save cards to "cards.txt"', '{on/off}'),
     '-toipa':       (boolean_command, 'Translate AH Dictionary phonetic spelling into IPA', '{on/off}'),
@@ -494,47 +432,18 @@ HELP_ARG_COMMANDS: dict[str, tuple[Callable[..., CommandResult], str, str]] = {
     '-hsyn':        (boolean_command, 'Hide phrase in synonyms', '{on/off}'),
     '-hexsen':      (boolean_command, 'Hide phrase in example sentences', '{on/off}'),
     '-hpreps':      (boolean_command, 'Hide prepositions', '{on/off}'),
-    '-less':        (boolean_command, '[console] Use a pager (less) to display dictionaries', '{on/off}'),
-    '-cardpreview': (boolean_command, '[console] Preview created cards', '{on/off}'),
-    '-showsign':    (boolean_command, 'Show a ">" before main definitions', '{on/off}'),
     '-ankiconnect': (boolean_command, 'Use Anki-Connect to add cards', '{on/off}'),
     '-duplicates':  (boolean_command, 'Allow duplicates', '{on/off}'),
-    '-curses':      (boolean_command, 'Use the ncurses backend to interact with dictionaries', '{on/off}'),
-    '-nohelp':      (boolean_command, '[curses] Hide usage help (F1) by default', '{on/off}'),
 
     '-audio':       (audio_command, 'Audio server', '{ahd|diki|auto|-}'),
-    '-columns':     (columns_command, '(Maximum) number of columns when dispatching a dictionary', '{>=1|auto}'),
     '-deck':        (deck_command, 'Deck used for adding cards', '{deck name}'),
-    '-default':     (default_command, 'Default value for the definition field (-def)', '{e.g. 1,2,3}'),
     '-dict':        (dict_command, 'Primary dictionary', '{ahd|farlex|wordnet}'),
     '-dict2':       (dict2_command, 'Fallback dictionary', '{ahd|farlex|wordnet|-}'),
     '-dupescope':   (dupescope_command, 'Look for duplicates in', '{deck|collection}'),
     '-hideas':      (hideas_command, 'Hide with (default "...")', '{ whatever floats your boat }'),
-    '-margin':      (margin_command, "[curses] Column's left and right margin", '{0-99}'),
     '-note':        (note_command, 'Note used for adding cards', '{note name}'),
     '-tags':        (tags_command, 'Anki tags', '{tags separated by commas|-}'),
-    '-textwrap':    (textwrap_command, 'Text wrapping style', '{justify|regular|-}'),
-    '-tsc': (
-        tsc_command,
-        'Targeted sentence card creation priority',
-        "{\n"
-        "  Empty sentence field replace with:\n"
-        "    -      : don't replace\n"
-        "    std    : an example sentence\n"
-        "    strict : an example sentence or a phrase\n"
-        "}"
-    ),
-    '-recqual': (
-        recqual_command,
-        'Recording quality',
-        '{0-9}\n'
-        '(0: best, 9: worst, 4: recommended)'
-    ),
-    '-hlmode': (
-        hlmode_command,
-        '[curses] Selection highlight mode: HIGHLIGHT(y/n), BOLDEN(y/n)',
-        '{yy|yn|ny|nn}'
-    )
+    '-textwrap':    (textwrap_command, 'Text wrapping style', '{justify|regular}'),
 }
 
 
@@ -603,7 +512,7 @@ def color_command(cmd: str, *args: str) -> CommandResult:
     return CommandResult()
 
 
-def config_command(*args: str) -> CommandResult:
+def config_command(*_: str) -> CommandResult:
     result = []
     for a, b, c in CONFIG_COLUMNS:
         a = a.replace('[', f'{BOLD}[').replace(']', f']{DEFAULT}')
@@ -621,9 +530,7 @@ def config_command(*args: str) -> CommandResult:
         level_a = '\b\b\b\b\b' if '[' in a else ''
         level_b = '\b\b\b\b\b' if '[' in b else ''
 
-        if   a == '-sen':     a = '-sen        ╭ '
-        elif a == '-def':     a = '-def    -cc │ '
-        elif a == '-default': a = '-default    ╰ '
+        if a == '-def':     a = '-def'
         elif a == '-exsen':   a = '-exsen      ╭ '
         elif a == '-pos':     a = '-pos   -all │ '
         elif a == '-etym':    a = '-etym       ╰ '
@@ -634,15 +541,14 @@ def config_command(*args: str) -> CommandResult:
             f'{c:10s}{color_c}{state_c}{R}\n'
         )
     result.append(
-        f'\n--audio-path: {config["audio_path"]}\n'
-        f'--audio-device: {config["audio_device"]}\n\n'
+        f'\n--audio-path: {config["-mediapath"]}\n'
         'color configuration: "-c"\n'
     )
 
     return CommandResult(output=''.join(result))
 
 
-def check_note_command(cmd: str, *args: str) -> CommandResult:
+def check_note_command(*_: str) -> CommandResult:
     model_name = config['-note']
 
     try:
@@ -680,7 +586,7 @@ def check_note_command(cmd: str, *args: str) -> CommandResult:
     return CommandResult(output=''.join(result))
 
 
-def scheme_command(cmd: str, *args: str) -> CommandResult:
+def scheme_command(*_: str) -> CommandResult:
     return CommandResult(
         output=(
             f'{BOLD}'
@@ -699,7 +605,7 @@ def scheme_command(cmd: str, *args: str) -> CommandResult:
     )
 
 
-def browse_command(cmd: str, *args: str) -> CommandResult:
+def browse_command(_: str, *args: str) -> CommandResult:
     try:
         anki.invoke('guiBrowse', query=' '.join(args) if args else 'added:1')
     except anki.AnkiError as e:
@@ -728,12 +634,6 @@ See `--help-define-all` for more information.
 
 First the program queries `-dict` (default: AH Dictionary).
 If query fails it fallbacks to `-dict2` (default: Farlex Idioms).
-
-There are two front-ends:
-  console: Cross-platform
-  curses: Unix-like specific, experimental on Windows
-
-See `--help-console` and `--help-curses` for more information.
 
 DICTIONARY OPTIONS:
   -ahd             query AH Dictionary
@@ -785,44 +685,20 @@ or if you want more customization:
 -conf, -config      show current configuration and more options
 --help-config       show full config/commands help
 --help-console      show console specific help and usage
---help-curses       show curses specific help and usage
 --help-define-all   show bulk/define_all help
---help-rec          show recording help
 """
 
 HELP_CONFIG_TEXT = f"""\
 Type command's name to display usage.
 
-{_title('Curses only commands')}
--curses        use the ncurses backend to interact with dictionaries
--nohelp        do not show help (F1) by default
--margin {{0-99}} column's left and right margin
--hlmode {{      selection highlight mode: HIGHLIGHT(y/n), BOLDEN(y/n)
-  yy|yn|ny|nn
-}}
-
 {_title('Console only commands')}
--sen           enable/disable sentence field
 -def           enable/disable definition field
-               (disabling it will insert the `-default` value into it)
--default       default value for the definition field (-def)
--cc            create cards (changes `-sen`, `-def` and `-default`)
-
--less          use a pager (less) to display dictionaries
-               (with `-RFKX` options)
--cardpreview   preview the created card in the program
 
 {_title('Card creation commands')}
 -exsen         add example sentences
 -pos           add parts of speech
 -etym          add etymologies
 -all           change above fields state
-
--tsc           targeted sentence card creation priority
-               empty sentence field replace with:
-                -      : don't replace
-                std    : an example sentence
-                strict : an example sentence or a phrase
 
 -formatdefs    definition formatting:
                 every definition is indexed
@@ -832,9 +708,7 @@ Type command's name to display usage.
 -ap, --audio-path {{path|auto}}   audio save location (default "Cards_audio")
 
 {_title('Display configuration')}
--textwrap  {{justify|regular|-}}  text wrapping style
--columns   {{>=1|auto}}           (maximum) number of columns when dispatching
-                                  a dictionary
+-textwrap  {{justify|regular}}  text wrapping style
 -indent    {{>=0}}                width of wrapped lines' indent
 
 {_title('Hide and filter configuration')}
@@ -854,17 +728,6 @@ Hiding a phrase means replacing it with "..." (default)
 -dict  {{ahd|farlex|wordnet}}        primary dictionary
 -dict2 {{ahd|farlex|wordnet|-}}      fallback dictionary
 -audio {{ahd|diki|auto|-}}           audio server
-
---audio-device           configure a recording device
--rec, --record           start recording (saves recording, without adding it to
-                         the card)
-[QUERY] -rec, --record   start recording, (saves recording, adds it to the
-                         "Recording" field on the card and queries the
-                         dictionary
--recqual {{0-9}}           recording quality:
-                           0 : best
-                           9 : worst
-                           4 : recommended
 
 {_title('Anki-Connect configuration')}
 -ankiconnect           use Anki-Connect to add cards
@@ -896,9 +759,7 @@ Hiding a phrase means replacing it with "..." (default)
 -conf, -config      show current configuration and more options
 --help-config       show full config/commands help (*)
 --help-console      show console specific help and usage
---help-curses       show curses specific help and usage
 --help-define-all   show bulk/define_all help
---help-rec          show recording help
 """
 
 HELP_CONSOLE_TEXT = f"""\
@@ -910,9 +771,6 @@ Created cards are saved to the "cards.txt" file and their audio files
 to the directory specified by the `-ap` command ("Cards_audio" by default).
 If Anki-Connect is configured and enabled (`-ankiconnect on`) it adds the card
 directly to Anki.
-
-If you have "less" installed you can use it to handle dictionary display for
-easier navigation. You can turn it on with `-less on`.
 
 {_title('Fields')}
 To create a card, type definition's indices into the input field.
@@ -928,9 +786,7 @@ To create a card, type definition's indices into the input field.
 -conf, -config      show current configuration and more options
 --help-config       show full config/commands help
 --help-console      show console specific help and usage (*)
---help-curses       show curses specific help and usage
 --help-define-all   show bulk/define_all help
---help-rec          show recording help
 """
 
 HELP_CURSES_TEXT = f"""\
@@ -984,7 +840,6 @@ F1        toggle help (use `-nohelp on` to toggle it off by default)
 
 {BOLD}Miscellaneous:{DEFAULT}
   ^L        redraw the screen, useful when screen gets corrupted somehow
-  F8        cycle through the valid `-columns` values and update the screen
 
 {BOLD}Prompt:{DEFAULT}
   Prompt supports basic line editing.
@@ -1005,22 +860,10 @@ F1        toggle help (use `-nohelp on` to toggle it off by default)
 -conf, -config      show current configuration and more options
 --help-config       show full config/commands help
 --help-console      show console specific help and usage
---help-curses       show curses specific help and usage (*)
 --help-define-all   show bulk/define_all help
---help-rec          show recording help
 """
 
 HELP_DEFINE_ALL_TEXT = f"""\
-{_title('Input fields and default values')}
-You can create cards from single words or lists of words faster by changing
-the `-default` value and disabling input fields (`-def` and `-sen`).
-
-When the definition field is disabled, program doesn't prompt the user for
-input, but makes the choice based on the `-default` value.
-
-You can disable all input fields with the `-cc off` command.
-And then change the `-default` to whatever is desired,  e.g. 1,2
-
 {_title('Creating cards from lists of words')}
 Now when you enter something into Search card is immediately created, cool.
 Let's enter a bunch of words.
@@ -1054,68 +897,23 @@ formatting options to apply.
 -conf, -config      show current configuration and more options
 --help-config       show full config/commands help
 --help-console      show console specific help and usage
---help-curses       show curses specific help and usage
 --help-define-all   show bulk/define_all help (*)
---help-rec          show recording help
 """
 
-HELP_RECORDING_TEXT = f"""\
-{_title('Desktop audio recording')}
-The program offers a simple FFmpeg interface to record audio from the desktop.
-
-Currently supported configurations:
-  Linux   : pulseaudio or pipewire-pulse
-  Windows : dshow
-
-Official FFmpeg download site: https://www.ffmpeg.org/download.html
-
-To use ffmpeg first we have to add the executable to the system's $PATH or
-place it alongside "ankidodawacz.py" file in the program's root directory.
-To choose your preferred audio device use the `--audio-device` command.
-
-If recording doesn't work on Windows:
-  - open the "Audio mixer" in the sound settings
-  - tick the "Listen to this device" in the audio mixer properties
-  - allow applications to use the microphone
-
-On GNU/Linux use your distribution's package manager to install ffmpeg.
-Setup:
-  - type `-rec` into the program
-  - during recording go to the pulseaudio Audio mixer -> Recording
-  - instruct the "Lavf" device to use your output device, speakers, DAC, etc.
-
-To start the recording add the `-rec` option after the query.
-{BOLD}NOTE:{DEFAULT} Use [q] to end the recording, otherwise it might get corrupted or not
-      save at all.
-
-{BOLD}{79 * '─'}{DEFAULT}
--conf, -config      show current configuration and more options
---help-config       show full config/commands help
---help-console      show console specific help and usage
---help-curses       show curses specific help and usage
---help-define-all   show define_all help
---help-rec          show recording help (*)
-"""
-
-
-def help_command(*args: str) -> CommandResult:
+def help_command(*_: str) -> CommandResult:
     return CommandResult(output=HELP_TEXT)
 
-def help_config_command(*args: str) -> CommandResult:
+def help_config_command(*_: str) -> CommandResult:
     return CommandResult(output=HELP_CONFIG_TEXT)
 
-def help_console_command(*args: str) -> CommandResult:
+def help_console_command(*_: str) -> CommandResult:
     return CommandResult(output=HELP_CONSOLE_TEXT)
 
-def help_curses_command(*args: str) -> CommandResult:
+def help_curses_command(*_: str) -> CommandResult:
     return CommandResult(output=HELP_CURSES_TEXT)
 
-def help_define_all_command(*args: str) -> CommandResult:
+def help_define_all_command(*_: str) -> CommandResult:
     return CommandResult(output=HELP_DEFINE_ALL_TEXT)
-
-def help_recording_command(*args: str) -> CommandResult:
-    return CommandResult(output=HELP_RECORDING_TEXT)
-
 
 NO_HELP_ARG_COMMANDS: dict[str, Callable[..., CommandResult]] = {
     '-c': color_command,
@@ -1132,8 +930,5 @@ NO_HELP_ARG_COMMANDS: dict[str, Callable[..., CommandResult]] = {
     '--help-config': help_config_command,
     '--help-conf': help_config_command,
     '--help-console': help_console_command,
-    '--help-curses': help_curses_command,
     '--help-define-all': help_define_all_command,
-    '--help-recording': help_recording_command,
-    '--help-rec': help_recording_command,
 }
