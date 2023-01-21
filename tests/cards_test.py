@@ -1,6 +1,6 @@
 import pytest
 
-import src.cards as cards
+import src.card as card
 
 
 @pytest.mark.parametrize(
@@ -23,7 +23,7 @@ import src.cards as cards
     )
 )
 def test_hide_with_hide_prepositions(target, phrase_to_hide, expected):
-    assert cards.hide(target, phrase_to_hide, '___', hide_prepositions=True) == expected
+    assert card.hide(target, phrase_to_hide, '___', hide_prepositions=True) == expected
 
 
 @pytest.mark.parametrize(
@@ -36,5 +36,5 @@ def test_hide_with_hide_prepositions(target, phrase_to_hide, expected):
     )
 )
 def test_hide_without_hide_prepositions(target, phrase_to_hide, expected):
-    assert cards.hide(target, phrase_to_hide, '___', hide_prepositions=False) == expected
+    assert card.hide(target, phrase_to_hide, '___', hide_prepositions=False) == expected
 

@@ -1,0 +1,681 @@
+from __future__ import annotations
+
+import sys
+
+try:
+    import curses
+except ImportError:
+    sys.stderr.write(
+        'The curses module could not be imported.\n'
+        "If you are on Windows try installing 'windows-curses' with:\n"
+        'pip install windows-curses\n\n'
+    )
+    raise
+
+import contextlib
+from typing import Callable, Sequence, Iterable, NamedTuple, Iterator, TYPE_CHECKING
+
+import src.anki as anki
+from src.Curses.color import Color, init_colors
+from src.Curses.configmenu import ConfigMenu
+from src.Curses.pager import Pager
+from src.Curses.prompt import Prompt
+from src.Curses.proto import ScreenBufferInterface, StatusInterface
+from src.Curses.screen import Screen
+from src.Curses.util import (
+    Attr,
+    FUNCTION_BAR_PAD,
+    clipboard_or_selection,
+    compose_attrs,
+    draw_border,
+    hide_cursor,
+    mouse_left_click,
+    mouse_wheel_click,
+    mouse_wheel_down,
+    mouse_wheel_up,
+    truncate_if_needed,
+)
+from src.__version__ import __version__
+from src.card import create_and_add_card
+from src.data import WINDOWS, config, config_save
+from src.search import search
+
+if TYPE_CHECKING:
+    from src.Dictionaries.dictionary_base import Dictionary
+
+STRING_TO_BOOL = {
+    '1':    True, '0':     False,
+    'on':   True, 'off':   False,
+    't':    True,
+    'tak':  True, 'nie':   False,
+    'true': True, 'false': False,
+    'y':    True, 'n':     False,
+    'yes':  True, 'no':    False,
+}
+
+
+class StatusLine(NamedTuple):
+    header: str
+    body: str | None
+    color: int
+
+
+class Status:
+    def __init__(self, win: curses._CursesWindow, *, persistence: int) -> None:
+        self.win = win
+        self.persistence = persistence
+        self._buf: list[StatusLine] = []
+        self._ticks = 0
+
+    @property
+    def height(self) -> int:
+        return min(len(self._buf), int(0.6 * curses.LINES))
+
+    def put(self, header: str, body: str | None, color: int) -> None:
+        self._ticks = 0
+        self._buf.append(StatusLine(header, body, color))
+
+    def writeln(self, header: str, body: str | None = None) -> None:
+        self.put(header, body, 0)
+
+    def error(self, header: str, body: str | None = None) -> None:
+        self.put(header, body, Color.err | curses.A_BOLD)
+
+    def success(self, header: str, body: str | None = None) -> None:
+        self.put(header, body, Color.success | curses.A_BOLD)
+
+    def attention(self, header: str, body: str | None = None) -> None:
+        self.put(header, body, Color.heed | curses.A_BOLD)
+
+    def clear(self) -> None:
+        self._buf.clear()
+
+    def tick(self) -> None:
+        if self._ticks >= self.persistence:
+            self.clear()
+        else:
+            self._ticks += 1
+
+    def draw_if_available(self) -> bool:
+        if not self._buf or curses.LINES < 3:
+            return False
+
+        win = self.win
+
+        for y, i in enumerate(
+                range(len(self._buf) - self.height, len(self._buf)),
+                curses.LINES - self.height
+        ):
+            header, body, color = self._buf[i]
+            if body is None:
+                text = truncate_if_needed(header, curses.COLS)
+            else:
+                text = truncate_if_needed(f'{header} {body}', curses.COLS)
+
+            if text is None:
+                return False
+
+            try:
+                win.addstr(y, 0, text)
+            except curses.error:  # lower right corner write
+                pass
+
+            win.chgat(y, 0, len(header), color)
+
+        return True
+
+
+class StatusEcho(StatusInterface):
+    def __init__(self, screen_buffer: ScreenBufferInterface, status: StatusInterface) -> None:
+        self.screen_buffer = screen_buffer
+        self.status = status
+
+    def _refresh(self) -> None:
+        self.screen_buffer.draw()
+        self.screen_buffer.win.refresh()
+
+    def writeln(self, header: str, body: str | None = None) -> None:
+        self.status.writeln(header, body)
+        self._refresh()
+
+    def error(self, header: str, body: str | None = None) -> None:
+        self.status.error(header, body)
+        self._refresh()
+
+    def success(self, header: str, body: str | None = None) -> None:
+        self.status.success(header, body)
+        self._refresh()
+
+    def attention(self, header: str, body: str | None = None) -> None:
+        self.status.attention(header, body)
+        self._refresh()
+
+    def clear(self) -> None:
+        self.status.clear()
+        self._refresh()
+
+
+def _textattr(s: str, attr: int) -> tuple[str, list[Attr]]:
+    return (s, [Attr(0, len(s), attr)])
+
+
+def _text(t: Iterable[str]) -> list[tuple[str, list[Attr]]]:
+    return [(x, []) for x in t]
+
+
+HELP_TEXT = [
+_textattr(f'Ankidodawacz v{__version__}', curses.A_BOLD),
+*_text((
+'',
+' Press / to enter dictionary search.',
+' Press ^F to search for something on this page.',
+'',
+'This program uses VI style keybindings for navigation and supports basic',
+'mouse functions like left click select, scroll wheel paste and right click',
+'submit.',
+'',
+'Here is an extensive list of keybindings.',
+'The ^ symbol denotes "Ctrl".  E.g. ^C means Ctrl-c.',
+'',
+)),
+_textattr('NAVIGATION', curses.A_BOLD | curses.A_UNDERLINE),
+*_text((
+' ^C         exit',
+' q ^X       go back - exit eventually',
+' j ^N       move down',
+' k ^P       move up',
+' l h        go to the next/previous screen',
+' PgUp PgDn  page up and page down',
+'            (on some terminals you have to hold Shift for it to work)',
+' g Home     go to the top of the page',
+' G End      go to the bottom of the page',
+'',
+)),
+_textattr('SEARCH', curses.A_BOLD | curses.A_UNDERLINE),
+*_text((
+' /          open the search prompt',
+' p wheel    insert the contents of primary selection (via xsel or xclip)',
+'            or clipboard (on Windows) into the search prompt',
+' P          insert contents of the "Phrase" field from the currently',
+'            reviewed Anki card',
+'',
+' To make use of extra options, like querying additional dictionaries,',
+' follow your query with -[OPTION].  E.g. "[QUERY] -c"',
+'',
+' Extra search options:',
+'  -ahd             query AH Dictionary',
+'  -i, -farlex      query Farlex Idioms',
+'  -wnet, -wordnet  query WordNet',
+'  -c, -compare     query "-dict" and "-dict2" simultaneously',
+'                   expands to "-ahd -farlex" by default',
+'',
+' To make multiple queries at once separate them with a "," or ";", you can',
+' also use multiple search options at once.',
+' E.g.  [QUERY] -wnet, [QUERY2] -ahd -i, [QUERY3]...',
+'',
+)),
+_textattr('FIND IN PAGE', curses.A_BOLD | curses.A_UNDERLINE),
+*_text((
+' Search is case sensitive if there is at least one uppercase letter present,',
+' i.e. "smartcase search".',
+'',
+' ^F F4      open the "find" prompt',
+' n N        go to the next/previous match',
+' ^J Enter   clear all matches',
+'',
+)),
+_textattr('SELECTION AND ANKI', curses.A_BOLD | curses.A_UNDERLINE),
+*_text((
+' 1-9 !-)    select definition from 1 to 20, press 0 for the tenth definition',
+'            hold Shift for the remaining 11 to 20',
+' c          create card(s) from the selected definitions',
+' b          open the Anki card browser',
+' d          deselect everything',
+'',
+)),
+_textattr('PROMPT', curses.A_BOLD | curses.A_UNDERLINE),
+*_text((
+' Prompt supports basic line editing.',
+' Only special/notable shortcuts are listed.',
+' ',
+' ^C ESC     exit without submitting',
+' ^K         delete everything from the cursor to the end of the line',
+' ^T         delete everything except the word under the cursor',
+'',
+)),
+_textattr('MISCELLANEOUS', curses.A_BOLD | curses.A_UNDERLINE),
+*_text((
+' ^L         redraw the screen (useful if it gets corrupted somehow)',
+)),
+]
+
+
+class ScreenBuffer(ScreenBufferInterface):
+    def __init__(self, win: curses._CursesWindow, screens: Sequence[Screen] | None = None) -> None:
+        self.win = win
+        self.help_pager = Pager(win, HELP_TEXT)
+        self.screens = screens or []
+        self._screen_i = 0
+        self.status = Status(win, persistence=7)
+        self.page: Screen | Pager = self.help_pager
+
+    def _insert_screens(self, screens: Sequence[Screen]) -> None:
+        _margin = self.page.margin_bot
+        self.page = screens[0]
+        self.page.margin_bot = _margin
+        self.screens = screens
+        self._screen_i = 0
+
+    def _search_prompt(self, pretype: str) -> None:
+        typed = Prompt(self, 'Search: ', pretype=pretype).run()
+        if typed is None or not typed.strip():
+            return
+
+        dictionaries = search(StatusEcho(self, self.status), typed)
+        if dictionaries is not None:
+            self._insert_screens(tuple(Screen(self.win, x) for x in dictionaries))
+
+    def search_prompt(self, *, pretype: str = '') -> None:
+        self.status.clear()
+        self._search_prompt(' '.join(pretype.split()))
+
+    @contextlib.contextmanager
+    def extra_margin(self, n: int) -> Iterator[None]:
+        t = self.page.margin_bot
+        self.page.margin_bot += n
+        yield
+        self.page.margin_bot = t
+
+    def page_back(self) -> bool:
+        if self.screens and isinstance(self.page, Pager):
+            self.page = self.screens[self._screen_i]
+            return True
+        else:
+            return False
+
+    def _draw_border(self, margin_bot: int) -> None:
+        win = self.win
+        page = self.page
+
+        draw_border(win, margin_bot)
+
+        items = []
+        items_attr_values = []
+
+        if page.is_highlight_active():
+            match_hint = f'MATCHES: {page.highlight_nmatches}'
+            items.append(match_hint)
+            items_attr_values.append(
+                (len(match_hint), curses.A_BOLD, 2)
+            )
+
+        if isinstance(page, Screen):
+            header = truncate_if_needed(page.selector.dictionary.contents[0][1], curses.COLS - 8)
+            if header is not None:
+                win.addstr(0, 2, f'[ {header} ]')
+                win.chgat(0, 4, len(header), Color.delimit | curses.A_BOLD)
+            if len(self.screens) > 1:
+                screen_hint = f'{self._screen_i + 1}/{len(self.screens)}'
+                items.append(screen_hint)
+                items_attr_values.append((len(screen_hint), curses.A_BOLD, 0))
+        elif isinstance(page, Pager):
+            scroll_hint = page.scroll_hint()
+            items.append(scroll_hint)
+            items_attr_values.append((len(scroll_hint), curses.A_BOLD | curses.A_STANDOUT, 0))
+        else:
+            raise AssertionError('unreachable')
+
+        if not items:
+            return
+
+        btext = truncate_if_needed('╶╴'.join(items), curses.COLS - 4)
+        if btext is None:
+            return
+
+        y = curses.LINES - margin_bot - 1
+        x = curses.COLS - len(btext) - 3
+        try:
+            win.addstr(y, x, f'╴{btext}╶')
+        except curses.error:  # window too small
+            return
+
+        for i, span, attr in compose_attrs(
+                items_attr_values,
+                width=curses.COLS - 3,
+                start=1
+        ):
+            win.chgat(y, x + i, span, attr)
+
+    def _draw_function_bar(self) -> None:
+        bar = truncate_if_needed('F1 Help  F2 Configuration  F3 Anki-setup  F4 Recheck-note', curses.COLS)
+        if bar is None:
+            return
+
+        attrs = compose_attrs(
+            (
+                (2, curses.A_STANDOUT | curses.A_BOLD, 7),
+                (2, curses.A_STANDOUT | curses.A_BOLD, 16),
+                (2, curses.A_STANDOUT | curses.A_BOLD, 13),
+                (2, curses.A_STANDOUT | curses.A_BOLD, 0),
+            ), width=curses.COLS
+        )
+        win = self.win
+        y = curses.LINES - 1
+
+        try:
+            win.addstr(y, 0, bar)
+        except curses.error:  # lower right corner
+            pass
+
+        for index, span, attr in attrs:
+            win.chgat(y, index, span, attr)
+
+    def draw(self) -> None:
+        if curses.COLS < 4:
+            return
+
+        self.win.erase()
+        self.win.attrset(Color.delimit)
+
+        page = self.page
+        if page.margin_bot < FUNCTION_BAR_PAD:
+            page.margin_bot = FUNCTION_BAR_PAD
+
+        initial_margin = page.margin_bot
+        if initial_margin < self.status.height:
+            page.margin_bot = self.status.height
+
+        self._draw_border(page.margin_bot)
+        if not self.status.draw_if_available():
+            self._draw_function_bar()
+
+        page.draw()
+
+        page.margin_bot = initial_margin
+
+    def resize(self) -> None:
+        curses.update_lines_cols()
+
+        for screen in self.screens:
+            screen.resize()
+
+        self.help_pager.resize()
+
+        self.win.clearok(True)
+
+    def next(self) -> None:
+        if self.screens and isinstance(self.page, Screen):
+            if self._screen_i < len(self.screens) - 1:
+                self._screen_i += 1
+            self.page = self.screens[self._screen_i]
+
+    def previous(self) -> None:
+        if self.screens and isinstance(self.page, Screen):
+            if self._screen_i > 0:
+                self._screen_i -= 1
+            self.page = self.screens[self._screen_i]
+
+    def toggle_help(self) -> None:
+        if self.screens and isinstance(self.page, Pager):
+            self.page = self.screens[self._screen_i]
+        else:
+            self.page = self.help_pager
+
+    def anki_configuration(self) -> None:
+        st = self.status
+        st.clear()
+
+        st.attention('Welcome to the Anki configuration!')
+        st.writeln('First, make sure you have Anki up and running.')
+        st.writeln('Then, you will need the Anki-Connect add-on installed, to do that,')
+        st.writeln('insert 2055492159 into the Tools > Add-ons > Get Add-ons... text box')
+        st.writeln('and restart Anki.')
+        st.writeln('')
+        st.writeln('You will be offered options, you can press TAB to cycle through them.')
+        st.writeln('')
+
+        expressing_desire_to_continue = ask_yes_no(self, 'Continue?', default=True)
+        st.clear()
+
+        if not expressing_desire_to_continue:
+            return
+
+        try:
+            chosen_model = anki.add_custom_note('gryzus-std.json')
+        except anki.ModelExistsError:
+            chosen_model = 'gryzus-std'
+        except anki.AnkiError as e:
+            st.error('Could not continue:', str(e))
+            return
+
+        decks = anki.invoke('deckNames')
+        if len(decks) == 1:
+            chosen_deck = decks.pop()
+        else:
+            typed = Prompt(self, 'Choose deck: ', exiting_bspace=False).run(decks)
+            if typed is None or not typed.strip():
+                st.error('Cancelled, input lost')
+                return
+
+            chosen_deck = typed.strip()
+
+        try:
+            collections = anki.collection_media_paths()
+        except ValueError as e:
+            st.error('Locating collection.media paths failed:', str(e))
+            return
+
+        if len(collections) == 1:
+            chosen_collection = collections.pop()
+        else:
+            typed = Prompt(
+                self, 'Choose collection: ', exiting_bspace=False
+            ).run(collections)
+            if typed is None or not typed.strip():
+                st.error('Cancelled, input lost')
+                return
+
+            chosen_collection = typed.strip()
+
+        config['note'] = chosen_model
+        config['deck'] = chosen_deck
+        config['mediapath'] = chosen_collection
+        config_save(config)
+
+        st.attention('Configuration complete!')
+
+        st.writeln(curses.COLS * '=')
+        st.writeln(f'-note      set to: {chosen_model}')
+        st.writeln(f'-deck      set to: {chosen_deck}')
+        st.writeln(f'-mediapath set to: {chosen_collection}')
+        st.writeln(curses.COLS * '=')
+
+    def find_in_page(self) -> None:
+        self.status.clear()
+        typed = Prompt(self, 'Find in page: ').run()
+        if typed is not None and typed:
+            try:
+                self.page.hlsearch(typed)
+            except ValueError as e:
+                self.status.error('Nothing matches', str(e))
+
+    ACTIONS = {
+        b'KEY_RESIZE': resize, b'^L': resize,
+        b'l': next,     b'KEY_RIGHT': next,
+        b'h': previous, b'KEY_LEFT': previous,
+        b'KEY_F(1)': toggle_help,
+        b'KEY_F(3)': anki_configuration,
+        b'^F': find_in_page,
+    }
+    def dispatch(self, key: bytes) -> bool:
+        if self.page.dispatch(key):
+            return True
+        if key in self.ACTIONS:
+            self.ACTIONS[key](self)
+            return True
+
+        return False
+
+
+def perror_clipboard_or_selection(status: Status) -> str | None:
+    try:
+        return clipboard_or_selection()
+    except ValueError as e:
+        status.error(str(e))
+    except LookupError as e:
+        status.error(
+            f'Could not access the {"clipboard" if WINDOWS else "primary selection"}:',
+            str(e)
+        )
+
+    return None
+
+
+def perror_currently_reviewed_phrase(status: Status) -> str | None:
+    try:
+        return anki.currently_reviewed_phrase()
+    except anki.AnkiError as e:
+        status.error('Paste from the "Phrase" field failed:', str(e))
+        return None
+
+
+def ask_yes_no(screen_buffer: ScreenBuffer, prompt_name: str, *, default: bool) -> bool:
+    typed = Prompt(
+        screen_buffer,
+        f'{prompt_name} [{"Y/n" if default else "y/N"}]: ',
+        exiting_bspace=False
+    ).run()
+    if typed is None:
+        return default
+    else:
+        return STRING_TO_BOOL.get(typed.strip().lower(), default)
+
+
+def entry_search(implementor: ScreenBufferInterface, status: StatusInterface) -> list[Dictionary]:
+    while True:
+        typed = Prompt(implementor, 'Search: ', exiting_bspace=False).run()
+        if typed is None:
+            raise SystemExit
+
+        dictionaries = search(status, typed)
+        if dictionaries is not None:
+            return dictionaries
+
+
+def perror_recheck_note(status: Status) -> None:
+    try:
+        model = anki.models.get_model(config['note'], recheck=True)
+    except anki.AnkiError as e:
+        status.error('Recheck-note failed:', str(e))
+        return
+
+    k_offset = len('Field name')
+    v_offset = len('Value')
+    for k, v in model.items():
+        if len(k) > k_offset:
+            k_offset = len(k)
+        if v is not None and len(v) > v_offset:
+            v_offset = len(v)
+
+    status.writeln('Note:', config['note'])
+    status.writeln('')
+    status.writeln(f'{"Field name":{k_offset}s}  Value')
+    status.writeln(f'{k_offset * "-"}  {v_offset * "-"}')
+
+    for k, v in model.items():
+        status.writeln(f'{k:{k_offset}s}  {v or "?"}')
+
+
+SEARCH_ENTER_ACTIONS: dict[bytes, Callable[[Status], str | None]] = {
+    b'p': perror_clipboard_or_selection,
+    b'P': perror_currently_reviewed_phrase,
+    b'/': lambda _: '',
+}
+
+
+def curses_main(stdscr: curses._CursesWindow) -> None:
+    screen_buffer = ScreenBuffer(stdscr)
+    while True:
+        screen_buffer.status.tick()
+        screen_buffer.draw()
+
+        c = curses.keyname(stdscr.getch())
+        if screen_buffer.dispatch(c):
+            continue
+
+        elif c == b'KEY_MOUSE':
+            _, x, y, _, bstate = curses.getmouse()
+            if mouse_left_click(bstate):
+                if isinstance(screen_buffer.page, Screen):
+                    screen_buffer.page.mark_box_at(y, x)
+            elif mouse_wheel_up(bstate):
+                screen_buffer.page.move_up()
+            elif mouse_wheel_down(bstate):
+                screen_buffer.page.move_down()
+            elif mouse_wheel_click(bstate):
+                pretype = perror_clipboard_or_selection(screen_buffer.status)
+                if pretype is not None:
+                    screen_buffer.search_prompt(pretype=pretype)
+
+        elif c in SEARCH_ENTER_ACTIONS:
+            pretype = SEARCH_ENTER_ACTIONS[c](screen_buffer.status)
+            if pretype is not None:
+                screen_buffer.search_prompt(pretype=pretype)
+
+        elif c in (b'b', b'B'):
+            try:
+                anki.invoke('guiBrowse', query='added:1')
+            except anki.AnkiError as e:
+                screen_buffer.status.error('Could not open the card browser:', str(e))
+            else:
+                screen_buffer.status.success('Anki card browser opened')
+
+        elif c in (b'c', b'C'):
+            if not isinstance(screen_buffer.page, Screen):
+                continue
+
+            screen_buffer.status.clear()
+
+            selections = screen_buffer.page.selector.dump_selection()
+            if selections is None:
+                screen_buffer.status.error('Nothing selected')
+            else:
+                create_and_add_card(StatusEcho(screen_buffer, screen_buffer.status), selections)
+                screen_buffer.page.deselect_all()
+
+        elif c == b'KEY_F(2)':
+            config_menu = ConfigMenu(stdscr)
+            _lines, _cols = curses.LINES, curses.COLS
+            try:
+                config_menu.run()
+            except ValueError as e:
+                screen_buffer.status.error('F2 Config:', str(e))
+
+            if curses.is_term_resized(_lines, _cols):
+                screen_buffer.resize()
+
+        elif c == b'KEY_F(4)':
+            screen_buffer.status.clear()
+            perror_recheck_note(screen_buffer.status)
+
+        elif c in (b'q', b'Q', b'^X'):
+            if not screen_buffer.page_back():
+                raise KeyboardInterrupt
+
+
+def main() -> None:
+    stdscr = curses.initscr()
+    try:
+        hide_cursor()
+        stdscr.keypad(True)
+
+        curses.cbreak()
+        curses.noecho()
+        curses.mousemask(-1)
+        curses.mouseinterval(0)
+
+        init_colors()
+
+        curses_main(stdscr)
+    finally:
+        curses.endwin()

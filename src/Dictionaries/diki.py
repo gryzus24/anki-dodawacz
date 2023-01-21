@@ -1,8 +1,7 @@
 from __future__ import annotations
 
 from src.Dictionaries.dictionary_base import DictionaryError
-from src.Dictionaries.utils import http, request_soup
-from src.colors import Color, R
+from src.Dictionaries.util import http
 
 
 def diki_audio(raw_phrase: str, flag: str = '') -> str:
@@ -17,18 +16,18 @@ def diki_audio(raw_phrase: str, flag: str = '') -> str:
     url_ame = f'https://www.diki.pl/images-common/en-ame/mp3/{diki_phrase}{flag}.mp3'
 
     # First try British pronunciation, then American.
-    if http.urlopen('HEAD', url).status == 200:
+    if http.urlopen('HEAD', url).status == 200:  # type: ignore[no-untyped-call]
         return url
-    if http.urlopen('HEAD', url_ame).status == 200:
+    if http.urlopen('HEAD', url_ame).status == 200:  # type: ignore[no-untyped-call]
         return url_ame
 
     if flag:
         # Try the same but without the flag
         url = f'https://www.diki.pl/images-common/en/mp3/{diki_phrase}.mp3'
         url_ame = f'https://www.diki.pl/images-common/en-ame/mp3/{diki_phrase}.mp3'
-        if http.urlopen('HEAD', url).status == 200:
+        if http.urlopen('HEAD', url).status == 200:  # type: ignore[no-untyped-call]
             return url
-        if http.urlopen('HEAD', url_ame).status == 200:
+        if http.urlopen('HEAD', url_ame).status == 200:  # type: ignore[no-untyped-call]
             return url_ame
 
     def shorten_to_possessive(*ignore: str) -> str:
@@ -66,18 +65,7 @@ def diki_audio(raw_phrase: str, flag: str = '') -> str:
             last_phrase = diki_phrase
 
         url = f'https://www.diki.pl/images-common/en/mp3/{diki_phrase}.mp3'
-        if http.urlopen('HEAD', url).status == 200:
+        if http.urlopen('HEAD', url).status == 200:  # type: ignore[no-untyped-call]
             return url
 
-    raise DictionaryError(f'{Color.err}Diki: no audio for {R}{raw_phrase!r}')
-
-
-def ahd_audio(query: str) -> str:
-    soup = request_soup('https://www.ahdictionary.com/word/search.html?q=' + query)
-
-    check = soup.find('a', {'target': '_blank'})
-    if check is None or check['href'] == 'http://www.hmhco.com':
-        raise DictionaryError(f'{Color.err}AHD: no audio for {R}{query!r}')
-
-    return 'https://www.ahdictionary.com' + check['href']
-
+    raise DictionaryError(f'Diki: no audio for {raw_phrase!r}')

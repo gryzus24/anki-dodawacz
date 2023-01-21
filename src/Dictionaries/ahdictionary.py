@@ -4,7 +4,7 @@ from itertools import filterfalse
 from typing import Any, Callable, Iterable, TypeVar
 
 from src.Dictionaries.dictionary_base import Dictionary, DictionaryError
-from src.Dictionaries.utils import request_soup
+from src.Dictionaries.util import request_soup
 from src.data import config
 
 AHD_IPA_translation = str.maketrans({
@@ -171,10 +171,10 @@ def ask_ahdictionary(query: str) -> Dictionary:
     soup = request_soup('https://www.ahdictionary.com/word/search.html', {'q': query})
 
     try:
-        if soup.find('div', {'id': 'results'}).text == 'No word definition found':
+        if soup.find('div', {'id': 'results'}).text == 'No word definition found':  # type: ignore[union-attr]
             raise DictionaryError(f'AHDictionary: {query!r} not found')
     except AttributeError:
-        raise DictionaryError('Error: ahdictionary.com might be down')
+        raise DictionaryError('AHD: ahdictionary.com might be down')
 
     ahd = Dictionary(name='ahd')
 
@@ -191,7 +191,7 @@ def ask_ahdictionary(query: str) -> Dictionary:
         header = header.replace('(', ' (').replace(')', ') ')
         phrase, phon_spell = _extract_phrase_and_phonetic_spelling(header)
 
-        if config['-toipa']:
+        if config['toipa']:
             phon_spell = _translate_ahd_to_ipa(phon_spell, th)
         else:
             phon_spell = _fix_stress_and_remove_private_symbols(phon_spell)
@@ -278,7 +278,7 @@ def ask_ahdictionary(query: str) -> Dictionary:
 
             pos = _fix_stress_and_remove_private_symbols(pos)
 
-            if config['-toipa']:
+            if config['toipa']:
                 # this is very general, I have no idea how to differentiate these correctly
                 th = 'ð' if pos.startswith('th') else 'θ'
                 phon_spell = _translate_ahd_to_ipa(phon_spell, th)
@@ -293,7 +293,7 @@ def ask_ahdictionary(query: str) -> Dictionary:
         etymology = td.find('div', class_='etyseg', recursive=False)
         if etymology is not None:
             etym = etymology.text.strip()
-            if config['-shortetyms']:
+            if config['shortetyms']:
                 ahd.add('ETYM', _shorten_etymology(etym.strip('[]')))
             else:
                 ahd.add('ETYM', etym)

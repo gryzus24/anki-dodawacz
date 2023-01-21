@@ -1,137 +1,118 @@
 from __future__ import annotations
 
 import curses
-from itertools import chain
-from typing import TYPE_CHECKING, NamedTuple, Callable
+from typing import TYPE_CHECKING
 
-import src.Curses.env as env
-from src.Curses.utils import (
+from src.Curses.util import (
     clipboard_or_selection,
-    get_key,
     hide_cursor,
-    mouse_wheel_clicked,
+    mouse_right_click,
+    mouse_wheel_click,
     show_cursor,
     truncate_if_needed,
 )
 from src.data import WINDOWS, ON_TERMUX
-from src.commands import INTERACTIVE_COMMANDS, HELP_ARG_COMMANDS, NO_HELP_ARG_COMMANDS
 
 if TYPE_CHECKING:
-    from src.Curses.curses_main import ScreenHolderInterface
-    from src.proto import ScreenHolderInterface
-
-
-class CRecord(NamedTuple):
-    word: str
-    query_ok: bool
-
-
-def _crecord_parse(s: str) -> CRecord:
-    head, _, tail = s.strip().partition('\t')
-    return CRecord(tail, head == '+')
-
-
-def load_completions() -> list[CRecord]:
-    result = [
-        CRecord(x, True)
-        for x in chain(
-            INTERACTIVE_COMMANDS,
-            NO_HELP_ARG_COMMANDS,
-            HELP_ARG_COMMANDS,
-            ('--define-all',)
-        )
-    ]
-    with open('query_history.txt') as f:
-        result.extend(map(_crecord_parse, f))
-
-    return result
-
-
-_COMPLETIONS = load_completions()
+    from src.Curses.proto import ScreenBufferInterface
 
 
 class CompletionMenu:
-    def __init__(self, implementor: ScreenHolderInterface, win: curses._CursesWindow, completions: list[CRecord]) -> None:
-        self.implementor = implementor
+    def __init__(self, win: curses._CursesWindow, elements: list[str]) -> None:
         self.win = win
-        self.completions = completions
-        self._cur = 0
+        self.elements = elements
+        self._completions = elements
+        self._current_completion_str: str | None = None
+        self._cur: int | None = None
+        self._scroll = 0
 
-    @staticmethod
-    def show(win: curses._CursesWindow, completions: list[CRecord], _cur: int | None = None) -> None:
-        y = env.LINES - 2
-        x = 0
-        for i, (word, ok) in enumerate(completions):
-            if ok:
-                hl = curses.color_pair(curses.COLOR_YELLOW)
-            else:
-                hl  = curses.color_pair(curses.COLOR_GREEN)
+    def height(self) -> int:
+        r = min(len(self._completions), curses.LINES // 5)
+        return r if r > 1 else 1
 
-            if _cur == i:
-                hl |= curses.A_STANDOUT | curses.A_BOLD
-
-            try:
-                win.addstr(y, x, word, hl)
-            except curses.error:
-                break
-
-            x += len(word) + 2
+    @property
+    def completions(self) -> list[str]:
+        return self._completions
 
     def draw(self) -> None:
-        self.show(self.win, self.completions, self._cur)
+        cur = self._cur or 0
+        menu_height = self.height()
 
-    def next(self) -> None:
-        self._cur = (self._cur + 1) % len(self.completions)
+        if cur >= self._scroll + menu_height:
+            self._scroll = cur - menu_height + 1
+        elif cur < self._scroll:
+            self._scroll = cur
 
-    def prev(self) -> None:
-        self._cur = (self._cur - 1) % len(self.completions)
+        y = curses.LINES - 2
+        width = curses.COLS
+        for i in range(self._scroll, self._scroll + menu_height):
+            hl = curses.color_pair(curses.COLOR_GREEN)
+            if self._cur == i:
+                hl |= curses.A_STANDOUT | curses.A_BOLD
 
-    ACTIONS: dict[bytes, Callable[[CompletionMenu], None]] = {
-        b'^I': next,
-        b'KEY_BTAB': prev,
-    }
+            text = truncate_if_needed(f'{i + 1:<3d}  {self._completions[i]}', width)
+            if text is None:
+                return
+            try:
+                self.win.addstr(y, 0, text, hl)
+            except curses.error:  # window too small
+                return
+            else:
+                y -= 1
 
-    def run(self) -> str | None:
-        while True:
-            self.implementor.draw()
-            self.draw()
+    def complete(self, s: str) -> None:
+        if self._current_completion_str == s:
+            return
 
-            key = curses.keyname(get_key(self.win))
-            if key in (b'^C', b'^['):
-                return None
-            elif key in self.ACTIONS:
-                self.ACTIONS[key](self)
-            elif key in (b'^J', b'^M'):
-                return self.completions[self._cur].word
+        self._current_completion_str = s
+        self._cur = None
+        self._scroll = 0
+        self._completions = [x for x in self.elements if x.startswith(s)]
 
-    def setup(self) -> None:
-        curses.raw()
-        hide_cursor()
+    def _select(self, n: int) -> str | None:
+        if not self._completions:
+            return None
+
+        if self._cur is None:
+            self._cur = 0
+        else:
+            self._cur = (self._cur + n) % len(self._completions)
+
+        return self._completions[self._cur]
+
+    def next(self) -> str | None:
+        return self._select(1)
+
+    def prev(self) -> str | None:
+        return self._select(-1)
 
 
 class Prompt:
     def __init__(self,
-            implementor: ScreenHolderInterface,
-            win: curses._CursesWindow,
+            implementor: ScreenBufferInterface,
             prompt: str = '', *,
             pretype: str = '',
-            exit_if_empty: bool = True,
+            exiting_bspace: bool = True
     ) -> None:
         self.implementor = implementor
-        self.win = win
-        self.prompt: str = prompt
-        self.exit_if_empty: bool = exit_if_empty
+        self.win = implementor.win
+        self.prompt = prompt
+        self.exiting_bspace = exiting_bspace
         self._cursor = len(pretype)
         self._entered = pretype
+
+    @staticmethod
+    def normalize(s: str | None) -> str:
+        return s.strip() if s else ''
 
     def draw(self) -> None:
         # Prevents going into an infinite loop on some terminals, or even
         # something worse, as the terminal (32-bit xterm)
-        # locks up completely when env.COLS < 2.
-        if env.COLS < 2:
+        # locks up completely when curses.COLS < 2.
+        if curses.COLS < 2:
             return
 
-        width = env.COLS - 1
+        width = curses.COLS - 1
         offset = width // 3
 
         if self.prompt:
@@ -141,7 +122,7 @@ class Prompt:
         else:
             prompt_text = ''
 
-        y = env.LINES - 1
+        y = curses.LINES - 1
 
         self.win.move(y, 0)
         self.win.clrtoeol()
@@ -244,7 +225,7 @@ class Prompt:
         self._delete_right(self._cursor, 1)
 
     def backspace(self) -> None:
-        if not self._entered and self.exit_if_empty:
+        if not self._entered and self.exiting_bspace:
             curses.ungetch(3)  # ^C
             return
         if self._cursor <= 0:
@@ -253,7 +234,7 @@ class Prompt:
         self._delete_right(self._cursor, 1)
 
     def ctrl_backspace(self) -> None:
-        if not self._entered and self.exit_if_empty:
+        if not self._entered and self.exiting_bspace:
             curses.ungetch(3)  # ^C
             return
         if self._cursor <= 0:
@@ -291,6 +272,7 @@ class Prompt:
         b'KEY_HOME': home,     b'^A': home,
         b'KEY_END': end,       b'^E': end,
         b'KEY_DC': delete,     b'^D': delete,
+        b'^W': ctrl_backspace,
         b'^K': ctrl_k,
         b'^T': ctrl_t,
     }
@@ -309,80 +291,68 @@ class Prompt:
             ACTIONS[b'KEY_BACKSPACE'] = backspace
             ACTIONS[b'^H'] = ctrl_backspace
 
-    class CompletionCallback:
-        def __init__(self, screen_buffer: ScreenHolderInterface, prompt: Prompt) -> None:
-            self.screen_buffer = screen_buffer
-            self.prompt = prompt
+    def _run(self, completions: list[str]) -> str | None:
+        cmenu = CompletionMenu(self.win, completions)
+        do_completion = False
 
-        def draw(self) -> None:
-            with self.screen_buffer.extra_margin(1):
-                self.screen_buffer.draw()
-            self.prompt.draw()
-
-        def resize(self) -> None:
-            self.screen_buffer.resize()
-
-    def _run(self) -> str | None:
         while True:
-            if self._entered.strip():
-                comps = [x for x in _COMPLETIONS if x.word.startswith(self._entered.strip())]
-                if comps:
-                    with self.implementor.extra_margin(1):
-                        self.implementor.draw()
-                    CompletionMenu.show(self.win, comps)
-                else:
+            if do_completion:
+                cmenu.complete(self._entered.strip())
+            else:
+                do_completion = True
+
+            if cmenu.completions:
+                with self.implementor.extra_margin(cmenu.height()):
                     self.implementor.draw()
+                cmenu.draw()
             else:
                 self.implementor.draw()
-                comps = []
 
             self.draw()
 
-            c_code = get_key(self.win)
-            if 32 <= c_code <= 126:  # printable
-                self.insert(chr(c_code))
+            c = self.win.getch()
+            if 32 <= c <= 126:  # printable
+                self.insert(chr(c))
                 continue
 
-            c = curses.keyname(c_code)
-            if c in (b'^C', b'^['):
-                return None
-            elif c in (b'^I', b'KEY_BTAB') and comps:
-                cmenu = CompletionMenu(
-                    self.CompletionCallback(self.implementor, self),
-                    self.win,
-                    comps
-                )
-                cmenu.setup()
-                choice = cmenu.run()
-                show_cursor()
-                curses.raw()
+            key = curses.keyname(c)
+            if key in Prompt.ACTIONS:
+                Prompt.ACTIONS[key](self)
+            elif key in (b'^I', b'^P'):
+                do_completion = False
+                choice = cmenu.next()
                 if choice is not None:
                     self._clear()
                     self.insert(choice)
-            elif c in Prompt.ACTIONS:
-                Prompt.ACTIONS[c](self)
-            elif c == b'KEY_MOUSE':
+            elif key in (b'KEY_BTAB', b'^N'):
+                do_completion = False
+                choice = cmenu.prev()
+                if choice is not None:
+                    self._clear()
+                    self.insert(choice)
+            elif key == b'KEY_MOUSE':
                 bstate = curses.getmouse()[4]
-                if mouse_wheel_clicked(bstate):
+                if mouse_wheel_click(bstate):
                     try:
                         self.insert(clipboard_or_selection())
                     except (ValueError, LookupError):
                         pass
-                elif bstate & curses.BUTTON3_PRESSED:
+                elif mouse_right_click(bstate):
                     ret = self._entered
                     self._clear()
                     return ret
-            elif c in (b'^J', b'^M'):  # ^M: Enter on Windows
+            elif key in (b'^J', b'^M'):  # ^M: Enter on Windows
                 ret = self._entered
                 self._clear()
                 return ret
+            elif key in (b'^C', b'^\\', b'^['):
+                return None
 
-    def run(self) -> str | None:
+    def run(self, completions: list[str] | None = None) -> str | None:
         curses.raw()
         show_cursor()
         try:
-            return self._run()
+            return self._run(completions or [])
         finally:
             hide_cursor()
             curses.cbreak()
-

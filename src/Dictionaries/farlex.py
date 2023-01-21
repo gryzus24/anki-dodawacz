@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from src.Dictionaries.dictionary_base import Dictionary, DictionaryError
-from src.Dictionaries.utils import request_soup
+from src.Dictionaries.util import request_soup
 
 
 def ask_farlex(query: str) -> Dictionary:
@@ -14,7 +14,7 @@ def ask_farlex(query: str) -> Dictionary:
     farlex = Dictionary(name='farlex')
 
     last_phrase = ''
-    content_blocks = relevant_content.find_all('div', class_=('ds-single', 'ds-list'), recursive=False)
+    content_blocks = relevant_content.find_all('div', class_=('ds-single', 'ds-list'), recursive=False)  # type: ignore[union-attr]
     farlex.add('HEADER', 'Farlex Idioms')
     for content_block in content_blocks:
         # Gather idiom phrases
@@ -34,7 +34,7 @@ def ask_farlex(query: str) -> Dictionary:
         # Gather idiom examples
         found_examples = content_block.find_all('span', class_='illustration', recursive=False)
         if found_examples:
-            examples = '<br>'.join('‘' + e.text.strip() + '’' for e in found_examples)
+            examples = '<br>'.join(f'‘{e.text.strip()}’' for e in found_examples)
         else:
             examples = ''
 

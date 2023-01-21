@@ -1,41 +1,66 @@
-# Large data objects or macros used by more than one module.
-
 from __future__ import annotations
 
 import json
 import os
 import sys
 
-# abspath(__file__) for Python < 3.9 compatibility
+from typing import TypedDict
+
+class TConfig(TypedDict):
+    audio:      bool
+    deck:       str
+    dict:       str
+    dict2:      str
+    dupescope:  bool
+    duplicates: bool
+    etym:       bool
+    exsen:      bool
+    formatdefs: bool
+    hidedef:    bool
+    hideexsen:  bool
+    hidepreps:  bool
+    hides:      str
+    hidesyn:    bool
+    mediapath:  str
+    note:       str
+    pos:        bool
+    shortetyms: bool
+    syn:        bool
+    tags:       str
+    toipa:      bool
+    colors:     dict[str, str]
+
+
+def config_save(c: TConfig) -> None:
+    with open(os.path.join(DATA_DIR, 'config.json'), 'w') as f:
+        json.dump(c, f, indent=2)
+
+
+# os.path.abspath(__file__) for Python < 3.9 compatibility
 ROOT_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-CARD_SAVE_LOCATION = os.path.join(ROOT_DIR, 'cards.txt')
+
+XDG_DATA_HOME = (
+    os.environ.get('XDG_DATA_HOME') or os.path.expanduser('~/.local/share')
+)
+DATA_DIR = os.path.join(XDG_DATA_HOME, 'ankidodawacz')
+
+os.makedirs(os.path.join(DATA_DIR, 'card_audio'), exist_ok=True)
 
 try:
-    with open(os.path.join(ROOT_DIR, 'config/config.json')) as f:
+    with open(os.path.join(DATA_DIR, 'config.json')) as f:
+        config: TConfig = json.load(f)
+except FileNotFoundError:
+    with open(os.path.join(ROOT_DIR, 'config.json')) as f:
         config = json.load(f)
-except (FileNotFoundError, json.JSONDecodeError):
-    print(' "config.json" does not exist '.center(79, '='))
-    raise
+    config_save(config)
 
 LINUX = sys.platform.startswith('linux')
 MAC = sys.platform.startswith('darwin')
 POSIX = os.name == 'posix'
 WINDOWS = os.name == 'nt'
-ON_WINDOWS_CMD = WINDOWS and os.environ.get('SESSIONNAME') == 'Console'
 ON_TERMUX = os.environ.get('TERMUX_VERSION') is not None
-
-HORIZONTAL_BAR = '─'
+ON_WINDOWS_CMD = WINDOWS and os.environ.get('SESSIONNAME') == 'Console'
 
 USER_AGENT = {
-    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; rv:97.0) Gecko/20100101 Firefox/97.0'
-}
-
-STRING_TO_BOOL = {
-    '1':    True, '0':     False,
-    'on':   True, 'off':   False,
-    't':    True,
-    'tak':  True, 'nie':   False,
-    'true': True, 'false': False,
-    'y':    True, 'n':     False,
-    'yes':  True, 'no':    False,
+    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; rv:108.0) Gecko/20100101 Firefox/108.0'
 }

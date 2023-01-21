@@ -1,21 +1,34 @@
+from __future__ import annotations
+
 import pytest
 
+import contextlib
 import curses
+
+from typing import Iterator
 
 from src.Curses.prompt import Prompt
 
 stdscr = curses.initscr()
 
 
-class DummyScreenHolder:
-    @staticmethod
-    def draw(): pass
-    @staticmethod
-    def resize(): pass
+class DummyScreenBuffer:
+    def __init__(self, win: curses._CursesWindow) -> None:
+        self.win = win
+
+    @contextlib.contextmanager
+    def extra_margin(self, n: int) -> Iterator[None]:
+        yield
+
+    def draw(self) -> None:
+        pass
+
+    def resize(self) -> None:
+        pass
 
 
 def _run_ctrl_t_test(pretype, cursor_index, expected):
-    prompt = Prompt(DummyScreenHolder, stdscr, 'prompt:', pretype=pretype)  # type: ignore[arg-type]
+    prompt = Prompt(DummyScreenBuffer(stdscr), 'prompt:', pretype=pretype)  # type: ignore[arg-type]
     prompt._cursor = cursor_index
     prompt.ctrl_t()
     assert prompt._entered == expected

@@ -1,13 +1,17 @@
 from __future__ import annotations
 
 from src.Dictionaries.dictionary_base import Dictionary, DictionaryError
-from src.Dictionaries.utils import request_soup
+from src.Dictionaries.util import request_soup
 
 
 def ask_wordnet(query: str) -> Dictionary:
     soup = request_soup('http://wordnetweb.princeton.edu/perl/webwn', {'s': query})
 
-    if soup.h3.text.startswith(('Your', 'Sorry')):
+    header_tag = soup.find('h3')
+    if header_tag is None:
+        raise DictionaryError('WordNet: unexpected error, no header_tag')
+
+    if header_tag.text.startswith(('Your', 'Sorry')):
         raise DictionaryError(f'WordNet: {query!r} not found')
 
     wordnet = Dictionary(name='wordnet')

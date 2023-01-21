@@ -5,6 +5,7 @@ from itertools import repeat
 from typing import Sequence, NamedTuple, TYPE_CHECKING
 
 from src.Dictionaries.ahdictionary import ask_ahdictionary
+from src.Dictionaries.collins import ask_collins
 from src.Dictionaries.dictionary_base import Dictionary
 from src.Dictionaries.dictionary_base import DictionaryError
 from src.Dictionaries.farlex import ask_farlex
@@ -12,13 +13,17 @@ from src.Dictionaries.wordnet import ask_wordnet
 from src.data import config
 
 if TYPE_CHECKING:
-    from src.proto import WriterInterface
+    from src.Curses.proto import StatusInterface
 
 
 DICT_FLAG_TO_QUERY_KEY = {
-    'ahd': 'ahd',
-    'i': 'farlex', 'farlex': 'farlex',
-    'wnet': 'wordnet', 'wordnet': 'wordnet',
+    'ahd':     'ahd',
+    'i':       'farlex',
+    'farlex':  'farlex',
+    'wnet':    'wordnet',
+    'wordnet': 'wordnet',
+    'collins': 'collins',
+    'col':     'collins',
 }
 # Every dictionary has its individual key to avoid cluttering cache
 # with identical dictionaries that were called with the same query
@@ -28,19 +33,20 @@ DICTIONARY_LOOKUP = {
     'ahd': ask_ahdictionary,
     'farlex': ask_farlex,
     'wordnet': ask_wordnet,
+    'collins': ask_collins,
 }
 @functools.lru_cache(maxsize=None)
-def query_dictionary(key: str, query: str) -> Dictionary:
+def _query(key: str, query: str) -> Dictionary:
     # Lookup might raise a DictionaryError or a ConnectionError.
     # Only successful queries will be cached.
     return DICTIONARY_LOOKUP[key](query)
 
 
-def get_dictionaries(
-        writer: WriterInterface, query: str, flags: Sequence[str] | None = None
+def _lookup_dictionaries(
+        implementor: StatusInterface, query: str, flags: Sequence[str] | None = None
 ) -> list[Dictionary] | None:
     if flags is None or not flags:
-        flags = [config['-dict']]
+        flags = [config['dict']]
 
     # Ideally `none_keys` would be static and kept throughout searches like
     # "phrase1, phrase1, phrase1", but in normal, non-malicious (źdź,źdź,źdź...),
@@ -52,26 +58,28 @@ def get_dictionaries(
         key = DICT_FLAG_TO_QUERY_KEY[flag]
         if key not in none_keys:
             try:
-                result.append(query_dictionary(key, query))
+                result.append(_query(key, query))
             except DictionaryError as e:
                 none_keys.add(key)
-                writer.writeln(str(e))
+                implementor.error(str(e))
             except ConnectionError as e:
-                writer.writeln(str(e))
+                implementor.error(str(e))
                 return None
 
     if result:
         return result
-    if config['-dict2'] == '-':
+
+    if config['dict2'] == '-':
         return None
-    fallback_key = DICT_FLAG_TO_QUERY_KEY[config['-dict2']]
+
+    fallback_key = DICT_FLAG_TO_QUERY_KEY[config['dict2']]
     if fallback_key in none_keys:
         return None
 
     try:
-        result.append(query_dictionary(fallback_key, query))
+        result.append(_query(fallback_key, query))
     except (DictionaryError, ConnectionError) as e:
-        writer.writeln(str(e))
+        implementor.error(str(e))
         return None
 
     return result
@@ -79,70 +87,37 @@ def get_dictionaries(
 
 class Query(NamedTuple):
     query:       str
-    sentence:    str
     dict_flags:  list[str]
     query_flags: list[str]
-    record:      bool
 
 
-class QuerySettings:
-    __slots__ = 'queries', 'user_sentence', 'recording_filename'
-
-    def __init__(self, queries: list[Query], user_sentence: str, recording_filename: str) -> None:
-        self.queries = queries
-        self.user_sentence = user_sentence
-        self.recording_filename = recording_filename
-
-    def __repr__(self) -> str:
-        return (
-            f'{type(self).__name__}('
-            f'queries={self.queries!r}, '
-            f'user_sentence={self.user_sentence!r}, '
-            f'recording_filename={self.recording_filename!r})'
-        )
-
-
-def parse_query(full_query: str) -> list[Query] | None:
+def _parse(s: str) -> list[Query] | None:
     separators = ',;'
-    chars_to_strip = ' ' + separators
+    chars_to_strip = separators + ' '
 
-    full_query = full_query.strip(chars_to_strip)
-    if not full_query:
+    s = s.strip(chars_to_strip)
+    if not s:
         return None
 
     result = []
-    for field in max(map(str.split, repeat(full_query), separators), key=len):
+    for field in max(map(str.split, repeat(s), separators), key=len):
         field = field.strip(chars_to_strip)
         if not field:
             continue
 
         query, *flags = field.split(' -')
-        emph_start = query.find('<')
-        emph_stop = query.rfind('>')
-        if ~emph_start and ~emph_stop and emph_start < emph_stop:
-            sentence = (
-                    query[:emph_start]
-                    + '{{' + query[emph_start + 1:emph_stop] + '}}'
-                    + query[emph_stop + 1:]
-            )
-            query = query[emph_start + 1:emph_stop]
-        else:
-            sentence = ''
 
         dict_flags = []
         query_flags = []
-        record = False
         for flag in flags:
             flag = flag.strip(' -')
             if not flag:
                 continue
 
-            if flag in {'rec', 'record'}:
-                record = True
-            elif flag in DICT_FLAG_TO_QUERY_KEY:
+            if flag in DICT_FLAG_TO_QUERY_KEY:
                 dict_flags.append(flag)
             elif flag in {'c', 'compare'}:
-                d1, d2 = config['-dict'], config['-dict2']
+                d1, d2 = config['dict'], config['dict2']
                 if d1 in DICT_FLAG_TO_QUERY_KEY:
                     dict_flags.append(d1)
                 if d2 in DICT_FLAG_TO_QUERY_KEY:
@@ -150,31 +125,23 @@ def parse_query(full_query: str) -> list[Query] | None:
             else:
                 query_flags.append(flag)
 
-        result.append(
-            Query(query.strip(), sentence, dict_flags, query_flags, record)
-        )
+        result.append(Query(query, dict_flags, query_flags))
 
     return result
 
 
-def search_dictionaries(writer: WriterInterface, s: str) -> tuple[list[Dictionary], QuerySettings] | None:
-    parsed = parse_query(s)
+def search(implementor: StatusInterface, s: str) -> list[Dictionary] | None:
+    parsed = _parse(s)
     if parsed is None:
         return None
 
     dictionaries: list[Dictionary] = []
-    user_sentence = recording_filename = ''
-    valid_queries = []
     for query in parsed:
-        if query.sentence and not user_sentence:
-            user_sentence = query.sentence
-
-        dicts = get_dictionaries(writer, query.query, query.dict_flags)
+        dicts = _lookup_dictionaries(implementor, query.query, query.dict_flags)
         if dicts is not None:
-            valid_queries.append(query)
             dictionaries.extend(dicts)
 
     if not dictionaries:
         return None
 
-    return dictionaries, QuerySettings(valid_queries, user_sentence, recording_filename)
+    return dictionaries

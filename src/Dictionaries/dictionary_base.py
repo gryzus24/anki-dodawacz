@@ -37,7 +37,7 @@ class Dictionary:
     __slots__ = 'name' ,'contents'
 
     def __init__(self, contents: list[Sequence[str]] | None = None, *, name: str) -> None:
-        self.contents: list[Sequence[str]] = [] if contents is None else contents
+        self.contents: list[Sequence[str]] = contents or []
         self.name = name
 
     def __repr__(self) -> str:
@@ -169,9 +169,7 @@ class EntrySelector:
         for i, entry in compress(enumerate(self.dictionary.contents), self._toggles):
             op = entry[0]
             if op == 'PHRASE':
-                if phrase is None:
-                    phrase = entry
-                else:
+                if phrase is not None:
                     if unique_audio is not None:
                         audio = unique_audio
 
@@ -180,6 +178,8 @@ class EntrySelector:
                     )
                     content = []
                     audio = etym = pos = None
+
+                phrase = entry
             elif op in self.TOGGLEABLE:
                 content.append(entry)
             elif op == 'AUDIO':
