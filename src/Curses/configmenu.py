@@ -300,4 +300,3 @@ class ConfigMenu(ScreenBufferInterface):
                 config_save(config)
                 return
 
-
