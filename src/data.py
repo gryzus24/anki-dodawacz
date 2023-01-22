@@ -44,7 +44,7 @@ XDG_DATA_HOME = (
 )
 DATA_DIR = os.path.join(XDG_DATA_HOME, 'ankidodawacz')
 
-os.makedirs(os.path.join(DATA_DIR, 'card_audio'), exist_ok=True)
+os.makedirs(os.path.join(DATA_DIR, 'Audio'), exist_ok=True)
 
 try:
     with open(os.path.join(DATA_DIR, 'config.json')) as f:
