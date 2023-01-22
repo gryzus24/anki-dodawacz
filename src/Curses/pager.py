@@ -9,7 +9,7 @@ from src.Curses.util import (
     FUNCTION_BAR_PAD,
     mouse_wheel_down,
     mouse_wheel_up,
-    truncate_if_needed,
+    truncate,
 )
 
 if TYPE_CHECKING:
@@ -74,7 +74,7 @@ class Pager:
                 win.addch(y, 1, '~')
                 continue
 
-            text = truncate_if_needed(line, width)
+            text = truncate(line, width)
             if text is None:
                 return
 

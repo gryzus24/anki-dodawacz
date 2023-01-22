@@ -30,14 +30,14 @@ def diki_audio(raw_phrase: str, flag: str = '') -> str:
         if http.urlopen('HEAD', url_ame).status == 200:  # type: ignore[no-untyped-call]
             return url_ame
 
-    def shorten_to_possessive(*ignore: str) -> str:
+    def shorten_to_possessive(*ignored: str) -> str:
         verb, _, rest = diki_phrase.partition('_the_')
         if not rest:
             return verb
         noun, _, sb = rest.partition('_of_')
         return f'{verb}_{sb}s_{noun}'.strip(' _')
 
-    def get_longest_word(*ignore: str) -> str:
+    def get_longest_word(*ignored: str) -> str:
         # Returning diki_phrase here essentially means diki doesn't have the audio.
         s = max(diki_phrase.split('_'), key=len)
         if len(s) < 4 or s.startswith(('some', 'onesel')):

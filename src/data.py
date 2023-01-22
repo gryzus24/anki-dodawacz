@@ -56,10 +56,8 @@ except FileNotFoundError:
 
 LINUX = sys.platform.startswith('linux')
 MAC = sys.platform.startswith('darwin')
-POSIX = os.name == 'posix'
 WINDOWS = os.name == 'nt'
 ON_TERMUX = os.environ.get('TERMUX_VERSION') is not None
-ON_WINDOWS_CMD = WINDOWS and os.environ.get('SESSIONNAME') == 'Console'
 
 USER_AGENT = {
     'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; rv:108.0) Gecko/20100101 Firefox/108.0'

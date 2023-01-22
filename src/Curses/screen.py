@@ -10,7 +10,7 @@ from src.Curses.util import (
     FUNCTION_BAR_PAD,
     MARGIN,
     compose_attrs,
-    truncate_if_needed,
+    truncate,
 )
 from src.Dictionaries.dictionary_base import EntrySelector
 from src.data import config
@@ -19,7 +19,6 @@ if TYPE_CHECKING:
     from src.Dictionaries.dictionary_base import Dictionary
 
 AUTO_COLUMN_WIDTH = 52
-MINIMUM_COLUMN_WIDTH = 26
 
 
 class Wrapper:
@@ -64,7 +63,7 @@ def format_dictionary(dictionary: Dictionary, column_width: int) -> list[ParsedL
     result: list[ParsedLine] = []
 
     def ADD_LINE(line: str, attrs: list[Attr]) -> None:
-        result.append(ParsedLine(i, truncate_if_needed(line, column_width) or '', attrs))
+        result.append(ParsedLine(i, truncate(line, column_width) or '', attrs))
 
     for i, entry in enumerate(dictionary.contents):
         op = entry[0]

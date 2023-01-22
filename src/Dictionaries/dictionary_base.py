@@ -2,35 +2,12 @@ from __future__ import annotations
 
 import sys
 from itertools import compress
-from typing import Callable, Sequence, TypedDict, NamedTuple
+from typing import Callable, Sequence, NamedTuple
 
 
 # Raised by implementors of dictionaries.
 class DictionaryError(Exception):
     pass
-
-
-class EntryGroup(TypedDict):
-    after: list[Sequence[str]]
-    before: list[Sequence[str]]
-    contents: list[Sequence[str]]
-    header: Sequence[str] | None
-
-
-def multi_split(string: str, splits: set[str]) -> list[str]:
-    # Splits a string at multiple places discarding redundancies just like `.split()`.
-    result = []
-    elem = ''
-    for letter in string:
-        if letter in splits:
-            if elem:
-                result.append(elem)
-                elem = ''
-        else:
-            elem += letter
-    if elem:
-        result.append(elem)
-    return result
 
 
 class Dictionary:
@@ -101,10 +78,6 @@ class EntrySelector:
                 self._prelated[last_index] = last_value
 
             self._toggles.append(False)
-
-    @property
-    def toggles(self) -> list[bool]:
-        return self._toggles
 
     def is_toggled(self, index: int) -> bool:
         return self._toggles[index]

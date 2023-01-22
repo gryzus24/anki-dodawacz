@@ -13,7 +13,7 @@ except ImportError:
     raise
 
 import contextlib
-from typing import Callable, Sequence, Iterable, NamedTuple, Iterator, TYPE_CHECKING
+from typing import Callable, Sequence, Iterable, NamedTuple, Iterator
 
 import src.anki as anki
 from src.Curses.color import Color, init_colors
@@ -33,15 +33,12 @@ from src.Curses.util import (
     mouse_wheel_click,
     mouse_wheel_down,
     mouse_wheel_up,
-    truncate_if_needed,
+    truncate,
 )
 from src.__version__ import __version__
 from src.card import create_and_add_card
 from src.data import WINDOWS, config, config_save
 from src.search import search
-
-if TYPE_CHECKING:
-    from src.Dictionaries.dictionary_base import Dictionary
 
 STRING_TO_BOOL = {
     '1':    True, '0':     False,
@@ -108,9 +105,9 @@ class Status:
         ):
             header, body, color = self._buf[i]
             if body is None:
-                text = truncate_if_needed(header, curses.COLS)
+                text = truncate(header, curses.COLS)
             else:
-                text = truncate_if_needed(f'{header} {body}', curses.COLS)
+                text = truncate(f'{header} {body}', curses.COLS)
 
             if text is None:
                 return False
@@ -311,7 +308,7 @@ class ScreenBuffer(ScreenBufferInterface):
             )
 
         if isinstance(page, Screen):
-            header = truncate_if_needed(page.selector.dictionary.contents[0][1], curses.COLS - 8)
+            header = truncate(page.selector.dictionary.contents[0][1], curses.COLS - 8)
             if header is not None:
                 win.addstr(0, 2, f'[ {header} ]')
                 win.chgat(0, 4, len(header), Color.delimit | curses.A_BOLD)
@@ -329,7 +326,7 @@ class ScreenBuffer(ScreenBufferInterface):
         if not items:
             return
 
-        btext = truncate_if_needed('╶╴'.join(items), curses.COLS - 4)
+        btext = truncate('╶╴'.join(items), curses.COLS - 4)
         if btext is None:
             return
 
@@ -348,7 +345,7 @@ class ScreenBuffer(ScreenBufferInterface):
             win.chgat(y, x + i, span, attr)
 
     def _draw_function_bar(self) -> None:
-        bar = truncate_if_needed('F1 Help  F2 Configuration  F3 Anki-setup  F4 Recheck-note', curses.COLS)
+        bar = truncate('F1 Help  F2 Configuration  F3 Anki-setup  F4 Recheck-note', curses.COLS)
         if bar is None:
             return
 
@@ -550,17 +547,6 @@ def ask_yes_no(screen_buffer: ScreenBuffer, prompt_name: str, *, default: bool) 
         return default
     else:
         return STRING_TO_BOOL.get(typed.strip().lower(), default)
-
-
-def entry_search(implementor: ScreenBufferInterface, status: StatusInterface) -> list[Dictionary]:
-    while True:
-        typed = Prompt(implementor, 'Search: ', exiting_bspace=False).run()
-        if typed is None:
-            raise SystemExit
-
-        dictionaries = search(status, typed)
-        if dictionaries is not None:
-            return dictionaries
 
 
 def perror_recheck_note(status: Status) -> None:

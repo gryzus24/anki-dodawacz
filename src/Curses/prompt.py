@@ -9,7 +9,7 @@ from src.Curses.util import (
     mouse_right_click,
     mouse_wheel_click,
     show_cursor,
-    truncate_if_needed,
+    truncate,
 )
 from src.data import WINDOWS, ON_TERMUX
 
@@ -50,7 +50,7 @@ class CompletionMenu:
             if self._cur == i:
                 hl |= curses.A_STANDOUT | curses.A_BOLD
 
-            text = truncate_if_needed(f'{i + 1:<3d}  {self._completions[i]}', width)
+            text = truncate(f'{i + 1:<3d}  {self._completions[i]}', width)
             if text is None:
                 return
             try:
@@ -101,10 +101,6 @@ class Prompt:
         self._cursor = len(pretype)
         self._entered = pretype
 
-    @staticmethod
-    def normalize(s: str | None) -> str:
-        return s.strip() if s else ''
-
     def draw(self) -> None:
         # Prevents going into an infinite loop on some terminals, or even
         # something worse, as the terminal (32-bit xterm)
@@ -112,26 +108,27 @@ class Prompt:
         if curses.COLS < 2:
             return
 
+        win = self.win
         width = curses.COLS - 1
         offset = width // 3
 
         if self.prompt:
-            prompt_text = truncate_if_needed(self.prompt, width - 6, fromleft=True)
+            prompt_text = truncate(self.prompt, width - 12, fromleft=True)
             if prompt_text is None:
-                prompt_text = '..' + self.prompt[-1]
+                prompt_text = '«' + self.prompt[-1]
         else:
             prompt_text = ''
 
         y = curses.LINES - 1
 
-        self.win.move(y, 0)
-        self.win.clrtoeol()
+        win.move(y, 0)
+        win.clrtoeol()
 
         visual_cursor = self._cursor + len(prompt_text)
         if visual_cursor < width:
-            self.win.insstr(y, 0, prompt_text)
+            win.insstr(y, 0, prompt_text)
             if len(self._entered) > width - len(prompt_text):
-                text = f'{self._entered[:width - len(prompt_text)]}>'
+                text = f'{self._entered[:width - len(prompt_text)]}»'
             else:
                 text = ''.join(self._entered)
             text_x = len(prompt_text)
@@ -141,13 +138,13 @@ class Prompt:
 
             start = self._cursor - visual_cursor
             if start + width > len(self._entered):
-                text = f'<{self._entered[start + 1:start + width]}'
+                text = f'«{self._entered[start + 1:start + width]}'
             else:
-                text = f'<{self._entered[start + 1:start + width]}>'
+                text = f'«{self._entered[start + 1:start + width]}»'
             text_x = 0
 
-        self.win.insstr(y, text_x, text)
-        self.win.move(y, visual_cursor)
+        win.insstr(y, text_x, text)
+        win.move(y, visual_cursor)
 
     def _clear(self) -> None:
         self._entered = ''
@@ -218,11 +215,11 @@ class Prompt:
         )
         self._cursor += len(s)
 
-    def _delete_right(self, start: int, n: int) -> None:
+    def _delete_from(self, start: int, n: int) -> None:
         self._entered = self._entered[:start] + self._entered[start + n:]
 
     def delete(self) -> None:
-        self._delete_right(self._cursor, 1)
+        self._delete_from(self._cursor, 1)
 
     def backspace(self) -> None:
         if not self._entered and self.exiting_bspace:
@@ -231,7 +228,7 @@ class Prompt:
         if self._cursor <= 0:
             return
         self._cursor -= 1
-        self._delete_right(self._cursor, 1)
+        self._delete_from(self._cursor, 1)
 
     def ctrl_backspace(self) -> None:
         if not self._entered and self.exiting_bspace:
@@ -242,7 +239,7 @@ class Prompt:
         nskipped = self._jump_left()
         t = self._cursor - nskipped
         self._cursor = t if t > 0 else 0
-        self._delete_right(self._cursor, nskipped)
+        self._delete_from(self._cursor, nskipped)
 
     def ctrl_k(self) -> None:
         self._entered = self._entered[:self._cursor]

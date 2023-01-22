@@ -112,7 +112,7 @@ def mouse_wheel_down(bstate: int) -> bool:
     return bool(bstate & BUTTON5_PRESSED)
 
 
-def truncate_if_needed(s: str, n: int, *, fromleft: bool = False) -> str | None:
+def truncate(s: str, n: int, *, fromleft: bool = False) -> str | None:
     if len(s) <= n:
         return s
     if n <= 1:

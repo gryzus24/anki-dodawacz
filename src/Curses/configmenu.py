@@ -7,7 +7,7 @@ from typing import Callable, Iterator, NamedTuple
 from src.Curses.color import Color
 from src.Curses.prompt import Prompt
 from src.Curses.proto import ScreenBufferInterface
-from src.Curses.util import Attr, truncate_if_needed, draw_border, BORDER_PAD
+from src.Curses.util import Attr, truncate, draw_border, BORDER_PAD
 from src.data import config, config_save
 
 
@@ -143,12 +143,12 @@ class ConfigMenu(ScreenBufferInterface):
         width = curses.COLS - 2*BORDER_PAD
 
         current_option = self.grid[self._row].get_option(self._col, self._line)
-        optdesc = truncate_if_needed(self._description_of_option(current_option), width)
+        optdesc = truncate(self._description_of_option(current_option), width)
         if optdesc is None:
             return
 
         value, attr = self._value_of_option(current_option)
-        value_text = truncate_if_needed(f'-> {value}', width)
+        value_text = truncate(f'-> {value}', width)
         if value_text is None:
             return
 
@@ -181,7 +181,7 @@ class ConfigMenu(ScreenBufferInterface):
                     value_text, attr = self._value_of_option(option)
                     modified = self._initial_config[option.name] != config[option.name]  # type: ignore[literal-required]
 
-                    entry = truncate_if_needed(
+                    entry = truncate(
                         f'{option.name + ("*" if modified else ""):{self.OPTION_NAME_WIDTH}s}'
                         f'{value_text:{self.OPTION_VALUE_WIDTH}s}',
                         self.COLUMN_WIDTH
