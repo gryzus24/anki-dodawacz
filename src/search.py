@@ -46,7 +46,7 @@ def _lookup_dictionaries(
         implementor: StatusInterface, query: str, flags: Sequence[str] | None = None
 ) -> list[Dictionary] | None:
     if flags is None or not flags:
-        flags = [config['dict']]
+        flags = [config['primary']]
 
     # Ideally `none_keys` would be static and kept throughout searches like
     # "phrase1, phrase1, phrase1", but in normal, non-malicious (źdź,źdź,źdź...),
@@ -69,10 +69,10 @@ def _lookup_dictionaries(
     if result:
         return result
 
-    if config['dict2'] == '-':
+    if config['secondary'] == '-':
         return None
 
-    fallback_key = DICT_FLAG_TO_QUERY_KEY[config['dict2']]
+    fallback_key = DICT_FLAG_TO_QUERY_KEY[config['secondary']]
     if fallback_key in none_keys:
         return None
 
@@ -116,12 +116,11 @@ def _parse(s: str) -> list[Query] | None:
 
             if flag in DICT_FLAG_TO_QUERY_KEY:
                 dict_flags.append(flag)
-            elif flag in {'c', 'compare'}:
-                d1, d2 = config['dict'], config['dict2']
-                if d1 in DICT_FLAG_TO_QUERY_KEY:
-                    dict_flags.append(d1)
-                if d2 in DICT_FLAG_TO_QUERY_KEY:
-                    dict_flags.append(d2)
+            elif flag in ('c', 'compare'):
+                if config['primary'] in DICT_FLAG_TO_QUERY_KEY:
+                    dict_flags.append(config['primary'])
+                if config['secondary'] in DICT_FLAG_TO_QUERY_KEY:
+                    dict_flags.append(config['secondary'])
             else:
                 query_flags.append(flag)
 

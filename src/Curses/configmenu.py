@@ -72,8 +72,8 @@ CONFIG_COLUMNS: list[CRow] = [
         CColumn(
         'Sources',
         [
-            COption('dict', 'Primary dictionary', ['ahd', 'collins', 'farlex', 'wordnet']),
-            COption('dict2', 'Secondary dictionary', ['ahd', 'collins', 'farlex', 'wordnet', '-']),
+            COption('primary', 'Dictionary queried by default', ['ahd', 'collins', 'farlex', 'wordnet']),
+            COption('secondary', 'Dictionary queried if primary fails', ['ahd', 'collins', 'farlex', 'wordnet', '-']),
         ]),
         CColumn(
         'Miscellaneous',

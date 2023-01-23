@@ -1,8 +1,8 @@
 {
   "audio": true,
   "deck": "-",
-  "dict": "ahd",
-  "dict2": "farlex",
+  "primary": "ahd",
+  "secondary": "farlex",
   "dupescope": "deck",
   "duplicates": false,
   "etym": true,

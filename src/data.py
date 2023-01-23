@@ -9,8 +9,8 @@ from typing import TypedDict
 class TConfig(TypedDict):
     audio:      bool
     deck:       str
-    dict:       str
-    dict2:      str
+    primary:    str
+    secondary:  str
     dupescope:  bool
     duplicates: bool
     etym:       bool
