@@ -4,7 +4,7 @@ import curses
 
 from src.data import config
 
-COLOR_NAME_TO_COLOR = {
+_color_name_to_color = {
     'black': 0,
     'red': 1,
     'green': 2,
@@ -26,7 +26,7 @@ COLOR_NAME_TO_COLOR = {
 
 def _color(color: str) -> int:
     return curses.color_pair(
-        COLOR_NAME_TO_COLOR.get(config['colors'][color], 0)
+        _color_name_to_color.get(config['colors'][color], 0)
     )
 
 
@@ -37,7 +37,10 @@ class _Color:
         'syn', 'syngloss',
     )
 
-    def init(self) -> None:
+    def init(self, ncolors: int) -> None:
+        for k, v in _color_name_to_color.items():
+            _color_name_to_color[k] = v % ncolors
+
         self.def1       = _color('def1')
         self.def2       = _color('def2')
         self.delimit    = _color('delimit')
@@ -67,17 +70,13 @@ def init_colors() -> None:
         pass
     try:
         curses.use_default_colors()
-    except curses.error:  # not supported
-        pass
+    except curses.error as e:  # not supported
+        raise SystemExit(f'{e}: check if $TERM is set correctly')
 
-    Color.init()
-
-    ncolors = curses.COLORS
-    if ncolors < 8:
-        return
+    Color.init(curses.COLORS)
 
     # Unfortuantely, we cannot override pair 0 so that invoking color
     # pairs as `curses.color_pair(curses.COLOR_BLACK)` gives black.
     # COLOR_* are not intended to be used like that, but still.
-    for i in range(8 if ncolors == 8 else 16):
+    for i in range(16 if curses.COLORS >= 16 else curses.COLORS):
         curses.init_pair(i, i, -1)
