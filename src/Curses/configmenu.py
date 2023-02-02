@@ -182,7 +182,7 @@ class ConfigMenu(ScreenBufferInterface):
                     modified = self._initial_config[option.name] != config[option.name]  # type: ignore[literal-required]
 
                     entry = truncate(
-                        f'{option.name + ("*" if modified else ""):{self.OPTION_NAME_WIDTH}s}'
+                        f'{("* " if modified else "") + option.name:{self.OPTION_NAME_WIDTH}s}'
                         f'{value_text:{self.OPTION_VALUE_WIDTH}s}',
                         self.COLUMN_WIDTH
                     )
@@ -191,8 +191,6 @@ class ConfigMenu(ScreenBufferInterface):
 
                     y = row_y + line_i + 1
                     win.addstr(y, row_x, entry, selection_hl)
-                    if modified:
-                        win.chgat(y, row_x + len(option.name), 1, Color.heed | curses.A_BOLD)
                     win.chgat(y, row_x + 13 + attr.i, attr.span, attr.attr | selection_hl)
 
                 row_x += self.COLUMN_WIDTH + self.COLUMN_PAD
