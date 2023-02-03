@@ -24,6 +24,7 @@ from src.Curses.proto import ScreenBufferInterface, StatusInterface
 from src.Curses.screen import Screen
 from src.Curses.util import (
     Attr,
+    CURSES_MIN_COLS_VALUE,
     FUNCTION_BAR_PAD,
     clipboard_or_selection,
     compose_attrs,
@@ -369,7 +370,7 @@ class ScreenBuffer(ScreenBufferInterface):
             win.chgat(y, index, span, attr)
 
     def draw(self) -> None:
-        if curses.COLS < 4:
+        if curses.COLS < CURSES_MIN_COLS_VALUE:
             return
 
         self.win.erase()

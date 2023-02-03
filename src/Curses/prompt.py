@@ -4,6 +4,7 @@ import curses
 from typing import TYPE_CHECKING
 
 from src.Curses.util import (
+    CURSES_MIN_COLS_VALUE,
     clipboard_or_selection,
     hide_cursor,
     mouse_right_click,
@@ -102,10 +103,7 @@ class Prompt:
         self._entered = pretype
 
     def draw(self) -> None:
-        # Prevents going into an infinite loop on some terminals, or even
-        # something worse, as the terminal (32-bit xterm)
-        # locks up completely when curses.COLS < 2.
-        if curses.COLS < 2:
+        if curses.COLS < CURSES_MIN_COLS_VALUE:
             return
 
         win = self.win

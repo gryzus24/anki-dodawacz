@@ -6,6 +6,7 @@ from typing import NamedTuple, Callable, TYPE_CHECKING
 from src.Curses.color import Color
 from src.Curses.util import (
     BORDER_PAD,
+    CURSES_MIN_COLS_VALUE,
     FUNCTION_BAR_PAD,
     mouse_wheel_down,
     mouse_wheel_up,
@@ -60,7 +61,7 @@ class Pager:
             return f' {(self._line + self.screen_height) / len(self._buf):.0%} '
 
     def draw(self) -> None:
-        if curses.COLS < 2:
+        if curses.COLS < CURSES_MIN_COLS_VALUE:
             return
 
         win = self.win

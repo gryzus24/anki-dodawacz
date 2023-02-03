@@ -7,6 +7,12 @@ from typing import Iterable, NamedTuple
 
 from src.data import WINDOWS
 
+# Some terminal emulators cause curses to segfault when trying to draw under
+# low `curses.COLS` values. Set a global limit and make sure that every
+# `draw()` function does not attempt drawing if `curses.COLS` is lower than
+# this value.
+CURSES_MIN_COLS_VALUE = 4
+
 BORDER_PAD = MARGIN = FUNCTION_BAR_PAD = 1
 
 # Pythons < 3.10 and ncurses < 6 do not
@@ -29,9 +35,6 @@ else:
         if xclip is not None:
             return xclip, '-o'
         return None
-
-
-###############################################################################
 
 
 def draw_border(win: curses._CursesWindow, margin_bot: int) -> None:
