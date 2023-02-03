@@ -374,7 +374,6 @@ class ScreenBuffer(ScreenBufferInterface):
             return
 
         self.win.erase()
-        self.win.attrset(Color.delimit)
 
         page = self.page
         if page.margin_bot < FUNCTION_BAR_PAD:
