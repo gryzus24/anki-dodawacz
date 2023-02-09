@@ -175,8 +175,10 @@ class ConfigMenu(ScreenBufferInterface):
     def extra_margin(self, n: int) -> Iterator[None]:
         t = self.margin_bot
         self.margin_bot += n
-        yield
-        self.margin_bot = t
+        try:
+            yield
+        finally:
+            self.margin_bot = t
 
     def _value_of_option(self, option: Option) -> tuple[str, Attr]:
         value = option.get_from(config)

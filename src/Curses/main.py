@@ -282,8 +282,10 @@ class ScreenBuffer(ScreenBufferInterface):
     def extra_margin(self, n: int) -> Iterator[None]:
         t = self.page.margin_bot
         self.page.margin_bot += n
-        yield
-        self.page.margin_bot = t
+        try:
+            yield
+        finally:
+            self.page.margin_bot = t
 
     def page_back(self) -> bool:
         if self.screens and isinstance(self.page, Pager):
