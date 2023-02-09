@@ -338,5 +338,6 @@ class ConfigMenu(ScreenBufferInterface):
                 self.ACTIONS[key](self)
             elif key in (b'q', b'Q', b'^X', b'KEY_F(2)'):
                 config_save(config)
+                Color.refresh()
                 return
 

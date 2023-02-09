@@ -34,10 +34,7 @@ class _Color:
         'infl', 'label', 'phon', 'phrase', 'pos', 'sign', 'success', 'syn',
     )
 
-    def init(self, ncolors: int) -> None:
-        for k, v in COLOR_NAME_TO_COLOR.items():
-            COLOR_NAME_TO_COLOR[k] = v % ncolors
-
+    def refresh(self) -> None:
         self.def1       = curses.color_pair(_color_num('def1'))
         self.def2       = curses.color_pair(_color_num('def2'))
         self.delimit    = curses.color_pair(_color_num('delimit'))
@@ -54,6 +51,12 @@ class _Color:
         self.sign       = curses.color_pair(_color_num('sign'))
         self.success    = curses.color_pair(_color_num('success'))
         self.syn        = curses.color_pair(_color_num('syn'))
+
+    def init(self, ncolors: int) -> None:
+        for k, v in COLOR_NAME_TO_COLOR.items():
+            COLOR_NAME_TO_COLOR[k] = v % ncolors
+
+        self.refresh()
 
 
 Color = _Color()
