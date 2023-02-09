@@ -21,11 +21,11 @@
   "tags": "dodawacz",
   "toipa": true,
   "colors": {
-    "def1": "",
-    "def2": "",
-    "delimit": "",
+    "def1": "fg",
+    "def2": "fg",
+    "delimit": "fg",
     "err": "lightred",
-    "etym": "",
+    "etym": "fg",
     "exsen": "lightblue",
     "heed": "lightyellow",
     "index": "lightgreen",
@@ -37,6 +37,6 @@
     "sign": "cyan",
     "success": "lightgreen",
     "syn": "yellow",
-    "syngloss": ""
+    "syngloss": "fg"
   }
 }
