@@ -39,33 +39,29 @@ class Section(NamedTuple):
     header:  str
     options: list[Option]
 
-    @property
-    def noptions(self) -> int:
-        return len(self.options)
-
 
 class Column(NamedTuple):
     sections: list[Section]
 
     @property
     def noptions(self) -> int:
-        return sum(x.noptions for x in self.sections)
+        return sum(len(x.options) for x in self.sections)
 
     def get_option(self, i: int) -> Option:
         for section in self.sections:
-            if i < section.noptions:
+            if i < len(section.options):
                 return section.options[i]
 
-            i -= section.noptions
+            i -= len(section.options)
 
         raise AssertionError(f'unreachable: {i}')
 
-    def get_section_i(self, i: int) -> int:
+    def section_index(self, i: int) -> int:
         for section_i, section in enumerate(self.sections):
-            if i < section.noptions:
+            if i < len(section.options):
                 return section_i
 
-            i -= section.noptions
+            i -= len(section.options)
 
         raise AssertionError(f'unreachable: {i}')
 
@@ -228,18 +224,18 @@ class ConfigMenu(ScreenBufferInterface):
 
         free_col_space = (width - self.CONFIG_MIN_WIDTH) // len(CONFIG_COLUMNS)
 
-        row_y = BORDER_PAD + DESCRIPTION_BOX_HEIGHT
-        row_x = 1
-        for col_i, column in enumerate(self.grid):
+        y = BORDER_PAD + DESCRIPTION_BOX_HEIGHT
+        x = BORDER_PAD
+        for col_i, column in enumerate(self.grid):#{
             opt_i = 0
             for sec_i, section in enumerate(column.sections):#{
                 win.addstr(
-                    row_y,
-                    row_x,
+                    y,
+                    x,
                     f'{section.header:{COLUMN_MIN_WIDTH + free_col_space}s}',
                     curses.A_BOLD | curses.A_UNDERLINE
                 )
-                row_y += 1
+                y += 1
                 for option in section.options:#{
                     value_text, attr = self._value_of_option(option)
                     modified = option.get_from(self._initial_config) != option.get_from(config)
@@ -252,35 +248,36 @@ class ConfigMenu(ScreenBufferInterface):
                     if entry is None:
                         return
 
-                    win.addstr(row_y, row_x, entry)
-                    win.chgat(row_y, row_x + OPTION_NAME_MIN_WIDTH + attr.i, attr.span, attr.attr)
+                    win.addstr(y, x, entry)
+                    win.chgat(y, x + OPTION_NAME_MIN_WIDTH + attr.i, attr.span, attr.attr)
 
                     if (
                             self._line == opt_i
                         and self._col == col_i
-                        and column.get_section_i(self._line) == sec_i
+                        and column.section_index(self._line) == sec_i
                     ):
                         win.chgat(
-                            row_y,
-                            row_x,
+                            y,
+                            x,
                             COLUMN_MIN_WIDTH + free_col_space,
                             Color.heed | curses.A_STANDOUT | curses.A_BOLD
                         )
                     elif self._phantom_cur[col_i] == opt_i:
                         win.chgat(
-                            row_y,
-                            row_x,
+                            y,
+                            x,
                             COLUMN_MIN_WIDTH + free_col_space,
                             curses.A_STANDOUT
                         )
 
-                    row_y += 1
+                    y += 1
                     opt_i += 1
                 #}
-                row_y += SECTION_PAD
+                y += SECTION_PAD
             #}
-            row_y = BORDER_PAD + DESCRIPTION_BOX_HEIGHT
-            row_x += COLUMN_MIN_WIDTH + free_col_space + COLUMN_PAD
+            y = BORDER_PAD + DESCRIPTION_BOX_HEIGHT
+            x += COLUMN_MIN_WIDTH + free_col_space + COLUMN_PAD
+        #}
 
     def resize(self) -> None:
         curses.update_lines_cols()
