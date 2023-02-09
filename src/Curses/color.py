@@ -31,8 +31,7 @@ def _color_num(color: str) -> int:
 class _Color:
     __slots__ = (
         'def1', 'def2', 'delimit', 'err', 'etym', 'exsen', 'heed', 'index',
-        'inflection', 'label', 'phon', 'phrase', 'pos', 'sign', 'success',
-        'syn', 'syngloss',
+        'infl', 'label', 'phon', 'phrase', 'pos', 'sign', 'success', 'syn',
     )
 
     def init(self, ncolors: int) -> None:
@@ -47,7 +46,7 @@ class _Color:
         self.exsen      = curses.color_pair(_color_num('exsen'))
         self.heed       = curses.color_pair(_color_num('heed'))
         self.index      = curses.color_pair(_color_num('index'))
-        self.inflection = curses.color_pair(_color_num('inflection'))
+        self.infl       = curses.color_pair(_color_num('infl'))
         self.label      = curses.color_pair(_color_num('label'))
         self.phon       = curses.color_pair(_color_num('phon'))
         self.phrase     = curses.color_pair(_color_num('phrase'))
@@ -55,7 +54,6 @@ class _Color:
         self.sign       = curses.color_pair(_color_num('sign'))
         self.success    = curses.color_pair(_color_num('success'))
         self.syn        = curses.color_pair(_color_num('syn'))
-        self.syngloss   = curses.color_pair(_color_num('syngloss'))
 
 
 Color = _Color()

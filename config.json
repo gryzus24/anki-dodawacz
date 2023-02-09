@@ -29,14 +29,13 @@
     "exsen": "lightblue",
     "heed": "lightyellow",
     "index": "lightgreen",
-    "inflection": "gray",
+    "infl": "gray",
     "label": "lightwhite",
     "phon": "gray",
     "phrase": "cyan",
     "pos": "yellow",
     "sign": "cyan",
     "success": "lightgreen",
-    "syn": "yellow",
-    "syngloss": "fg"
+    "syn": "yellow"
   }
 }

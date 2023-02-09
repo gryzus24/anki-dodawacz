@@ -113,14 +113,14 @@ def format_dictionary(dictionary: Dictionary, column_width: int) -> list[ParsedL
                     mutual_attrs = compose_attrs(
                         (
                             (len(last_line), Color.label, 1),
-                            (column_width, Color.inflection, 0),
+                            (column_width, Color.infl, 0),
                         ), width=column_width
                     )
                     lines = wrapper.wrap(inflections, wrapper.current_line_pos + 1, ' ')
                     ADD_LINE(last_line + ' ' + next(lines), mutual_attrs)
 
                     for line in lines:
-                        ADD_LINE(line, [Attr(0, column_width, Color.inflection)])
+                        ADD_LINE(line, [Attr(0, column_width, Color.infl)])
                 else:
                     for line in wrapper.wrap(label, ' ', ' '):
                         ADD_LINE(line, [Attr(0, column_width, Color.label)])
@@ -197,14 +197,17 @@ def format_dictionary(dictionary: Dictionary, column_width: int) -> list[ParsedL
             pass
 
         elif op == 'SYN':
+            index += 1
+
             synonyms = entry[1]
             gloss = entry[2]
             examples = entry[3]
             for line in wrapper.wrap(synonyms, ' ', ' '):
                 ADD_LINE(line, [Attr(0, column_width, Color.syn)])
 
+            gloss_color = Color.def1 if index % 2 else Color.def2
             for line in wrapper.wrap(gloss, ': ', ' '):
-                ADD_LINE(line, [Attr(0, column_width, Color.syngloss)])
+                ADD_LINE(line, [Attr(0, column_width, gloss_color)])
 
             for ex in examples.split('<br>'):
                 for line in wrapper.wrap(ex, ' ', '  '):
