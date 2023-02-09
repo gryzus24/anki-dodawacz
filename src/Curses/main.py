@@ -581,72 +581,73 @@ SEARCH_ENTER_ACTIONS: dict[bytes, Callable[[Status], str | None]] = {
 
 
 def curses_main(stdscr: curses._CursesWindow) -> None:
-    screen_buffer = ScreenBuffer(stdscr)
+    screenbuf = ScreenBuffer(stdscr)
+    configmenu = ConfigMenu(stdscr)
+
     while True:
-        screen_buffer.status.tick()
-        screen_buffer.draw()
+        screenbuf.status.tick()
+        screenbuf.draw()
 
         c = curses.keyname(stdscr.getch())
-        if screen_buffer.dispatch(c):
+        if screenbuf.dispatch(c):
             continue
 
         elif c == b'KEY_MOUSE':
             _, x, y, _, bstate = curses.getmouse()
             if mouse_left_click(bstate):
-                if isinstance(screen_buffer.page, Screen):
-                    screen_buffer.page.mark_box_at(y, x)
+                if isinstance(screenbuf.page, Screen):
+                    screenbuf.page.mark_box_at(y, x)
             elif mouse_wheel_up(bstate):
-                screen_buffer.page.move_up()
+                screenbuf.page.move_up()
             elif mouse_wheel_down(bstate):
-                screen_buffer.page.move_down()
+                screenbuf.page.move_down()
             elif mouse_wheel_click(bstate):
-                pretype = perror_clipboard_or_selection(screen_buffer.status)
+                pretype = perror_clipboard_or_selection(screenbuf.status)
                 if pretype is not None:
-                    screen_buffer.search_prompt(pretype=pretype)
+                    screenbuf.search_prompt(pretype=pretype)
 
         elif c in SEARCH_ENTER_ACTIONS:
-            pretype = SEARCH_ENTER_ACTIONS[c](screen_buffer.status)
+            pretype = SEARCH_ENTER_ACTIONS[c](screenbuf.status)
             if pretype is not None:
-                screen_buffer.search_prompt(pretype=pretype)
+                screenbuf.search_prompt(pretype=pretype)
 
         elif c in (b'b', b'B'):
             try:
                 anki.invoke('guiBrowse', query='added:1')
             except anki.AnkiError as e:
-                screen_buffer.status.error('Could not open the card browser:', str(e))
+                screenbuf.status.error('Could not open the card browser:', str(e))
             else:
-                screen_buffer.status.success('Anki card browser opened')
+                screenbuf.status.success('Anki card browser opened')
 
         elif c in (b'c', b'C'):
-            if not isinstance(screen_buffer.page, Screen):
+            if not isinstance(screenbuf.page, Screen):
                 continue
 
-            screen_buffer.status.clear()
+            screenbuf.status.clear()
 
-            selections = screen_buffer.page.selector.dump_selection()
+            selections = screenbuf.page.selector.dump_selection()
             if selections is None:
-                screen_buffer.status.error('Nothing selected')
+                screenbuf.status.error('Nothing selected')
             else:
-                create_and_add_card(StatusEcho(screen_buffer, screen_buffer.status), selections)
-                screen_buffer.page.deselect_all()
+                create_and_add_card(StatusEcho(screenbuf, screenbuf.status), selections)
+                screenbuf.page.deselect_all()
 
         elif c == b'KEY_F(2)':
-            config_menu = ConfigMenu(stdscr)
-            _lines, _cols = curses.LINES, curses.COLS
+            _l, _c = curses.LINES, curses.COLS
             try:
-                config_menu.run()
+                configmenu.run()
             except ValueError as e:
-                screen_buffer.status.error('F2 Config:', str(e))
+                screenbuf.status.error('F2 Config:', str(e))
 
-            if curses.is_term_resized(_lines, _cols):
-                screen_buffer.resize()
+            if configmenu.apply_changes() or curses.is_term_resized(_l, _c):
+                screenbuf.resize()
 
         elif c == b'KEY_F(4)':
-            screen_buffer.status.clear()
-            perror_recheck_note(screen_buffer.status)
+            screenbuf.status.clear()
+            perror_recheck_note(screenbuf.status)
 
         elif c in (b'q', b'Q', b'^X'):
-            if not screen_buffer.page_back():
+            if not screenbuf.page_back():
                 raise KeyboardInterrupt
 
 

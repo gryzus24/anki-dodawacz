@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import contextlib
+import copy
 import curses
 from typing import Callable, Iterator, NamedTuple
 
@@ -149,10 +150,10 @@ SECTION_PAD = 1
 class ConfigMenu(ScreenBufferInterface):
     # 1st +1 - space for the header of the topmost section
     # 2nd +1 - space for the prompt
-    CONFIG_MIN_HEIGHT = 1 + max(
+    CONFIG_MIN_HEIGHT = max(
         x.noptions + (1 + SECTION_PAD) * (len(x.sections) - 1)
         for x in CONFIG_COLUMNS
-    ) + 1
+    ) + 1 + 1
 
     CONFIG_MIN_WIDTH = (
           len(CONFIG_COLUMNS) * COLUMN_MIN_WIDTH
@@ -166,10 +167,9 @@ class ConfigMenu(ScreenBufferInterface):
         self.min_x = self.CONFIG_MIN_WIDTH + 2*BORDER_PAD
         self.margin_bot = 0
 
-        self._initial_config = config.copy()
-        self._initial_config['colors'] = config['colors'].copy()
+        self._initial_config = copy.deepcopy(config)
+        self._phantom_cursors = [0] * len(CONFIG_COLUMNS)
         self._col = self._line = 0
-        self._phantom_cur = [0] * len(CONFIG_COLUMNS)
 
     @contextlib.contextmanager
     def extra_margin(self, n: int) -> Iterator[None]:
@@ -204,18 +204,18 @@ class ConfigMenu(ScreenBufferInterface):
         draw_border(win, self.margin_bot)
 
         width = curses.COLS - 2*BORDER_PAD
-        current_option = self.grid[self._col].get_option(self._line)
+        current_opt = self.grid[self._col].get_option(self._line)
 
-        optdesc = truncate(self._description_of_option(current_option), width)
-        if optdesc is None:
+        opt_description = truncate(self._description_of_option(current_opt), width)
+        if opt_description is None:
             return
 
-        value, attr = self._value_of_option(current_option)
+        value, attr = self._value_of_option(current_opt)
         value_text = truncate(f'-> {value}', width)
         if value_text is None:
             return
 
-        win.addstr(BORDER_PAD, BORDER_PAD, optdesc)
+        win.addstr(BORDER_PAD, BORDER_PAD, opt_description)
         win.addstr(BORDER_PAD + 1, BORDER_PAD, value_text)
         # TODO: `BORDER_PAD + 3` *might* break.
         win.chgat(BORDER_PAD + 1, BORDER_PAD + 3 + attr.i, attr.span, attr.attr)
@@ -261,7 +261,7 @@ class ConfigMenu(ScreenBufferInterface):
                             COLUMN_MIN_WIDTH + free_col_space,
                             Color.heed | curses.A_STANDOUT | curses.A_BOLD
                         )
-                    elif self._phantom_cur[col_i] == opt_i:
+                    elif self._phantom_cursors[col_i] == opt_i:
                         win.chgat(
                             y,
                             x,
@@ -284,22 +284,22 @@ class ConfigMenu(ScreenBufferInterface):
     def move_down(self) -> None:
         if self._line < self.grid[self._col].noptions - 1:
             self._line += 1
-            self._phantom_cur[self._col] += 1
+            self._phantom_cursors[self._col] += 1
 
     def move_up(self) -> None:
         if self._line > 0:
             self._line -= 1
-            self._phantom_cur[self._col] -= 1
+            self._phantom_cursors[self._col] -= 1
 
     def move_right(self) -> None:
         if self._col < len(self.grid) - 1:
             self._col += 1
-            self._line = self._phantom_cur[self._col]
+            self._line = self._phantom_cursors[self._col]
 
     def move_left(self) -> None:
         if self._col > 0:
             self._col -= 1
-            self._line = self._phantom_cur[self._col]
+            self._line = self._phantom_cursors[self._col]
 
     def change_selected(self) -> None:
         option = self.grid[self._col].get_option(self._line)
@@ -320,6 +320,16 @@ class ConfigMenu(ScreenBufferInterface):
         else:
             option.set_to(config, constraint[(constraint.index(value) + 1) % len(constraint)])
 
+    def apply_changes(self) -> bool:
+        if self._initial_config == config:
+            return False
+
+        config_save(config)
+        Color.refresh()
+        self._initial_config = copy.deepcopy(config)
+
+        return True
+
     ACTIONS: dict[bytes, Callable[[ConfigMenu], None]] = {
         b'KEY_RESIZE': resize, b'^L': resize,
         b'j': move_down,  b'KEY_DOWN': move_down,
@@ -337,7 +347,5 @@ class ConfigMenu(ScreenBufferInterface):
             if key in self.ACTIONS:
                 self.ACTIONS[key](self)
             elif key in (b'q', b'Q', b'^X', b'KEY_F(2)'):
-                config_save(config)
-                Color.refresh()
                 return
 
