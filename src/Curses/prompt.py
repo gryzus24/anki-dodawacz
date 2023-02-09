@@ -3,6 +3,7 @@ from __future__ import annotations
 import curses
 from typing import TYPE_CHECKING
 
+from src.Curses.color import Color
 from src.Curses.util import (
     CURSES_MIN_COLS_VALUE,
     clipboard_or_selection,
@@ -16,6 +17,9 @@ from src.data import WINDOWS, ON_TERMUX
 
 if TYPE_CHECKING:
     from src.Curses.proto import ScreenBufferInterface
+
+
+COMPLETION_MENU_INDENT = 2
 
 
 class CompletionMenu:
@@ -45,17 +49,18 @@ class CompletionMenu:
             self._scroll = cur
 
         y = curses.LINES - 2
-        width = curses.COLS
+        width = curses.COLS - COMPLETION_MENU_INDENT
+        padding = len(str(len(self._completions)))
         for i in range(self._scroll, self._scroll + menu_height):
-            hl = curses.color_pair(curses.COLOR_GREEN)
-            if self._cur == i:
-                hl |= curses.A_STANDOUT | curses.A_BOLD
-
-            text = truncate(f'{i + 1:<3d}  {self._completions[i]}', width)
+            text = truncate(f'{i + 1:<{padding}d}  {self._completions[i]}', width)
             if text is None:
                 return
             try:
-                self.win.addstr(y, 0, text, hl)
+                if self._cur == i:
+                    self.win.addstr(y, 0, '> ', Color.heed | curses.A_BOLD)
+                    self.win.addstr(y, COMPLETION_MENU_INDENT, text, curses.A_BOLD)
+                else:
+                    self.win.addstr(y, COMPLETION_MENU_INDENT, text)
             except curses.error:  # window too small
                 return
             else:
