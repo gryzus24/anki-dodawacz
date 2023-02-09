@@ -225,6 +225,14 @@ class ConfigMenu(ScreenBufferInterface):
 
         y = BORDER_PAD + DESCRIPTION_BOX_HEIGHT
         x = BORDER_PAD
+
+        def CHECK_PLUS_Y(_n: int) -> bool:
+            nonlocal y
+            if y >= curses.LINES - self.margin_bot - 2:
+                return True
+            y += _n
+            return False
+
         for col_i, column in enumerate(self.grid):#{
             opt_i = 0
             for sec_i, section in enumerate(column.sections):#{
@@ -234,7 +242,9 @@ class ConfigMenu(ScreenBufferInterface):
                     f'{section.header:{COLUMN_MIN_WIDTH + free_col_space}s}',
                     curses.A_BOLD | curses.A_UNDERLINE
                 )
-                y += 1
+                if CHECK_PLUS_Y(1):
+                    break
+
                 for option in section.options:#{
                     value_text, attr = self._value_of_option(option)
                     modified = option.get_from(self._initial_config) != option.get_from(config)
@@ -249,7 +259,6 @@ class ConfigMenu(ScreenBufferInterface):
 
                     win.addstr(y, x, entry)
                     win.chgat(y, x + OPTION_NAME_MIN_WIDTH + attr.i, attr.span, attr.attr)
-
                     if (
                             self._line == opt_i
                         and self._col == col_i
@@ -269,10 +278,13 @@ class ConfigMenu(ScreenBufferInterface):
                             curses.A_STANDOUT
                         )
 
-                    y += 1
+                    if CHECK_PLUS_Y(1):
+                        break
+
                     opt_i += 1
                 #}
-                y += SECTION_PAD
+                if CHECK_PLUS_Y(SECTION_PAD):
+                    break
             #}
             y = BORDER_PAD + DESCRIPTION_BOX_HEIGHT
             x += COLUMN_MIN_WIDTH + free_col_space + COLUMN_PAD
