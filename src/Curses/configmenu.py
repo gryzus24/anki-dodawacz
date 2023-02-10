@@ -335,7 +335,10 @@ class ConfigMenu(ScreenBufferInterface):
         elif isinstance(constraint, list):
             completions = constraint
         elif callable(constraint):
-            completions = constraint()  # type: ignore[assignment]
+            try:
+                completions = constraint()  # type: ignore[assignment]
+            except Exception as e:
+                completions = [value]
         else:
             raise AssertionError('unreachable')
 
@@ -348,8 +351,10 @@ class ConfigMenu(ScreenBufferInterface):
 
         if typed is None:
             return
-
         typed = typed.strip()
+        if not typed:
+            return
+
         if option.strict:
             if typed in completions:
                 option.set_to(config, typed)
