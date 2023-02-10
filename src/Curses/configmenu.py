@@ -10,7 +10,12 @@ import src.anki as anki
 from src.Curses.color import Color, COLOR_NAME_TO_COLOR
 from src.Curses.prompt import Prompt
 from src.Curses.proto import ScreenBufferInterface
-from src.Curses.util import Attr, truncate, draw_border, BORDER_PAD
+from src.Curses.util import (
+    Attr,
+    BORDER_PAD,
+    draw_border,
+    truncate,
+)
 from src.data import config, config_save, TConfig
 
 
@@ -18,8 +23,8 @@ class Option(NamedTuple):
     path:        str
     description: str
     constraint:  Type[bool] | list[str] | Callable[[], list[str]] | None
-    # `strict` - option can be set only if it is contained within `constraint`.
-    strict:      bool
+    # `strict`: option can be set only if it is contained within `constraint`.
+    strict:      bool = False
 
     @property
     def basename(self) -> str:
@@ -78,16 +83,16 @@ CONFIG_COLUMNS: list[Column] = [
         Section(
             'Cards',
             [
-            Option('audio', 'Add audio', bool, strict=True),
-            Option('pos', 'Add parts of speech', bool, strict=True),
-            Option('etym', 'Add etymologies', bool, strict=True),
-            Option('exsen', 'Add example sentences', bool, strict=True),
-            Option('formatdefs', 'Add HTML formatting to definitions', bool, strict=True),
-            Option('hidedef', 'Replace target word with `-hides` in definitions', bool, strict=True),
-            Option('hidesyn', 'Replace target word with `-hides` in synonyms', bool, strict=True),
-            Option('hideexsen', 'Replace target word with `-hides` in example sentences', bool, strict=True),
-            Option('hidepreps', 'Replace all prepositions with `-hides`', bool, strict=True),
-            Option('hides', 'Sequence of characters to use as target word replacement', ['___', '...', '———'], strict=False),
+            Option('audio', 'Add audio', bool),
+            Option('pos', 'Add parts of speech', bool),
+            Option('etym', 'Add etymologies', bool),
+            Option('exsen', 'Add example sentences', bool),
+            Option('formatdefs', 'Add HTML formatting to definitions', bool),
+            Option('hidedef', 'Replace target word with `-hides` in definitions', bool),
+            Option('hidesyn', 'Replace target word with `-hides` in synonyms', bool),
+            Option('hideexsen', 'Replace target word with `-hides` in example sentences', bool),
+            Option('hidepreps', 'Replace all prepositions with `-hides`', bool),
+            Option('hides', 'Sequence of characters to use as target word replacement', ['___', '...', '———']),
             ]
         )
     ]),
@@ -95,12 +100,12 @@ CONFIG_COLUMNS: list[Column] = [
         Section(
             'Anki-connect',
             [
-            Option('note', 'Note used for adding cards', functools.partial(anki.invoke, 'modelNames'), strict=False),
-            Option('deck', 'Deck used for adding cards', functools.partial(anki.invoke, 'deckNames'), strict=False),
-            Option('mediapath', 'Audio save location', anki.collection_media_paths, strict=False),
-            Option('duplicates', 'Allow duplicates', bool, strict=True),
+            Option('note', 'Note used for adding cards', functools.partial(anki.invoke, 'modelNames')),
+            Option('deck', 'Deck used for adding cards', functools.partial(anki.invoke, 'deckNames')),
+            Option('mediapath', 'Audio save location', anki.collection_media_paths),
+            Option('duplicates', 'Allow duplicates', bool),
             Option('dupescope', 'Look for duplicates in deck/collection', ['deck', 'collection'], strict=True),
-            Option('tags', 'Anki tags (comma separated list)', None, strict=False),
+            Option('tags', 'Anki tags (comma separated list)', None),
             ]
         ),
         Section(
@@ -205,7 +210,6 @@ class ConfigMenu(ScreenBufferInterface):
 
         win = self.win
         win.erase()
-
         draw_border(win, self.margin_bot)
 
         width = curses.COLS - 2*BORDER_PAD
