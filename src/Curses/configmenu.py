@@ -319,8 +319,10 @@ class ConfigMenu(ScreenBufferInterface):
         constraint = option.constraint
 
         if constraint is bool:
+            assert isinstance(value, bool)
             option.set_to(config, not value)
             return
+        assert isinstance(value, str)
 
         if constraint is None:
             completions = []
