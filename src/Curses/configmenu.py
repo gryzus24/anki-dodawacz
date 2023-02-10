@@ -3,8 +3,10 @@ from __future__ import annotations
 import contextlib
 import copy
 import curses
-from typing import Callable, Iterator, NamedTuple
+import functools
+from typing import Callable, Iterator, NamedTuple, Type
 
+import src.anki as anki
 from src.Curses.color import Color, COLOR_NAME_TO_COLOR
 from src.Curses.prompt import Prompt
 from src.Curses.proto import ScreenBufferInterface
@@ -13,9 +15,11 @@ from src.data import config, config_save, TConfig
 
 
 class Option(NamedTuple):
-    path: str
+    path:        str
     description: str
-    constraint: list[str] | None
+    constraint:  Type[bool] | list[str] | Callable[[], list[str]] | None
+    # `strict` - option can be set only if it is contained within `constraint`.
+    strict:      bool
 
     @property
     def basename(self) -> str:
@@ -74,16 +78,16 @@ CONFIG_COLUMNS: list[Column] = [
         Section(
             'Cards',
             [
-                Option('audio', 'Add audio', None),
-                Option('pos', 'Add parts of speech', None),
-                Option('etym', 'Add etymologies', None),
-                Option('exsen', 'Add example sentences', None),
-                Option('formatdefs', 'Add HTML formatting to definitions', None),
-                Option('hidedef', 'Replace target word with `-hides` in definitions', None),
-                Option('hidesyn', 'Replace target word with `-hides` in synonyms', None),
-                Option('hideexsen', 'Replace target word with `-hides` in example sentences', None),
-                Option('hidepreps', 'Replace all prepositions with `-hides`', None),
-                Option('hides', 'Sequence of characters to use as target word replacement', None),
+            Option('audio', 'Add audio', bool, strict=True),
+            Option('pos', 'Add parts of speech', bool, strict=True),
+            Option('etym', 'Add etymologies', bool, strict=True),
+            Option('exsen', 'Add example sentences', bool, strict=True),
+            Option('formatdefs', 'Add HTML formatting to definitions', bool, strict=True),
+            Option('hidedef', 'Replace target word with `-hides` in definitions', bool, strict=True),
+            Option('hidesyn', 'Replace target word with `-hides` in synonyms', bool, strict=True),
+            Option('hideexsen', 'Replace target word with `-hides` in example sentences', bool, strict=True),
+            Option('hidepreps', 'Replace all prepositions with `-hides`', bool, strict=True),
+            Option('hides', 'Sequence of characters to use as target word replacement', ['___', '...', '———'], strict=False),
             ]
         )
     ]),
@@ -91,26 +95,26 @@ CONFIG_COLUMNS: list[Column] = [
         Section(
             'Anki-connect',
             [
-                Option('note', 'Note used for adding cards', None),
-                Option('deck', 'Deck used for adding cards', None),
-                Option('mediapath', 'Audio save location', None),
-                Option('duplicates', 'Allow duplicates', None),
-                Option('dupescope', 'Look for duplicates in', ['deck', 'collection']),
-                Option('tags', 'Anki tags (comma separated list)', None),
+            Option('note', 'Note used for adding cards', functools.partial(anki.invoke, 'modelNames'), strict=False),
+            Option('deck', 'Deck used for adding cards', functools.partial(anki.invoke, 'deckNames'), strict=False),
+            Option('mediapath', 'Audio save location', anki.collection_media_paths, strict=False),
+            Option('duplicates', 'Allow duplicates', bool, strict=True),
+            Option('dupescope', 'Look for duplicates in', ['deck', 'collection'], strict=True),
+            Option('tags', 'Anki tags (comma separated list)', None, strict=False),
             ]
         ),
         Section(
             'Sources',
             [
-                Option('primary', 'Dictionary queried by default', ['ahd', 'collins', 'farlex', 'wordnet']),
-                Option('secondary', 'Dictionary queried if first query fails', ['ahd', 'collins', 'farlex', 'wordnet', '-']),
+            Option('primary', 'Dictionary queried by default', ['ahd', 'collins', 'farlex', 'wordnet'], strict=True),
+            Option('secondary', 'Dictionary queried if first query fails', ['ahd', 'collins', 'farlex', 'wordnet', '-'], strict=True),
             ]
         ),
         Section(
             'Miscellaneous',
             [
-                Option('toipa', 'Translate AH Dictionary phonetic spelling into IPA', None),
-                Option('shortetyms', 'Shorten and simplify etymologies in AH Dictionary', None),
+            Option('toipa', 'Translate AH Dictionary phonetic spelling into IPA', bool, strict=True),
+            Option('shortetyms', 'Shorten and simplify etymologies in AH Dictionary', bool, strict=True),
             ]
         )
     ]),
@@ -118,22 +122,22 @@ CONFIG_COLUMNS: list[Column] = [
         Section(
             'Colors',
             [
-                Option('colors.def1', 'Color of odd definitions', _colors),
-                Option('colors.def2', 'Color of even definitions', _colors),
-                Option('colors.delimit', 'Color of delimiters', _colors),
-                Option('colors.err', 'Color of error indicators', _colors),
-                Option('colors.etym', 'Color of etymologies', _colors),
-                Option('colors.exsen', 'Color of example sentences', _colors),
-                Option('colors.heed', 'Color of attention indicators', _colors),
-                Option('colors.index', 'Color of definition indices', _colors),
-                Option('colors.infl', 'Color of inflections', _colors),
-                Option('colors.label', 'Color of labels', _colors),
-                Option('colors.phon', 'Color of phonologies', _colors),
-                Option('colors.phrase', 'Color of phrases', _colors),
-                Option('colors.pos', 'Color of parts of speech', _colors),
-                Option('colors.sign', 'Color of main definition signs', _colors),
-                Option('colors.success', 'Color of success indicators', _colors),
-                Option('colors.syn', 'Color of synonyms', _colors),
+            Option('colors.def1', 'Color of odd definitions', _colors, strict=True),
+            Option('colors.def2', 'Color of even definitions', _colors, strict=True),
+            Option('colors.delimit', 'Color of delimiters', _colors, strict=True),
+            Option('colors.err', 'Color of error indicators', _colors, strict=True),
+            Option('colors.etym', 'Color of etymologies', _colors, strict=True),
+            Option('colors.exsen', 'Color of example sentences', _colors, strict=True),
+            Option('colors.heed', 'Color of attention indicators', _colors, strict=True),
+            Option('colors.index', 'Color of definition indices', _colors, strict=True),
+            Option('colors.infl', 'Color of inflections', _colors, strict=True),
+            Option('colors.label', 'Color of labels', _colors, strict=True),
+            Option('colors.phon', 'Color of phonologies', _colors, strict=True),
+            Option('colors.phrase', 'Color of phrases', _colors, strict=True),
+            Option('colors.pos', 'Color of parts of speech', _colors, strict=True),
+            Option('colors.sign', 'Color of main definition signs', _colors, strict=True),
+            Option('colors.success', 'Color of success indicators', _colors, strict=True),
+            Option('colors.syn', 'Color of synonyms', _colors, strict=True),
             ]
         )
     ])
@@ -190,12 +194,6 @@ class ConfigMenu(ScreenBufferInterface):
         else:
             return value, Attr(0, 0, 0)
 
-    def _description_of_option(self, option: Option) -> str:
-        if option.constraint is not None:
-            return f'{option.description} ({"/".join(option.constraint)})'
-        else:
-            return option.description
-
     def draw(self) -> None:
         if curses.COLS < self.min_x or curses.LINES < self.min_y:
             raise ValueError(f'window too small (need at least {self.min_x}x{self.min_y})')
@@ -206,13 +204,13 @@ class ConfigMenu(ScreenBufferInterface):
         draw_border(win, self.margin_bot)
 
         width = curses.COLS - 2*BORDER_PAD
-        current_opt = self.grid[self._col].get_option(self._line)
+        option = self.grid[self._col].get_option(self._line)
 
-        opt_description = truncate(self._description_of_option(current_opt), width)
+        opt_description = truncate(option.description, width)
         if opt_description is None:
             return
 
-        value, attr = self._value_of_option(current_opt)
+        value, attr = self._value_of_option(option)
         value_text = truncate(f'-> {value}', width)
         if value_text is None:
             return
@@ -320,28 +318,42 @@ class ConfigMenu(ScreenBufferInterface):
         value = option.get_from(config)
         constraint = option.constraint
 
-        if isinstance(value, bool):
+        if constraint is bool:
             option.set_to(config, not value)
             return
 
         if constraint is None:
-            with self.extra_margin(1):
-                typed = Prompt(
-                    self, 'Enter new value: ', pretype=value, exiting_bspace=False
-                ).run()
-            if typed is not None:
-                option.set_to(config, typed.strip())
+            completions = []
+        elif isinstance(constraint, list):
+            completions = constraint
+        elif callable(constraint):
+            completions = constraint()  # type: ignore[assignment]
         else:
-            option.set_to(config, constraint[(constraint.index(value) + 1) % len(constraint)])
+            raise AssertionError('unreachable')
+
+        with self.extra_margin(1):
+            typed = Prompt(
+                self,
+                f'New value ({"listed" if option.strict else "arbitrary"}): ',
+                exiting_bspace=False
+            ).run(completions)
+
+        if typed is None:
+            return
+
+        typed = typed.strip()
+        if option.strict:
+            if typed in completions:
+                option.set_to(config, typed)
+        else:
+            option.set_to(config, typed)
 
     def apply_changes(self) -> bool:
         if self._initial_config == config:
             return False
-
         config_save(config)
         Color.refresh()
         self._initial_config = copy.deepcopy(config)
-
         return True
 
     ACTIONS: dict[bytes, Callable[[ConfigMenu], None]] = {
