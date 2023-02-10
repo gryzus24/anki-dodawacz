@@ -99,7 +99,7 @@ CONFIG_COLUMNS: list[Column] = [
             Option('deck', 'Deck used for adding cards', functools.partial(anki.invoke, 'deckNames'), strict=False),
             Option('mediapath', 'Audio save location', anki.collection_media_paths, strict=False),
             Option('duplicates', 'Allow duplicates', bool, strict=True),
-            Option('dupescope', 'Look for duplicates in', ['deck', 'collection'], strict=True),
+            Option('dupescope', 'Look for duplicates in deck/collection', ['deck', 'collection'], strict=True),
             Option('tags', 'Anki tags (comma separated list)', None, strict=False),
             ]
         ),
@@ -184,13 +184,18 @@ class ConfigMenu(ScreenBufferInterface):
         finally:
             self.margin_bot = t
 
-    def _value_of_option(self, option: Option) -> tuple[str, Attr]:
+    def _value_of_option(self, option: Option, max_attr_span: int) -> tuple[str, Attr]:
         value = option.get_from(config)
-        if isinstance(value, bool):
+        if option.constraint is bool:
+            assert isinstance(value, bool)
             if value:
                 return 'ON', Attr(0, 2, Color.success)
             else:
                 return 'OFF', Attr(0, 3, Color.err)
+
+        assert isinstance(value, str)
+        if option.path.startswith('colors.'):
+            return value, Attr(0, min(len(value), max_attr_span), getattr(Color, option.basename))
         else:
             return value, Attr(0, 0, 0)
 
@@ -204,24 +209,26 @@ class ConfigMenu(ScreenBufferInterface):
         draw_border(win, self.margin_bot)
 
         width = curses.COLS - 2*BORDER_PAD
+        col_free_space = (width - self.CONFIG_MIN_WIDTH) // len(CONFIG_COLUMNS)
+        value_max_width = OPTION_VALUE_MIN_WIDTH + col_free_space
+        col_max_width = COLUMN_MIN_WIDTH + col_free_space
+
         option = self.grid[self._col].get_option(self._line)
 
-        opt_description = truncate(option.description, width)
-        if opt_description is None:
-            return
-
-        value, attr = self._value_of_option(option)
+        value, attr = self._value_of_option(option, value_max_width)
         value_text = truncate(f'-> {value}', width)
         if value_text is None:
             return
 
-        win.addstr(BORDER_PAD, BORDER_PAD, opt_description)
+        description = truncate(option.description, width)
+        if description is None:
+            return
+
+        win.addstr(BORDER_PAD, BORDER_PAD, description)
         win.addstr(BORDER_PAD + 1, BORDER_PAD, value_text)
         # TODO: `BORDER_PAD + 3` *might* break.
         win.chgat(BORDER_PAD + 1, BORDER_PAD + 3 + attr.i, attr.span, attr.attr)
         win.hline(BORDER_PAD + 2, BORDER_PAD, 0, width)
-
-        free_col_space = (width - self.CONFIG_MIN_WIDTH) // len(CONFIG_COLUMNS)
 
         y = BORDER_PAD + DESCRIPTION_BOX_HEIGHT
         x = BORDER_PAD
@@ -239,20 +246,20 @@ class ConfigMenu(ScreenBufferInterface):
                 win.addstr(
                     y,
                     x,
-                    f'{section.header:{COLUMN_MIN_WIDTH + free_col_space}s}',
+                    f'{section.header:{col_max_width}s}',
                     curses.A_BOLD | curses.A_UNDERLINE
                 )
                 if CHECK_PLUS_Y(1):
                     break
 
                 for option in section.options:#{
-                    value_text, attr = self._value_of_option(option)
+                    value_text, attr = self._value_of_option(option, value_max_width)
                     modified = option.get_from(self._initial_config) != option.get_from(config)
 
                     entry = truncate(
                         f'{("* " if modified else "") + option.basename:{OPTION_NAME_MIN_WIDTH}s}'
-                        f'{value_text:{OPTION_VALUE_MIN_WIDTH}s}',
-                        COLUMN_MIN_WIDTH + free_col_space
+                        f'{value_text}',
+                        col_max_width
                     )
                     if entry is None:
                         return
@@ -267,16 +274,11 @@ class ConfigMenu(ScreenBufferInterface):
                         win.chgat(
                             y,
                             x,
-                            COLUMN_MIN_WIDTH + free_col_space,
+                            col_max_width,
                             Color.heed | curses.A_STANDOUT | curses.A_BOLD
                         )
                     elif self._phantom_cursors[col_i] == opt_i:
-                        win.chgat(
-                            y,
-                            x,
-                            COLUMN_MIN_WIDTH + free_col_space,
-                            curses.A_STANDOUT
-                        )
+                        win.chgat(y, x, col_max_width, curses.A_STANDOUT)
 
                     if CHECK_PLUS_Y(1):
                         break
@@ -287,7 +289,7 @@ class ConfigMenu(ScreenBufferInterface):
                     break
             #}
             y = BORDER_PAD + DESCRIPTION_BOX_HEIGHT
-            x += COLUMN_MIN_WIDTH + free_col_space + COLUMN_PAD
+            x += col_max_width + COLUMN_PAD
         #}
 
     def resize(self) -> None:
@@ -322,8 +324,8 @@ class ConfigMenu(ScreenBufferInterface):
             assert isinstance(value, bool)
             option.set_to(config, not value)
             return
-        assert isinstance(value, str)
 
+        assert isinstance(value, str)
         if constraint is None:
             completions = []
         elif isinstance(constraint, list):
@@ -350,11 +352,12 @@ class ConfigMenu(ScreenBufferInterface):
         else:
             option.set_to(config, typed)
 
+        Color.refresh()
+
     def apply_changes(self) -> bool:
         if self._initial_config == config:
             return False
         config_save(config)
-        Color.refresh()
         self._initial_config = copy.deepcopy(config)
         return True
 
