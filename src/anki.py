@@ -80,12 +80,13 @@ INVOKE_ACTIONS = Literal[
     'guiBrowse',
     'guiCurrentCard',
     'modelFieldNames',
+    'modelNames',
     'storeMediaFile',
 ]
 # Overloads are added on an as-needed basis, some
 # signatures are just too complex to bother typing them.
 @overload
-def invoke(action: Literal['modelFieldNames'], **params: Any) -> list[str]: ...
+def invoke(action: Literal['modelFieldNames', 'modelNames'], **params: Any) -> list[str]: ...
 @overload
 def invoke(action: INVOKE_ACTIONS, **params: Any) -> Any: ...
 
