@@ -10,7 +10,6 @@ from src.Curses.util import (
     FUNCTION_BAR_PAD,
     MARGIN,
     compose_attrs,
-    truncate,
 )
 from src.Dictionaries.dictionary_base import EntrySelector
 from src.data import config
@@ -63,7 +62,7 @@ def format_dictionary(dictionary: Dictionary, column_width: int) -> list[ParsedL
     result: list[ParsedLine] = []
 
     def ADD_LINE(line: str, attrs: list[Attr]) -> None:
-        result.append(ParsedLine(i, truncate(line, column_width) or '', attrs))
+        result.append(ParsedLine(i, line, attrs))
 
     for i, entry in enumerate(dictionary.contents):
         op = entry[0]
@@ -446,6 +445,14 @@ class Screen:
         self.move_up(self.screen_height - 2)
 
     def hlsearch(self, s: str) -> None:
+        # `hlsearch()` is entirely dependent on the output of
+        # `format_dictionary()`. As a result of this, it is easy to search for
+        # matches line by line with no regard for line breaks, but we have
+        # the necessary information to make it more robust and not rely on
+        # window dimensions to make successful multi-word searches.
+        # TODO: Improve `format_dictionary()`, so that we can reliably merge
+        #       its output and make multi-words searches across line breaks.
+
         against_lowercase = s.islower()
 
         hls: list[dict[int, list[int]]] = []
