@@ -337,7 +337,7 @@ class ConfigMenu(ScreenBufferInterface):
         elif callable(constraint):
             try:
                 completions = constraint()  # type: ignore[assignment]
-            except Exception as e:
+            except Exception:
                 completions = [value]
         else:
             raise AssertionError('unreachable')
