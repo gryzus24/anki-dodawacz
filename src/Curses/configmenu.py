@@ -330,6 +330,8 @@ class ConfigMenu(ScreenBufferInterface):
             return
 
         assert isinstance(value, str)
+        completions: list[str]
+
         if constraint is None:
             completions = []
         elif isinstance(constraint, list):

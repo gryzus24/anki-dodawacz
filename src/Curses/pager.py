@@ -123,7 +123,7 @@ class Pager:
     def page_up(self) -> None:
         self.move_up(curses.LINES - 2)
 
-    def hlsearch(self, s: str) -> None:
+    def hlsearch(self, s: str) -> int:
         against_lowercase = s.islower()
 
         hl_span = len(s)
@@ -147,7 +147,9 @@ class Pager:
         if nmatches:
             self._hl = PagerHighlight(hlmap, nmatches, hl_span)
         else:
-            raise ValueError(repr(s))
+            self._hl = None
+
+        return nmatches
 
     @property
     def highlight_nmatches(self) -> int:

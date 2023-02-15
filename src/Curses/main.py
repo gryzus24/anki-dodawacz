@@ -493,11 +493,10 @@ class ScreenBuffer(ScreenBufferInterface):
     def find_in_page(self) -> None:
         self.status.clear()
         typed = Prompt(self, 'Find in page: ').run()
-        if typed is not None and typed:
-            try:
-                self.page.hlsearch(typed)
-            except ValueError as e:
-                self.status.error('Nothing matches', str(e))
+        if typed is None or not typed:
+            return
+        if not self.page.hlsearch(typed):
+            self.status.error('Nothing matches', repr(typed))
 
     ACTIONS = {
         b'KEY_RESIZE': resize, b'^L': resize,

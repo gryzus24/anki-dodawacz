@@ -61,8 +61,8 @@ def format_dictionary(dictionary: Dictionary, column_width: int) -> list[ParsedL
 
     result: list[ParsedLine] = []
 
-    def ADD_LINE(line: str, attrs: list[Attr]) -> None:
-        result.append(ParsedLine(i, line, attrs))
+    def ADD_LINE(_line: str, _attrs: list[Attr]) -> None:
+        result.append(ParsedLine(i, _line, _attrs))
 
     for i, entry in enumerate(dictionary.contents):
         op = entry[0]
@@ -387,7 +387,10 @@ class Screen:
             text_x += self.column_width + 1
 
     def resize(self) -> None:
-        self.columns, self.column_width = _create_layout(self.selector.dictionary, self.screen_height)
+        self.columns, self.column_width = _create_layout(
+            self.selector.dictionary,
+            self.screen_height
+        )
         self.adjust_scroll_past_eof()
         if self._hl is not None:
             self.hlsearch(self._hl.hlphrase)
@@ -444,7 +447,7 @@ class Screen:
     def page_up(self) -> None:
         self.move_up(self.screen_height - 2)
 
-    def hlsearch(self, s: str) -> None:
+    def hlsearch(self, s: str) -> int:
         # `hlsearch()` is entirely dependent on the output of
         # `format_dictionary()`. As a result of this, it is easy to search for
         # matches line by line with no regard for line breaks, but we have
@@ -481,7 +484,9 @@ class Screen:
         if nmatches:
             self._hl = HL(hls, nmatches, s, hllast_line)
         else:
-            raise ValueError(repr(s))
+            self._hl = None
+
+        return nmatches
 
     @property
     def hl(self) -> HL | None:
