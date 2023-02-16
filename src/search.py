@@ -148,7 +148,7 @@ def _unique(it: Iterable[str]) -> list[str]:
     return result
 
 
-def _parse(s: str) -> list[Query] | None:
+def search_parse(s: str) -> list[Query] | None:
     separators = ',;'
     chars_to_strip = separators + ' '
 
@@ -188,11 +188,10 @@ def _parse(s: str) -> list[Query] | None:
     return result
 
 
-def search(implementor: StatusInterface, s: str) -> list[Dictionary] | None:
-    parsed = _parse(s)
-    if parsed is None:
-        return None
-
+def search(
+        implementor: StatusInterface,
+        queries: list[Query]
+) -> list[list[Dictionary] | None]:
     # To keep things simple, we only use threads in `_lookup_dictionaries()`
     # for now.
     # TODO: Use threads for multiple queries like "a -c, b, c" etc.
@@ -202,13 +201,7 @@ def search(implementor: StatusInterface, s: str) -> list[Dictionary] | None:
     #       that we want to minimize the number of requests and handle
     #       duplicate queries (or disallow them) so that we can avoid the race
     #       condition within the `_cache`.
-    result: list[Dictionary] = []
-    for query in parsed:
-        dictionaries = _lookup_dictionaries(implementor, query.query, query.dict_flags)
-        if dictionaries is not None:
-            result.extend(dictionaries)
-
-    if not result:
-        return None
-
-    return result
+    return [
+        _lookup_dictionaries(implementor, x.query, x.dict_flags)
+        for x in queries
+    ]

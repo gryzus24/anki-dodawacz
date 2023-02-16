@@ -1,7 +1,8 @@
 from __future__ import annotations
 
 import curses
-from typing import TYPE_CHECKING
+import collections
+from typing import TYPE_CHECKING, Sequence
 
 from src.Curses.color import Color
 from src.Curses.util import (
@@ -22,11 +23,20 @@ if TYPE_CHECKING:
 COMPLETION_MENU_INDENT = 2
 
 
+def _prepare_lookup(elements: Sequence[str]) -> collections.defaultdict[str, list[str]]:
+    result = collections.defaultdict(list)
+    for e in elements:
+        result[e[0].lower()].append(e)
+
+    return result
+
+
 class CompletionMenu:
-    def __init__(self, win: curses._CursesWindow, elements: list[str]) -> None:
+    def __init__(self, win: curses._CursesWindow, elements: Sequence[str]) -> None:
         self.win = win
         self.elements = elements
         self._completions = elements
+        self._lookup = _prepare_lookup(elements)
         self._current_completion_str: str | None = None
         self._cur: int | None = None
         self._scroll = 0
@@ -36,7 +46,7 @@ class CompletionMenu:
         return r if r > 1 else 1
 
     @property
-    def completions(self) -> list[str]:
+    def completions(self) -> Sequence[str]:
         return self._completions
 
     def draw(self) -> None:
@@ -52,7 +62,7 @@ class CompletionMenu:
         width = curses.COLS - COMPLETION_MENU_INDENT
         padding = len(str(len(self._completions)))
         for i in range(self._scroll, self._scroll + menu_height):
-            text = truncate(f'{i + 1:<{padding}d}  {self._completions[i]}', width)
+            text = truncate(f'{i + 1:{padding}d}  {self._completions[i]}', width)
             if text is None:
                 return
             try:
@@ -67,13 +77,21 @@ class CompletionMenu:
                 y -= 1
 
     def complete(self, s: str) -> None:
+        s = s.lower()
         if self._current_completion_str == s:
             return
 
         self._current_completion_str = s
         self._cur = None
         self._scroll = 0
-        self._completions = [x for x in self.elements if x.startswith(s)]
+
+        if s:
+            self._completions = [
+                x for x in self._lookup[s[0]]
+                if x.lower().startswith(s)
+            ]
+        else:
+            self._completions = self.elements
 
     def _select(self, n: int) -> str | None:
         if not self._completions:
@@ -292,7 +310,7 @@ class Prompt:
             ACTIONS[b'KEY_BACKSPACE'] = backspace
             ACTIONS[b'^H'] = ctrl_backspace
 
-    def _run(self, completions: list[str]) -> str | None:
+    def _run(self, completions: Sequence[str]) -> str | None:
         cmenu = CompletionMenu(self.win, completions)
         do_completion = False
 
@@ -349,7 +367,7 @@ class Prompt:
             elif key in (b'^C', b'^\\', b'^['):
                 return None
 
-    def run(self, completions: list[str] | None = None) -> str | None:
+    def run(self, completions: Sequence[str] | None = None) -> str | None:
         curses.raw()
         show_cursor()
         try:

@@ -12,7 +12,10 @@ except ImportError:
     )
     raise
 
+import atexit
+import collections
 import contextlib
+import os
 from typing import Callable, Sequence, Iterable, NamedTuple, Iterator
 
 import src.anki as anki
@@ -38,8 +41,8 @@ from src.Curses.util import (
 )
 from src.__version__ import __version__
 from src.card import create_and_add_card
-from src.data import WINDOWS, config, config_save
-from src.search import search
+from src.data import WINDOWS, DATA_DIR, config, config_save
+from src.search import search, search_parse
 
 STRING_TO_BOOL = {
     '1':    True, '0':     False,
@@ -244,6 +247,8 @@ _textattr('PROMPT', curses.A_BOLD | curses.A_UNDERLINE),
 )),
 _textattr('MISCELLANEOUS', curses.A_BOLD | curses.A_UNDERLINE),
 *_text((
+' Tab        tab complete - move up the list',
+' ^P ^N      tab complete - move up/down the list',
 ' ^L         redraw the screen (useful if it gets corrupted somehow)',
 )),
 ]
@@ -256,6 +261,7 @@ class ScreenBuffer(ScreenBufferInterface):
         self.screens = screens or []
         self._screen_i = 0
         self.status = Status(win, persistence=7)
+        self.qhistory = QueryHistory(os.path.join(DATA_DIR, 'query_history.txt'))
         self.page: Screen | Pager = self.help_pager
 
     def _insert_screens(self, screens: Sequence[Screen]) -> None:
@@ -266,13 +272,29 @@ class ScreenBuffer(ScreenBufferInterface):
         self._screen_i = 0
 
     def _search_prompt(self, pretype: str) -> None:
-        typed = Prompt(self, 'Search: ', pretype=pretype).run()
+        typed = Prompt(self, 'Search: ', pretype=pretype).run(self.qhistory.history)
         if typed is None or not typed.strip():
             return
 
-        dictionaries = search(StatusEcho(self, self.status), typed)
-        if dictionaries is not None:
-            self._insert_screens(tuple(Screen(self.win, x) for x in dictionaries))
+        queries = search_parse(typed)
+        if queries is None:
+            return
+
+        screens = []
+        for i, dictionaries in enumerate(
+                search(StatusEcho(self, self.status), queries)
+        ):
+            if dictionaries is None:
+                continue
+
+            for dictionary in dictionaries:
+                self.qhistory.add(queries[i].query)
+                screens.append(Screen(self.win, dictionary))
+
+        if not screens:
+            return
+
+        self._insert_screens(tuple(screens))
 
     def search_prompt(self, *, pretype: str = '') -> None:
         self.status.clear()
@@ -460,26 +482,26 @@ class ScreenBuffer(ScreenBufferInterface):
             chosen_deck = typed.strip()
 
         try:
-            collections = anki.collection_media_paths()
+            media_paths = anki.collection_media_paths()
         except ValueError as e:
             st.error('Locating collection.media paths failed:', str(e))
             return
 
-        if len(collections) == 1:
-            chosen_collection = collections.pop()
+        if len(media_paths) == 1:
+            chosen_media_path = media_paths.pop()
         else:
             typed = Prompt(
                 self, 'Choose collection: ', exiting_bspace=False
-            ).run(collections)
+            ).run(media_paths)
             if typed is None or not typed.strip():
                 st.error('Cancelled, input lost')
                 return
 
-            chosen_collection = typed.strip()
+            chosen_media_path = typed.strip()
 
         config['note'] = chosen_model
         config['deck'] = chosen_deck
-        config['mediapath'] = chosen_collection
+        config['mediapath'] = chosen_media_path
         config_save(config)
 
         st.attention('Configuration complete!')
@@ -487,7 +509,7 @@ class ScreenBuffer(ScreenBufferInterface):
         st.writeln(curses.COLS * '=')
         st.writeln(f'-note      set to: {chosen_model}')
         st.writeln(f'-deck      set to: {chosen_deck}')
-        st.writeln(f'-mediapath set to: {chosen_collection}')
+        st.writeln(f'-mediapath set to: {chosen_media_path}')
         st.writeln(curses.COLS * '=')
 
     def find_in_page(self) -> None:
@@ -514,6 +536,38 @@ class ScreenBuffer(ScreenBufferInterface):
             return True
 
         return False
+
+
+class QueryHistory:
+    def __init__(self, path: str) -> None:
+        self.path = path
+        try:
+            with open(path) as f:
+                self._history = collections.deque(map(str.strip, f))
+        except FileNotFoundError:
+            self._history = collections.deque()
+
+        self._seen = set(self._history)
+        self._at_least_one_added = False
+        atexit.register(self._save_history)
+
+    @property
+    def history(self) -> collections.deque[str]:
+        return self._history
+
+    def _save_history(self) -> None:
+        if self._at_least_one_added:
+            with open(self.path, 'w') as f:
+                f.write('\n'.join(self._history))
+
+    def add(self, s: str) -> None:
+        self._at_least_one_added = True
+        if s in self._seen:
+            self._history.remove(s)
+        else:
+            self._seen.add(s)
+
+        self._history.appendleft(s)
 
 
 def perror_clipboard_or_selection(status: Status) -> str | None:
