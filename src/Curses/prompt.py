@@ -5,7 +5,7 @@ from typing import TYPE_CHECKING
 
 from src.Curses.color import Color
 from src.Curses.util import (
-    CURSES_MIN_COLS_VALUE,
+    CURSES_COLS_MIN_VALUE,
     clipboard_or_selection,
     hide_cursor,
     mouse_right_click,
@@ -108,7 +108,7 @@ class Prompt:
         self._entered = pretype
 
     def draw(self) -> None:
-        if curses.COLS < CURSES_MIN_COLS_VALUE:
+        if curses.COLS < CURSES_COLS_MIN_VALUE:
             return
 
         win = self.win
@@ -116,6 +116,7 @@ class Prompt:
         offset = width // 3
 
         if self.prompt:
+            # 12: Prompt's minimum typing space.
             prompt_text = truncate(self.prompt, width - 12, fromleft=True)
             if prompt_text is None:
                 prompt_text = '«' + self.prompt[-1]

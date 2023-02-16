@@ -11,7 +11,7 @@ from src.data import WINDOWS
 # low `curses.COLS` values. Set a global limit and make sure that every
 # `draw()` function does not attempt drawing if `curses.COLS` is lower than
 # this value.
-CURSES_MIN_COLS_VALUE = 4
+CURSES_COLS_MIN_VALUE = 4
 
 BORDER_PAD = MARGIN = FUNCTION_BAR_PAD = 1
 
