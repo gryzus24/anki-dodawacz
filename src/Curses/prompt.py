@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import curses
 import collections
-from typing import TYPE_CHECKING, Sequence
+from typing import TYPE_CHECKING, NamedTuple, Sequence
 
 from src.Curses.color import Color
 from src.Curses.util import (
@@ -31,6 +31,11 @@ def _prepare_lookup(elements: Sequence[str]) -> collections.defaultdict[str, lis
     return result
 
 
+class SelectionResult(NamedTuple):
+    completion: str | None
+    wrapped: bool
+
+
 class CompletionMenu:
     def __init__(self, win: curses._CursesWindow, elements: Sequence[str]) -> None:
         self.win = win
@@ -48,6 +53,10 @@ class CompletionMenu:
     @property
     def completions(self) -> Sequence[str]:
         return self._completions
+
+    @property
+    def cur(self) -> int | None:
+        return self._cur
 
     def draw(self) -> None:
         cur = self._cur or 0
@@ -77,13 +86,14 @@ class CompletionMenu:
                 y -= 1
 
     def complete(self, s: str) -> None:
-        s = s.lower()
+        self._cur = None
+        self._scroll = 0
+
+        s = s.lstrip().lower()
         if self._current_completion_str == s:
             return
 
         self._current_completion_str = s
-        self._cur = None
-        self._scroll = 0
 
         if s:
             self._completions = [
@@ -93,22 +103,30 @@ class CompletionMenu:
         else:
             self._completions = self.elements
 
-    def _select(self, n: int) -> str | None:
+    def _select(self, forward: bool) -> SelectionResult:
         if not self._completions:
-            return None
-
-        if self._cur is None:
-            self._cur = 0
+            completion = None
+            wrapped = False
+        elif self._cur is None:
+            self._cur = (0 if forward else len(self._completions) - 1)
+            completion = self._completions[self._cur]
+            wrapped = False
+        elif self._cur == ((len(self._completions) - 1) if forward else 0):
+            self._cur = None
+            completion = None
+            wrapped = True
         else:
-            self._cur = (self._cur + n) % len(self._completions)
+            self._cur += (1 if forward else -1)
+            completion = self._completions[self._cur]
+            wrapped = False
 
-        return self._completions[self._cur]
+        return SelectionResult(completion, wrapped)
 
-    def next(self) -> str | None:
-        return self._select(1)
+    def next(self) -> SelectionResult:
+        return self._select(True)
 
-    def prev(self) -> str | None:
-        return self._select(-1)
+    def prev(self) -> SelectionResult:
+        return self._select(False)
 
 
 class Prompt:
@@ -168,12 +186,12 @@ class Prompt:
         win.insstr(y, text_x, text)
         win.move(y, visual_cursor)
 
-    def _clear(self) -> None:
-        self._entered = ''
-        self._cursor = 0
-
     def resize(self) -> None:
         self.implementor.resize()
+
+    def clear(self) -> None:
+        self._entered = ''
+        self._cursor = 0
 
     # Movement
     def left(self) -> None:
@@ -236,6 +254,10 @@ class Prompt:
             self._entered[:self._cursor] + s + self._entered[self._cursor:]
         )
         self._cursor += len(s)
+
+    def clear_insert(self, s: str) -> None:
+        self.clear()
+        self.insert(s)
 
     def _delete_from(self, start: int, n: int) -> None:
         self._entered = self._entered[:start] + self._entered[start + n:]
@@ -310,16 +332,14 @@ class Prompt:
             ACTIONS[b'KEY_BACKSPACE'] = backspace
             ACTIONS[b'^H'] = ctrl_backspace
 
+    COMPLETION_NEXT_KEYS = (b'^I', b'^P')
+    COMPLETION_PREV_KEYS = (b'KEY_BTAB', b'^N')
+
     def _run(self, completions: Sequence[str]) -> str | None:
         cmenu = CompletionMenu(self.win, completions)
-        do_completion = False
+        entered_before_completion = ''
 
         while True:
-            if do_completion:
-                cmenu.complete(self._entered.strip())
-            else:
-                do_completion = True
-
             if cmenu.completions:
                 with self.implementor.extra_margin(cmenu.height()):
                     self.implementor.draw()
@@ -332,23 +352,31 @@ class Prompt:
             c = self.win.getch()
             if 32 <= c <= 126:  # printable
                 self.insert(chr(c))
-                continue
+                cmenu.complete(self._entered)
 
-            key = curses.keyname(c)
-            if key in Prompt.ACTIONS:
+            elif (key := curses.keyname(c)) in Prompt.ACTIONS:
                 Prompt.ACTIONS[key](self)
-            elif key in (b'^I', b'^P'):
-                do_completion = False
-                choice = cmenu.next()
-                if choice is not None:
-                    self._clear()
-                    self.insert(choice)
-            elif key in (b'KEY_BTAB', b'^N'):
-                do_completion = False
-                choice = cmenu.prev()
-                if choice is not None:
-                    self._clear()
-                    self.insert(choice)
+                cmenu.complete(self._entered)
+
+            elif (
+                   key in Prompt.COMPLETION_NEXT_KEYS
+                or key in Prompt.COMPLETION_PREV_KEYS
+            ):
+                if cmenu.cur is None:
+                    entered_before_completion = self._entered
+
+                if key in Prompt.COMPLETION_NEXT_KEYS:
+                    r = cmenu.next()
+                else:
+                    r = cmenu.prev()
+                if r.completion is None:
+                    if r.wrapped:
+                        self.clear_insert(entered_before_completion)
+                    else:
+                        pass  # no completion matches
+                else:
+                    self.clear_insert(r.completion)
+
             elif key == b'KEY_MOUSE':
                 bstate = curses.getmouse()[4]
                 if mouse_wheel_click(bstate):
@@ -356,16 +384,25 @@ class Prompt:
                         self.insert(clipboard_or_selection())
                     except (ValueError, LookupError):
                         pass
+                    else:
+                        cmenu.complete(self._entered)
                 elif mouse_right_click(bstate):
                     ret = self._entered
-                    self._clear()
+                    self.clear()
                     return ret
+
             elif key in (b'^J', b'^M'):  # ^M: Enter on Windows
                 ret = self._entered
-                self._clear()
+                self.clear()
                 return ret
+
             elif key in (b'^C', b'^\\', b'^['):
-                return None
+                if cmenu.cur is None:
+                    return None
+                else:
+                    self.clear_insert(entered_before_completion)
+                    cmenu.complete(self._entered)
+
 
     def run(self, completions: Sequence[str] | None = None) -> str | None:
         curses.raw()
