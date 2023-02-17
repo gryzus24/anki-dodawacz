@@ -337,7 +337,9 @@ class Prompt:
 
     def _run(self, completions: Sequence[str]) -> str | None:
         cmenu = CompletionMenu(self.win, completions)
-        entered_before_completion = ''
+        entered_before_completion = self._entered
+        if entered_before_completion:
+            cmenu.complete(entered_before_completion)
 
         while True:
             if cmenu.completions:
