@@ -28,12 +28,11 @@ class Pager:
             win: curses._CursesWindow,
             buf: list[tuple[str, list[Attr]]]
     ) -> None:
+        self.win = win
         self._buf = buf
         self.margin_bot = FUNCTION_BAR_PAD
         self._line = 0
         self._hl: PagerHighlight | None = None
-
-        self.win = win
 
     @property
     def screen_height(self) -> int:
