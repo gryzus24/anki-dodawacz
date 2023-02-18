@@ -4,13 +4,14 @@ import json
 import os
 import sys
 
-from typing import TypedDict
+from typing import TypedDict, Literal
 
-class TConfig(TypedDict):
+dictkey_t = Literal['ahd', 'collins', 'farlex', 'wordnet']
+
+
+class config_t(TypedDict):
     audio:      bool
     deck:       str
-    primary:    str
-    secondary:  str
     dupescope:  bool
     duplicates: bool
     etym:       bool
@@ -21,9 +22,12 @@ class TConfig(TypedDict):
     hidepreps:  bool
     hides:      str
     hidesyn:    bool
-    mediapath:  str
+    history:    bool
+    mediadir:   str
     note:       str
     pos:        bool
+    primary:    dictkey_t
+    secondary:  Literal[dictkey_t, '-']
     shortetyms: bool
     syn:        bool
     tags:       str
@@ -31,7 +35,7 @@ class TConfig(TypedDict):
     colors:     dict[str, str]
 
 
-def config_save(c: TConfig) -> None:
+def config_save(c: config_t) -> None:
     with open(os.path.join(DATA_DIR, 'config.json'), 'w') as f:
         json.dump(c, f, indent=2)
 
@@ -48,7 +52,7 @@ os.makedirs(os.path.join(DATA_DIR, 'Audio'), exist_ok=True)
 
 try:
     with open(os.path.join(DATA_DIR, 'config.json')) as f:
-        config: TConfig = json.load(f)
+        config: config_t = json.load(f)
 except FileNotFoundError:
     with open(os.path.join(ROOT_DIR, 'config.json')) as f:
         config = json.load(f)

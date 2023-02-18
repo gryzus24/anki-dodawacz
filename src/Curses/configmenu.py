@@ -16,7 +16,7 @@ from src.Curses.util import (
     draw_border,
     truncate,
 )
-from src.data import config, config_save, TConfig
+from src.data import config, config_save, config_t
 
 
 class Option(NamedTuple):
@@ -30,14 +30,14 @@ class Option(NamedTuple):
     def basename(self) -> str:
         return self.path.rpartition('.')[2]
 
-    def set_to(self, _c: TConfig, value: str | bool) -> None:
+    def set_to(self, _c: config_t, value: str | bool) -> None:
         left, _, right = self.path.partition('.')
         if right:
             _c[left][right] = value  # type: ignore[literal-required]
         else:
             _c[left] = value  # type: ignore[literal-required]
 
-    def get_from(self, _c: TConfig) -> str | bool:
+    def get_from(self, _c: config_t) -> str | bool:
         left, _, right = self.path.partition('.')
         if right:
             return _c[left][right]  # type: ignore[literal-required]
@@ -94,6 +94,12 @@ CONFIG_COLUMNS: list[Column] = [
             Option('hidepreps', 'Replace all prepositions with `-hides`', bool),
             Option('hides', 'Sequence of characters to use as target word replacement', ['___', '...', '———']),
             ]
+        ),
+        Section(
+            'History',
+            [
+            Option('history', 'Save queries to the history file', bool),
+            ]
         )
     ]),
     Column([
@@ -102,7 +108,7 @@ CONFIG_COLUMNS: list[Column] = [
             [
             Option('note', 'Note used for adding cards', functools.partial(anki.invoke, 'modelNames')),
             Option('deck', 'Deck used for adding cards', functools.partial(anki.invoke, 'deckNames')),
-            Option('mediapath', 'Audio save location', anki.collection_media_paths),
+            Option('mediadir', 'Path to the media directory', anki.collection_media_paths),
             Option('duplicates', 'Allow duplicates', bool),
             Option('dupescope', 'Look for duplicates in deck/collection', ['deck', 'collection'], strict=True),
             Option('tags', 'Anki tags (comma separated list)', None),

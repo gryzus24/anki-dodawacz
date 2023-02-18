@@ -31,11 +31,11 @@ PREPOSITIONS = {
 def save_audio(url: str) -> str:
     audio_bytes = http.urlopen('GET', url).data  # type: ignore[no-untyped-call]
 
-    media_path = os.path.expanduser(config['mediapath'])
+    mediadir_path = os.path.expanduser(config['mediadir'])
     _, _, filename = url.rpartition('/')
 
     try:
-        with open(os.path.join(media_path, filename), 'wb') as f:
+        with open(os.path.join(mediadir_path, filename), 'wb') as f:
             f.write(audio_bytes)
     except Exception as e:
         raise anki.AnkiError(str(e))

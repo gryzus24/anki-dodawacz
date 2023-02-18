@@ -2,42 +2,41 @@ from __future__ import annotations
 
 import threading
 from itertools import repeat
-from typing import Sequence, Iterable, NamedTuple, TYPE_CHECKING
+from typing import Callable, Iterable, NamedTuple, TYPE_CHECKING
 
 from src.Dictionaries.ahdictionary import ask_ahdictionary
 from src.Dictionaries.collins import ask_collins
 from src.Dictionaries.dictionary_base import Dictionary, DictionaryError
 from src.Dictionaries.farlex import ask_farlex
 from src.Dictionaries.wordnet import ask_wordnet
-from src.data import config
+from src.data import config, dictkey_t
 
 if TYPE_CHECKING:
     from src.Curses.proto import StatusInterface
 
-
-DICT_KEY_ALIASES = {
+DICT_KEY_ALIASES: dict[str, dictkey_t] = {
     'ahd':     'ahd',
+    'col':     'collins',
+    'collins': 'collins',
     'i':       'farlex',
     'farlex':  'farlex',
     'wnet':    'wordnet',
     'wordnet': 'wordnet',
-    'collins': 'collins',
-    'col':     'collins',
 }
 
 # Every dictionary has its individual key to avoid cluttering cache
 # with identical dictionaries that were called with the same query
 # but different "dictionary flag", which acts as nothing more but
 # an alias.
-DICTIONARY_LOOKUP = {
+DICTIONARY_LOOKUP: dict[dictkey_t, Callable[[str], Dictionary]] = {
     'ahd': ask_ahdictionary,
     'farlex': ask_farlex,
     'wordnet': ask_wordnet,
     'collins': ask_collins,
 }
 
-_cache: dict[tuple[str, str], Dictionary] = {}
-def _query(key: str, query: str) -> Dictionary:
+_cache: dict[tuple[dictkey_t, str], Dictionary] = {}
+def _query(key: dictkey_t, query: str) -> Dictionary:
     try:
         return _cache[key, query]
     except KeyError:
@@ -53,51 +52,37 @@ class QueryError(NamedTuple):
     info: str
 
 
-def _thread_query(
-        key: str,
+def _qthread(
         query: str,
+        key: dictkey_t,
         keyid: int,
-        ret: dict[int, Dictionary],
+        success: dict[int, Dictionary],
         err: dict[int, QueryError]
 ) -> None:
     try:
-        ret[keyid] = _query(key, query)
+        success[keyid] = _query(key, query)
     except (DictionaryError, ConnectionError) as e:
         err[keyid] = QueryError(key, str(e))
 
 
-def _perror_no_thread_query(
-        implementor: StatusInterface,
-        key: str,
-        query: str
-) -> list[Dictionary] | None:
-    try:
-        return [_query(key, query)]
-    except (DictionaryError, ConnectionError) as e:
-        implementor.error(str(e))
-        return None
-
-
-def _lookup_dictionaries(
-        implementor: StatusInterface,
+def _perror_threaded_query(
+        status: StatusInterface,
         query: str,
-        keys: Sequence[str] | None = None
+        keys: list[dictkey_t]
 ) -> list[Dictionary] | None:
-    keys = keys or [config['primary']]
-
-    if len(keys) == 1:
-        return _perror_no_thread_query(implementor, keys[0], query)
-
-    success = {}
+    success: dict[int, Dictionary] = {}
     err: dict[int, QueryError] = {}
     threads = []
     for keyid, key in enumerate(keys):
         try:
             success[keyid] = _cache[key, query]
         except KeyError:
+            # I hope it's ok to make them daemonic. It simplifies the handling
+            # of SIGINT, but try-finally blocks don't run inside of urllib3.
             t = threading.Thread(
-                target=_thread_query,
-                args=(key, query, keyid, success, err)
+                target=_qthread,
+                args=(query, key, keyid, success, err),
+                daemon=True
             )
             t.start()
             threads.append(t)
@@ -105,39 +90,53 @@ def _lookup_dictionaries(
     for t in threads:
         t.join()
 
-    fallback_key = config['secondary']
     result = []
     for keyid, _ in enumerate(keys):
         if keyid in success:
             result.append(success[keyid])
         elif keyid in err:
-            bad_key, exc_info = err[keyid]
-            # Although extremely unlikely, `fallback_key` and `query` might
-            # have been cached previously and can be retrieved in spite of
-            # the key being invalid now.
-            if fallback_key == bad_key and (fallback_key, query) not in _cache:
-                fallback_key = '-'
-
-            implementor.error(exc_info)
+            status.error(err[keyid].info)
         else:
             raise AssertionError('unreachable')
 
-    if result:
-        return result
-
-    if fallback_key == '-':
+    if not result:
         return None
 
-    return _perror_no_thread_query(implementor, fallback_key, query)
+    return result
 
 
 class Query(NamedTuple):
     query:       str
-    dict_flags:  list[str]
+    dict_flags:  list[dictkey_t]
     query_flags: list[str]
 
 
-def _unique(it: Iterable[str]) -> list[str]:
+def _perror_query(
+        status: StatusInterface,
+        query: str,
+        key: dictkey_t
+) -> list[Dictionary] | None:
+    try:
+        return [_query(key, query)]
+    except (DictionaryError, ConnectionError) as e:
+        status.error(str(e))
+        return None
+
+
+def _perror_query_with_fallback(
+        status: StatusInterface,
+        query: str,
+        key: dictkey_t,
+        fallback_key: dictkey_t
+) -> list[Dictionary] | None:
+    result = _perror_query(status, query, key)
+    if result is None:
+        result = _perror_query(status, query, fallback_key)
+
+    return result
+
+
+def _unique(it: Iterable[dictkey_t]) -> list[dictkey_t]:
     result = []
     seen = set()
     for x in it:
@@ -148,13 +147,14 @@ def _unique(it: Iterable[str]) -> list[str]:
     return result
 
 
-def search_parse(s: str) -> list[Query] | None:
+def parse(s: str) -> list[Query] | None:
     separators = ',;'
     chars_to_strip = separators + ' '
 
     s = s.strip(chars_to_strip)
     if not s:
         return None
+    s = ' '.join(s.split())
 
     result = []
     for field in max(map(str.split, repeat(s), separators), key=len):
@@ -164,7 +164,7 @@ def search_parse(s: str) -> list[Query] | None:
 
         query, *flags = field.split(' -')
 
-        dict_flags = []
+        dict_flags: list[dictkey_t] = []
         query_flags = []
         for flag in flags:
             flag = flag.strip(' -')
@@ -174,12 +174,11 @@ def search_parse(s: str) -> list[Query] | None:
             if flag in DICT_KEY_ALIASES:
                 dict_flags.append(DICT_KEY_ALIASES[flag])
             elif flag in ('c', 'compare'):
-                assert config['primary'] in DICTIONARY_LOOKUP
                 dict_flags.append(config['primary'])
 
-                # `secondary` might be set to '-'.
+                # `secondary` might be set to '-'. Do the membership check.
                 if config['secondary'] in DICTIONARY_LOOKUP:
-                    dict_flags.append(config['secondary'])
+                    dict_flags.append(config['secondary'])  # type: ignore[arg-type]
             else:
                 query_flags.append(flag)
 
@@ -189,19 +188,30 @@ def search_parse(s: str) -> list[Query] | None:
 
 
 def search(
-        implementor: StatusInterface,
+        status: StatusInterface,
         queries: list[Query]
 ) -> list[list[Dictionary] | None]:
-    # To keep things simple, we only use threads in `_lookup_dictionaries()`
-    # for now.
     # TODO: Use threads for multiple queries like "a -c, b, c" etc.
-    #       We can easily do this by turning the `_lookup_dictionaries()` into
-    #       a generator that yields just before `Thread.join()`, we can then
+    #       We can do this by turning `_perror_threaded_query()` into a
+    #       generator that yields just before `Thread.join()`, we can then
     #       collect the return values of these generators here. Keep in mind
     #       that we want to minimize the number of requests and handle
     #       duplicate queries (or disallow them) so that we can avoid the race
-    #       condition within the `_cache`.
-    return [
-        _lookup_dictionaries(implementor, x.query, x.dict_flags)
-        for x in queries
-    ]
+    #       condition when accessing the `_cache` in parallel.
+    result = []
+    for query, flags, _ in queries:
+        if len(flags) == 0:
+            if config['secondary'] == '-':
+                result.append(_perror_query(status, query, config['primary']))
+            else:
+                result.append(
+                    _perror_query_with_fallback(
+                        status, query, config['primary'], config['secondary']
+                    )
+                )
+        elif len(flags) == 1:
+            result.append(_perror_query(status, query, flags.pop()))
+        else:
+            result.append(_perror_threaded_query(status, query, flags))
+
+    return result

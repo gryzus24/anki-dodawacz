@@ -19,6 +19,7 @@ import os
 from typing import Callable, Sequence, Iterable, NamedTuple, Iterator
 
 import src.anki as anki
+import src.search as search
 from src.Curses.color import Color, init_colors
 from src.Curses.configmenu import ConfigMenu
 from src.Curses.pager import Pager
@@ -42,7 +43,6 @@ from src.Curses.util import (
 from src.__version__ import __version__
 from src.card import create_and_add_card
 from src.data import WINDOWS, DATA_DIR, config, config_save
-from src.search import search, search_parse
 
 STRING_TO_BOOL = {
     '1':    True, '0':     False,
@@ -127,7 +127,10 @@ class Status:
 
 
 class StatusEcho(StatusInterface):
-    def __init__(self, screen_buffer: ScreenBufferInterface, status: StatusInterface) -> None:
+    def __init__(self,
+            screen_buffer: ScreenBufferInterface,
+            status: StatusInterface
+    ) -> None:
         self.screen_buffer = screen_buffer
         self.status = status
 
@@ -261,7 +264,7 @@ class ScreenBuffer(ScreenBufferInterface):
         self.screens = screens or []
         self._screen_i = 0
         self.status = Status(win, persistence=7)
-        self.qhistory = QueryHistory(os.path.join(DATA_DIR, 'query_history.txt'))
+        self.qhistory = QueryHistory(os.path.join(DATA_DIR, 'history.txt'))
         self.page: Screen | Pager = self.help_pager
 
     def _insert_screens(self, screens: Sequence[Screen]) -> None:
@@ -272,29 +275,39 @@ class ScreenBuffer(ScreenBufferInterface):
         self._screen_i = 0
 
     def _search_prompt(self, pretype: str) -> None:
-        typed = Prompt(self, 'Search: ', pretype=pretype).run(self.qhistory.history)
+        qhistory = self.qhistory
+
+        typed = Prompt(self, 'Search: ', pretype=pretype).run(qhistory.history)
         if typed is None or not typed.strip():
             return
 
-        queries = search_parse(typed)
+        queries = search.parse(typed)
         if queries is None:
             return
 
+        try:
+            resolved_queries = search.search(
+                StatusEcho(self, self.status), queries
+            )
+        except KeyboardInterrupt:
+            return
+
         screens = []
-        for i, dictionaries in enumerate(
-                search(StatusEcho(self, self.status), queries)
-        ):
+
+        assert len(queries) == len(resolved_queries)
+        for query, dictionaries in zip(queries, resolved_queries):
             if dictionaries is None:
                 continue
 
             for dictionary in dictionaries:
-                self.qhistory.add(queries[i].query)
                 screens.append(Screen(self.win, dictionary))
+                if config['history']:
+                    qhistory.add(query.query)
 
         if not screens:
             return
 
-        self._insert_screens(tuple(screens))
+        self._insert_screens(screens)
 
     def search_prompt(self, *, pretype: str = '') -> None:
         self.status.clear()
@@ -482,26 +495,26 @@ class ScreenBuffer(ScreenBufferInterface):
             chosen_deck = typed.strip()
 
         try:
-            media_paths = anki.collection_media_paths()
+            collection_paths = anki.collection_media_paths()
         except ValueError as e:
             st.error('Locating collection.media paths failed:', str(e))
             return
 
-        if len(media_paths) == 1:
-            chosen_media_path = media_paths.pop()
+        if len(collection_paths) == 1:
+            chosen_collection_path = collection_paths.pop()
         else:
             typed = Prompt(
                 self, 'Choose collection: ', exiting_bspace=False
-            ).run(media_paths)
+            ).run(collection_paths)
             if typed is None or not typed.strip():
                 st.error('Cancelled, input lost')
                 return
 
-            chosen_media_path = typed.strip()
+            chosen_collection_path = typed.strip()
 
         config['note'] = chosen_model
         config['deck'] = chosen_deck
-        config['mediapath'] = chosen_media_path
+        config['mediadir'] = chosen_collection_path
         config_save(config)
 
         st.attention('Configuration complete!')
@@ -509,7 +522,7 @@ class ScreenBuffer(ScreenBufferInterface):
         st.writeln(curses.COLS * '=')
         st.writeln(f'-note      set to: {chosen_model}')
         st.writeln(f'-deck      set to: {chosen_deck}')
-        st.writeln(f'-mediapath set to: {chosen_media_path}')
+        st.writeln(f'-mediadir  set to: {chosen_collection_path}')
         st.writeln(curses.COLS * '=')
 
     def find_in_page(self) -> None:
