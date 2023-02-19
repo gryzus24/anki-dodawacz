@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import contextlib
-import copy
 import curses
 import functools
 from typing import Callable, Iterator, NamedTuple, Type
@@ -16,11 +15,11 @@ from src.Curses.util import (
     draw_border,
     truncate,
 )
-from src.data import config, config_save, config_t
+from src.data import config, config_save, config_t, configkey_t, configval_t
 
 
 class Option(NamedTuple):
-    path:        str
+    key:         configkey_t
     description: str
     constraint:  Type[bool] | list[str] | Callable[[], list[str]] | None
     # `strict`: option can be set only if it is contained within `constraint`.
@@ -28,21 +27,13 @@ class Option(NamedTuple):
 
     @property
     def basename(self) -> str:
-        return self.path.rpartition('.')[2]
+        return self.key.rpartition('.')[2]
 
-    def set_to(self, _c: config_t, value: str | bool) -> None:
-        left, _, right = self.path.partition('.')
-        if right:
-            _c[left][right] = value  # type: ignore[literal-required]
-        else:
-            _c[left] = value  # type: ignore[literal-required]
+    def set_to(self, c: config_t, value: configval_t) -> None:
+        c[self.key] = value
 
-    def get_from(self, _c: config_t) -> str | bool:
-        left, _, right = self.path.partition('.')
-        if right:
-            return _c[left][right]  # type: ignore[literal-required]
-        else:
-            return _c[left]  # type: ignore[literal-required]
+    def get_from(self, c: config_t) -> configval_t:
+        return c[self.key]
 
 
 class Section(NamedTuple):
@@ -133,33 +124,33 @@ CONFIG_COLUMNS: list[Column] = [
         Section(
             'Colors',
             [
-            Option('colors.def1', 'Color of odd definitions', _colors, strict=True),
-            Option('colors.def2', 'Color of even definitions', _colors, strict=True),
-            Option('colors.delimit', 'Color of delimiters', _colors, strict=True),
-            Option('colors.err', 'Color of error indicators', _colors, strict=True),
-            Option('colors.etym', 'Color of etymologies', _colors, strict=True),
-            Option('colors.exsen', 'Color of example sentences', _colors, strict=True),
-            Option('colors.heed', 'Color of attention indicators', _colors, strict=True),
-            Option('colors.index', 'Color of definition indices', _colors, strict=True),
-            Option('colors.infl', 'Color of inflections', _colors, strict=True),
-            Option('colors.label', 'Color of labels', _colors, strict=True),
-            Option('colors.phon', 'Color of phonologies', _colors, strict=True),
-            Option('colors.phrase', 'Color of phrases', _colors, strict=True),
-            Option('colors.pos', 'Color of parts of speech', _colors, strict=True),
-            Option('colors.sign', 'Color of main definition signs', _colors, strict=True),
-            Option('colors.success', 'Color of success indicators', _colors, strict=True),
-            Option('colors.syn', 'Color of synonyms', _colors, strict=True),
+            Option('c.def1', 'Color of odd definitions', _colors, strict=True),
+            Option('c.def2', 'Color of even definitions', _colors, strict=True),
+            Option('c.delimit', 'Color of delimiters', _colors, strict=True),
+            Option('c.err', 'Color of error indicators', _colors, strict=True),
+            Option('c.etym', 'Color of etymologies', _colors, strict=True),
+            Option('c.exsen', 'Color of example sentences', _colors, strict=True),
+            Option('c.heed', 'Color of attention indicators', _colors, strict=True),
+            Option('c.index', 'Color of definition indices', _colors, strict=True),
+            Option('c.infl', 'Color of inflections', _colors, strict=True),
+            Option('c.label', 'Color of labels', _colors, strict=True),
+            Option('c.phon', 'Color of phonologies', _colors, strict=True),
+            Option('c.phrase', 'Color of phrases', _colors, strict=True),
+            Option('c.pos', 'Color of parts of speech', _colors, strict=True),
+            Option('c.sign', 'Color of main definition signs', _colors, strict=True),
+            Option('c.success', 'Color of success indicators', _colors, strict=True),
+            Option('c.syn', 'Color of synonyms', _colors, strict=True),
             ]
         )
     ])
 ]
 
-OPTION_NAME_MIN_WIDTH = 13
+OPTION_NAME_MIN_WIDTH  = 13
 OPTION_VALUE_MIN_WIDTH = 3
-COLUMN_MIN_WIDTH = OPTION_NAME_MIN_WIDTH + OPTION_VALUE_MIN_WIDTH
+COLUMN_MIN_WIDTH       = OPTION_NAME_MIN_WIDTH + OPTION_VALUE_MIN_WIDTH
 DESCRIPTION_BOX_HEIGHT = 3
-COLUMN_PAD = 2
-SECTION_PAD = 1
+COLUMN_PAD             = 2
+SECTION_PAD            = 1
 
 
 class ConfigMenu(ScreenBufferInterface):
@@ -182,7 +173,8 @@ class ConfigMenu(ScreenBufferInterface):
         self.min_x = self.CONFIG_MIN_WIDTH + 2*BORDER_PAD
         self.margin_bot = 0
 
-        self._initial_config = copy.deepcopy(config)
+        # Initialized in the `run()` method.
+        self._mut_config: config_t
         self._phantom_cursors = [0] * len(CONFIG_COLUMNS)
         self._col = self._line = 0
 
@@ -196,7 +188,7 @@ class ConfigMenu(ScreenBufferInterface):
             self.margin_bot = t
 
     def _value_of_option(self, option: Option, max_attr_span: int) -> tuple[str, Attr]:
-        value = option.get_from(config)
+        value = option.get_from(self._mut_config)
         if option.constraint is bool:
             assert isinstance(value, bool)
             if value:
@@ -205,8 +197,15 @@ class ConfigMenu(ScreenBufferInterface):
                 return 'OFF', Attr(0, 3, Color.err)
 
         assert isinstance(value, str)
-        if option.path.startswith('colors.'):
-            return value, Attr(0, min(len(value), max_attr_span), getattr(Color, option.basename))
+        if option.key.startswith('c.'):
+            return (
+                value,
+                Attr(
+                    0,
+                    min(len(value), max_attr_span),
+                    Color.get_color(self._mut_config, option.key)  # type: ignore[arg-type]
+                )
+            )
         else:
             return value, Attr(0, 0, 0)
 
@@ -264,7 +263,7 @@ class ConfigMenu(ScreenBufferInterface):
 
                 for option in section.options:#{
                     value_text, attr = self._value_of_option(option, value_max_width)
-                    modified = option.get_from(self._initial_config) != option.get_from(config)
+                    modified = option.get_from(self._mut_config) != option.get_from(config)
 
                     entry = truncate(
                         f'{("* " if modified else "") + option.basename:{OPTION_NAME_MIN_WIDTH}s}'
@@ -327,12 +326,12 @@ class ConfigMenu(ScreenBufferInterface):
 
     def change_selected(self) -> None:
         option = self.grid[self._col].get_option(self._line)
-        value = option.get_from(config)
+        value = option.get_from(self._mut_config)
         constraint = option.constraint
 
         if constraint is bool:
             assert isinstance(value, bool)
-            option.set_to(config, not value)
+            option.set_to(self._mut_config, not value)
             return
 
         assert isinstance(value, str)
@@ -365,17 +364,16 @@ class ConfigMenu(ScreenBufferInterface):
 
         if option.strict:
             if typed in completions:
-                option.set_to(config, typed)
+                option.set_to(self._mut_config, typed)
         else:
-            option.set_to(config, typed)
-
-        Color.refresh()
+            option.set_to(self._mut_config, typed)
 
     def apply_changes(self) -> bool:
-        if self._initial_config == config:
+        if self._mut_config == config:
             return False
+        config.update(self._mut_config)  # type: ignore[typeddict-item]
         config_save(config)
-        self._initial_config = copy.deepcopy(config)
+        Color.refresh(config)
         return True
 
     ACTIONS: dict[bytes, Callable[[ConfigMenu], None]] = {
@@ -387,7 +385,9 @@ class ConfigMenu(ScreenBufferInterface):
         b'^J': change_selected, b'^M': change_selected,
     }
 
-    def run(self) -> None:
+    def run(self, c: config_t) -> None:
+        self._mut_config = c.copy()
+
         while True:
             self.draw()
 
@@ -396,4 +396,3 @@ class ConfigMenu(ScreenBufferInterface):
                 self.ACTIONS[key](self)
             elif key in (b'q', b'Q', b'^X', b'KEY_F(2)'):
                 return
-

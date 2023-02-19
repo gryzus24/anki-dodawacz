@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import curses
 
-from src.data import config
+from src.data import config, config_t, colorkey_t
 
 COLOR_NAME_TO_COLOR = {
     'fg': 0, 'black': 0,
@@ -24,39 +24,39 @@ COLOR_NAME_TO_COLOR = {
 }
 
 
-def _color_num(color: str) -> int:
-    return COLOR_NAME_TO_COLOR.get(config['colors'][color], 0)
-
-
 class _Color:
     __slots__ = (
         'def1', 'def2', 'delimit', 'err', 'etym', 'exsen', 'heed', 'index',
         'infl', 'label', 'phon', 'phrase', 'pos', 'sign', 'success', 'syn',
     )
 
-    def refresh(self) -> None:
-        self.def1       = curses.color_pair(_color_num('def1'))
-        self.def2       = curses.color_pair(_color_num('def2'))
-        self.delimit    = curses.color_pair(_color_num('delimit'))
-        self.err        = curses.color_pair(_color_num('err'))
-        self.etym       = curses.color_pair(_color_num('etym'))
-        self.exsen      = curses.color_pair(_color_num('exsen'))
-        self.heed       = curses.color_pair(_color_num('heed'))
-        self.index      = curses.color_pair(_color_num('index'))
-        self.infl       = curses.color_pair(_color_num('infl'))
-        self.label      = curses.color_pair(_color_num('label'))
-        self.phon       = curses.color_pair(_color_num('phon'))
-        self.phrase     = curses.color_pair(_color_num('phrase'))
-        self.pos        = curses.color_pair(_color_num('pos'))
-        self.sign       = curses.color_pair(_color_num('sign'))
-        self.success    = curses.color_pair(_color_num('success'))
-        self.syn        = curses.color_pair(_color_num('syn'))
+    @staticmethod
+    def get_color(c: config_t, key: colorkey_t) -> int:
+        return curses.color_pair(COLOR_NAME_TO_COLOR.get(c[key], 0))
 
-    def init(self, ncolors: int) -> None:
+    def refresh(self, c: config_t) -> None:
+        self.def1       = _Color.get_color(c, 'c.def1')
+        self.def2       = _Color.get_color(c, 'c.def2')
+        self.delimit    = _Color.get_color(c, 'c.delimit')
+        self.err        = _Color.get_color(c, 'c.err')
+        self.etym       = _Color.get_color(c, 'c.etym')
+        self.exsen      = _Color.get_color(c, 'c.exsen')
+        self.heed       = _Color.get_color(c, 'c.heed')
+        self.index      = _Color.get_color(c, 'c.index')
+        self.infl       = _Color.get_color(c, 'c.infl')
+        self.label      = _Color.get_color(c, 'c.label')
+        self.phon       = _Color.get_color(c, 'c.phon')
+        self.phrase     = _Color.get_color(c, 'c.phrase')
+        self.pos        = _Color.get_color(c, 'c.pos')
+        self.sign       = _Color.get_color(c, 'c.sign')
+        self.success    = _Color.get_color(c, 'c.success')
+        self.syn        = _Color.get_color(c, 'c.syn')
+
+    def init(self, c: config_t, ncolors: int) -> None:
         for k, v in COLOR_NAME_TO_COLOR.items():
             COLOR_NAME_TO_COLOR[k] = v % ncolors
 
-        self.refresh()
+        self.refresh(c)
 
 
 Color = _Color()
@@ -78,4 +78,4 @@ def init_colors() -> None:
     for i in range(16 if curses.COLORS >= 16 else curses.COLORS):
         curses.init_pair(i, i, -1)
 
-    Color.init(curses.COLORS)
+    Color.init(config, curses.COLORS)

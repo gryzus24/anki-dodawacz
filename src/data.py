@@ -4,35 +4,68 @@ import json
 import os
 import sys
 
-from typing import TypedDict, Literal
+from typing import TypedDict, Literal, Union
 
 dictkey_t = Literal['ahd', 'collins', 'farlex', 'wordnet']
 
+config_t = TypedDict(
+    'config_t',
+    {
+        'audio':      bool,
+        'deck':       str,
+        'dupescope':  Literal['deck', 'collection'],
+        'duplicates': bool,
+        'etym':       bool,
+        'exsen':      bool,
+        'formatdefs': bool,
+        'hidedef':    bool,
+        'hideexsen':  bool,
+        'hidepreps':  bool,
+        'hides':      str,
+        'hidesyn':    bool,
+        'history':    bool,
+        'mediadir':   str,
+        'note':       str,
+        'pos':        bool,
+        'primary':    dictkey_t,
+        'secondary':  Literal[dictkey_t, '-'],
+        'shortetyms': bool,
+        'syn':        bool,
+        'tags':       str,
+        'toipa':      bool,
+        'c.def1':     str,
+        'c.def2':     str,
+        'c.delimit':  str,
+        'c.err':      str,
+        'c.etym':     str,
+        'c.exsen':    str,
+        'c.heed':     str,
+        'c.index':    str,
+        'c.infl':     str,
+        'c.label':    str,
+        'c.phon':     str,
+        'c.phrase':   str,
+        'c.pos':      str,
+        'c.sign':     str,
+        'c.success':  str,
+        'c.syn':      str
+    }
+)
 
-class config_t(TypedDict):
-    audio:      bool
-    deck:       str
-    dupescope:  bool
-    duplicates: bool
-    etym:       bool
-    exsen:      bool
-    formatdefs: bool
-    hidedef:    bool
-    hideexsen:  bool
-    hidepreps:  bool
-    hides:      str
-    hidesyn:    bool
-    history:    bool
-    mediadir:   str
-    note:       str
-    pos:        bool
-    primary:    dictkey_t
-    secondary:  Literal[dictkey_t, '-']
-    shortetyms: bool
-    syn:        bool
-    tags:       str
-    toipa:      bool
-    colors:     dict[str, str]
+colorkey_t = Literal[
+    'c.def1', 'c.def2', 'c.delimit', 'c.err', 'c.etym', 'c.exsen', 'c.heed',
+    'c.index', 'c.infl', 'c.label', 'c.phon', 'c.phrase', 'c.pos', 'c.sign',
+    'c.success', 'c.syn',
+]
+
+configkey_t = Literal[
+    'audio', 'deck', 'dupescope', 'duplicates', 'etym', 'exsen', 'formatdefs',
+    'hidedef', 'hideexsen', 'hidepreps', 'hides', 'hidesyn', 'history',
+    'mediadir', 'note', 'pos', 'primary', 'secondary', 'shortetyms', 'syn',
+    'tags', 'toipa', colorkey_t
+]
+
+configval_t = Union[bool, str]
 
 
 def config_save(c: config_t) -> None:
@@ -57,6 +90,7 @@ except FileNotFoundError:
     with open(os.path.join(ROOT_DIR, 'config.json')) as f:
         config = json.load(f)
     config_save(config)
+
 
 LINUX = sys.platform.startswith('linux')
 MAC = sys.platform.startswith('darwin')

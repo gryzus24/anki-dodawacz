@@ -703,7 +703,7 @@ def curses_main(stdscr: curses._CursesWindow) -> None:
         elif c == b'KEY_F(2)':
             _l, _c = curses.LINES, curses.COLS
             try:
-                configmenu.run()
+                configmenu.run(config)
             except ValueError as e:
                 screenbuf.status.error('F2 Config:', str(e))
 
