@@ -131,13 +131,13 @@ class CompletionMenu:
 
 class Prompt:
     def __init__(self,
-            implementor: ScreenBufferInterface,
+            screenbuf: ScreenBufferInterface,
             prompt: str = '', *,
             pretype: str = '',
             exiting_bspace: bool = True
     ) -> None:
-        self.implementor = implementor
-        self.win = implementor.win
+        self.screenbuf = screenbuf
+        self.win = screenbuf.win
         self.prompt = prompt
         self.exiting_bspace = exiting_bspace
         self._cursor = len(pretype)
@@ -187,7 +187,7 @@ class Prompt:
         win.move(y, visual_cursor)
 
     def resize(self) -> None:
-        self.implementor.resize()
+        self.screenbuf.resize()
 
     def clear(self) -> None:
         self._entered = ''
@@ -343,11 +343,11 @@ class Prompt:
 
         while True:
             if cmenu.completions:
-                with self.implementor.extra_margin(cmenu.height()):
-                    self.implementor.draw()
+                with self.screenbuf.extra_margin(cmenu.height()):
+                    self.screenbuf.draw()
                 cmenu.draw()
             else:
-                self.implementor.draw()
+                self.screenbuf.draw()
 
             self.draw()
 

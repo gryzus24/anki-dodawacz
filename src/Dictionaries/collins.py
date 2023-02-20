@@ -1,6 +1,16 @@
 from __future__ import annotations
 
-from src.Dictionaries.dictionary_base import Dictionary, DictionaryError
+from src.Dictionaries.base import (
+    Dictionary,
+    DictionaryError,
+    DEF,
+    LABEL,
+    PHRASE,
+    HEADER,
+    ETYM,
+    AUDIO,
+    NOTE,
+)
 from src.Dictionaries.util import request_soup
 
 
@@ -14,11 +24,11 @@ def _extract_ced(collins: Dictionary, query: str, ced) -> None:  # type: ignore[
 
         phrase = orth_tag.text.strip()
 
-        collins.add('HEADER', header)
+        collins.add(HEADER(header))
         if header:
             header = ''
             if query != phrase:
-                collins.add('NOTE', 'Showing results for:')
+                collins.add(NOTE('Showing results for:'))
 
         pron_tag = header_block.find('span', {'class': 'pron'})
         if pron_tag is None:
@@ -34,8 +44,8 @@ def _extract_ced(collins: Dictionary, query: str, ced) -> None:  # type: ignore[
                 if audio is None:
                     raise DictionaryError('Collins: unexpected error: no data-src-mp3 attribute')
 
-        collins.add('PHRASE', phrase, phon)
-        collins.add('AUDIO', audio)
+        collins.add(PHRASE(phrase, phon))
+        collins.add(AUDIO(audio))
 
         phrase_tag = header_block.find('div', {'class': ('content', 'definitions', 'ced')}, recursive=False)
         if phrase_tag is None:
@@ -48,7 +58,7 @@ def _extract_ced(collins: Dictionary, query: str, ced) -> None:  # type: ignore[
             else:
                 label = label_tag.text.strip()
 
-            collins.add('LABEL', label, '')
+            collins.add(LABEL(label, ''))
 
             sense_tags = hom_tag.find_all('div', {'class': 'sense'}, recursive=False)
             if not sense_tags:
@@ -69,10 +79,10 @@ def _extract_ced(collins: Dictionary, query: str, ced) -> None:  # type: ignore[
                     else:
                         sense_lbl = ''
 
-                    def_type = 'DEF'
+                    is_subdef = False
                     for subsense_tag in subsense_tags:
-                        collins.add(def_type, subsense_tag.text.strip(), '', sense_lbl)
-                        def_type = 'SUBDEF'
+                        collins.add(DEF(subsense_tag.text.strip(), [], sense_lbl, is_subdef))
+                        is_subdef = True
                     continue
 
                 def_lbl_tag = sense_tag.find('span', {'class': 'lbl'}, recursive=False)
@@ -90,22 +100,22 @@ def _extract_ced(collins: Dictionary, query: str, ced) -> None:  # type: ignore[
                         ref_tag = sense_tag
 
                     if label:
-                        collins.add('SUBDEF', f'{def_lbl} {ref_tag.text.strip()}', '', label)
+                        collins.add(DEF(f'{def_lbl} {ref_tag.text.strip()}', [], label, subdef=True))
                     else:
-                        collins.add('SUBDEF', ref_tag.text.strip(), '', def_lbl)
+                        collins.add(DEF(ref_tag.text.strip(), [], def_lbl, subdef=True))
                 else:
                     definition = def_tag.text.strip()
 
                     example_tags = sense_tag.find_all('div', {'class': ('cit', 'type-example', 'quote')}, recursive=False)
                     if example_tags:
-                        examples = '<br>'.join(f'‘{x.text.strip()}’' for x in example_tags)
+                        examples = [f'‘{x.text.strip()}’' for x in example_tags]
                     else:
-                        examples = ''
+                        examples = []
 
                     if label:
-                        collins.add('DEF', f'{def_lbl} {definition}', examples, label)
+                        collins.add(DEF(f'{def_lbl} {definition}', examples, label, subdef=False))
                     else:
-                        collins.add('DEF', definition, examples, def_lbl)
+                        collins.add(DEF(definition, examples, def_lbl, subdef=False))
 
         # TODO: Parts of speech. AKA. derived forms.
 
@@ -117,7 +127,7 @@ def _extract_ced(collins: Dictionary, query: str, ced) -> None:  # type: ignore[
 
             etym_title_tag.decompose()
 
-            collins.add('ETYM', f'[{etym_tag.text.strip()}]')
+            collins.add(ETYM(f'[{etym_tag.text.strip()}]'))
 
 
 def _extract_cobuild(collins: Dictionary, query: str, cobuild) -> None:  # type: ignore[no-untyped-def]
@@ -145,11 +155,11 @@ def _extract_cobuild(collins: Dictionary, query: str, cobuild) -> None:  # type:
             if audio is None:
                 raise DictionaryError('Collins: unexpected error: no data-src-mp3 attribute')
 
-    collins.add('HEADER', 'Collins')
+    collins.add(HEADER('Collins'))
     if query != phrase:
-        collins.add('NOTE', 'Showing results for:')
-    collins.add('PHRASE', phrase, phon)
-    collins.add('AUDIO', audio)
+        collins.add(NOTE('Showing results for:'))
+    collins.add(PHRASE(phrase, phon))
+    collins.add(AUDIO(audio))
 
     for hom_tag in cobuild.find_all('div', {'class': 'hom'}):
         label_tag = hom_tag.find('span', {'class': ('gramGrp', 'pos')}, recursive=False)
@@ -166,7 +176,7 @@ def _extract_cobuild(collins: Dictionary, query: str, cobuild) -> None:  # type:
                 if ref_tag is None:
                     raise DictionaryError('Collins: unexpected error: no ref_tag')
 
-            collins.add('SUBDEF', ref_tag.text.strip(), '', '')
+            collins.add(DEF(ref_tag.text.strip(), [], '', subdef=True))
             continue
 
         def_tag = sense_tag.find('div', {'class': 'def'}, recursive=False)
@@ -177,9 +187,9 @@ def _extract_cobuild(collins: Dictionary, query: str, cobuild) -> None:  # type:
 
         example_tags = sense_tag.find_all('div', {'class': ('cit', 'type-example')}, recursive=False)
         if example_tags:
-            examples = '<br>'.join(f'‘{x.text.strip()}’' for x in example_tags)
+            examples = [f'‘{x.text.strip()}’' for x in example_tags]
         else:
-            examples = ''
+            examples = []
 
         thes_tag = sense_tag.find('div', {'class': 'thes'}, recursive=False)
         if thes_tag is None:
@@ -191,15 +201,15 @@ def _extract_cobuild(collins: Dictionary, query: str, cobuild) -> None:  # type:
 
             synonyms = f' ~~ {", ".join(x.text.strip() for x in syn_tags)}.'
 
-        collins.add('LABEL', '', '')
-        collins.add('DEF', definition + synonyms, examples, label)
+        collins.add(LABEL('', ''))
+        collins.add(DEF(definition + synonyms, examples, label, subdef=False))
 
 
 def ask_collins(query: str) -> Dictionary:
     query = query.replace(' ', '-')
     soup = request_soup('https://www.collinsdictionary.com/search', {'dictCode': 'english', 'q': query})
 
-    collins = Dictionary(name='collins')
+    collins = Dictionary()
 
     cobuild = soup.find('div', {'data-type-block': 'definition.title.type.cobuild'})
     if cobuild is not None:

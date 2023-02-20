@@ -1,21 +1,38 @@
 from __future__ import annotations
 
+import functools
 import os
-from typing import TYPE_CHECKING
+from typing import TypedDict, Callable, Iterable, Literal, TYPE_CHECKING
 
 import src.anki as anki
-from src.Dictionaries.dictionary_base import DictionaryError
+from src.Dictionaries.base import DictionaryError
 from src.Dictionaries.diki import diki_audio
 from src.Dictionaries.util import http
 from src.data import config
 
 if TYPE_CHECKING:
-    from src.Dictionaries.dictionary_base import DictionarySelection
+    from src.Dictionaries.base import DictionarySelection
     from src.Curses.proto import StatusInterface
 
-CARD_FIELDS_AVAILABLE = ('DEF', 'SYN', 'PHRASE', 'EXSEN', 'POS', 'ETYM', 'AUDIO')
 
-PREPOSITIONS = {
+class Card(TypedDict):
+    DEF:    str
+    SYN:    str
+    PHRASE: str
+    EXSEN : str
+    POS:    str
+    ETYM:   str
+    AUDIO:  str
+
+
+cardkey_t = Literal['DEF', 'SYN', 'PHRASE', 'EXSEN', 'POS', 'ETYM', 'AUDIO']
+
+DO_NOT_HIDE = frozenset((
+    'the', 'and', 'a', 'is', 'an', 'it',
+    'or', 'be', 'do', 'does', 'not', 'if', 'he'
+))
+
+PREPOSITIONS = frozenset((
     'beyond', 'of', 'outside', 'upon', 'with', 'within',
     'behind', 'from', 'like', 'opposite', 'to', 'under',
     'after', 'against', 'around', 'near', 'over', 'via',
@@ -25,10 +42,114 @@ PREPOSITIONS = {
     'across', 'by', 'despite', 'inside', 'off', 'round',
     'at', 'beside', 'between', 'in', 'towards', 'until',
     'above', 'as', 'before', 'down', 'during', 'without'
-}
+))
 
 
-def save_audio(url: str) -> str:
+def _replace(s: str, a: str, b: str) -> str:
+    return s.replace(a, b).replace(a.capitalize(), b).replace(a.upper(), b.upper())
+
+
+def _hide(target: str, words: Iterable[str], mask: str) -> str:
+    for word in words:
+        target = _replace(target, word, mask)
+        if word.endswith('e'):
+            target = _replace(target, f'{word[:-1]}ing', f'{mask}ing')
+            if word.endswith('ie'):
+                target = _replace(target, f'{word[:-2]}ying', f'{mask}ying')
+        elif word.endswith('y'):
+            target = _replace(target, f'{word[:-1]}ies', f'{mask}ies')
+            target = _replace(target, f'{word[:-1]}ied', f'{mask}ied')
+
+    return target
+
+
+def prepare_hide_func(phrase: str) -> Callable[[str], str]:
+    words_to_hide = set(phrase.lower().split()) - DO_NOT_HIDE
+    if not config['hidepreps']:
+        words_to_hide -= PREPOSITIONS
+
+    return functools.partial(_hide, words=words_to_hide, mask=config['hides'])
+
+
+FORMAT_STYLES = (
+    ('', ''),
+    ('<span style="opacity: 0.6;">', '</span>'),
+    ('<small style="opacity: 0.4;">', '</small>'),
+    ('<small style="opacity: 0.2;"><sub>', '</sub></small>')
+)
+def _format(s: str, index: int, style: tuple[str, str]) -> str:
+    left, right = style
+    return f'{left}<small style="color: #4EAA72;">{index}.</small> {s}{right}'
+
+
+def _html_quote(s: str) -> str:
+    return s.replace("'", '&#39;').replace('"', '&quot;')
+
+
+def make_card(selection: DictionarySelection) -> Card:
+    card: Card = {
+        'DEF':    '',
+        'SYN':    '',
+        'PHRASE': '',
+        'EXSEN':  '',
+        'POS':    '',
+        'ETYM':   '',
+        'AUDIO':  '',
+    }
+
+    phrase = selection.phrase.phrase
+    hide_phrase_in = prepare_hide_func(phrase)
+
+    definitions: list[str] = []
+    examples = []
+    for i, op in enumerate(selection.definitions, 1):
+        if op.label:
+            definition = f'{{{op.label}}} {op.definition}'
+        else:
+            definition = op.definition
+
+        if config['hidedef']:
+            definition = hide_phrase_in(definition)
+
+        definition = _html_quote(definition)
+        if config['formatdefs']:
+            try:
+                style = FORMAT_STYLES[i - 1]
+            except IndexError:
+                style = FORMAT_STYLES[-1]
+            definition = _format(definition, i, style)
+
+        definitions.append(definition)
+        if op.examples:
+            examples.append(
+                '<br>'.join(
+                    _html_quote(hide_phrase_in(x) if config['hideexsen'] else x)
+                    for x in op.examples
+                )
+            )
+
+    card['DEF'] = '<br>'.join(definitions)
+    card['EXSEN'] = '<br>'.join(examples)
+
+    card['SYN'] = '<br>'.join(
+        _html_quote(hide_phrase_in(x) if config['hidesyn'] else x)
+        for x in (f'{x.definition} {x.synonyms}' for x in selection.synonyms)
+    )
+
+    card['PHRASE'] = _html_quote(phrase)
+
+    if selection.pos is not None:
+        card['POS'] = '<br>'.join(
+            _html_quote(f'{pos}  {infl}') for pos, infl in selection.pos.pos
+        )
+
+    if selection.etymology is not None:
+        card['ETYM'] = _html_quote(selection.etymology.etymology)
+
+    return card
+
+
+def _save_audio(url: str) -> str:
     audio_bytes = http.urlopen('GET', url).data  # type: ignore[no-untyped-call]
 
     mediadir_path = os.path.expanduser(config['mediadir'])
@@ -43,145 +164,40 @@ def save_audio(url: str) -> str:
     return f'[sound:{filename}]'
 
 
-def case_replace(target: str, a: str, b: str) -> str:
-    return target.replace(a, b).replace(a.capitalize(), b).replace(a.upper(), b.upper())
-
-
-def hide(
-        target: str,
-        phrase_to_replace: str,
-        mask: str = '...',
-        *, hide_prepositions: bool = False,
+def _perror_save_audio(
+        status: StatusInterface,
+        selection: DictionarySelection
 ) -> str:
-    do_not_replace = {
-        'the', 'and', 'a', 'is', 'an', 'it',
-        'or', 'be', 'do', 'does', 'not', 'if', 'he'
-    }
-    words_to_replace = set(phrase_to_replace.lower().split()) - do_not_replace
-    if not hide_prepositions:
-        words_to_replace -= PREPOSITIONS
+    phrase = selection.phrase.phrase
 
-    for word in words_to_replace:
-        target = case_replace(target, word, mask)
-        if word.endswith('e'):
-            target = case_replace(target, f'{word[:-1]}ing', f'{mask}ing')
-            if word.endswith('ie'):
-                target = case_replace(target, f'{word[:-2]}ying', f'{mask}ying')
-        elif word.endswith('y'):
-            target = case_replace(target, f'{word[:-1]}ies', f'{mask}ies')
-            target = case_replace(target, f'{word[:-1]}ied', f'{mask}ied')
-
-    return target
-
-
-def format_definitions(definition_string: str) -> str:
-    styles = (
-        ('', ''),
-        ('<span style="opacity: .6;">', '</span>'),
-        ('<small style="opacity: .4;">', '</small>'),
-        ('<small style="opacity: .2;"><sub>', '</sub></small>')
-    )
-    formatted = []
-    style_no = len(styles)
-    for i, item in enumerate(definition_string.split('<br>'), 1):
-        style_i = style_no - 1 if i > style_no else i - 1
-        prefix, suffix = styles[style_i]
-
-        prefix += f'<small style="color: #4EAA72;">{i}.</small>  '
-        formatted.append(prefix + item + suffix)
-
-    return '<br>'.join(formatted)
-
-
-def card_from_selection(selection: DictionarySelection) -> tuple[dict[str, str], str]:
-    card = {k: '' for k in CARD_FIELDS_AVAILABLE}
-
-    audio, content, etym, phrase, pos = selection
-    if audio is not None:
-        if audio[1]:
-            audio_url = audio[1]
-        else:
-            audio_url = ''
+    if selection.audio is None:
+        try:
+            url = diki_audio(phrase)
+        except DictionaryError as e:
+            status.error(str(e))
+            status.attention(f'No audio available for {phrase!r}')
+            return ''
     else:
-        audio_url = ''
+        url = selection.audio.resource
 
-    definitions, example_sentences, synonyms = [], [], []
-    for entry in content:
-        op = entry[0]
-        if 'DEF' in op:
-            _, _def, _exsen, _label = entry
-            if _label:
-                definitions.append(f'{{{_label}}} {_def}')
-            else:
-                definitions.append(_def)
-            if _exsen:
-                example_sentences.append(_exsen)
-        elif op == 'SYN':
-            synonyms.append(entry[2] + ' ' + entry[1])
-
-    card['DEF'] = '<br>'.join(definitions)
-    if config['exsen']:
-        card['EXSEN'] = '<br>'.join(example_sentences)
-    card['SYN'] = '<br>'.join(synonyms)
-
-    if etym is not None and config['etym']:
-        card['ETYM'] = etym[1]
-    if phrase is not None:
-        card['PHRASE'] = phrase[1]
-    if pos is not None and config['pos']:
-        card['POS'] = '<br>'.join(
-            x.replace('|', '  ') for x in pos[1:]
-        ).strip()
-
-    return card, audio_url
+    try:
+        return _save_audio(url)
+    except anki.AnkiError as e:
+        status.error('Saving audio failed:', str(e))
+        return ''
 
 
-def create_and_add_card(implementor: StatusInterface, selections: list[DictionarySelection]) -> None:
+def create_and_add_card(
+        status: StatusInterface,
+        selections: list[DictionarySelection]
+) -> None:
     for selection in selections:
-        card, audio_url = card_from_selection(selection)
-
-        phrase = card['PHRASE']
-
-        if not audio_url:
-            try:
-                audio_url = diki_audio(phrase)
-            except DictionaryError as e:
-                implementor.error(str(e))
-                implementor.attention(f'No audio available for {phrase!r}')
-
-        if audio_url:
-            try:
-                card['AUDIO'] = save_audio(audio_url)
-            except anki.AnkiError as e:
-                implementor.error('Saving audio failed:', str(e))
-                card['AUDIO'] = ''
-        else:
-            card['AUDIO'] = ''
-
-        if config['hidedef']:
-            card['DEF'] = hide(
-                card['DEF'], phrase, config['hides'],
-                hide_prepositions=config['hidepreps']
-            )
-        if config['hideexsen']:
-            card['EXSEN'] = hide(
-                card['EXSEN'], phrase, config['hides'],
-                hide_prepositions=config['hidepreps']
-            )
-        if config['hidesyn']:
-            card['SYN'] = hide(
-                card['SYN'], phrase, config['hides'],
-                hide_prepositions=config['hidepreps']
-            )
-
-        card = {k: v.replace("'", "&#39;").replace('"', '&quot;') for k, v in card.items()}
-
-        if config['formatdefs']:
-            card['DEF'] = format_definitions(card['DEF'])
+        card = make_card(selection)
+        card['AUDIO'] = _perror_save_audio(status, selection)
 
         try:
             anki.add_card(card)
         except anki.AnkiError as e:
-            implementor.error('Adding card failed:', str(e))
+            status.error('Adding card failed:', str(e))
         else:
-            implementor.success('Card added successfully:', 'press "b" for details')
+            status.success('Card added successfully:', 'press "b" for details')

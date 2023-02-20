@@ -19,6 +19,8 @@ BORDER_PAD = MARGIN = FUNCTION_BAR_PAD = 1
 # define BUTTON5_PRESSED. (mouse wheel down)
 BUTTON5_PRESSED = 2097152
 
+HIGHLIGHT = curses.A_STANDOUT | curses.A_BOLD
+
 if WINDOWS:
     def _selection_command() -> tuple[str, ...] | None:
         powershell = shutil.which('powershell.exe')

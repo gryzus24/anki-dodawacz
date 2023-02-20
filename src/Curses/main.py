@@ -30,6 +30,7 @@ from src.Curses.util import (
     Attr,
     CURSES_COLS_MIN_VALUE,
     FUNCTION_BAR_PAD,
+    HIGHLIGHT,
     clipboard_or_selection,
     compose_attrs,
     draw_border,
@@ -40,6 +41,7 @@ from src.Curses.util import (
     mouse_wheel_up,
     truncate,
 )
+from src.Dictionaries.base import HEADER
 from src.__version__ import __version__
 from src.card import create_and_add_card
 from src.data import WINDOWS, DATA_DIR, config, config_save
@@ -346,7 +348,8 @@ class ScreenBuffer(ScreenBufferInterface):
             )
 
         if isinstance(page, Screen):
-            header = truncate(page.selector.dictionary.contents[0][1], curses.COLS - 8)
+            assert isinstance(page.selector.dictionary.contents[0], HEADER)
+            header = truncate(page.selector.dictionary.contents[0].header, curses.COLS - 8)
             if header is not None:
                 win.addstr(0, 2, f'[ {header} ]')
                 win.chgat(0, 4, len(header), Color.delimit | curses.A_BOLD)
@@ -357,7 +360,7 @@ class ScreenBuffer(ScreenBufferInterface):
         elif isinstance(page, Pager):
             scroll_hint = page.scroll_hint()
             items.append(scroll_hint)
-            items_attr_values.append((len(scroll_hint), curses.A_BOLD | curses.A_STANDOUT, 0))
+            items_attr_values.append((len(scroll_hint), HIGHLIGHT, 0))
         else:
             raise AssertionError('unreachable')
 
@@ -389,10 +392,10 @@ class ScreenBuffer(ScreenBufferInterface):
 
         attrs = compose_attrs(
             (
-                (2, curses.A_STANDOUT | curses.A_BOLD, 7),
-                (2, curses.A_STANDOUT | curses.A_BOLD, 16),
-                (2, curses.A_STANDOUT | curses.A_BOLD, 13),
-                (2, curses.A_STANDOUT | curses.A_BOLD, 0),
+                (2, HIGHLIGHT, 7),
+                (2, HIGHLIGHT, 16),
+                (2, HIGHLIGHT, 13),
+                (2, HIGHLIGHT, 0),
             ), width=curses.COLS
         )
         win = self.win

@@ -4,14 +4,17 @@ import atexit
 import json
 import os
 import sys
-from typing import Any, Literal, overload
+from typing import Any, Literal, overload, TYPE_CHECKING
 
 from urllib3.exceptions import NewConnectionError
 
 from src.Dictionaries.util import http
 from src.data import LINUX, WINDOWS, MAC, DATA_DIR, ROOT_DIR, config
 
-SCHEME_TO_FIELD = (
+if TYPE_CHECKING:
+    from src.card import Card, cardkey_t
+
+SCHEME_TO_FIELD: tuple[tuple[str, cardkey_t], ...] = (
     ('def',      'DEF'),
     ('front',    'DEF'),
     ('gloss',    'DEF'),
@@ -57,7 +60,7 @@ SCHEME_TO_FIELD = (
     ('media',    'AUDIO'),
 )
 
-PHRASE_SCHEMES = [x[0] for x in SCHEME_TO_FIELD if x[1] == 'phrase']
+PHRASE_SCHEMES = [x[0] for x in SCHEME_TO_FIELD if x[1] == 'PHRASE']
 
 
 class AnkiError(Exception):
@@ -148,8 +151,8 @@ def currently_reviewed_phrase() -> str:
     raise AnkiError('could not find a "Phrase-like" field')
 
 
-def _map_scheme_to_fields(model_name: str) -> dict[str, str | None]:
-    result: dict[str, str | None] = {}
+def _map_scheme_to_fields(model_name: str) -> dict[str, cardkey_t | None]:
+    result: dict[str, cardkey_t | None] = {}
     for field_name in invoke('modelFieldNames', modelName=model_name):
         first_word_of_field_name = field_name.lower().partition(' ')[0]
         for scheme, base in SCHEME_TO_FIELD:
@@ -164,13 +167,16 @@ def _map_scheme_to_fields(model_name: str) -> dict[str, str | None]:
 
 class _AnkiModels:
     def __init__(self) -> None:
-        self._model_cache: dict[str, dict[str, str | None]] | None = None
+        self._model_cache: dict[str, dict[str, cardkey_t | None]] | None = None
 
     def _save_models(self, path: str) -> None:
         with open(path, 'w') as f:
             json.dump(self._model_cache, f, indent=2)
 
-    def get_model(self, model: str, recheck: bool = False) -> dict[str, str | None]:
+    def get_model(self,
+            model: str,
+            recheck: bool = False
+    ) -> dict[str, cardkey_t | None]:
         if self._model_cache is None:
             path = os.path.join(DATA_DIR, 'ankiconnect.json')
             try:
@@ -189,11 +195,11 @@ class _AnkiModels:
 models = _AnkiModels()
 
 
-def _add_card(model_name: str, card: dict[str, str], model: dict[str, str | None]) -> None:
+def _add_card(model_name: str, card: Card, model: dict[str, cardkey_t | None]) -> None:
     fields = {
-        anki_field_name: card[program_field_name]
-        for anki_field_name, program_field_name in model.items()
-        if program_field_name is not None
+        anki_field_name: card[ckey]
+        for anki_field_name, ckey in model.items()
+        if ckey is not None
     }
     if not fields:
         raise IncompatibleModelError(f'note {config["note"]} has no compatible fields, try rechecking (F4)')
@@ -213,7 +219,7 @@ def _add_card(model_name: str, card: dict[str, str], model: dict[str, str | None
     )
 
 
-def add_card(card: dict[str, str]) -> None:
+def add_card(card: Card) -> None:
     model_name = config['note']
 
     try:

@@ -1,21 +1,33 @@
 from __future__ import annotations
 
 import curses
-from typing import Callable, Iterator, NamedTuple, TYPE_CHECKING
+from typing import Callable, Iterator, NamedTuple, Type, TYPE_CHECKING
 
 from src.Curses.color import Color
 from src.Curses.util import (
     Attr,
     BORDER_PAD,
     FUNCTION_BAR_PAD,
+    HIGHLIGHT,
     MARGIN,
     compose_attrs,
 )
-from src.Dictionaries.dictionary_base import EntrySelector
+from src.Dictionaries.base import (
+    EntrySelector,
+    DEF,
+    LABEL,
+    PHRASE,
+    HEADER,
+    ETYM,
+    POS,
+    AUDIO,
+    SYN,
+    NOTE
+)
 from src.data import config
 
 if TYPE_CHECKING:
-    from src.Dictionaries.dictionary_base import Dictionary
+    from src.Dictionaries.base import Dictionary, op_t
 
 AUTO_COLUMN_WIDTH = 52
 
@@ -64,25 +76,23 @@ def format_dictionary(dictionary: Dictionary, column_width: int) -> list[ParsedL
     def ADD_LINE(_line: str, _attrs: list[Attr]) -> None:
         result.append(ParsedLine(i, _line, _attrs))
 
-    for i, entry in enumerate(dictionary.contents):
-        op = entry[0]
-
-        if 'DEF' in op:
+    for i, op in enumerate(dictionary.contents):
+        if isinstance(op, DEF):
             index += 1
             index_len = len(str(index))
 
-            _def, _exsen, _label = entry[1], entry[2], entry[3]
-            if _label:
-                _label = '{' + _label + '} '
-                label_len = len(_label)
+            if op.label:
+                label = '{' + op.label + '} '
+                label_len = len(label)
             else:
+                label = op.label
                 label_len = 0
 
-            sign = ' ' if 'SUB' in op else '>'
+            sign = ' ' if op.subdef else '>'
 
             def_color = Color.def1 if index % 2 else Color.def2
 
-            lines = wrapper.wrap(_def, f'{sign}{index} {_label}', (index_len + 2) * ' ')
+            lines = wrapper.wrap(op.definition, f'{sign}{index} {label}', (index_len + 2) * ' ')
             attrs = compose_attrs(
                 (
                     (len(sign), Color.sign, 0),
@@ -95,17 +105,16 @@ def format_dictionary(dictionary: Dictionary, column_width: int) -> list[ParsedL
             for line in lines:
                 ADD_LINE(line, [Attr(0, column_width, def_color)])
 
-            if _exsen:
-                for ex in _exsen.split('<br>'):
+            if op.examples:
+                for ex in op.examples:
                     for line in wrapper.wrap(ex, (index_len + 1) * ' ', (index_len + 2) * ' '):
                         ADD_LINE(line, [Attr(0, column_width, Color.exsen)])
 
-        elif op == 'LABEL':
-            label, inflections = entry[1], entry[2]
+        elif isinstance(op, LABEL):
             ADD_LINE('', [Attr(0, 0, 0)])
-            if label:
-                if inflections:
-                    *lines, last_line = wrapper.wrap(label, ' ', ' ')  # type: ignore[assignment]
+            if op.label:
+                if op.extra:
+                    *lines, last_line = wrapper.wrap(op.label, ' ', ' ')  # type: ignore[assignment]
                     for line in lines:
                         ADD_LINE(line, [Attr(0, column_width, Color.label)])
 
@@ -115,23 +124,22 @@ def format_dictionary(dictionary: Dictionary, column_width: int) -> list[ParsedL
                             (column_width, Color.infl, 0),
                         ), width=column_width
                     )
-                    lines = wrapper.wrap(inflections, wrapper.current_line_pos + 1, ' ')
+                    lines = wrapper.wrap(op.extra, wrapper.current_line_pos + 1, ' ')
                     ADD_LINE(last_line + ' ' + next(lines), mutual_attrs)
 
                     for line in lines:
                         ADD_LINE(line, [Attr(0, column_width, Color.infl)])
                 else:
-                    for line in wrapper.wrap(label, ' ', ' '):
+                    for line in wrapper.wrap(op.label, ' ', ' '):
                         ADD_LINE(line, [Attr(0, column_width, Color.label)])
 
-        elif op == 'PHRASE':
-            phrase, phon = entry[1], entry[2]
-            if phon:
-                *lines, last_line = wrapper.wrap(phrase, ' ', ' ')  # type: ignore[assignment]
+        elif isinstance(op, PHRASE):
+            if op.extra:
+                *lines, last_line = wrapper.wrap(op.phrase, ' ', ' ')  # type: ignore[assignment]
                 for line in lines:
                     ADD_LINE(line, [Attr(0, column_width, Color.phrase)])
 
-                lines = wrapper.wrap(phon, wrapper.current_line_pos + 1, ' ')
+                lines = wrapper.wrap(op.extra, wrapper.current_line_pos + 1, ' ')
                 mutual_attrs = compose_attrs(
                     (
                         (len(last_line), Color.phrase, 1),
@@ -143,77 +151,69 @@ def format_dictionary(dictionary: Dictionary, column_width: int) -> list[ParsedL
                 for line in lines:
                     ADD_LINE(line, [Attr(0, column_width, Color.phon)])
             else:
-                for line in wrapper.wrap(phrase, ' ', ' '):
+                for line in wrapper.wrap(op.phrase, ' ', ' '):
                     ADD_LINE(line, [Attr(0, column_width, Color.phrase)])
 
-        elif op == 'HEADER':
+        elif isinstance(op, HEADER):
             if i == 0:
                 continue
 
-            title = entry[1]
-            if title:
+            if op.header:
                 attrs = compose_attrs(
                     (
                         (3, Color.delimit, 0),
-                        (len(title), Color.delimit | curses.A_BOLD, 0),
+                        (len(op.header), Color.delimit | curses.A_BOLD, 0),
                         (column_width, Color.delimit, 0),
                     ), width=column_width
                 )
 
-                ADD_LINE(f'─[ {title} ]{(column_width - len(title) - 5) * "─"}', attrs)
+                ADD_LINE(f'─[ {op.header} ]{(column_width - len(op.header) - 5) * "─"}', attrs)
             else:
                 ADD_LINE(column_width * '─', [Attr(0, column_width, Color.delimit)])
 
-        elif op == 'ETYM':
-            etym = entry[1]
-            if etym:
-                ADD_LINE('', [Attr(0, 0, 0)])
-                for line in wrapper.wrap(etym, ' ', ' '):
-                    ADD_LINE(line, [Attr(0, column_width, Color.etym)])
+        elif isinstance(op, ETYM):
+            ADD_LINE('', [Attr(0, 0, 0)])
+            for line in wrapper.wrap(op.etymology, ' ', ' '):
+                ADD_LINE(line, [Attr(0, column_width, Color.etym)])
 
-        elif op == 'POS':
-            if entry[1].strip(' |'):
-                ADD_LINE('', [Attr(0, 0, 0)])
-                for elem in entry[1:]:
-                    pos, phon = elem.split('|')
-                    *lines, last_line = wrapper.wrap(pos, ' ', ' ')  # type: ignore[assignment]
-                    for line in lines:
-                        ADD_LINE(line, [Attr(0, column_width, Color.phrase)])
+        elif isinstance(op, POS):
+            ADD_LINE('', [Attr(0, 0, 0)])
+            for pos, phon in op.pos:
+                *lines, last_line = wrapper.wrap(pos, ' ', ' ')  # type: ignore[assignment]
+                for line in lines:
+                    ADD_LINE(line, [Attr(0, column_width, Color.phrase)])
 
-                    lines = wrapper.wrap(phon, wrapper.current_line_pos + 1, ' ')
-                    mutual_attrs = compose_attrs(
-                        (
-                            (len(last_line), Color.pos, 1),
-                            (column_width, Color.phon, 0),
-                        ), width=column_width
-                    )
-                    ADD_LINE(last_line + ' ' + next(lines), mutual_attrs)
+                lines = wrapper.wrap(phon, wrapper.current_line_pos + 1, ' ')
+                mutual_attrs = compose_attrs(
+                    (
+                        (len(last_line), Color.pos, 1),
+                        (column_width, Color.phon, 0),
+                    ), width=column_width
+                )
+                ADD_LINE(last_line + ' ' + next(lines), mutual_attrs)
 
-                    for line in lines:
-                        ADD_LINE(line, [Attr(0, column_width, Color.phon)])
+                for line in lines:
+                    ADD_LINE(line, [Attr(0, column_width, Color.phon)])
 
-        elif op == 'AUDIO':
+        elif isinstance(op, AUDIO):
             pass
 
-        elif op == 'SYN':
+        elif isinstance(op, SYN):
             index += 1
 
-            synonyms = entry[1]
-            gloss = entry[2]
-            examples = entry[3]
-            for line in wrapper.wrap(synonyms, ' ', ' '):
+            for line in wrapper.wrap(op.synonyms, ' ', ' '):
                 ADD_LINE(line, [Attr(0, column_width, Color.syn)])
 
             gloss_color = Color.def1 if index % 2 else Color.def2
-            for line in wrapper.wrap(gloss, ': ', ' '):
+            for line in wrapper.wrap(op.definition, ': ', ' '):
                 ADD_LINE(line, [Attr(0, column_width, gloss_color)])
 
-            for ex in examples.split('<br>'):
+            for ex in op.examples:
                 for line in wrapper.wrap(ex, ' ', '  '):
                     ADD_LINE(line, [Attr(0, column_width, Color.exsen)])
 
-        elif op == 'NOTE':
-            lines = wrapper.wrap(entry[1], '> ', '  ')
+        elif isinstance(op, NOTE):
+            lines = wrapper.wrap(op.note, '> ', '  ')
             attrs = compose_attrs(
                 (
                     (1, Color.heed | curses.A_BOLD, 0),
@@ -225,25 +225,29 @@ def format_dictionary(dictionary: Dictionary, column_width: int) -> list[ParsedL
                 ADD_LINE(line, [Attr(0, column_width, curses.A_BOLD)])
 
         else:
-            raise AssertionError(f'unreachable dictionary op: {op!r}')
+            raise AssertionError(f'unreachable {op!r}')
 
     return result
 
 
-def current_related_entries() -> set[str]:
-    result = {'PHRASE'}
+def currently_selected_ops() -> tuple[Type[op_t], ...]:
+    result: list[Type[op_t]] = [PHRASE]
     if config['audio']:
-        result.add('AUDIO')
+        result.append(AUDIO)
     if config['pos']:
-        result.add('POS')
+        result.append(POS)
     if config['etym']:
-        result.add('ETYM')
-    return result
+        result.append(ETYM)
+
+    return tuple(result)
 
 
-def _create_layout(dictionary: Dictionary, height: int) -> tuple[list[list[ParsedLine]], int]:
+def _layout(
+        dictionary: Dictionary,
+        height: int
+) -> tuple[list[list[ParsedLine]], int]:
     width = curses.COLS - 2*BORDER_PAD + 1
-    ndefinitions = dictionary.count(lambda x: 'DEF' in x)
+    ndefinitions = dictionary.count(lambda x: isinstance(x, DEF))
 
     if ndefinitions < 6:
         maxcolumns = 1
@@ -267,23 +271,21 @@ def _create_layout(dictionary: Dictionary, height: int) -> tuple[list[list[Parse
     max_column_height = len(lines) // ncolumns - 1
     column_break = max_column_height
 
-    columns: list[list[ParsedLine]] = [[] for _ in range(ncolumns)]
     cur = 0
+    columns: list[list[ParsedLine]] = [[] for _ in range(ncolumns)]
     for i, line in enumerate(lines):
         columns[cur].append(line)
 
-        op = dictionary.contents[line.op_index][0]
+        op = dictionary.contents[line.op_index]
         if (
                 i > column_break
-            and ('DEF' in op or op == 'ETYM')
+            and (isinstance(op, (DEF, ETYM)))
+            and cur < ncolumns - 1
             and i + 1 != len(lines)
             and line.op_index != lines[i + 1].op_index
         ):
-            if cur == ncolumns - 1:
-                continue
-            else:
-                column_break += max_column_height
-                cur += 1
+            column_break += max_column_height
+            cur += 1
 
     return columns, column_width
 
@@ -308,7 +310,7 @@ class Screen:
 
         # self.margin_bot is needed for `self.screen_height`
         self.margin_bot = FUNCTION_BAR_PAD
-        self.columns, self.column_width = _create_layout(dictionary, self.screen_height)
+        self.columns, self.column_width = _layout(dictionary, self.screen_height)
         self._hl: HL | None = None
         self._scroll = 0
 
@@ -339,8 +341,8 @@ class Screen:
         except curses.error:  # window too small
             return
 
-        related_entries = current_related_entries()
-        hl_attr = Color.heed | curses.A_STANDOUT | curses.A_BOLD
+        selected_ops = currently_selected_ops()
+        hl_attr = Color.heed | HIGHLIGHT
 
         text_x = BORDER_PAD + MARGIN
         for col_i, column in enumerate(self.columns):
@@ -353,10 +355,10 @@ class Screen:
                     continue
 
                 if self.selector.is_toggled(op_index):
-                    op = contents[op_index][0]
-                    if op in self.selector.TOGGLEABLE:
+                    op = contents[op_index]
+                    if isinstance(op, self.selector.TOGGLEABLE):
                         selection_hl = curses.A_STANDOUT
-                    elif op in related_entries:
+                    elif isinstance(op, selected_ops):
                         selection_hl = curses.A_BOLD
                     else:
                         selection_hl = 0
@@ -387,7 +389,7 @@ class Screen:
             text_x += self.column_width + 1
 
     def resize(self) -> None:
-        self.columns, self.column_width = _create_layout(
+        self.columns, self.column_width = _layout(
             self.selector.dictionary,
             self.screen_height
         )
@@ -409,7 +411,7 @@ class Screen:
                     line = column[self._scroll + click_y - 1]
                 except IndexError:
                     return
-                if contents[line.op_index][0] in self.selector.TOGGLEABLE:
+                if isinstance(contents[line.op_index], self.selector.TOGGLEABLE):
                     self.selector.toggle_by_index(line.op_index)
                 return
 

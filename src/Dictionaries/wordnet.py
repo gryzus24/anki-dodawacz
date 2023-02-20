@@ -1,6 +1,13 @@
 from __future__ import annotations
 
-from src.Dictionaries.dictionary_base import Dictionary, DictionaryError
+from src.Dictionaries.base import (
+    Dictionary,
+    DictionaryError,
+    LABEL,
+    PHRASE,
+    HEADER,
+    SYN,
+)
 from src.Dictionaries.util import request_soup
 
 
@@ -14,11 +21,11 @@ def ask_wordnet(query: str) -> Dictionary:
     if header_tag.text.startswith(('Your', 'Sorry')):
         raise DictionaryError(f'WordNet: {query!r} not found')
 
-    wordnet = Dictionary(name='wordnet')
+    wordnet = Dictionary()
 
-    wordnet.add('HEADER', 'WordNet')
-    wordnet.add('PHRASE', query, '')
-    wordnet.add('LABEL', '', '')
+    wordnet.add(HEADER('WordNet'))
+    wordnet.add(PHRASE(query, ''))
+    wordnet.add(LABEL('', ''))
     for t in soup.find_all('li'):
         _, _, body = t.text.partition('(')
         pos, _, body = body.partition(')')
@@ -26,10 +33,11 @@ def ask_wordnet(query: str) -> Dictionary:
         gloss, _, examples = body.rpartition(')')
 
         wordnet.add(
-            'SYN', syn.strip(),
-            f'({gloss.strip()})',
-            '<br>'.join(map(str.strip, examples.split(';'))),
-            f'({pos})'
+            SYN(
+                syn.strip(),
+                f'({gloss.strip()})',
+                list(map(str.strip, examples.split(';')))
+            )
         )
 
     return wordnet

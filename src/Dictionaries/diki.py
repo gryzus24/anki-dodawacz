@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from src.Dictionaries.dictionary_base import DictionaryError
+from src.Dictionaries.base import DictionaryError
 from src.Dictionaries.util import http
 
 

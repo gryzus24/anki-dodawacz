@@ -12,6 +12,7 @@ from src.Curses.proto import ScreenBufferInterface
 from src.Curses.util import (
     Attr,
     BORDER_PAD,
+    HIGHLIGHT,
     draw_border,
     truncate,
 )
@@ -280,12 +281,7 @@ class ConfigMenu(ScreenBufferInterface):
                         and self._col == col_i
                         and column.section_index(self._line) == sec_i
                     ):
-                        win.chgat(
-                            y,
-                            x,
-                            col_max_width,
-                            Color.heed | curses.A_STANDOUT | curses.A_BOLD
-                        )
+                        win.chgat(y, x, col_max_width, Color.heed | HIGHLIGHT)
                     elif self._phantom_cursors[col_i] == opt_i:
                         win.chgat(y, x, col_max_width, curses.A_STANDOUT)
 

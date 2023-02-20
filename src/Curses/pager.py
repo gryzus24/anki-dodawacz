@@ -8,6 +8,7 @@ from src.Curses.util import (
     BORDER_PAD,
     CURSES_COLS_MIN_VALUE,
     FUNCTION_BAR_PAD,
+    HIGHLIGHT,
     mouse_wheel_down,
     mouse_wheel_up,
     truncate,
@@ -66,7 +67,7 @@ class Pager:
         win = self.win
         width = curses.COLS - 2*BORDER_PAD
 
-        hl_attr = Color.heed | curses.A_STANDOUT | curses.A_BOLD
+        hl_attr = Color.heed | HIGHLIGHT
         for y, line_i in enumerate(range(self._line, self._line + self.screen_height), BORDER_PAD):
             try:
                 line, attrs = self._buf[line_i]

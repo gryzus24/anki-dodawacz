@@ -4,9 +4,9 @@ import threading
 from itertools import repeat
 from typing import Callable, Iterable, NamedTuple, TYPE_CHECKING
 
-from src.Dictionaries.ahdictionary import ask_ahdictionary
+from src.Dictionaries.ahd import ask_ahd
 from src.Dictionaries.collins import ask_collins
-from src.Dictionaries.dictionary_base import Dictionary, DictionaryError
+from src.Dictionaries.base import Dictionary, DictionaryError
 from src.Dictionaries.farlex import ask_farlex
 from src.Dictionaries.wordnet import ask_wordnet
 from src.data import config, dictkey_t
@@ -29,7 +29,7 @@ DICT_KEY_ALIASES: dict[str, dictkey_t] = {
 # but different "dictionary flag", which acts as nothing more but
 # an alias.
 DICTIONARY_LOOKUP: dict[dictkey_t, Callable[[str], Dictionary]] = {
-    'ahd': ask_ahdictionary,
+    'ahd': ask_ahd,
     'farlex': ask_farlex,
     'wordnet': ask_wordnet,
     'collins': ask_collins,
