@@ -427,12 +427,12 @@ class Screen:
     def deselect_all(self) -> None:
         self.selector.clear_selection()
 
-    def move_down(self, n: int = 2) -> None:
+    def move_down(self, n: int = 1) -> None:
         if self._scroll < self._scroll_end():
             self._scroll += n
             self.adjust_scroll_past_eof()
 
-    def move_up(self, n: int = 2) -> None:
+    def move_up(self, n: int = 1) -> None:
         self._scroll -= n
         if self._scroll < 0:
             self._scroll = 0
