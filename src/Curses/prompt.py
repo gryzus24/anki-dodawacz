@@ -95,13 +95,15 @@ class CompletionMenu:
 
         self._current_completion_str = s
 
-        if s:
+        if not s:
+            self._completions = self.elements
+        elif len(s) == 1:
+            self._completions = self._lookup[s]
+        else:
             self._completions = [
                 x for x in self._lookup[s[0]]
                 if x.lower().startswith(s)
             ]
-        else:
-            self._completions = self.elements
 
     def _select(self, forward: bool) -> SelectionResult:
         if not self._completions:
