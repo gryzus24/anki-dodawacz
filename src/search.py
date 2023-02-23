@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import threading
 from itertools import repeat
-from typing import Callable, Iterable, NamedTuple, TYPE_CHECKING
+from typing import Callable, NamedTuple, TYPE_CHECKING
 
 from src.Dictionaries.ahd import ask_ahd
 from src.Dictionaries.collins import ask_collins
@@ -136,17 +136,6 @@ def _perror_query_with_fallback(
     return result
 
 
-def _unique(it: Iterable[dictkey_t]) -> list[dictkey_t]:
-    result = []
-    seen = set()
-    for x in it:
-        if x not in seen:
-            result.append(x)
-            seen.add(x)
-
-    return result
-
-
 def parse(s: str) -> list[Query] | None:
     separators = ',;'
     chars_to_strip = separators + ' '
@@ -182,7 +171,7 @@ def parse(s: str) -> list[Query] | None:
             else:
                 query_flags.append(flag)
 
-        result.append(Query(query, _unique(dict_flags), query_flags))
+        result.append(Query(query, list(dict.fromkeys(dict_flags)), query_flags))
 
     return result
 
