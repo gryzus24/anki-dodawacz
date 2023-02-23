@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import curses
-import collections
+from collections import deque, defaultdict
 from typing import TYPE_CHECKING, NamedTuple, Sequence
 
 from src.Curses.color import Color
@@ -19,16 +19,7 @@ from src.data import WINDOWS, ON_TERMUX
 if TYPE_CHECKING:
     from src.Curses.proto import ScreenBufferInterface
 
-
 COMPLETION_MENU_INDENT = 2
-
-
-def _prepare_lookup(elements: Sequence[str]) -> collections.defaultdict[str, list[str]]:
-    result = collections.defaultdict(list)
-    for e in elements:
-        result[e[0].lower()].append(e)
-
-    return result
 
 
 class SelectionResult(NamedTuple):
@@ -36,27 +27,60 @@ class SelectionResult(NamedTuple):
     wrapped: bool
 
 
+def _lookup_add(lookup: defaultdict[str, list[str]], s: str) -> None:
+    lookup[s[0].lower()].insert(0, s)
+
+
+def _lookup_remove(lookup: defaultdict[str, list[str]], s: str) -> None:
+    lookup[s[0].lower()].remove(s)
+
+
+def _lookup_prepare(elements: deque[str]) -> defaultdict[str, list[str]]:
+    result = defaultdict(list)
+    for e in elements:
+        result[e[0].lower()].append(e)
+
+    return result
+
+
 class CompletionMenu:
-    def __init__(self, win: curses._CursesWindow, elements: Sequence[str]) -> None:
+    def __init__(self,
+            win: curses._CursesWindow,
+            entries: deque[str] | None = None,
+    ) -> None:
         self.win = win
-        self.elements = elements
-        self._completions = elements
-        self._lookup = _prepare_lookup(elements)
+        self._entries = entries or deque()
+        self._completions: Sequence[str] = self._entries
+        self._seen = set(self._entries)
+        self._lookup = _lookup_prepare(self._entries)
         self._current_completion_str: str | None = None
         self._cur: int | None = None
         self._scroll = 0
 
-    def height(self) -> int:
-        r = min(len(self._completions), curses.LINES // 5)
-        return r if r > 1 else 1
+    @classmethod
+    def from_file(cls,
+            win: curses._CursesWindow,
+            path: str
+    ) -> CompletionMenu:
+        try:
+            with open(path) as f:
+                entries = deque(map(str.strip, f))
+        except FileNotFoundError:
+            entries = deque()
 
-    @property
-    def completions(self) -> Sequence[str]:
-        return self._completions
+        return cls(win, entries)
+
+    def save_entries(self, path: str) -> None:
+        with open(path, 'w') as f:
+            f.write('\n'.join(self._entries))
 
     @property
     def cur(self) -> int | None:
         return self._cur
+
+    def height(self) -> int:
+        r = min(len(self._completions), curses.LINES // 5)
+        return r if r > 1 else 1
 
     def draw(self) -> None:
         cur = self._cur or 0
@@ -85,6 +109,27 @@ class CompletionMenu:
             else:
                 y -= 1
 
+    def has_completions(self) -> bool:
+        return bool(self._completions)
+
+    def add_entry(self, s: str) -> bool:
+        if not s:
+            return False
+
+        if s in self._seen:
+            if self._entries[0] == s:
+                return False
+
+            _lookup_remove(self._lookup, s)
+            self._entries.remove(s)
+        else:
+            self._seen.add(s)
+
+        _lookup_add(self._lookup, s)
+        self._entries.appendleft(s)
+
+        return True
+
     def complete(self, s: str) -> None:
         self._cur = None
         self._scroll = 0
@@ -96,7 +141,7 @@ class CompletionMenu:
         self._current_completion_str = s
 
         if not s:
-            self._completions = self.elements
+            self._completions = self._entries
         elif len(s) == 1:
             self._completions = self._lookup[s]
         else:
@@ -104,6 +149,12 @@ class CompletionMenu:
                 x for x in self._lookup[s[0]]
                 if x.lower().startswith(s)
             ]
+
+    def deactivate(self) -> None:
+        self._cur = None
+        self._scroll = 0
+        self._current_completion_str = None
+        self._completions = self._entries
 
     def _select(self, forward: bool) -> SelectionResult:
         if not self._completions:
@@ -337,14 +388,13 @@ class Prompt:
     COMPLETION_NEXT_KEYS = (b'^I', b'^P')
     COMPLETION_PREV_KEYS = (b'KEY_BTAB', b'^N')
 
-    def _run(self, completions: Sequence[str]) -> str | None:
-        cmenu = CompletionMenu(self.win, completions)
+    def _run(self, cmenu: CompletionMenu) -> str | None:
         entered_before_completion = self._entered
         if entered_before_completion:
             cmenu.complete(entered_before_completion)
 
         while True:
-            if cmenu.completions:
+            if cmenu.has_completions():
                 with self.screenbuf.extra_margin(cmenu.height()):
                     self.screenbuf.draw()
                 cmenu.draw()
@@ -400,7 +450,7 @@ class Prompt:
                 self.clear()
                 return ret
 
-            elif key in (b'^C', b'^\\', b'^['):
+            elif key in (b'^C', b'^\\', b'^['):  #]
                 if cmenu.cur is None:
                     return None
                 else:
@@ -408,11 +458,20 @@ class Prompt:
                     cmenu.complete(self._entered)
 
 
-    def run(self, completions: Sequence[str] | None = None) -> str | None:
+    def run(self, c: CompletionMenu | Sequence[str] | None = None) -> str | None:
+        if isinstance(c, CompletionMenu):
+            cmenu = c
+        elif c is None:
+            cmenu = CompletionMenu(self.win)
+        elif isinstance(c, deque):
+            cmenu = CompletionMenu(self.win, c)
+        else:
+            cmenu = CompletionMenu(self.win, deque(c))
+
         curses.raw()
         show_cursor()
         try:
-            return self._run(completions or [])
+            return self._run(cmenu)
         finally:
             hide_cursor()
             curses.cbreak()

@@ -13,8 +13,8 @@ except ImportError:
     raise
 
 import atexit
-import collections
 import contextlib
+import functools
 import os
 from typing import Callable, Sequence, Iterable, NamedTuple, Iterator
 
@@ -23,7 +23,7 @@ import src.search as search
 from src.Curses.color import Color, init_colors
 from src.Curses.configmenu import ConfigMenu
 from src.Curses.pager import Pager
-from src.Curses.prompt import Prompt
+from src.Curses.prompt import Prompt, CompletionMenu
 from src.Curses.proto import ScreenBufferInterface, StatusInterface
 from src.Curses.screen import Screen
 from src.Curses.util import (
@@ -259,14 +259,33 @@ _textattr('MISCELLANEOUS', curses.A_BOLD | curses.A_UNDERLINE),
 ]
 
 
+class QueryHistory:
+    def __init__(self, win: curses._CursesWindow, path: str) -> None:
+        self.win = win
+        self.path = path
+        self._save_func_registered = False
+
+    @functools.cached_property
+    def cmenu(self) -> CompletionMenu:
+        return CompletionMenu.from_file(self.win, self.path)
+
+    def add_entry(self, s: str) -> None:
+        if self.cmenu.add_entry(s) and not self._save_func_registered:
+            atexit.register(self.cmenu.save_entries, self.path)
+            self._save_func_registered = True
+
+
 class ScreenBuffer(ScreenBufferInterface):
-    def __init__(self, win: curses._CursesWindow, screens: Sequence[Screen] | None = None) -> None:
+    def __init__(self,
+            win: curses._CursesWindow,
+            screens: Sequence[Screen] | None = None
+    ) -> None:
         self.win = win
         self.help_pager = Pager(win, HELP_TEXT)
         self.screens = screens or []
         self._screen_i = 0
         self.status = Status(win, persistence=7)
-        self.qhistory = QueryHistory(os.path.join(DATA_DIR, 'history.txt'))
+        self.history = QueryHistory(win, os.path.join(DATA_DIR, 'history.txt'))
         self.page: Screen | Pager = self.help_pager
 
     def _insert_screens(self, screens: Sequence[Screen]) -> None:
@@ -277,9 +296,7 @@ class ScreenBuffer(ScreenBufferInterface):
         self._screen_i = 0
 
     def _search_prompt(self, pretype: str) -> None:
-        qhistory = self.qhistory
-
-        typed = Prompt(self, 'Search: ', pretype=pretype).run(qhistory.history)
+        typed = Prompt(self, 'Search: ', pretype=pretype).run(self.history.cmenu)
         if typed is None or not typed.strip():
             return
 
@@ -304,7 +321,7 @@ class ScreenBuffer(ScreenBufferInterface):
             for dictionary in dictionaries:
                 screens.append(Screen(self.win, dictionary))
                 if config['history']:
-                    qhistory.add(query.query)
+                    self.history.add_entry(query.query)
 
         if not screens:
             return
@@ -314,6 +331,7 @@ class ScreenBuffer(ScreenBufferInterface):
     def search_prompt(self, *, pretype: str = '') -> None:
         self.status.clear()
         self._search_prompt(' '.join(pretype.split()))
+        self.history.cmenu.deactivate()
 
     @contextlib.contextmanager
     def extra_margin(self, n: int) -> Iterator[None]:
@@ -349,7 +367,9 @@ class ScreenBuffer(ScreenBufferInterface):
 
         if isinstance(page, Screen):
             assert isinstance(page.selector.dictionary.contents[0], HEADER)
-            header = truncate(page.selector.dictionary.contents[0].header, curses.COLS - 8)
+            header = truncate(
+                page.selector.dictionary.contents[0].header, curses.COLS - 8
+            )
             if header is not None:
                 win.addstr(0, 2, f'[ {header} ]')
                 win.chgat(0, 4, len(header), Color.delimit | curses.A_BOLD)
@@ -386,7 +406,10 @@ class ScreenBuffer(ScreenBufferInterface):
             win.chgat(y, x + i, span, attr)
 
     def _draw_function_bar(self) -> None:
-        bar = truncate('F1 Help  F2 Configuration  F3 Anki-setup  F4 Recheck-note', curses.COLS)
+        bar = truncate(
+            'F1 Help  F2 Configuration  F3 Anki-setup  F4 Recheck-note',
+            curses.COLS
+        )
         if bar is None:
             return
 
@@ -554,38 +577,6 @@ class ScreenBuffer(ScreenBufferInterface):
         return False
 
 
-class QueryHistory:
-    def __init__(self, path: str) -> None:
-        self.path = path
-        try:
-            with open(path) as f:
-                self._history = collections.deque(map(str.strip, f))
-        except FileNotFoundError:
-            self._history = collections.deque()
-
-        self._seen = set(self._history)
-        self._at_least_one_added = False
-        atexit.register(self._save_history)
-
-    @property
-    def history(self) -> collections.deque[str]:
-        return self._history
-
-    def _save_history(self) -> None:
-        if self._at_least_one_added:
-            with open(self.path, 'w') as f:
-                f.write('\n'.join(self._history))
-
-    def add(self, s: str) -> None:
-        self._at_least_one_added = True
-        if s in self._seen:
-            self._history.remove(s)
-        else:
-            self._seen.add(s)
-
-        self._history.appendleft(s)
-
-
 def perror_clipboard_or_selection(status: Status) -> str | None:
     try:
         return clipboard_or_selection()
@@ -608,7 +599,11 @@ def perror_currently_reviewed_phrase(status: Status) -> str | None:
         return None
 
 
-def ask_yes_no(screen_buffer: ScreenBuffer, prompt_name: str, *, default: bool) -> bool:
+def ask_yes_no(
+        screen_buffer: ScreenBuffer,
+        prompt_name: str, *,
+        default: bool
+) -> bool:
     typed = Prompt(
         screen_buffer,
         f'{prompt_name} [{"Y/n" if default else "y/N"}]: ',
@@ -700,7 +695,10 @@ def curses_main(stdscr: curses._CursesWindow) -> None:
             if selections is None:
                 screenbuf.status.error('Nothing selected')
             else:
-                create_and_add_card(StatusEcho(screenbuf, screenbuf.status), selections)
+                create_and_add_card(
+                    StatusEcho(screenbuf, screenbuf.status),
+                    selections
+                )
                 screenbuf.page.deselect_all()
 
         elif c == b'KEY_F(2)':
