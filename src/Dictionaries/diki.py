@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from typing import Callable
+
 from src.Dictionaries.base import DictionaryError
 from src.Dictionaries.util import http
 
@@ -44,7 +46,7 @@ def diki_audio(raw_phrase: str, flag: str = '') -> str:
             return diki_phrase
         return s
 
-    salvage_methods = (
+    salvage_methods: tuple[Callable[[str], str], ...] = (
         lambda x: x + '_somebody' if x.endswith('_for') else x,
         lambda x: x + '_something' if x.endswith('_by') else x,
         lambda x: x.replace('an_', '', 1) if x.startswith('an_') else x,
@@ -57,7 +59,7 @@ def diki_audio(raw_phrase: str, flag: str = '') -> str:
 
     last_phrase = ''
     for method in salvage_methods:
-        diki_phrase = method(diki_phrase)  # type: ignore[operator]
+        diki_phrase = method(diki_phrase)
         # To avoid making unnecessary requests, continue if nothing in the url has changed.
         if last_phrase == diki_phrase:
             continue
