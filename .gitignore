@@ -1,2 +1,4 @@
+lib/
 *.pyc
-*_tested_words.json
+cache.ahd
+raport.ahd
