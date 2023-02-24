@@ -1,5 +1,4 @@
 #!/usr/bin/env python3
-
 # Run from the `testing` directory.
 #
 # PROBLEMATIC AHD QUERIES:
@@ -16,7 +15,6 @@
 #   flagellate: 'also' in labels
 #   roughhouse: 'also' in labels
 #   mid : a lonely dot as a definition
-
 from __future__ import annotations
 
 import copy
@@ -24,14 +22,21 @@ import json
 import os
 import random
 import sys
-from typing import TYPE_CHECKING, Final, Iterable, Literal, Sequence
+from typing import Final
+from typing import Iterable
+from typing import Literal
+from typing import Sequence
+from typing import TYPE_CHECKING
 
 if os.path.basename(sys.path[0]) == 'testing':
     sys.path[0] = os.path.dirname(sys.path[0])
 
-from src.data import config
 from src.Dictionaries.ahd import ask_ahd
-from src.Dictionaries.base import DEF, LABEL, PHRASE, POS
+from src.Dictionaries.base import DEF
+from src.Dictionaries.base import LABEL
+from src.Dictionaries.base import PHRASE
+from src.Dictionaries.base import POS
+from src.data import config
 
 if TYPE_CHECKING:
     from src.Dictionaries.base import Dictionary

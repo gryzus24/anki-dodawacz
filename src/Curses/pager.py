@@ -1,18 +1,18 @@
 from __future__ import annotations
 
 import curses
-from typing import NamedTuple, Callable, TYPE_CHECKING
+from typing import Callable
+from typing import NamedTuple
+from typing import TYPE_CHECKING
 
 from src.Curses.color import Color
-from src.Curses.util import (
-    BORDER_PAD,
-    CURSES_COLS_MIN_VALUE,
-    FUNCTION_BAR_PAD,
-    HIGHLIGHT,
-    mouse_wheel_down,
-    mouse_wheel_up,
-    truncate,
-)
+from src.Curses.util import BORDER_PAD
+from src.Curses.util import CURSES_COLS_MIN_VALUE
+from src.Curses.util import FUNCTION_BAR_PAD
+from src.Curses.util import HIGHLIGHT
+from src.Curses.util import mouse_wheel_down
+from src.Curses.util import mouse_wheel_up
+from src.Curses.util import truncate
 
 if TYPE_CHECKING:
     from src.Curses.util import Attr

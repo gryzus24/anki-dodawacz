@@ -1,13 +1,11 @@
 from __future__ import annotations
 
-from src.Dictionaries.base import (
-    Dictionary,
-    DictionaryError,
-    LABEL,
-    PHRASE,
-    HEADER,
-    SYN,
-)
+from src.Dictionaries.base import Dictionary
+from src.Dictionaries.base import DictionaryError
+from src.Dictionaries.base import HEADER
+from src.Dictionaries.base import LABEL
+from src.Dictionaries.base import PHRASE
+from src.Dictionaries.base import SYN
 from src.Dictionaries.util import request_soup
 
 

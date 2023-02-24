@@ -1,33 +1,34 @@
 from __future__ import annotations
 
 import curses
-from typing import Callable, Iterator, NamedTuple, Type, TYPE_CHECKING
+from typing import Callable
+from typing import Iterator
+from typing import NamedTuple
+from typing import Type
+from typing import TYPE_CHECKING
 
 from src.Curses.color import Color
-from src.Curses.util import (
-    Attr,
-    BORDER_PAD,
-    FUNCTION_BAR_PAD,
-    HIGHLIGHT,
-    MARGIN,
-    compose_attrs,
-)
-from src.Dictionaries.base import (
-    EntrySelector,
-    DEF,
-    LABEL,
-    PHRASE,
-    HEADER,
-    ETYM,
-    POS,
-    AUDIO,
-    SYN,
-    NOTE
-)
+from src.Curses.util import Attr
+from src.Curses.util import BORDER_PAD
+from src.Curses.util import compose_attrs
+from src.Curses.util import FUNCTION_BAR_PAD
+from src.Curses.util import HIGHLIGHT
+from src.Curses.util import MARGIN
 from src.data import config
+from src.Dictionaries.base import AUDIO
+from src.Dictionaries.base import DEF
+from src.Dictionaries.base import EntrySelector
+from src.Dictionaries.base import ETYM
+from src.Dictionaries.base import HEADER
+from src.Dictionaries.base import LABEL
+from src.Dictionaries.base import NOTE
+from src.Dictionaries.base import PHRASE
+from src.Dictionaries.base import POS
+from src.Dictionaries.base import SYN
 
 if TYPE_CHECKING:
-    from src.Dictionaries.base import Dictionary, op_t
+    from src.Dictionaries.base import op_t
+    from src.Dictionaries.base import Dictionary
 
 AUTO_COLUMN_WIDTH = 52
 
@@ -548,4 +549,3 @@ class Screen:
             return True
 
         return False
-

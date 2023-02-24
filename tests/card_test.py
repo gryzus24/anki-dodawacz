@@ -37,4 +37,3 @@ def test_hide_with_hide_prepositions(target, phrase_to_hide, expected):
 )
 def test_hide_without_hide_prepositions(target, phrase_to_hide, expected):
     assert card.hide(target, phrase_to_hide, '___', hide_prepositions=False) == expected
-

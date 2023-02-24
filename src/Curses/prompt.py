@@ -1,20 +1,22 @@
 from __future__ import annotations
 
 import curses
-from collections import deque, defaultdict
-from typing import TYPE_CHECKING, NamedTuple, Sequence
+from collections import defaultdict
+from collections import deque
+from typing import NamedTuple
+from typing import Sequence
+from typing import TYPE_CHECKING
 
 from src.Curses.color import Color
-from src.Curses.util import (
-    CURSES_COLS_MIN_VALUE,
-    clipboard_or_selection,
-    hide_cursor,
-    mouse_right_click,
-    mouse_wheel_click,
-    show_cursor,
-    truncate,
-)
-from src.data import WINDOWS, ON_TERMUX
+from src.Curses.util import clipboard_or_selection
+from src.Curses.util import CURSES_COLS_MIN_VALUE
+from src.Curses.util import hide_cursor
+from src.Curses.util import mouse_right_click
+from src.Curses.util import mouse_wheel_click
+from src.Curses.util import show_cursor
+from src.Curses.util import truncate
+from src.data import ON_TERMUX
+from src.data import WINDOWS
 
 if TYPE_CHECKING:
     from src.Curses.proto import ScreenBufferInterface

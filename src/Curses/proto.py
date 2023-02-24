@@ -2,8 +2,8 @@ from __future__ import annotations
 
 import contextlib
 import curses
-
-from typing import Iterator, Protocol
+from typing import Iterator
+from typing import Protocol
 
 
 class StatusInterface(Protocol):

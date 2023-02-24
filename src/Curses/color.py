@@ -2,7 +2,9 @@ from __future__ import annotations
 
 import curses
 
-from src.data import config, config_t, colorkey_t
+from src.data import colorkey_t
+from src.data import config
+from src.data import config_t
 
 COLOR_NAME_TO_COLOR = {
     'fg': 0, 'black': 0,

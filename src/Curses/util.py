@@ -2,8 +2,11 @@ from __future__ import annotations
 
 import curses
 import shutil
-from subprocess import Popen, DEVNULL, PIPE
-from typing import Iterable, NamedTuple
+from subprocess import DEVNULL
+from subprocess import PIPE
+from subprocess import Popen
+from typing import Iterable
+from typing import NamedTuple
 
 from src.data import WINDOWS
 

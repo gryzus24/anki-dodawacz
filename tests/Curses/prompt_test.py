@@ -1,11 +1,10 @@
 from __future__ import annotations
 
-import pytest
-
 import contextlib
 import curses
-
 from typing import Iterator
+
+import pytest
 
 from src.Curses.prompt import Prompt
 
@@ -137,4 +136,3 @@ def test_ctrl_t_inconsistent_spacing(pretype, cursor_index, expected):
 )
 def test_ctrl_t_no_contents(pretype, cursor_index, expected):
     _run_ctrl_t_test(pretype, cursor_index, expected)
-

@@ -1,9 +1,7 @@
-from src.Dictionaries.dictionary_base import (
-    Dictionary,
-    DictionarySelection,
-    EntrySelector,
-)
 from src.data import config
+from src.Dictionaries.dictionary_base import Dictionary
+from src.Dictionaries.dictionary_base import DictionarySelection
+from src.Dictionaries.dictionary_base import EntrySelector
 
 config['-shortetyms'] = True
 config['-toipa'] = True
@@ -288,4 +286,3 @@ def test_dump_selection_empty():
     selector.toggle_by_def_index(6)
     selector.toggle_by_def_index(6)
     assert selector.dump_selection() == None
-

@@ -3,20 +3,26 @@ from __future__ import annotations
 import contextlib
 import curses
 import functools
-from typing import Callable, Iterator, NamedTuple, Type
+from typing import Callable
+from typing import Iterator
+from typing import NamedTuple
+from typing import Type
 
 import src.anki as anki
-from src.Curses.color import Color, COLOR_NAME_TO_COLOR
+from src.Curses.color import Color
+from src.Curses.color import COLOR_NAME_TO_COLOR
 from src.Curses.prompt import Prompt
 from src.Curses.proto import ScreenBufferInterface
-from src.Curses.util import (
-    Attr,
-    BORDER_PAD,
-    HIGHLIGHT,
-    draw_border,
-    truncate,
-)
-from src.data import config, config_save, config_t, configkey_t, configval_t
+from src.Curses.util import Attr
+from src.Curses.util import BORDER_PAD
+from src.Curses.util import draw_border
+from src.Curses.util import HIGHLIGHT
+from src.Curses.util import truncate
+from src.data import config
+from src.data import config_save
+from src.data import config_t
+from src.data import configkey_t
+from src.data import configval_t
 
 
 class Option(NamedTuple):

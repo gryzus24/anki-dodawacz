@@ -1,23 +1,24 @@
 from __future__ import annotations
 
 from itertools import filterfalse
-from typing import Any, Callable, Iterable, TypeVar
+from typing import Any
+from typing import Callable
+from typing import Iterable
+from typing import TypeVar
 
-from src.Dictionaries.base import (
-    Dictionary,
-    DictionaryError,
-    DEF,
-    LABEL,
-    PHRASE,
-    HEADER,
-    ETYM,
-    POS,
-    AUDIO,
-    SYN,
-    NOTE,
-)
-from src.Dictionaries.util import request_soup
 from src.data import config
+from src.Dictionaries.base import AUDIO
+from src.Dictionaries.base import DEF
+from src.Dictionaries.base import Dictionary
+from src.Dictionaries.base import DictionaryError
+from src.Dictionaries.base import ETYM
+from src.Dictionaries.base import HEADER
+from src.Dictionaries.base import LABEL
+from src.Dictionaries.base import NOTE
+from src.Dictionaries.base import PHRASE
+from src.Dictionaries.base import POS
+from src.Dictionaries.base import SYN
+from src.Dictionaries.util import request_soup
 
 AHD_IPA_translation = str.maketrans({
     'ă': 'æ',   'ā': 'eɪ',  'ä': 'ɑː',

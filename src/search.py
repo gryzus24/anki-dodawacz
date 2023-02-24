@@ -2,14 +2,18 @@ from __future__ import annotations
 
 import threading
 from itertools import repeat
-from typing import Callable, NamedTuple, TYPE_CHECKING
+from typing import Callable
+from typing import NamedTuple
+from typing import TYPE_CHECKING
 
+from src.data import config
+from src.data import dictkey_t
 from src.Dictionaries.ahd import ask_ahd
+from src.Dictionaries.base import Dictionary
+from src.Dictionaries.base import DictionaryError
 from src.Dictionaries.collins import ask_collins
-from src.Dictionaries.base import Dictionary, DictionaryError
 from src.Dictionaries.farlex import ask_farlex
 from src.Dictionaries.wordnet import ask_wordnet
-from src.data import config, dictkey_t
 
 if TYPE_CHECKING:
     from src.Curses.proto import StatusInterface

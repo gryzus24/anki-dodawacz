@@ -1,16 +1,14 @@
 from __future__ import annotations
 
-from src.Dictionaries.base import (
-    Dictionary,
-    DictionaryError,
-    DEF,
-    LABEL,
-    PHRASE,
-    HEADER,
-    ETYM,
-    AUDIO,
-    NOTE,
-)
+from src.Dictionaries.base import AUDIO
+from src.Dictionaries.base import DEF
+from src.Dictionaries.base import Dictionary
+from src.Dictionaries.base import DictionaryError
+from src.Dictionaries.base import ETYM
+from src.Dictionaries.base import HEADER
+from src.Dictionaries.base import LABEL
+from src.Dictionaries.base import NOTE
+from src.Dictionaries.base import PHRASE
 from src.Dictionaries.util import request_soup
 
 

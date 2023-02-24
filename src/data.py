@@ -3,8 +3,9 @@ from __future__ import annotations
 import json
 import os
 import sys
-
-from typing import TypedDict, Literal, Union
+from typing import Literal
+from typing import TypedDict
+from typing import Union
 
 dictkey_t = Literal['ahd', 'collins', 'farlex', 'wordnet']
 

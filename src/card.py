@@ -2,17 +2,21 @@ from __future__ import annotations
 
 import functools
 import os
-from typing import TypedDict, Callable, Iterable, Literal, TYPE_CHECKING
+from typing import Callable
+from typing import Iterable
+from typing import Literal
+from typing import TYPE_CHECKING
+from typing import TypedDict
 
 import src.anki as anki
+from src.data import config
 from src.Dictionaries.base import DictionaryError
 from src.Dictionaries.diki import diki_audio
 from src.Dictionaries.util import http
-from src.data import config
 
 if TYPE_CHECKING:
-    from src.Dictionaries.base import DictionarySelection
     from src.Curses.proto import StatusInterface
+    from src.Dictionaries.base import DictionarySelection
 
 
 class Card(TypedDict):

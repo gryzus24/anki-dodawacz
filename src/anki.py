@@ -4,15 +4,24 @@ import atexit
 import json
 import os
 import sys
-from typing import Any, Literal, overload, TYPE_CHECKING
+from typing import Any
+from typing import Literal
+from typing import overload
+from typing import TYPE_CHECKING
 
 from urllib3.exceptions import NewConnectionError
 
+from src.data import config
+from src.data import DATA_DIR
+from src.data import LINUX
+from src.data import MAC
+from src.data import ROOT_DIR
+from src.data import WINDOWS
 from src.Dictionaries.util import http
-from src.data import LINUX, WINDOWS, MAC, DATA_DIR, ROOT_DIR, config
 
 if TYPE_CHECKING:
-    from src.card import Card, cardkey_t
+    from src.card import cardkey_t
+    from src.card import Card
 
 SCHEME_TO_FIELD: tuple[tuple[str, cardkey_t], ...] = (
     ('def',      'DEF'),

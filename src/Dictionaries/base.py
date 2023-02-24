@@ -2,7 +2,9 @@ from __future__ import annotations
 
 import sys
 from dataclasses import dataclass
-from typing import Callable, NamedTuple, Union
+from typing import Callable
+from typing import NamedTuple
+from typing import Union
 
 
 @dataclass(frozen=True)
