@@ -296,7 +296,9 @@ class ScreenBuffer(ScreenBufferInterface):
         self._screen_i = 0
 
     def _search_prompt(self, pretype: str) -> None:
-        typed = Prompt(self, 'Search: ', pretype=pretype).run(self.history.cmenu)
+        typed = Prompt(self, 'Search: ', pretype=pretype).run(
+            self.history.cmenu if config['histshow'] else None
+        )
         if typed is None or not typed.strip():
             return
 
@@ -320,7 +322,7 @@ class ScreenBuffer(ScreenBufferInterface):
 
             for dictionary in dictionaries:
                 screens.append(Screen(self.win, dictionary))
-                if config['history']:
+                if config['histsave']:
                     self.history.add_entry(query.query)
 
         if not screens:
@@ -331,7 +333,8 @@ class ScreenBuffer(ScreenBufferInterface):
     def search_prompt(self, *, pretype: str = '') -> None:
         self.status.clear()
         self._search_prompt(' '.join(pretype.split()))
-        self.history.cmenu.deactivate()
+        if config['histshow']:
+            self.history.cmenu.deactivate()
 
     @contextlib.contextmanager
     def extra_margin(self, n: int) -> Iterator[None]:

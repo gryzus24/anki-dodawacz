@@ -24,7 +24,8 @@ config_t = TypedDict(
         'hidepreps':  bool,
         'hides':      str,
         'hidesyn':    bool,
-        'history':    bool,
+        'histsave':   bool,
+        'histshow':   bool,
         'mediadir':   str,
         'note':       str,
         'pos':        bool,
@@ -61,9 +62,9 @@ colorkey_t = Literal[
 
 configkey_t = Literal[
     'audio', 'deck', 'dupescope', 'duplicates', 'etym', 'exsen', 'formatdefs',
-    'hidedef', 'hideexsen', 'hidepreps', 'hides', 'hidesyn', 'history',
-    'mediadir', 'note', 'pos', 'primary', 'secondary', 'shortetyms', 'syn',
-    'tags', 'toipa', colorkey_t
+    'hidedef', 'hideexsen', 'hidepreps', 'hides', 'hidesyn', 'histsave',
+    'histshow', 'mediadir', 'note', 'pos', 'primary', 'secondary', 'shortetyms',
+    'syn', 'tags', 'toipa', colorkey_t
 ]
 
 configval_t = Union[bool, str]

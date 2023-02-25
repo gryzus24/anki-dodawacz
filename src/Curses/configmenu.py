@@ -96,7 +96,8 @@ CONFIG_COLUMNS: list[Column] = [
         Section(
             'History',
             [
-            Option('history', 'Save queries to the history file', bool),
+            Option('histsave', 'Save queries to the history file', bool),
+            Option('histshow', 'Show completion menu with entries from the history file', bool),
             ]
         )
     ]),
