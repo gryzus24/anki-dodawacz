@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import threading
-from itertools import repeat
 from typing import Callable
 from typing import NamedTuple
 from typing import TYPE_CHECKING
@@ -17,6 +16,8 @@ from src.Dictionaries.wordnet import ask_wordnet
 
 if TYPE_CHECKING:
     from src.Curses.proto import StatusInterface
+
+QUERY_SEPARATOR = ','
 
 DICT_KEY_ALIASES: dict[str, dictkey_t] = {
     'ahd':     'ahd',
@@ -141,17 +142,16 @@ def _perror_query_with_fallback(
 
 
 def parse(s: str) -> list[Query] | None:
-    separators = ',;'
-    chars_to_strip = separators + ' '
+    to_strip = QUERY_SEPARATOR + ' '
 
-    s = s.strip(chars_to_strip)
+    s = s.strip(to_strip)
     if not s:
         return None
     s = ' '.join(s.split())
 
     result = []
-    for field in max(map(str.split, repeat(s), separators), key=len):
-        field = field.strip(chars_to_strip)
+    for field in s.split(QUERY_SEPARATOR):
+        field = field.strip(to_strip)
         if not field:
             continue
 

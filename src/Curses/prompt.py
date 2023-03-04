@@ -8,8 +8,8 @@ from typing import Sequence
 from typing import TYPE_CHECKING
 
 from src.Curses.color import Color
-from src.Curses.util import clipboard_or_selection
 from src.Curses.util import CURSES_COLS_MIN_VALUE
+from src.Curses.util import clipboard_or_selection
 from src.Curses.util import hide_cursor
 from src.Curses.util import mouse_right_click
 from src.Curses.util import mouse_wheel_click
@@ -17,6 +17,7 @@ from src.Curses.util import show_cursor
 from src.Curses.util import truncate
 from src.data import ON_TERMUX
 from src.data import WINDOWS
+from src.search import QUERY_SEPARATOR
 
 if TYPE_CHECKING:
     from src.Curses.proto import ScreenBufferInterface
@@ -248,6 +249,9 @@ class Prompt:
         self._entered = ''
         self._cursor = 0
 
+    def current_word(self) -> str:
+        return self._entered.rpartition(QUERY_SEPARATOR)[2]
+
     # Movement
     def left(self) -> None:
         if self._cursor > 0:
@@ -408,11 +412,11 @@ class Prompt:
             c = self.win.getch()
             if 32 <= c <= 126:  # printable
                 self.insert(chr(c))
-                cmenu.complete(self._entered)
+                cmenu.complete(self.current_word())
 
             elif (key := curses.keyname(c)) in Prompt.ACTIONS:
                 Prompt.ACTIONS[key](self)
-                cmenu.complete(self._entered)
+                cmenu.complete(self.current_word())
 
             elif (
                    key in Prompt.COMPLETION_NEXT_KEYS
@@ -431,7 +435,13 @@ class Prompt:
                     else:
                         pass  # no completion matches
                 else:
-                    self.clear_insert(r.completion)
+                    head, sep, tail = self._entered.rpartition(QUERY_SEPARATOR)
+                    self.clear_insert(
+                          head
+                        + sep
+                        + (' ' if tail.startswith(' ') else '')
+                        + r.completion
+                    )
 
             elif key == b'KEY_MOUSE':
                 bstate = curses.getmouse()[4]
@@ -441,7 +451,7 @@ class Prompt:
                     except (ValueError, LookupError):
                         pass
                     else:
-                        cmenu.complete(self._entered)
+                        cmenu.complete(self.current_word())
                 elif mouse_right_click(bstate):
                     ret = self._entered
                     self.clear()
@@ -457,7 +467,7 @@ class Prompt:
                     return None
                 else:
                     self.clear_insert(entered_before_completion)
-                    cmenu.complete(self._entered)
+                    cmenu.complete(self.current_word())
 
 
     def run(self, c: CompletionMenu | Sequence[str] | None = None) -> str | None:
