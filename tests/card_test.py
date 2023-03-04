@@ -1,6 +1,7 @@
 import pytest
 
 import src.card as card
+from src.data import config
 
 
 @pytest.mark.parametrize(
@@ -22,8 +23,11 @@ import src.card as card
         ('Over-engineered', 'engineer', 'Over-___ed'),
     )
 )
-def test_hide_with_hide_prepositions(target, phrase_to_hide, expected):
-    assert card.hide(target, phrase_to_hide, '___', hide_prepositions=True) == expected
+def test_hide_hidepreps(target, phrase_to_hide, expected):
+    config['hidepreps'] = True
+    config['hides'] = '___'
+    hide_func = card.prepare_hide_func(phrase_to_hide)
+    assert hide_func(target) == expected
 
 
 @pytest.mark.parametrize(
@@ -35,5 +39,8 @@ def test_hide_with_hide_prepositions(target, phrase_to_hide, expected):
         ('Over and beyond.', 'beyond and over', 'Over and beyond.')
     )
 )
-def test_hide_without_hide_prepositions(target, phrase_to_hide, expected):
-    assert card.hide(target, phrase_to_hide, '___', hide_prepositions=False) == expected
+def test_hide_nohidepreps(target, phrase_to_hide, expected):
+    config['hidepreps'] = False
+    config['hides'] = '___'
+    hide_func = card.prepare_hide_func(phrase_to_hide)
+    assert hide_func(target) == expected

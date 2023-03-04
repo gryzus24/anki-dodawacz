@@ -246,10 +246,6 @@ class Prompt:
     def resize(self) -> None:
         self.screenbuf.resize()
 
-    def clear(self) -> None:
-        self._entered = ''
-        self._cursor = 0
-
     def current_word(self) -> str:
         if self.completion_separator is None:
             return self._entered
@@ -271,16 +267,16 @@ class Prompt:
     def end(self) -> None:
         self._cursor = len(self._entered)
 
-    def _jump_left(self) -> int:
-        entered = self._entered
+    def _jump(self, start: int, end: int, step: int) -> int:
         nskipped = 0
         skip = True
-        for i in range(self._cursor - 1, -1, -1):
-            if entered[i].isspace():
+        for i in range(start, end, step):
+            c = self._entered[i]
+            if c.isspace() or c == ',' or c == '-':
                 if skip:
                     nskipped += 1
-                    continue
-                break
+                else:
+                    break
             else:
                 nskipped += 1
                 skip = False
@@ -288,28 +284,10 @@ class Prompt:
         return nskipped
 
     def ctrl_left(self) -> None:
-        t = self._cursor - self._jump_left()
-        self._cursor = t if t > 0 else 0
-
-    def _jump_right(self) -> int:
-        entered = self._entered
-        nskipped = 0
-        skip = True
-        for i in range(self._cursor, len(entered)):
-            if entered[i].isspace():
-                if skip:
-                    nskipped += 1
-                    continue
-                break
-            else:
-                nskipped += 1
-                skip = False
-
-        return nskipped
+        self._cursor -= self._jump(self._cursor - 1, -1, -1)
 
     def ctrl_right(self) -> None:
-        t = self._cursor + self._jump_right()
-        self._cursor = t if t < len(self._entered) else len(self._entered)
+        self._cursor += self._jump(self._cursor, len(self._entered), 1)
 
     # Insertion and deletion
     def insert(self, s: str) -> None:
@@ -318,35 +296,34 @@ class Prompt:
         )
         self._cursor += len(s)
 
+    def clear(self) -> None:
+        self._entered = ''
+        self._cursor = 0
+
     def clear_insert(self, s: str) -> None:
         self.clear()
         self.insert(s)
 
-    def _delete_from(self, start: int, n: int) -> None:
+    def _delete(self, start: int, n: int) -> None:
         self._entered = self._entered[:start] + self._entered[start + n:]
 
     def delete(self) -> None:
-        self._delete_from(self._cursor, 1)
+        self._delete(self._cursor, 1)
 
     def backspace(self) -> None:
         if not self._entered and self.exiting_bspace:
             curses.ungetch(3)  # ^C
-            return
-        if self._cursor <= 0:
-            return
-        self._cursor -= 1
-        self._delete_from(self._cursor, 1)
+        elif self._cursor:
+            self._cursor -= 1
+            self._delete(self._cursor, 1)
 
     def ctrl_backspace(self) -> None:
         if not self._entered and self.exiting_bspace:
             curses.ungetch(3)  # ^C
-            return
-        if self._cursor <= 0:
-            return
-        nskipped = self._jump_left()
-        t = self._cursor - nskipped
-        self._cursor = t if t > 0 else 0
-        self._delete_from(self._cursor, nskipped)
+        elif self._cursor:
+            nskipped = self._jump(self._cursor - 1, -1, -1)
+            self._cursor -= nskipped
+            self._delete(self._cursor, nskipped)
 
     def ctrl_k(self) -> None:
         self._entered = self._entered[:self._cursor]

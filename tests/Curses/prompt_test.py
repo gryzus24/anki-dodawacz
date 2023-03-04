@@ -26,11 +26,10 @@ class DummyScreenBuffer:
         pass
 
 
-def _run_ctrl_t_test(pretype, cursor_index, expected):
+def make_test_prompt(pretype, cursor_index):
     prompt = Prompt(DummyScreenBuffer(stdscr), 'prompt:', pretype=pretype)  # type: ignore[arg-type]
     prompt._cursor = cursor_index
-    prompt.ctrl_t()
-    assert prompt._entered == expected
+    return prompt
 
 
 @pytest.mark.parametrize(
@@ -39,15 +38,6 @@ def _run_ctrl_t_test(pretype, cursor_index, expected):
         ('test', 4, 'test'),
         ('test', 0, 'test'),
         ('test', 2, 'test'),
-    )
-)
-def test_ctrl_t_one_word(pretype, cursor_index, expected):
-    _run_ctrl_t_test(pretype, cursor_index, expected)
-
-
-@pytest.mark.parametrize(
-    ('pretype', 'cursor_index', 'expected'),
-    (
         ('test   ', 0, 'test'),
         ('test   ', 3, 'test'),
         ('test   ', 4, 'test'),
@@ -60,30 +50,12 @@ def test_ctrl_t_one_word(pretype, cursor_index, expected):
         ('   test    ', 7, 'test'),
         ('   test    ', 9, 'test'),
         ('   test    ', 10, 'test'),
-    )
-)
-def test_ctrl_t_one_word_and_whitespace(pretype, cursor_index, expected):
-    _run_ctrl_t_test(pretype, cursor_index, expected)
-
-
-@pytest.mark.parametrize(
-    ('pretype', 'cursor_index', 'expected'),
-    (
         ('0123456 test', 0, '0123456'),
         ('0123456 test', 5, '0123456'),
         ('0123456 test', 6, '0123456'),
         ('0123456 test', 7, '0123456'),
         ('0123456 test', 8, 'test'),
         ('0123456 test', 11, 'test'),
-    )
-)
-def test_ctrl_t_two_words(pretype, cursor_index, expected):
-    _run_ctrl_t_test(pretype, cursor_index, expected)
-
-
-@pytest.mark.parametrize(
-    ('pretype', 'cursor_index', 'expected'),
-    (
         ('01 345 7 9a', 0, '01'),
         ('01 345 7 9a', 1, '01'),
         ('01 345 7 9a', 2, '01'),
@@ -96,15 +68,6 @@ def test_ctrl_t_two_words(pretype, cursor_index, expected):
         ('01 345 7 9a', 9, '9a'),
         ('01 345 7 9a', 10, '9a'),
         ('01 345 7 9a', 11, '9a'),
-    )
-)
-def test_ctrl_t_multiple_words(pretype, cursor_index, expected):
-    _run_ctrl_t_test(pretype, cursor_index, expected)
-
-
-@pytest.mark.parametrize(
-    ('pretype', 'cursor_index', 'expected'),
-    (
         (' 12   678 a ', 0, ' 12   678 a '),
         (' 12   678 a ', 1, '12'),
         (' 12   678 a ', 2, '12'),
@@ -119,20 +82,116 @@ def test_ctrl_t_multiple_words(pretype, cursor_index, expected):
         (' 12   678 a ', 11, 'a'),
         (' 12   678 a ', 12, 'a'),
         (' 12  a      ', 12, 'a'),
-    )
-)
-def test_ctrl_t_inconsistent_spacing(pretype, cursor_index, expected):
-    _run_ctrl_t_test(pretype, cursor_index, expected)
-
-
-@pytest.mark.parametrize(
-    ('pretype', 'cursor_index', 'expected'),
-    (
         ('', 0, ''),
         ('            ', 0, '            '),
         ('            ', 2, '            '),
         ('            ', 13, '            '),
     )
 )
-def test_ctrl_t_no_contents(pretype, cursor_index, expected):
-    _run_ctrl_t_test(pretype, cursor_index, expected)
+def test_ctrl_t(pretype, cursor_index, expected):
+    prompt = make_test_prompt(pretype, cursor_index)
+    prompt.ctrl_t()
+    assert prompt._entered == expected
+
+
+@pytest.mark.parametrize(
+    ('pretype', 'cursor_index', 'expected'),
+    (
+        ('', 0, 0),
+        (' ', 0, 0),
+        (' ', 1, 0),
+        ('  ', 1, 0),
+        ('  ', 2, 0),
+        ('      ', 5, 0),
+        ('a', 0, 0),
+        ('a', 1, 0),
+        ('aa', 1, 0),
+        ('aa', 2, 0),
+        ('aaaaaa', 5, 0),
+        ('a a', 1, 0),
+        ('a a', 2, 0),
+        ('a    a', 0, 0),
+        ('a    a', 1, 0),
+        ('a    a', 2, 0),
+        ('a    a', 3, 0),
+        ('a    a', 4, 0),
+        ('a    a', 5, 0),
+        ('a    a', 6, 5),
+        ('foo bar baz', 4, 0),
+        ('foo bar baz', 5, 4),
+        ('foo bar baz', 6, 4),
+        ('foo bar baz', 7, 4),
+        ('foo bar baz', 8, 4),
+        ('foo bar baz', 9, 8),
+        ('foo    barbaz', 7, 0),
+        ('foo    barbaz', 8, 7),
+        ('foo    barbaz', 9, 7),
+        ('foo    barbaz', 12, 7),
+        ('foo    barbaz', 13, 7),
+        (' foo    barbaz', 4, 1),
+        (' foo    barbaz', 3, 1),
+        (' foo    barbaz', 1, 0),
+        ('   foo    barbaz', 4, 3),
+        ('   foo    barbaz', 3, 0),
+        ('   foo    barbaz', 2, 0),
+    )
+)
+def test_ctrl_left(pretype, cursor_index, expected):
+    prompt = make_test_prompt(pretype, cursor_index)
+    prompt.ctrl_left()
+    assert prompt._cursor == expected
+
+
+@pytest.mark.parametrize(
+    ('pretype', 'cursor_index', 'expected'),
+    (
+        ('', 0, 0),
+        (' ', 0, 1),
+        (' ', 1, 1),
+        ('  ', 0, 2),
+        ('  ', 1, 2),
+        ('  ', 2, 2),
+        ('      ', 0, 6),
+        ('      ', 1, 6),
+        ('a', 0, 1),
+        ('a', 1, 1),
+        ('aa', 0, 2),
+        ('aa', 1, 2),
+        ('aa', 2, 2),
+        ('aaaaaa', 0, 6),
+        ('aaaaaa', 1, 6),
+        ('a a', 1, 3),
+        ('a a', 2, 3),
+        ('a    a', 0, 1),
+        ('a    a', 1, 6),
+        ('a    a', 2, 6),
+        ('a    a', 3, 6),
+        ('a    a', 4, 6),
+        ('a    a', 5, 6),
+        ('a    a', 6, 6),
+        ('foo bar baz', 4, 7),
+        ('foo bar baz', 5, 7),
+        ('foo bar baz', 6, 7),
+        ('foo bar baz', 7, 11),
+        ('foo bar baz', 8, 11),
+        ('foo bar baz', 9, 11),
+        ('foobar    baz', 0, 6),
+        ('foobar    baz', 1, 6),
+        ('foobar    baz', 5, 6),
+        ('foobar    baz', 6, 13),
+        ('foobar    baz', 7, 13),
+        ('foobar    baz', 8, 13),
+        ('foobar    baz', 9, 13),
+        ('foobar    baz', 10, 13),
+        ('foobar    baz', 11, 13),
+        ('foobar    baz ', 6, 13),
+        ('foobar    baz ', 7, 13),
+        ('foobar    baz ', 12, 13),
+        ('foobar    baz   ', 12, 13),
+        ('foobar    baz   ', 13, 16),
+    )
+)
+def test_ctrl_right(pretype, cursor_index, expected):
+    prompt = make_test_prompt(pretype, cursor_index)
+    prompt.ctrl_right()
+    assert prompt._cursor == expected
