@@ -296,9 +296,12 @@ class ScreenBuffer(ScreenBufferInterface):
         self._screen_i = 0
 
     def _search_prompt(self, pretype: str) -> None:
-        typed = Prompt(self, 'Search: ', pretype=pretype).run(
-            self.history.cmenu if config['histshow'] else None
-        )
+        typed = Prompt(
+            self,
+            'Search: ',
+            pretype=pretype,
+            completion_separator=search.QUERY_SEPARATOR
+        ).run(self.history.cmenu if config['histshow'] else None)
         if typed is None or not typed.strip():
             return
 

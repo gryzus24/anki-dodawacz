@@ -17,7 +17,6 @@ from src.Curses.util import show_cursor
 from src.Curses.util import truncate
 from src.data import ON_TERMUX
 from src.data import WINDOWS
-from src.search import QUERY_SEPARATOR
 
 if TYPE_CHECKING:
     from src.Curses.proto import ScreenBufferInterface
@@ -190,12 +189,14 @@ class Prompt:
             screenbuf: ScreenBufferInterface,
             prompt: str = '', *,
             pretype: str = '',
-            exiting_bspace: bool = True
+            exiting_bspace: bool = True,
+            completion_separator: str | None = None
     ) -> None:
         self.screenbuf = screenbuf
         self.win = screenbuf.win
         self.prompt = prompt
         self.exiting_bspace = exiting_bspace
+        self.completion_separator = completion_separator
         self._cursor = len(pretype)
         self._entered = pretype
 
@@ -250,7 +251,10 @@ class Prompt:
         self._cursor = 0
 
     def current_word(self) -> str:
-        return self._entered.rpartition(QUERY_SEPARATOR)[2]
+        if self.completion_separator is None:
+            return self._entered
+        else:
+            return self._entered.rpartition(self.completion_separator)[2]
 
     # Movement
     def left(self) -> None:
@@ -434,8 +438,10 @@ class Prompt:
                         self.clear_insert(entered_before_completion)
                     else:
                         pass  # no completion matches
+                elif self.completion_separator is None:
+                    self.clear_insert(r.completion)
                 else:
-                    head, sep, tail = self._entered.rpartition(QUERY_SEPARATOR)
+                    head, sep, tail = self._entered.rpartition(self.completion_separator)
                     self.clear_insert(
                           head
                         + sep
