@@ -19,7 +19,7 @@ if TYPE_CHECKING:
 
 
 class PagerHighlight(NamedTuple):
-    hlmap: dict[int, list[int]]
+    hl: dict[int, list[int]]
     nmatches: int
     span: int
 
@@ -30,10 +30,10 @@ class Pager:
             buf: list[tuple[str, list[Attr]]]
     ) -> None:
         self.win = win
-        self._buf = buf
         self.margin_bot = FUNCTION_BAR_PAD
+        self.hl: PagerHighlight | None = None
+        self._buf = buf
         self._line = 0
-        self._hl: PagerHighlight | None = None
 
     @property
     def screen_height(self) -> int:
@@ -87,11 +87,11 @@ class Pager:
                         break
                 win.chgat(y, BORDER_PAD + attr_i, span, attr)
 
-            if (self._hl is None) or (line_i not in self._hl.hlmap):
+            if (self.hl is None) or (line_i not in self.hl.hl):
                 continue
 
-            span = self._hl.span
-            for attr_i in self._hl.hlmap[line_i]:
+            span = self.hl.span
+            for attr_i in self.hl.hl[line_i]:
                 if BORDER_PAD + attr_i + span > width:
                     span = width - attr_i
                     if span <= 0:
@@ -145,37 +145,27 @@ class Pager:
                 hlmap[i] = indices
 
         if nmatches:
-            self._hl = PagerHighlight(hlmap, nmatches, hl_span)
+            self.hl = PagerHighlight(hlmap, nmatches, hl_span)
         else:
-            self._hl = None
+            self.hl = None
 
         return nmatches
 
-    @property
-    def highlight_nmatches(self) -> int:
-        if self._hl is None:
-            return 0
-        else:
-            return self._hl.nmatches
+    def hl_clear(self) -> None:
+        self.hl = None
 
-    def is_highlight_active(self) -> bool:
-        return self._hl is not None
-
-    def highlight_clear(self) -> None:
-        self._hl = None
-
-    def highlight_next(self) -> None:
-        if self._hl is None:
+    def hl_next(self) -> None:
+        if self.hl is None:
             return
-        for line_i in self._hl.hlmap:
+        for line_i in self.hl.hl:
             if line_i > self._line:
                 self._line = line_i
                 return
 
-    def highlight_prev(self) -> None:
-        if self._hl is None:
+    def hl_prev(self) -> None:
+        if self.hl is None:
             return
-        for line_i in reversed(self._hl.hlmap):
+        for line_i in reversed(self.hl.hl):
             if line_i < self._line:
                 self._line = line_i
                 return
@@ -187,9 +177,9 @@ class Pager:
         b'g': go_top,     b'KEY_HOME': go_top,
         b'KEY_NPAGE': page_down, b'KEY_SNEXT': page_down,
         b'KEY_PPAGE': page_up,   b'KEY_SPREVIOUS': page_up,
-        b'n': highlight_next,
-        b'N': highlight_prev,
-        b'^J': highlight_clear, b'^M': highlight_clear,
+        b'n': hl_next,
+        b'N': hl_prev,
+        b'^J': hl_clear, b'^M': hl_clear,
     }
 
     def dispatch(self, key: bytes) -> bool:

@@ -26,8 +26,8 @@ class DummyScreenBuffer:
         pass
 
 
-def make_test_prompt(pretype, cursor_index):
-    prompt = Prompt(DummyScreenBuffer(stdscr), 'prompt:', pretype=pretype)  # type: ignore[arg-type]
+def make_test_prompt(pretype: str, cursor_index: int) -> Prompt:
+    prompt = Prompt(DummyScreenBuffer(stdscr), 'prompt:', pretype=pretype)
     prompt._cursor = cursor_index
     return prompt
 

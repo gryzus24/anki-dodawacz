@@ -33,6 +33,7 @@ if os.path.basename(sys.path[0]) == 'testing':
 
 from src.Dictionaries.ahd import ask_ahd
 from src.Dictionaries.base import DEF
+from src.Dictionaries.base import DictionaryError
 from src.Dictionaries.base import LABEL
 from src.Dictionaries.base import PHRASE
 from src.Dictionaries.base import POS
@@ -144,11 +145,11 @@ def run_check(logger: Logger, dictionary: Dictionary, word: str, raport: raport_
             _line = f'{word} ({phrase_index}.{def_index})'
         raport[_severity][_op][_field].setdefault(_problem, []).append(_line)
         if _severity == 'ERROR':
-            logger.log(ERROR, word, msg)
+            logger.msg(ERROR, word, msg)
         elif _severity == 'WARNING':
-            logger.log(WARN, word, msg)
+            logger.msg(WARN, word, msg)
         else:
-            logger.log(INFO, word, msg)
+            logger.msg(INFO, word, msg)
 
     def_index = 0
     phrase_index = 0
@@ -342,8 +343,6 @@ class Logger:
 
         sys.stdout.write(msg)
 
-    log = msg
-
 
 def load_words(logger: Logger, path: str) -> set[str]:
     if path.lower().endswith('.json'):
@@ -434,9 +433,10 @@ def main(args: argparse.Namespace) -> int:
 
     try:
         for word in words:
-            ahd = ask_ahd(word)
-            if ahd is None:
-                logger.log(ERROR, word, 'word not found')
+            try:
+                ahd = ask_ahd(word)
+            except DictionaryError as e:
+                logger.msg(ERROR, word, str(e))
             else:
                 run_check(logger, ahd, word, raport)
                 cached_words.add(word)

@@ -364,8 +364,8 @@ class ScreenBuffer(ScreenBufferInterface):
         items = []
         items_attr_values = []
 
-        if page.is_highlight_active():
-            match_hint = f'MATCHES: {page.highlight_nmatches}'
+        if page.hl is not None:
+            match_hint = f'MATCHES: {page.hl.nmatches}'
             items.append(match_hint)
             items_attr_values.append(
                 (len(match_hint), curses.A_BOLD, 2)

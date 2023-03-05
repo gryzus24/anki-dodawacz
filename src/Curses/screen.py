@@ -291,15 +291,15 @@ def _layout(
     return columns, column_width
 
 
-class HL(NamedTuple):
-    hls: list[dict[int, list[int]]]
+class ScreenHighlight(NamedTuple):
+    hl: list[dict[int, list[int]]]
     nmatches: int
-    hlphrase: str
-    hllast_line: int
+    phrase: str
+    last_line: int
 
     @property
     def span(self) -> int:
-        return len(self.hlphrase)
+        return len(self.phrase)
 
 
 class Screen:
@@ -312,7 +312,7 @@ class Screen:
         # self.margin_bot is needed for `self.screen_height`
         self.margin_bot = FUNCTION_BAR_PAD
         self.columns, self.column_width = _layout(dictionary, self.screen_height)
-        self._hl: HL | None = None
+        self.hl: ScreenHighlight | None = None
         self._scroll = 0
 
     @property
@@ -373,14 +373,14 @@ class Screen:
                 except curses.error:  # window too small
                     return
 
-                if self._hl is None:
+                if self.hl is None:
                     continue
 
-                hlmap = self._hl.hls[col_i]
+                hlmap = self.hl.hl[col_i]
                 if line_i not in hlmap:
                     continue
 
-                span = self._hl.span
+                span = self.hl.span
                 try:
                     for i in hlmap[line_i]:
                         win.chgat(y, text_x + i, span, hl_attr)
@@ -395,8 +395,8 @@ class Screen:
             self.screen_height
         )
         self.adjust_scroll_past_eof()
-        if self._hl is not None:
-            self.hlsearch(self._hl.hlphrase)
+        if self.hl is not None:
+            self.hlsearch(self.hl.phrase)
 
     def mark_box_at(self, click_y: int, click_x: int) -> None:
         if click_y < Screen.HEADER_PAD or click_y >= curses.LINES - self.margin_bot:
@@ -485,50 +485,36 @@ class Screen:
             hls.append(hlmap)
 
         if nmatches:
-            self._hl = HL(hls, nmatches, s, hllast_line)
+            self.hl = ScreenHighlight(hls, nmatches, s, hllast_line)
         else:
-            self._hl = None
+            self.hl = None
 
         return nmatches
 
-    @property
-    def hl(self) -> HL | None:
-        return self._hl
-
-    @property
-    def highlight_nmatches(self) -> int:
-        if self._hl is None:
-            return 0
-        else:
-            return self._hl.nmatches
-
-    def is_highlight_active(self) -> bool:
-        return self._hl is not None
-
-    def highlight_clear(self) -> None:
-        self._hl = None
+    def hl_clear(self) -> None:
+        self.hl = None
         self.adjust_scroll_past_eof()
 
-    def highlight_next(self) -> None:
-        if self._hl is None:
+    def hl_next(self) -> None:
+        if self.hl is None:
             return
-        for i in range(self._scroll + 1, self._hl.hllast_line + 1):
-            for hlmap in self._hl.hls:
+        for i in range(self._scroll + 1, self.hl.last_line + 1):
+            for hlmap in self.hl.hl:
                 if i in hlmap:
                     self._scroll = i
                     return
 
-    def highlight_prev(self) -> None:
-        if self._hl is None:
+    def hl_prev(self) -> None:
+        if self.hl is None:
             return
         for i in range(self._scroll - 1, -1, -1):
-            for hlmap in self._hl.hls:
+            for hlmap in self.hl.hl:
                 if i in hlmap:
                     self._scroll = i
                     return
 
     ACTIONS: dict[bytes, Callable[[Screen], None]] = {
-        b'^J': highlight_clear, b'^M': highlight_clear,
+        b'^J': hl_clear, b'^M': hl_clear,
         b'd': deselect_all,
         b'j': move_down, b'^N': move_down, b'KEY_DOWN': move_down,
         b'k': move_up,   b'^P': move_up,   b'KEY_UP': move_up,
@@ -536,8 +522,8 @@ class Screen:
         b'g': go_top,    b'KEY_HOME': go_top,
         b'KEY_NPAGE': page_down, b'KEY_SNEXT': page_down,
         b'KEY_PPAGE': page_up,   b'KEY_SPREVIOUS': page_up,
-        b'n': highlight_next,
-        b'N': highlight_prev,
+        b'n': hl_next,
+        b'N': hl_prev,
     }
 
     def dispatch(self, key: bytes) -> bool:
