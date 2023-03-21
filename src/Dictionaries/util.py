@@ -4,8 +4,6 @@ import atexit
 import sys
 from typing import Any
 
-from src.data import USER_AGENT
-
 # Silence warnings if soupsieve is not installed, which is good
 # because its bloated "css parse" slows down import time a lot.
 # ~70ms on my desktop and ~200ms on an android phone.
@@ -33,7 +31,12 @@ else:
 import urllib3
 from urllib3.exceptions import ConnectTimeoutError, NewConnectionError
 
-http = urllib3.PoolManager(timeout=10, headers=USER_AGENT)
+http = urllib3.PoolManager(
+    timeout=10,
+    headers={
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; rv:111.0) Gecko/20100101 Firefox/111.0'
+    }
+)
 atexit.register(http.pools.clear)
 
 

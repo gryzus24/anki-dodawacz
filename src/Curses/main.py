@@ -174,7 +174,7 @@ _textattr(f'Ankidodawacz v{__version__}', curses.A_BOLD),
 *_text((
 '',
 ' Press / to enter dictionary search.',
-' Press ^F to search for something on this page.',
+' Press ^F or F4 to search for something on this page.',
 '',
 'This program uses VI style keybindings for navigation and supports basic',
 'mouse functions like left click select, scroll wheel paste and right click',
@@ -254,7 +254,8 @@ _textattr('MISCELLANEOUS', curses.A_BOLD | curses.A_UNDERLINE),
 *_text((
 ' Tab        tab complete - move up the list',
 ' ^P ^N      tab complete - move up/down the list',
-' ^L         redraw the screen (useful if it gets corrupted somehow)',
+' ^L         redraw the screen (if it gets corrupted somehow)',
+' F5         recheck note (if you have changed note\'s field layout in Anki)',
 )),
 ]
 
@@ -413,7 +414,7 @@ class ScreenBuffer(ScreenBufferInterface):
 
     def _draw_function_bar(self) -> None:
         bar = truncate(
-            'F1 Help  F2 Configuration  F3 Anki-setup  F4 Recheck-note',
+            'F1 Help  F2 Configuration  F3 Anki-setup  F5 Recheck-note',
             curses.COLS
         )
         if bar is None:
@@ -571,7 +572,7 @@ class ScreenBuffer(ScreenBufferInterface):
         b'h': previous, b'KEY_LEFT': previous,
         b'KEY_F(1)': toggle_help,
         b'KEY_F(3)': anki_configuration,
-        b'^F': find_in_page,
+        b'^F': find_in_page, b'KEY_F(4)': find_in_page
     }
     def dispatch(self, key: bytes) -> bool:
         if self.page.dispatch(key):
@@ -717,7 +718,7 @@ def curses_main(stdscr: curses._CursesWindow) -> None:
             if configmenu.apply_changes() or curses.is_term_resized(_l, _c):
                 screenbuf.resize()
 
-        elif c == b'KEY_F(4)':
+        elif c == b'KEY_F(5)':
             screenbuf.status.clear()
             perror_recheck_note(screenbuf.status)
 

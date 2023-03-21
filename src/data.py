@@ -94,7 +94,10 @@ else:
     )
     DATA_DIR = os.path.join(XDG_DATA_HOME, 'ankidodawacz')
 
-os.makedirs(os.path.join(DATA_DIR, 'Audio'), exist_ok=True)
+AUDIO_DIR = os.path.join(DATA_DIR, 'Audio')
+
+# DATA_DIR is subsumed by AUDIO_DIR.
+os.makedirs(AUDIO_DIR, exist_ok=True)
 
 try:
     with open(os.path.join(DATA_DIR, 'config.json')) as f:
@@ -103,8 +106,4 @@ except FileNotFoundError:
     with open(os.path.join(ROOT_DIR, 'config.json')) as f:
         config = json.load(f)
     config_save(config)
-
-USER_AGENT = {
-    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; rv:108.0) Gecko/20100101 Firefox/108.0'
-}
 

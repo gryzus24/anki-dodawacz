@@ -13,7 +13,7 @@
   "hidesyn": true,
   "histsave": true,
   "histshow": true,
-  "mediadir": "~/.local/share/ankidodawacz/Audio",
+  "mediadir": "-",
   "note": "-",
   "pos": true,
   "primary": "ahd",

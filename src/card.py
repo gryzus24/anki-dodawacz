@@ -10,6 +10,7 @@ from typing import TypedDict
 
 import src.anki as anki
 from src.data import config
+from src.data import AUDIO_DIR
 from src.Dictionaries.base import DictionaryError
 from src.Dictionaries.diki import diki_audio
 from src.Dictionaries.util import http
@@ -156,7 +157,9 @@ def make_card(selection: DictionarySelection) -> Card:
 def _save_audio(url: str) -> str:
     audio_bytes = http.urlopen('GET', url).data  # type: ignore[no-untyped-call]
 
-    mediadir_path = os.path.expanduser(config['mediadir'])
+    mediadir_path = os.path.expanduser(
+        AUDIO_DIR if config['mediadir'] == '-' else config['mediadir']
+    )
     _, _, filename = url.rpartition('/')
 
     try:
