@@ -75,13 +75,24 @@ def config_save(c: config_t) -> None:
         json.dump(c, f, indent=2)
 
 
+LINUX = sys.platform.startswith('linux')
+MAC = sys.platform.startswith('darwin')
+WINDOWS = os.name == 'nt'
+ON_TERMUX = os.environ.get('TERMUX_VERSION') is not None
+
 # os.path.abspath(__file__) for Python < 3.9 compatibility
 ROOT_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
-XDG_DATA_HOME = (
-    os.environ.get('XDG_DATA_HOME') or os.path.expanduser('~/.local/share')
-)
-DATA_DIR = os.path.join(XDG_DATA_HOME, 'ankidodawacz')
+if WINDOWS:
+    XDG_DATA_HOME = os.environ.get('LOCALAPPDATA')
+    if XDG_DATA_HOME is None:
+        raise SystemExit('%LOCALAPPDATA% not set!');
+    DATA_DIR = os.path.join(XDG_DATA_HOME, 'Ankidodawacz/ankidodawacz')
+else:
+    XDG_DATA_HOME = (
+        os.environ.get('XDG_DATA_HOME') or os.path.expanduser('~/.local/share')
+    )
+    DATA_DIR = os.path.join(XDG_DATA_HOME, 'ankidodawacz')
 
 os.makedirs(os.path.join(DATA_DIR, 'Audio'), exist_ok=True)
 
@@ -93,12 +104,7 @@ except FileNotFoundError:
         config = json.load(f)
     config_save(config)
 
-
-LINUX = sys.platform.startswith('linux')
-MAC = sys.platform.startswith('darwin')
-WINDOWS = os.name == 'nt'
-ON_TERMUX = os.environ.get('TERMUX_VERSION') is not None
-
 USER_AGENT = {
     'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; rv:108.0) Gecko/20100101 Firefox/108.0'
 }
+
