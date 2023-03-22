@@ -17,7 +17,6 @@ config_t = TypedDict(
         'dupescope':  Literal['deck', 'collection'],
         'duplicates': bool,
         'etym':       bool,
-        'exsen':      bool,
         'formatdefs': bool,
         'hidedef':    bool,
         'hideexsen':  bool,
@@ -61,7 +60,7 @@ colorkey_t = Literal[
 ]
 
 configkey_t = Literal[
-    'audio', 'deck', 'dupescope', 'duplicates', 'etym', 'exsen', 'formatdefs',
+    'audio', 'deck', 'dupescope', 'duplicates', 'etym', 'formatdefs',
     'hidedef', 'hideexsen', 'hidepreps', 'hides', 'hidesyn', 'histsave',
     'histshow', 'mediadir', 'note', 'pos', 'primary', 'secondary', 'shortetyms',
     'syn', 'tags', 'toipa', colorkey_t

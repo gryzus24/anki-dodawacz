@@ -84,7 +84,6 @@ CONFIG_COLUMNS: list[Column] = [
             Option('audio', 'Add audio', bool),
             Option('pos', 'Add parts of speech', bool),
             Option('etym', 'Add etymologies', bool),
-            Option('exsen', 'Add example sentences', bool),
             Option('formatdefs', 'Add HTML formatting to definitions', bool),
             Option('hidedef', 'Replace target word with `-hides` in definitions', bool),
             Option('hidesyn', 'Replace target word with `-hides` in synonyms', bool),

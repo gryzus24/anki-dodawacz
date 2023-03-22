@@ -143,12 +143,12 @@ def make_card(selection: DictionarySelection) -> Card:
 
     card['PHRASE'] = _html_quote(phrase)
 
-    if selection.pos is not None:
+    if config['pos'] and selection.pos is not None:
         card['POS'] = '<br>'.join(
             _html_quote(f'{pos}  {infl}') for pos, infl in selection.pos.pos
         )
 
-    if selection.etymology is not None:
+    if config['etym'] and selection.etymology is not None:
         card['ETYM'] = _html_quote(selection.etymology.etymology)
 
     return card
@@ -201,7 +201,8 @@ def create_and_add_card(
     nids = []
     for selection in selections:
         card = make_card(selection)
-        card['AUDIO'] = _perror_save_audio(status, selection)
+        if config['audio']:
+            card['AUDIO'] = _perror_save_audio(status, selection)
 
         try:
             nids.append(anki.add_card(card))

@@ -629,8 +629,8 @@ def perror_recheck_note(status: Status) -> None:
         status.error('Recheck-note failed:', str(e))
         return
 
-    k_offset = len('Field name')
-    v_offset = len('Value')
+    k_offset = len('Anki field')
+    v_offset = len('Assigned')
     for k, v in model.items():
         if len(k) > k_offset:
             k_offset = len(k)
@@ -639,7 +639,7 @@ def perror_recheck_note(status: Status) -> None:
 
     status.writeln('Note:', config['note'])
     status.writeln('')
-    status.writeln(f'{"Field name":{k_offset}s}  Value')
+    status.writeln(f'{"Anki field":{k_offset}s}  Assigned')
     status.writeln(f'{k_offset * "-"}  {v_offset * "-"}')
 
     for k, v in model.items():
