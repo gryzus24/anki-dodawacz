@@ -35,9 +35,9 @@ DICT_KEY_ALIASES: dict[str, dictkey_t] = {
 # an alias.
 DICTIONARY_LOOKUP: dict[dictkey_t, Callable[[str], Dictionary]] = {
     'ahd': ask_ahd,
+    'collins': ask_collins,
     'farlex': ask_farlex,
     'wordnet': ask_wordnet,
-    'collins': ask_collins,
 }
 
 _cache: dict[tuple[dictkey_t, str], Dictionary] = {}
@@ -172,6 +172,8 @@ def parse(s: str) -> list[Query] | None:
                 # `secondary` might be set to '-'. Do the membership check.
                 if config['secondary'] in DICTIONARY_LOOKUP:
                     dict_flags.append(config['secondary'])  # type: ignore[arg-type]
+            elif flag == 'all':
+                dict_flags.extend(DICTIONARY_LOOKUP)
             else:
                 query_flags.append(flag)
 
