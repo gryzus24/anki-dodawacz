@@ -54,7 +54,6 @@ from src.data import config
 from src.data import config_save
 from src.data import DATA_DIR
 from src.data import WINDOWS
-from src.Dictionaries.base import HEADER
 
 if TYPE_CHECKING:
     from src.Dictionaries.base import Dictionary
@@ -588,7 +587,7 @@ class ScreenBuffer(ScreenBufferInterface):
 def perror_play_audio(status: Status, dictionary: Dictionary) -> None:
     urls = dictionary.audio_urls()
     if not urls:
-        status.error(f'Could not play audio:', f'no audio in {dictionary.header()}')
+        status.error(f'Could not play audio ({dictionary.header()}):', 'no audio')
         return
 
     # TODO: handle multiple audio urls.
