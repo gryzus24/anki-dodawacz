@@ -328,6 +328,10 @@ class Prompt:
     def ctrl_k(self) -> None:
         self._entered = self._entered[:self._cursor]
 
+    def ctrl_u(self) -> None:
+        self._entered = self._entered[self._cursor:]
+        self._cursor = 0
+
     def ctrl_t(self) -> None:
         # Ignore only trailing whitespace to keep things simple.
         entered = self._entered.rstrip()
@@ -355,6 +359,7 @@ class Prompt:
         b'KEY_DC': delete,     b'^D': delete,
         b'^W': ctrl_backspace,
         b'^K': ctrl_k,
+        b'^U': ctrl_u,
         b'^T': ctrl_t,
     }
     if WINDOWS:
