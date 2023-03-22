@@ -16,45 +16,48 @@ import atexit
 import contextlib
 import functools
 import os
-from typing import Callable, Sequence, Iterable, NamedTuple, Iterator
+from typing import Callable
+from typing import Iterable
+from typing import Iterator
+from typing import NamedTuple
+from typing import Sequence
+from typing import TYPE_CHECKING
 
 import src.anki as anki
 import src.search as search
-from src.Curses.color import Color, init_colors
-from src.Curses.configmenu import ConfigMenu
-from src.Curses.pager import Pager
-from src.Curses.prompt import Prompt, CompletionMenu
-from src.Curses.proto import ScreenBufferInterface, StatusInterface
-from src.Curses.screen import Screen
-from src.Curses.util import (
-    Attr,
-    CURSES_COLS_MIN_VALUE,
-    FUNCTION_BAR_PAD,
-    HIGHLIGHT,
-    clipboard_or_selection,
-    compose_attrs,
-    draw_border,
-    hide_cursor,
-    mouse_left_click,
-    mouse_wheel_click,
-    mouse_wheel_down,
-    mouse_wheel_up,
-    truncate,
-)
-from src.Dictionaries.base import HEADER
 from src.__version__ import __version__
 from src.card import create_and_add_card
-from src.data import WINDOWS, DATA_DIR, config, config_save
+from src.Curses.color import Color
+from src.Curses.color import init_colors
+from src.Curses.configmenu import ConfigMenu
+from src.Curses.pager import Pager
+from src.Curses.prompt import CompletionMenu
+from src.Curses.prompt import Prompt
+from src.Curses.proto import ScreenBufferInterface
+from src.Curses.proto import StatusInterface
+from src.Curses.screen import Screen
+from src.Curses.util import Attr
+from src.Curses.util import clipboard_or_selection
+from src.Curses.util import compose_attrs
+from src.Curses.util import CURSES_COLS_MIN_VALUE
+from src.Curses.util import draw_border
+from src.Curses.util import FUNCTION_BAR_PAD
+from src.Curses.util import hide_cursor
+from src.Curses.util import HIGHLIGHT
+from src.Curses.util import mouse_left_click
+from src.Curses.util import mouse_wheel_click
+from src.Curses.util import mouse_wheel_down
+from src.Curses.util import mouse_wheel_up
+from src.Curses.util import play_audio_url
+from src.Curses.util import truncate
+from src.data import config
+from src.data import config_save
+from src.data import DATA_DIR
+from src.data import WINDOWS
+from src.Dictionaries.base import HEADER
 
-STRING_TO_BOOL = {
-    '1':    True, '0':     False,
-    'on':   True, 'off':   False,
-    't':    True,
-    'tak':  True, 'nie':   False,
-    'true': True, 'false': False,
-    'y':    True, 'n':     False,
-    'yes':  True, 'no':    False,
-}
+if TYPE_CHECKING:
+    from src.Dictionaries.base import Dictionary
 
 
 class StatusLine(NamedTuple):
@@ -235,6 +238,7 @@ _textattr('SELECTION AND ANKI', curses.A_BOLD | curses.A_UNDERLINE),
 *_text((
 ' 1-9 !-)    select definition from 1 to 20, press 0 for the tenth definition',
 '            hold Shift for the remaining 11 to 20',
+' a          play dictionary\'s audio file with mpv',
 ' c          create card(s) from the selected definitions',
 ' b          open recently added card(s) in the Anki card browser',
 ' d          deselect everything',
@@ -373,10 +377,7 @@ class ScreenBuffer(ScreenBufferInterface):
             )
 
         if isinstance(page, Screen):
-            assert isinstance(page.selector.dictionary.contents[0], HEADER)
-            header = truncate(
-                page.selector.dictionary.contents[0].header, curses.COLS - 8
-            )
+            header = truncate(page.selector.dictionary.header(), curses.COLS - 8)
             if header is not None:
                 win.addstr(0, 2, f'[ {header} ]')
                 win.chgat(0, 4, len(header), Color.delimit | curses.A_BOLD)
@@ -584,6 +585,21 @@ class ScreenBuffer(ScreenBufferInterface):
         return False
 
 
+def perror_play_audio(status: Status, dictionary: Dictionary) -> None:
+    urls = dictionary.audio_urls()
+    if not urls:
+        status.error(f'Could not play audio:', f'no audio in {dictionary.header()}')
+        return
+
+    # TODO: handle multiple audio urls.
+    try:
+        play_audio_url(urls[0])
+    except LookupError as e:
+        status.error('Could not play audio:', str(e))
+
+    curses.flushinp()
+
+
 def perror_clipboard_or_selection(status: Status) -> str | None:
     try:
         return clipboard_or_selection()
@@ -618,8 +634,16 @@ def ask_yes_no(
     ).run()
     if typed is None:
         return default
-    else:
-        return STRING_TO_BOOL.get(typed.strip().lower(), default)
+
+    return {
+        '1':    True, '0':     False,
+        'on':   True, 'off':   False,
+        't':    True,
+        'tak':  True, 'nie':   False,
+        'true': True, 'false': False,
+        'y':    True, 'n':     False,
+        'yes':  True, 'no':    False,
+    }.get(typed.strip().lower(), default)
 
 
 def perror_recheck_note(status: Status) -> None:
@@ -685,6 +709,12 @@ def curses_main(stdscr: curses._CursesWindow) -> None:
             if pretype is not None:
                 screenbuf.search_prompt(pretype=pretype)
 
+        elif c in (b'a', b'A'):
+            if isinstance(screenbuf.page, Screen):
+                perror_play_audio(
+                    screenbuf.status,
+                    screenbuf.page.selector.dictionary
+                )
         elif c in (b'b', b'B'):
             try:
                 anki.invoke(
@@ -740,6 +770,7 @@ def main() -> None:
         hide_cursor()
         stdscr.keypad(True)
 
+        curses.nonl()
         curses.cbreak()
         curses.noecho()
         curses.mousemask(-1)

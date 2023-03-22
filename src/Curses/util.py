@@ -42,6 +42,47 @@ else:
         return None
 
 
+_sel_cmd = None
+def clipboard_or_selection() -> str:
+    global _sel_cmd
+    if _sel_cmd is None:
+        _sel_cmd = _selection_command()
+        if _sel_cmd is None:
+            raise LookupError(
+                "Something's wrong (could not find powershell.exe)" if WINDOWS else
+                'Install xsel or xclip and try again'
+            )
+
+    with Popen(_sel_cmd, stdout=PIPE, stderr=DEVNULL, encoding='UTF-8') as p:
+        stdout, _ = p.communicate()
+
+    stdout = stdout.strip()
+    if stdout:
+        return stdout
+
+    raise ValueError(f'{"Clipboard" if WINDOWS else "Primary selection"} is empty')
+
+
+_mpv_cmd = None
+def play_audio_url(url: str) -> None:
+    global _mpv_cmd
+    if _mpv_cmd is None:
+        _mpv_cmd = shutil.which('mpv')
+        if _mpv_cmd is None:
+            raise LookupError(
+                'Could not find mpv in ' + ('%PATH%' if WINDOWS else '$PATH')
+            )
+
+    with Popen(
+        (_mpv_cmd,
+         '--no-terminal',
+         '--force-window=no',
+         '--audio-display=no',
+         url)
+    ):
+        pass
+
+
 def draw_border(win: curses._CursesWindow, margin_bot: int) -> None:
     win.box()
     if margin_bot >= curses.LINES - 1:
@@ -71,27 +112,6 @@ def compose_attrs(elements: Iterable[tuple[int, int, int]], *, width: int, start
             index += span + gap
 
     return attrs
-
-
-_cmd = None
-def clipboard_or_selection() -> str:
-    global _cmd
-    if _cmd is None:
-        _cmd = _selection_command()
-        if _cmd is None:
-            raise LookupError(
-                "Something's wrong (could not find powershell.exe)" if WINDOWS else
-                'Install xsel or xclip and try again'
-            )
-
-    with Popen(_cmd, stdout=PIPE, stderr=DEVNULL, encoding='UTF-8') as p:
-        stdout, _ = p.communicate()
-
-    stdout = stdout.strip()
-    if stdout:
-        return stdout
-
-    raise ValueError(f'{"Clipboard" if WINDOWS else "Primary selection"} is empty')
 
 
 def mouse_left_click(bstate: int) -> bool:

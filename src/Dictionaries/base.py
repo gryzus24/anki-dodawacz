@@ -84,6 +84,13 @@ class Dictionary:
         sys.stdout.write('\n')
         return f'{type(self).__name__}({self.contents})'
 
+    def header(self) -> str:
+        assert isinstance(self.contents[0], HEADER)
+        return self.contents[0].header
+
+    def audio_urls(self) -> list[str]:
+        return [op.resource for op in self.contents if isinstance(op, AUDIO)]
+
     def add(self, op: op_t) -> None:
         self.contents.append(op)
 
@@ -160,7 +167,7 @@ class EntrySelector:
                     self._toggle(i)
                     return
 
-    def _find_unique_audio(self) -> AUDIO | None:
+    def find_unique_audio(self) -> AUDIO | None:
         unique = {
             op for op in self.dictionary.contents
             if isinstance(op, AUDIO)
@@ -179,7 +186,7 @@ class EntrySelector:
         # If the dictionary has no AUDIO instruction toggled,
         # see if there is a common AUDIO instruction to the
         # whole dictionary and add it instead.
-        unique_audio = self._find_unique_audio()
+        unique_audio = self.find_unique_audio()
 
         toggles = self._toggles
         contents = self.dictionary.contents
