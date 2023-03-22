@@ -236,7 +236,7 @@ _textattr('SELECTION AND ANKI', curses.A_BOLD | curses.A_UNDERLINE),
 ' 1-9 !-)    select definition from 1 to 20, press 0 for the tenth definition',
 '            hold Shift for the remaining 11 to 20',
 ' c          create card(s) from the selected definitions',
-' b          open the Anki card browser',
+' b          open recently added card(s) in the Anki card browser',
 ' d          deselect everything',
 '',
 )),
@@ -656,6 +656,7 @@ SEARCH_ENTER_ACTIONS: dict[bytes, Callable[[Status], str | None]] = {
 def curses_main(stdscr: curses._CursesWindow) -> None:
     screenbuf = ScreenBuffer(stdscr)
     configmenu = ConfigMenu(stdscr)
+    recent_nids: list[int] | None = None
 
     while True:
         screenbuf.status.tick()
@@ -686,11 +687,15 @@ def curses_main(stdscr: curses._CursesWindow) -> None:
 
         elif c in (b'b', b'B'):
             try:
-                anki.invoke('guiBrowse', query='added:1')
+                anki.invoke(
+                    'guiBrowse',
+                    query=(
+                        'added:1' if recent_nids is None
+                        else f'nid:{",".join(map(str, recent_nids))}'
+                    )
+                )
             except anki.AnkiError as e:
                 screenbuf.status.error('Could not open the card browser:', str(e))
-            else:
-                screenbuf.status.success('Anki card browser opened')
 
         elif c in (b'c', b'C'):
             if not isinstance(screenbuf.page, Screen):
@@ -702,10 +707,12 @@ def curses_main(stdscr: curses._CursesWindow) -> None:
             if selections is None:
                 screenbuf.status.error('Nothing selected')
             else:
-                create_and_add_card(
+                added_nids = create_and_add_card(
                     StatusEcho(screenbuf, screenbuf.status),
                     selections
                 )
+                if added_nids:
+                    recent_nids = added_nids
                 screenbuf.page.deselect_all()
 
         elif c == b'KEY_F(2)':

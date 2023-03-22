@@ -197,14 +197,18 @@ def _perror_save_audio(
 def create_and_add_card(
         status: StatusInterface,
         selections: list[DictionarySelection]
-) -> None:
+) -> list[int]:
+    nids = []
     for selection in selections:
         card = make_card(selection)
         card['AUDIO'] = _perror_save_audio(status, selection)
 
         try:
-            anki.add_card(card)
+            nids.append(anki.add_card(card))
         except anki.AnkiError as e:
             status.error('Adding card failed:', str(e))
         else:
-            status.success('Card added successfully:', 'press "b" for details')
+            status.success('Card added successfully:', 'press "b" to open in Anki')
+
+    return nids
+

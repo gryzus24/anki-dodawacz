@@ -93,14 +93,17 @@ INVOKE_ACTIONS = Literal[
     'guiCurrentCard',
     'modelFieldNames',
     'modelNames',
-    'storeMediaFile',
 ]
 # Overloads are added on an as-needed basis, some
 # signatures are just too complex to bother typing them.
 @overload
-def invoke(action: Literal['modelFieldNames', 'modelNames'], **params: Any) -> list[str]: ...
+def invoke(action: Literal['deckNames', 'modelFieldNames', 'modelNames'], **params: Any) -> list[str]: ...
 @overload
-def invoke(action: INVOKE_ACTIONS, **params: Any) -> Any: ...
+def invoke(action: Literal['guiBrowse'], **params: Any) -> list[int]: ...
+@overload
+def invoke(action: Literal['addNote'], **params: Any) -> int: ...
+@overload
+def invoke(action: Literal['createModel', 'guiCurrentCard'], **params: Any) -> Any: ...
 
 
 def invoke(action: INVOKE_ACTIONS, **params: Any) -> Any:
@@ -204,7 +207,7 @@ class _AnkiModels:
 models = _AnkiModels()
 
 
-def _add_card(model_name: str, card: Card, model: dict[str, cardkey_t | None]) -> None:
+def _add_card(model_name: str, card: Card, model: dict[str, cardkey_t | None]) -> int:
     fields = {
         anki_field_name: card[ckey]
         for anki_field_name, ckey in model.items()
@@ -213,7 +216,7 @@ def _add_card(model_name: str, card: Card, model: dict[str, cardkey_t | None]) -
     if not fields:
         raise IncompatibleModelError(f'note {config["note"]} has no compatible fields, try rechecking (F4)')
 
-    invoke(
+    return invoke(
         'addNote',
         note={
             'deckName': config['deck'],
@@ -228,15 +231,15 @@ def _add_card(model_name: str, card: Card, model: dict[str, cardkey_t | None]) -
     )
 
 
-def add_card(card: Card) -> None:
+def add_card(card: Card) -> int:
     model_name = config['note']
 
     try:
-        _add_card(model_name, card, models.get_model(model_name))
+        return _add_card(model_name, card, models.get_model(model_name))
     except (FirstFieldEmptyError, IncompatibleModelError):
         # If the user renamed the fields with wrong names to good names
         # and then forgot to recheck, we can save it.
-        _add_card(model_name, card, models.get_model(model_name, recheck=True))
+        return _add_card(model_name, card, models.get_model(model_name, recheck=True))
 
 
 def add_custom_note(note_name: str) -> str:
