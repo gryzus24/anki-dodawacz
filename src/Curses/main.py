@@ -590,13 +590,12 @@ def perror_play_audio(status: Status, dictionary: Dictionary) -> None:
         status.error(f'Could not play audio ({dictionary.header()}):', 'no audio')
         return
 
-    # TODO: handle multiple audio urls.
+    curses.flushinp()
     try:
+        # TODO: handle multiple audio urls.
         play_audio_url(urls[0])
     except LookupError as e:
         status.error('Could not play audio:', str(e))
-
-    curses.flushinp()
 
 
 def perror_clipboard_or_selection(status: Status) -> str | None:
