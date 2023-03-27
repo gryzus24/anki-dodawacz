@@ -66,7 +66,7 @@ Names it definitely understands are:
 
 The Anki configuration wizard adds a custom note that can serve as a base for your own customization.
 
-![image](https://user-images.githubusercontent.com/82805891/147774842-0f5d9e7e-2fca-4a0c-8f8e-ce4c6294a0b5.png)
+![note in Anki](https://user-images.githubusercontent.com/82805891/147774842-0f5d9e7e-2fca-4a0c-8f8e-ce4c6294a0b5.png)
 
 The note in a copy-pastable form: https://pastebin.com/9ZfWMpNu
 
