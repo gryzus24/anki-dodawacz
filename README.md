@@ -26,7 +26,7 @@ You can also create a shortcut and run the program this way, however in case of 
 Most GNU/Linux distributions come with Python preinstalled.
 
 1. cd into the directory you want the source code downloaded into
-2. download and extract the tar.gz archive, then download the dependencies and install the program into the `/usr/local/bin/ankidodawacz` directory:
+2. download and extract the tar.gz archive, then download the dependencies and install the program into the `/usr/local/bin` directory:
 ```
 curl -sL https://github.com/gryzus24/anki-dodawacz/archive/refs/heads/main.tar.gz | tar xfz -
 cd anki-dodawacz-main
@@ -41,6 +41,12 @@ All the configuration and history files are saved into `~/.local/share/ankidodaw
 The program has a quick Anki configuration wizard and a built-in configuration menu. No need to edit config files by hand.
 
 ![configuration screen](https://user-images.githubusercontent.com/82805891/227376645-86736f77-eabc-46fd-8186-b8dfd6423c10.png)
+
+### Optional features
+
+- mpv – for playing pronunciations (press `a`)
+- xsel or xclip – for pasting the contents of the primary selection (Linux only).<br>
+On Windows, pasting the contents of the clipboard should work out of the box
 
 ### Anki notes
 
