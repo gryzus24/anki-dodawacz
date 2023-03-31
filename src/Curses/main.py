@@ -202,9 +202,9 @@ _textattr('NAVIGATION', curses.A_BOLD | curses.A_UNDERLINE),
 _textattr('SEARCH', curses.A_BOLD | curses.A_UNDERLINE),
 *_text((
 ' /          open the search prompt',
-' p wheel    insert the contents of primary selection (via xsel or xclip)',
+' p wheel    insert the content of primary selection (via xsel or xclip)',
 '            or clipboard (on Windows) into the search prompt',
-' P          insert contents of the "Phrase" field from the currently',
+' P          insert the content of the "Phrase" field from the currently',
 '            reviewed Anki card',
 '',
 ' To make use of extra options, like querying additional dictionaries,',
@@ -414,22 +414,22 @@ class ScreenBuffer(ScreenBufferInterface):
         ):
             win.chgat(y, x + i, span, attr)
 
+    FUNCTION_BAR_TILE_COMPOSITION = (
+    #   (span, attr, length)
+        (2, HIGHLIGHT, 7),
+        (2, HIGHLIGHT, 9),
+        (2, HIGHLIGHT, 13),
+        (2, HIGHLIGHT, 7),
+        (2, HIGHLIGHT, 15),
+    )
     def _draw_function_bar(self) -> None:
         bar = truncate(
-            'F1 Help  F2 Configuration  F3 Anki-setup  F5 Recheck-note',
+            'F1 Help  F2 Config  F3 Anki-setup  F4 Find  F5 Recheck-note',
             curses.COLS
         )
         if bar is None:
             return
 
-        attrs = compose_attrs(
-            (
-                (2, HIGHLIGHT, 7),
-                (2, HIGHLIGHT, 16),
-                (2, HIGHLIGHT, 13),
-                (2, HIGHLIGHT, 0),
-            ), width=curses.COLS
-        )
         win = self.win
         y = curses.LINES - 1
 
@@ -438,6 +438,7 @@ class ScreenBuffer(ScreenBufferInterface):
         except curses.error:  # lower right corner
             pass
 
+        attrs = compose_attrs(self.FUNCTION_BAR_TILE_COMPOSITION, width=curses.COLS)
         for index, span, attr in attrs:
             win.chgat(y, index, span, attr)
 
@@ -632,7 +633,7 @@ def ask_yes_no(
         f'{prompt_name} [{"Y/n" if default else "y/N"}]: ',
         exiting_bspace=False
     ).run()
-    if typed is None:
+    if typed is None or not typed.strip():
         return default
 
     return {
@@ -643,7 +644,7 @@ def ask_yes_no(
         'true': True, 'false': False,
         'y':    True, 'n':     False,
         'yes':  True, 'no':    False,
-    }.get(typed.strip().lower(), default)
+    }.get(typed.strip().lower(), False)
 
 
 def perror_recheck_note(status: Status) -> None:
@@ -693,7 +694,18 @@ def curses_main(stdscr: curses._CursesWindow) -> None:
         elif c == b'KEY_MOUSE':
             _, x, y, _, bstate = curses.getmouse()
             if mouse_left_click(bstate):
-                if isinstance(screenbuf.page, Screen):
+                if y == curses.LINES -1:
+                    # Haven't found a good name for an API, so clicking
+                    # the tiles on the function bar is inlined here.
+                    end = -2
+                    for i, (_, _, size) in enumerate(
+                            screenbuf.FUNCTION_BAR_TILE_COMPOSITION
+                    ):
+                        end += 2 + size
+                        if end - size <= x < end:
+                            curses.ungetch(curses.KEY_F1 + i)
+                            break
+                elif isinstance(screenbuf.page, Screen):
                     screenbuf.page.mark_box_at(y, x)
             elif mouse_wheel_up(bstate):
                 screenbuf.page.move_up()
