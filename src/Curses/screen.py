@@ -398,18 +398,18 @@ class Screen:
         if self.hl is not None:
             self.hlsearch(self.hl.phrase)
 
-    def mark_box_at(self, click_y: int, click_x: int) -> None:
-        if click_y < Screen.HEADER_PAD or click_y >= curses.LINES - self.margin_bot:
+    def mark_box_at(self, y: int, x: int) -> None:
+        if y < Screen.HEADER_PAD or y >= curses.LINES - 1 - self.margin_bot:
             return
 
         contents = self.selector.dictionary.contents
 
         click_range_x = BORDER_PAD
         for column in self.columns:
-            if click_range_x <= click_x < click_range_x + self.column_width:
-                assert self._scroll + click_y - 1 >= 0
+            if click_range_x <= x < click_range_x + self.column_width:
+                assert self._scroll + y - 1 >= 0
                 try:
-                    line = column[self._scroll + click_y - 1]
+                    line = column[self._scroll + y - 1]
                 except IndexError:
                     return
                 if isinstance(contents[line.op_index], self.selector.TOGGLEABLE):
@@ -418,10 +418,7 @@ class Screen:
 
             click_range_x += self.column_width + 1
 
-    KEYBOARD_SELECTOR_CHARS = (
-        b'1', b'2', b'3', b'4', b'5', b'6', b'7', b'8', b'9', b'0',
-        b'!', b'@', b'#', b'$', b'%', b'^', b'&', b'*', b'(', b')',
-    )
+    KEYBOARD_SELECTOR_CHARS = b'1234567890!@#$%^&*()'
     def mark_box_by_selector(self, s: bytes) -> None:
         self.selector.toggle_by_def_index(self.KEYBOARD_SELECTOR_CHARS.index(s) + 1)
 
