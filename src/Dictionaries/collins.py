@@ -12,6 +12,25 @@ from src.Dictionaries.base import PHRASE
 from src.Dictionaries.util import request_soup
 
 
+def _extract_phon_and_audio(tag) -> tuple[str, str]:  # type: ignore[no-untyped-def]
+    pron_tag = tag.find('span', {'class': 'pron'})
+    if pron_tag is None:
+        phon = ''
+        audio_tag = tag.find('a', {'class': 'hwd_sound'})
+    else:
+        phon = f'/{pron_tag.text.strip()}/'
+        audio_tag = pron_tag.find('a', {'class': 'hwd_sound'})
+
+    if audio_tag is None:
+        audio = ''
+    else:
+        audio = audio_tag.get('data-src-mp3')
+        if audio is None:
+            raise DictionaryError('Collins: unexpected error: no data-src-mp3 attribute')
+
+    return phon, audio
+
+
 # This seems to be impossible to type check...
 def _extract_ced(collins: Dictionary, query: str, ced) -> None:  # type: ignore[no-untyped-def]
     header = 'Collins BrE Dictionary'
@@ -28,19 +47,7 @@ def _extract_ced(collins: Dictionary, query: str, ced) -> None:  # type: ignore[
             if query != phrase:
                 collins.add(NOTE('Showing results for:'))
 
-        pron_tag = header_block.find('span', {'class': 'pron'})
-        if pron_tag is None:
-            phon = audio = ''
-        else:
-            phon = f'/{pron_tag.text.strip()}/'
-
-            audio_tag = pron_tag.find('a', {'class': 'hwd_sound'})
-            if audio_tag is None:
-                audio = ''
-            else:
-                audio = audio_tag.get('data-src-mp3')
-                if audio is None:
-                    raise DictionaryError('Collins: unexpected error: no data-src-mp3 attribute')
+        phon, audio = _extract_phon_and_audio(header_block)
 
         collins.add(PHRASE(phrase, phon))
         collins.add(AUDIO(audio))
@@ -131,7 +138,10 @@ def _extract_ced(collins: Dictionary, query: str, ced) -> None:  # type: ignore[
 def _extract_cobuild(collins: Dictionary, query: str, cobuild) -> None:  # type: ignore[no-untyped-def]
     title_tag = cobuild.find('div', {'class': 'title_container'})
     if title_tag is None:
-        raise DictionaryError('Collins: unexpected error: no title_tag')
+        if cobuild.find('div', {'class': 'cB-h'}) is None:
+            raise DictionaryError('Collins: unexpected error: no cB-h tag')
+        else:
+            return
 
     phrase_content_tag = title_tag.find('span', {'class': 'orth'})
     if phrase_content_tag is None:
@@ -139,23 +149,12 @@ def _extract_cobuild(collins: Dictionary, query: str, cobuild) -> None:  # type:
 
     phrase = phrase_content_tag.text.strip()
 
-    pron_tag = cobuild.find('span', {'class': 'pron'})
-    if pron_tag is None:
-        phon = audio = ''
-    else:
-        phon = f'/{pron_tag.text.strip()}/'
-
-        audio_tag = pron_tag.find('a', {'class': 'hwd_sound'})
-        if audio_tag is None:
-            audio = ''
-        else:
-            audio = audio_tag.get('data-src-mp3')
-            if audio is None:
-                raise DictionaryError('Collins: unexpected error: no data-src-mp3 attribute')
-
     collins.add(HEADER('Collins'))
     if query != phrase:
         collins.add(NOTE('Showing results for:'))
+
+    phon, audio = _extract_phon_and_audio(cobuild)
+
     collins.add(PHRASE(phrase, phon))
     collins.add(AUDIO(audio))
 
@@ -205,7 +204,10 @@ def _extract_cobuild(collins: Dictionary, query: str, cobuild) -> None:  # type:
 
 def ask_collins(query: str) -> Dictionary:
     query = query.replace(' ', '-')
-    soup = request_soup('https://www.collinsdictionary.com/search', {'dictCode': 'english', 'q': query})
+    soup = request_soup(
+        'https://www.collinsdictionary.com/search',
+        {'dictCode': 'english', 'q': query}
+    )
 
     collins = Dictionary()
 
