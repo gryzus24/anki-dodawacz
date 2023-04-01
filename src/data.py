@@ -86,7 +86,7 @@ ROOT_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 if WINDOWS:
     XDG_DATA_HOME = os.environ.get('LOCALAPPDATA')
     if XDG_DATA_HOME is None:
-        raise SystemExit('%LOCALAPPDATA% not set!');
+        raise SystemExit('%LOCALAPPDATA% not set!')
     DATA_DIR = os.path.join(XDG_DATA_HOME, 'Ankidodawacz/ankidodawacz')
 else:
     XDG_DATA_HOME = (
