@@ -613,7 +613,7 @@ def perror_play_audio(status: Status, dictionary: Dictionary) -> None:
     try:
         # TODO: handle multiple audio urls.
         play_audio_url(urls[0])
-    except LookupError as e:
+    except (ValueError, LookupError) as e:
         status.error('Could not play audio:', str(e))
 
 

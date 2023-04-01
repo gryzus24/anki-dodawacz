@@ -79,8 +79,12 @@ def play_audio_url(url: str) -> None:
          '--force-window=no',
          '--audio-display=no',
          url)
-    ):
-        pass
+    ) as p:
+        rc = p.wait()
+        if rc == 2:
+            raise ValueError(f'Bad url: {url!r}')
+        elif rc:
+            raise ValueError(f'Something failed: exit code: {rc}, url: {url!r}')
 
 
 def draw_border(win: curses._CursesWindow, margin_bot: int) -> None:
