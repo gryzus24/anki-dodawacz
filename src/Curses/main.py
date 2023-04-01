@@ -341,8 +341,20 @@ class ScreenBuffer(ScreenBufferProto):
 
             for dictionary in dictionaries:
                 screens.append(Screen(self.win, dictionary))
-                if config['histsave']:
-                    self.history.add_entry(query.query)
+                if not config['histsave']:
+                    continue
+
+                phrases = dictionary.unique_phrases()
+                for phrase in phrases:
+                    if phrase.casefold().startswith(query.query.casefold()):
+                        self.history.add_entry(phrase)
+                        break
+                else:
+                    # Get rid of any possible commas
+                    # as they interfere with tab completion.
+                    self.history.add_entry(
+                        f'{phrases[0].replace(",", " ")} #{query.query}'
+                    )
 
         if not screens:
             return

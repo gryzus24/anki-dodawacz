@@ -88,6 +88,15 @@ class Dictionary:
         assert isinstance(self.contents[0], HEADER)
         return self.contents[0].header
 
+    def unique_phrases(self) -> list[str]:
+        r = list(
+            dict.fromkeys(
+                op.phrase for op in self.contents if isinstance(op, PHRASE)
+            )
+        )
+        assert r
+        return r
+
     def audio_urls(self) -> list[str]:
         return [op.resource for op in self.contents if isinstance(op, AUDIO)]
 
