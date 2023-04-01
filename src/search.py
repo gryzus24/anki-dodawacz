@@ -15,7 +15,7 @@ from src.Dictionaries.farlex import ask_farlex
 from src.Dictionaries.wordnet import ask_wordnet
 
 if TYPE_CHECKING:
-    from src.Curses.proto import StatusInterface
+    from src.Curses.proto import StatusProto
 
 QUERY_SEPARATOR = ','
 
@@ -71,7 +71,7 @@ def _qthread(
 
 
 def _perror_threaded_query(
-        status: StatusInterface,
+        status: StatusProto,
         query: str,
         keys: list[dictkey_t]
 ) -> list[Dictionary] | None:
@@ -117,7 +117,7 @@ class Query(NamedTuple):
 
 
 def _perror_query(
-        status: StatusInterface,
+        status: StatusProto,
         query: str,
         key: dictkey_t
 ) -> list[Dictionary] | None:
@@ -129,7 +129,7 @@ def _perror_query(
 
 
 def _perror_query_with_fallback(
-        status: StatusInterface,
+        status: StatusProto,
         query: str,
         key: dictkey_t,
         fallback_key: dictkey_t
@@ -183,7 +183,7 @@ def parse(s: str) -> list[Query] | None:
 
 
 def search(
-        status: StatusInterface,
+        status: StatusProto,
         queries: list[Query]
 ) -> list[list[Dictionary] | None]:
     # TODO: Use threads for multiple queries like "a -c, b, c" etc.

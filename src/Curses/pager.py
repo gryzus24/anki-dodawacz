@@ -8,7 +8,6 @@ from typing import TYPE_CHECKING
 from src.Curses.color import Color
 from src.Curses.util import BORDER_PAD
 from src.Curses.util import CURSES_COLS_MIN_VALUE
-from src.Curses.util import FUNCTION_BAR_PAD
 from src.Curses.util import HIGHLIGHT
 from src.Curses.util import mouse_wheel_down
 from src.Curses.util import mouse_wheel_up
@@ -30,7 +29,7 @@ class Pager:
             buf: list[tuple[str, list[Attr]]]
     ) -> None:
         self.win = win
-        self.margin_bot = FUNCTION_BAR_PAD
+        self.margin_bot = 0
         self.hl: PagerHighlight | None = None
         self._buf = buf
         self._line = 0

@@ -104,4 +104,3 @@ def init_colors() -> None:
         curses.init_pair(i, i, -1)
 
     Color.init(config, curses.COLORS)
-

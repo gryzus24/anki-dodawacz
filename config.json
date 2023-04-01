@@ -13,6 +13,7 @@
   "histsave": true,
   "histshow": true,
   "mediadir": "-",
+  "nohelp": false,
   "note": "-",
   "pos": true,
   "primary": "ahd",

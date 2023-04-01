@@ -6,7 +6,7 @@ from typing import Iterator
 from typing import Protocol
 
 
-class StatusInterface(Protocol):
+class StatusProto(Protocol):
     def writeln(self, header: str, body: str | None = None) -> None: ...
     def error(self, header: str, body: str | None = None) -> None: ...
     def success(self, header: str, body: str | None = None) -> None: ...
@@ -14,7 +14,7 @@ class StatusInterface(Protocol):
     def clear(self) -> None: ...
 
 
-class ScreenBufferInterface(Protocol):
+class ScreenBufferProto(Protocol):
     win: curses._CursesWindow
     @contextlib.contextmanager
     def extra_margin(self, n: int) -> Iterator[None]: ...

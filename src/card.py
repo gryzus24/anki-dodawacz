@@ -9,14 +9,14 @@ from typing import TYPE_CHECKING
 from typing import TypedDict
 
 import src.anki as anki
-from src.data import config
 from src.data import AUDIO_DIR
+from src.data import config
 from src.Dictionaries.base import DictionaryError
 from src.Dictionaries.diki import diki_audio
 from src.Dictionaries.util import http
 
 if TYPE_CHECKING:
-    from src.Curses.proto import StatusInterface
+    from src.Curses.proto import StatusProto
     from src.Dictionaries.base import DictionarySelection
 
 
@@ -172,7 +172,7 @@ def _save_audio(url: str) -> str:
 
 
 def _perror_save_audio(
-        status: StatusInterface,
+        status: StatusProto,
         selection: DictionarySelection
 ) -> str:
     phrase = selection.phrase.phrase
@@ -195,7 +195,7 @@ def _perror_save_audio(
 
 
 def create_and_add_card(
-        status: StatusInterface,
+        status: StatusProto,
         selections: list[DictionarySelection]
 ) -> list[int]:
     nids = []
@@ -212,4 +212,3 @@ def create_and_add_card(
             status.success('Card added successfully:', 'press "b" to open in Anki')
 
     return nids
-

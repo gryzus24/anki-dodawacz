@@ -33,17 +33,16 @@ from src.Curses.configmenu import ConfigMenu
 from src.Curses.pager import Pager
 from src.Curses.prompt import CompletionMenu
 from src.Curses.prompt import Prompt
-from src.Curses.proto import ScreenBufferInterface
-from src.Curses.proto import StatusInterface
+from src.Curses.proto import ScreenBufferProto
+from src.Curses.proto import StatusProto
 from src.Curses.screen import Screen
 from src.Curses.util import Attr
+from src.Curses.util import CURSES_COLS_MIN_VALUE
+from src.Curses.util import HIGHLIGHT
 from src.Curses.util import clipboard_or_selection
 from src.Curses.util import compose_attrs
-from src.Curses.util import CURSES_COLS_MIN_VALUE
 from src.Curses.util import draw_border
-from src.Curses.util import FUNCTION_BAR_PAD
 from src.Curses.util import hide_cursor
-from src.Curses.util import HIGHLIGHT
 from src.Curses.util import mouse_left_click
 from src.Curses.util import mouse_wheel_click
 from src.Curses.util import mouse_wheel_down
@@ -130,17 +129,17 @@ class Status:
         return True
 
 
-class StatusEcho(StatusInterface):
+class StatusEcho(StatusProto):
     def __init__(self,
-            screen_buffer: ScreenBufferInterface,
-            status: StatusInterface
+            screenbuf: ScreenBufferProto,
+            status: StatusProto
     ) -> None:
-        self.screen_buffer = screen_buffer
+        self.screenbuf = screenbuf
         self.status = status
 
     def _refresh(self) -> None:
-        self.screen_buffer.draw()
-        self.screen_buffer.win.refresh()
+        self.screenbuf.draw()
+        self.screenbuf.win.refresh()
 
     def writeln(self, header: str, body: str | None = None) -> None:
         self.status.writeln(header, body)
@@ -261,6 +260,7 @@ _textattr('MISCELLANEOUS', curses.A_BOLD | curses.A_UNDERLINE),
 ' ^P ^N      tab complete - move up/down the list',
 ' ^L         redraw the screen (if it gets corrupted somehow)',
 ' F5         recheck note (if you have changed note\'s field layout in Anki)',
+' ?          hide the F-key help bar',
 )),
 ]
 
@@ -281,7 +281,7 @@ class QueryHistory:
             self._save_func_registered = True
 
 
-class ScreenBuffer(ScreenBufferInterface):
+class ScreenBuffer(ScreenBufferProto):
     def __init__(self,
             win: curses._CursesWindow,
             screens: Sequence[Screen] | None = None
@@ -293,21 +293,31 @@ class ScreenBuffer(ScreenBufferInterface):
         self.status = Status(win, persistence=7)
         self.history = QueryHistory(win, os.path.join(DATA_DIR, 'history.txt'))
         self.page: Screen | Pager = self.help_pager
+        self.bar_margin: int = not config['nohelp']
+
+    @contextlib.contextmanager
+    def extra_margin(self, n: int) -> Iterator[None]:
+        t = self.page.margin_bot
+        self.page.margin_bot += n
+        try:
+            yield
+        finally:
+            self.page.margin_bot = t
 
     def _insert_screens(self, screens: Sequence[Screen]) -> None:
-        _margin = self.page.margin_bot
+        screens[0].margin_bot = self.page.margin_bot
         self.page = screens[0]
-        self.page.margin_bot = _margin
         self.screens = screens
         self._screen_i = 0
 
     def _search_prompt(self, pretype: str) -> None:
-        typed = Prompt(
-            self,
-            'Search: ',
-            pretype=pretype,
-            completion_separator=search.QUERY_SEPARATOR
-        ).run(self.history.cmenu if config['histshow'] else None)
+        with self.extra_margin(not self.bar_margin):
+            typed = Prompt(
+                self,
+                'Search: ',
+                pretype=pretype,
+                completion_separator=search.QUERY_SEPARATOR
+            ).run(self.history.cmenu if config['histshow'] else None)
         if typed is None or not typed.strip():
             return
 
@@ -345,15 +355,6 @@ class ScreenBuffer(ScreenBufferInterface):
         if config['histshow']:
             self.history.cmenu.deactivate()
 
-    @contextlib.contextmanager
-    def extra_margin(self, n: int) -> Iterator[None]:
-        t = self.page.margin_bot
-        self.page.margin_bot += n
-        try:
-            yield
-        finally:
-            self.page.margin_bot = t
-
     def page_back(self) -> bool:
         if self.screens and isinstance(self.page, Pager):
             self.page = self.screens[self._screen_i]
@@ -361,11 +362,11 @@ class ScreenBuffer(ScreenBufferInterface):
         else:
             return False
 
-    def _draw_border(self, margin_bot: int) -> None:
+    def _draw_border(self) -> None:
         win = self.win
         page = self.page
 
-        draw_border(win, margin_bot)
+        draw_border(win, page.margin_bot)
 
         items = []
         items_attr_values = []
@@ -400,7 +401,7 @@ class ScreenBuffer(ScreenBufferInterface):
         if btext is None:
             return
 
-        y = curses.LINES - margin_bot - 1
+        y = curses.LINES - page.margin_bot - 1
         x = curses.COLS - len(btext) - 3
         try:
             win.addstr(y, x, f'╴{btext}╶')
@@ -414,7 +415,7 @@ class ScreenBuffer(ScreenBufferInterface):
         ):
             win.chgat(y, x + i, span, attr)
 
-    FUNCTION_BAR_TILE_COMPOSITION = (
+    FKEY_BAR_TILE_COMPOSITION = (
     #   (span, attr, length)
         (2, HIGHLIGHT, 7),
         (2, HIGHLIGHT, 9),
@@ -422,7 +423,7 @@ class ScreenBuffer(ScreenBufferInterface):
         (2, HIGHLIGHT, 7),
         (2, HIGHLIGHT, 15),
     )
-    def _draw_function_bar(self) -> None:
+    def _draw_fkey_bar(self) -> None:
         bar = truncate(
             'F1 Help  F2 Config  F3 Anki-setup  F4 Find  F5 Recheck-note',
             curses.COLS
@@ -438,7 +439,7 @@ class ScreenBuffer(ScreenBufferInterface):
         except curses.error:  # lower right corner
             pass
 
-        attrs = compose_attrs(self.FUNCTION_BAR_TILE_COMPOSITION, width=curses.COLS)
+        attrs = compose_attrs(self.FKEY_BAR_TILE_COMPOSITION, width=curses.COLS)
         for index, span, attr in attrs:
             win.chgat(y, index, span, attr)
 
@@ -449,16 +450,16 @@ class ScreenBuffer(ScreenBufferInterface):
         self.win.erase()
 
         page = self.page
-        if page.margin_bot < FUNCTION_BAR_PAD:
-            page.margin_bot = FUNCTION_BAR_PAD
+        if page.margin_bot < self.bar_margin:
+            page.margin_bot = self.bar_margin
 
         initial_margin = page.margin_bot
         if initial_margin < self.status.height:
             page.margin_bot = self.status.height
 
-        self._draw_border(page.margin_bot)
-        if not self.status.draw_if_available():
-            self._draw_function_bar()
+        self._draw_border()
+        if not self.status.draw_if_available() and self.bar_margin:
+            self._draw_fkey_bar()
 
         page.draw()
 
@@ -523,7 +524,8 @@ class ScreenBuffer(ScreenBufferInterface):
         if len(decks) == 1:
             chosen_deck = decks.pop()
         else:
-            typed = Prompt(self, 'Choose deck: ', exiting_bspace=False).run(decks)
+            with self.extra_margin(not self.bar_margin):
+                typed = Prompt(self, 'Choose deck: ', exiting_bspace=False).run(decks)
             if typed is None or not typed.strip():
                 st.error('Cancelled, input lost')
                 return
@@ -539,9 +541,10 @@ class ScreenBuffer(ScreenBufferInterface):
         if len(collection_paths) == 1:
             chosen_collection_path = collection_paths.pop()
         else:
-            typed = Prompt(
-                self, 'Choose collection: ', exiting_bspace=False
-            ).run(collection_paths)
+            with self.extra_margin(not self.bar_margin):
+                typed = Prompt(
+                    self, 'Choose collection: ', exiting_bspace=False
+                ).run(collection_paths)
             if typed is None or not typed.strip():
                 st.error('Cancelled, input lost')
                 return
@@ -563,7 +566,8 @@ class ScreenBuffer(ScreenBufferInterface):
 
     def find_in_page(self) -> None:
         self.status.clear()
-        typed = Prompt(self, 'Find in page: ').run()
+        with self.extra_margin(not self.bar_margin):
+            typed = Prompt(self, 'Find in page: ').run()
         if typed is None or not typed:
             return
         if not self.page.hlsearch(typed):
@@ -624,12 +628,12 @@ def perror_currently_reviewed_phrase(status: Status) -> str | None:
 
 
 def ask_yes_no(
-        screen_buffer: ScreenBuffer,
+        screenbuf: ScreenBufferProto,
         prompt_name: str, *,
         default: bool
 ) -> bool:
     typed = Prompt(
-        screen_buffer,
+        screenbuf,
         f'{prompt_name} [{"Y/n" if default else "y/N"}]: ',
         exiting_bspace=False
     ).run()
@@ -694,12 +698,12 @@ def curses_main(stdscr: curses._CursesWindow) -> None:
         elif c == b'KEY_MOUSE':
             _, x, y, _, bstate = curses.getmouse()
             if mouse_left_click(bstate):
-                if y == curses.LINES -1:
+                if screenbuf.bar_margin and y == curses.LINES - 1:
                     # Haven't found a good name for an API, so clicking
                     # the tiles on the function bar is inlined here.
                     end = -2
                     for i, (_, _, size) in enumerate(
-                            screenbuf.FUNCTION_BAR_TILE_COMPOSITION
+                            screenbuf.FKEY_BAR_TILE_COMPOSITION
                     ):
                         end += 2 + size
                         if end - size <= x < end:
@@ -770,6 +774,10 @@ def curses_main(stdscr: curses._CursesWindow) -> None:
         elif c == b'KEY_F(5)':
             screenbuf.status.clear()
             perror_recheck_note(screenbuf.status)
+
+        elif c == b'?':
+            screenbuf.bar_margin = (screenbuf.bar_margin + 1) % 2
+            screenbuf.page.margin_bot = screenbuf.bar_margin
 
         elif c in (b'q', b'Q', b'^X'):
             if not screenbuf.page_back():

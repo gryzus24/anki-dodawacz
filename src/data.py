@@ -26,6 +26,7 @@ config_t = TypedDict(
         'histsave':   bool,
         'histshow':   bool,
         'mediadir':   str,
+        'nohelp':     bool,
         'note':       str,
         'pos':        bool,
         'primary':    dictkey_t,
@@ -62,8 +63,8 @@ colorkey_t = Literal[
 configkey_t = Literal[
     'audio', 'deck', 'dupescope', 'duplicates', 'etym', 'formatdefs',
     'hidedef', 'hideexsen', 'hidepreps', 'hides', 'hidesyn', 'histsave',
-    'histshow', 'mediadir', 'note', 'pos', 'primary', 'secondary', 'shortetyms',
-    'syn', 'tags', 'toipa', colorkey_t
+    'histshow', 'mediadir', 'nohelp', 'note', 'pos', 'primary', 'secondary',
+    'shortetyms', 'syn', 'tags', 'toipa', colorkey_t
 ]
 
 configval_t = Union[bool, str]
@@ -105,4 +106,3 @@ except FileNotFoundError:
     with open(os.path.join(ROOT_DIR, 'config.json')) as f:
         config = json.load(f)
     config_save(config)
-

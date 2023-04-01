@@ -11,9 +11,7 @@ from src.Curses.color import Color
 from src.Curses.util import Attr
 from src.Curses.util import BORDER_PAD
 from src.Curses.util import compose_attrs
-from src.Curses.util import FUNCTION_BAR_PAD
 from src.Curses.util import HIGHLIGHT
-from src.Curses.util import MARGIN
 from src.data import config
 from src.Dictionaries.base import AUDIO
 from src.Dictionaries.base import DEF
@@ -31,6 +29,7 @@ if TYPE_CHECKING:
     from src.Dictionaries.base import Dictionary
 
 AUTO_COLUMN_WIDTH = 52
+COLUMN_MARGIN = 1
 
 
 class Wrapper:
@@ -268,7 +267,7 @@ def _layout(
     except ZeroDivisionError:
         column_width = width
 
-    lines = format_dictionary(dictionary, column_width - 2*MARGIN)
+    lines = format_dictionary(dictionary, column_width - 2*COLUMN_MARGIN)
     max_column_height = len(lines) // ncolumns - 1
     column_break = max_column_height
 
@@ -310,7 +309,7 @@ class Screen:
         self.selector = EntrySelector(dictionary)
 
         # self.margin_bot is needed for `self.screen_height`
-        self.margin_bot = FUNCTION_BAR_PAD
+        self.margin_bot = 0
         self.columns, self.column_width = _layout(dictionary, self.screen_height)
         self.hl: ScreenHighlight | None = None
         self._scroll = 0
@@ -345,7 +344,7 @@ class Screen:
         selected_ops = currently_selected_ops()
         hl_attr = Color.heed | HIGHLIGHT
 
-        text_x = BORDER_PAD + MARGIN
+        text_x = BORDER_PAD + COLUMN_MARGIN
         for col_i, column in enumerate(self.columns):
             for y, line_i in enumerate(
                     range(self._scroll, self._scroll + screen_height), 1

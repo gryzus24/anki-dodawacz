@@ -16,7 +16,7 @@ from src.data import WINDOWS
 # this value.
 CURSES_COLS_MIN_VALUE = 4
 
-BORDER_PAD = MARGIN = FUNCTION_BAR_PAD = 1
+BORDER_PAD = 1
 
 # Pythons < 3.10 and ncurses < 6 do not
 # define BUTTON5_PRESSED. (mouse wheel down)

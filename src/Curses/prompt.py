@@ -8,8 +8,8 @@ from typing import Sequence
 from typing import TYPE_CHECKING
 
 from src.Curses.color import Color
-from src.Curses.util import CURSES_COLS_MIN_VALUE
 from src.Curses.util import clipboard_or_selection
+from src.Curses.util import CURSES_COLS_MIN_VALUE
 from src.Curses.util import hide_cursor
 from src.Curses.util import mouse_right_click
 from src.Curses.util import mouse_wheel_click
@@ -19,7 +19,7 @@ from src.data import ON_TERMUX
 from src.data import WINDOWS
 
 if TYPE_CHECKING:
-    from src.Curses.proto import ScreenBufferInterface
+    from src.Curses.proto import ScreenBufferProto
 
 COMPLETION_MENU_INDENT = 2
 
@@ -186,7 +186,7 @@ class CompletionMenu:
 
 class Prompt:
     def __init__(self,
-            screenbuf: ScreenBufferInterface,
+            screenbuf: ScreenBufferProto,
             prompt: str = '', *,
             pretype: str = '',
             exiting_bspace: bool = True,

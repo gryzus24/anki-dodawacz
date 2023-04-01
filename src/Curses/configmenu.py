@@ -12,7 +12,7 @@ import src.anki as anki
 from src.Curses.color import Color
 from src.Curses.color import COLOR_NAME_TO_COLOR
 from src.Curses.prompt import Prompt
-from src.Curses.proto import ScreenBufferInterface
+from src.Curses.proto import ScreenBufferProto
 from src.Curses.util import Attr
 from src.Curses.util import BORDER_PAD
 from src.Curses.util import draw_border
@@ -124,6 +124,7 @@ CONFIG_COLUMNS: list[Column] = [
             [
             Option('toipa', 'Translate AH Dictionary phonetic spelling into IPA', bool, strict=True),
             Option('shortetyms', 'Shorten and simplify etymologies in AH Dictionary', bool, strict=True),
+            Option('nohelp', 'Hide the F-key help bar by default', bool, strict=True),
             ]
         )
     ]),
@@ -160,7 +161,7 @@ COLUMN_PAD             = 2
 SECTION_PAD            = 1
 
 
-class ConfigMenu(ScreenBufferInterface):
+class ConfigMenu(ScreenBufferProto):
     # 1st +1 - space for the header of the topmost section
     # 2nd +1 - space for the prompt
     CONFIG_MIN_HEIGHT = max(
@@ -181,7 +182,7 @@ class ConfigMenu(ScreenBufferInterface):
         self.margin_bot = 0
 
         # Initialized in the `run()` method.
-        self._mut_config: config_t
+        self._local_config: config_t
         self._phantom_cursors = [0] * len(CONFIG_COLUMNS)
         self._col = self._line = 0
 
@@ -195,7 +196,7 @@ class ConfigMenu(ScreenBufferInterface):
             self.margin_bot = t
 
     def _value_of_option(self, option: Option, max_attr_span: int) -> tuple[str, Attr]:
-        value = option.get_from(self._mut_config)
+        value = option.get_from(self._local_config)
         if option.constraint is bool:
             assert isinstance(value, bool)
             if value:
@@ -210,7 +211,7 @@ class ConfigMenu(ScreenBufferInterface):
                 Attr(
                     0,
                     min(len(value), max_attr_span),
-                    Color.get_color(self._mut_config, option.key)  # type: ignore[arg-type]
+                    Color.get_color(self._local_config, option.key)  # type: ignore[arg-type]
                 )
             )
         else:
@@ -270,7 +271,7 @@ class ConfigMenu(ScreenBufferInterface):
 
                 for option in section.options:#{
                     value_text, attr = self._value_of_option(option, value_max_width)
-                    modified = option.get_from(self._mut_config) != option.get_from(config)
+                    modified = option.get_from(self._local_config) != option.get_from(config)
 
                     entry = truncate(
                         f'{("* " if modified else "") + option.basename:{OPTION_NAME_MIN_WIDTH}s}'
@@ -328,12 +329,12 @@ class ConfigMenu(ScreenBufferInterface):
 
     def change_selected(self) -> None:
         option = self.grid[self._col].get_option(self._line)
-        value = option.get_from(self._mut_config)
+        value = option.get_from(self._local_config)
         constraint = option.constraint
 
         if constraint is bool:
             assert isinstance(value, bool)
-            option.set_to(self._mut_config, not value)
+            option.set_to(self._local_config, not value)
             return
 
         assert isinstance(value, str)
@@ -366,14 +367,14 @@ class ConfigMenu(ScreenBufferInterface):
 
         if option.strict:
             if typed in completions:
-                option.set_to(self._mut_config, typed)
+                option.set_to(self._local_config, typed)
         else:
-            option.set_to(self._mut_config, typed)
+            option.set_to(self._local_config, typed)
 
     def apply_changes(self) -> bool:
-        if self._mut_config == config:
+        if self._local_config == config:
             return False
-        config.update(self._mut_config)  # type: ignore[typeddict-item]
+        config.update(self._local_config)  # type: ignore[typeddict-item]
         config_save(config)
         Color.refresh(config)
         return True
@@ -388,7 +389,7 @@ class ConfigMenu(ScreenBufferInterface):
     }
 
     def run(self, c: config_t) -> None:
-        self._mut_config = c.copy()
+        self._local_config = c.copy()
 
         while True:
             self.draw()
