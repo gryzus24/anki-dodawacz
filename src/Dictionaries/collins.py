@@ -9,6 +9,7 @@ from src.Dictionaries.base import HEADER
 from src.Dictionaries.base import LABEL
 from src.Dictionaries.base import NOTE
 from src.Dictionaries.base import PHRASE
+from src.Dictionaries.base import POS
 from src.Dictionaries.util import request_soup
 
 
@@ -122,7 +123,18 @@ def _extract_ced(collins: Dictionary, query: str, ced) -> None:  # type: ignore[
                     else:
                         collins.add(DEF(definition, examples, def_lbl, subdef=False))
 
-        # TODO: Parts of speech. AKA. derived forms.
+        derivs_tag = header_block.find('div', {'class': 'derivs'})
+        if derivs_tag is not None:
+            result = []
+            for drv_tag in derivs_tag.find_all('span', {'class': ('form', 'type-drv')}):
+                orth_tag = drv_tag.find('span', {'class': 'orth'}, recursive=False)
+                if orth_tag is None:
+                    raise DictionaryError('Collins: unexpected error: no orth_tag within drv_tag')
+
+                pos = orth_tag.extract().text.strip()
+                result.append((pos, drv_tag.text.strip()))
+
+            collins.add(POS(result))
 
         etym_tag = header_block.find('div', {'class': ('etyms', 'etym')}, recursive=False)
         if etym_tag is not None:
@@ -131,7 +143,6 @@ def _extract_ced(collins: Dictionary, query: str, ced) -> None:  # type: ignore[
                 raise DictionaryError('Collins: unexpected error: no etym_title_tag')
 
             etym_title_tag.decompose()
-
             collins.add(ETYM(f'[{etym_tag.text.strip()}]'))
 
 
@@ -196,7 +207,7 @@ def _extract_cobuild(collins: Dictionary, query: str, cobuild) -> None:  # type:
             if not syn_tags:
                 raise DictionaryError('Collins: unexpected error, no syn_tags')
 
-            synonyms = f' ~~ {", ".join(x.text.strip() for x in syn_tags)}.'
+            synonyms = f' ~ {", ".join(x.text.strip() for x in syn_tags)}.'
 
         collins.add(LABEL('', ''))
         collins.add(DEF(definition + synonyms, examples, label, subdef=False))
