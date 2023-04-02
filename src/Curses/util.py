@@ -88,13 +88,15 @@ def play_audio_url(url: str) -> None:
 
 
 def draw_border(win: curses._CursesWindow, margin_bot: int) -> None:
-    win.box()
-    if margin_bot >= curses.LINES - 1:
+    try:
+        win.move(curses.LINES - 1 - margin_bot, 0)
+    except curses.error:
         return
 
-    win.move(curses.LINES - margin_bot - 2, 0)
-    for _ in range(margin_bot):
+    win.box()
+    while margin_bot:
         win.deleteln()
+        margin_bot -= 1
 
 
 class Attr(NamedTuple):

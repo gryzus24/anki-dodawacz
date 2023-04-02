@@ -374,11 +374,11 @@ class ScreenBuffer(ScreenBufferProto):
         else:
             return False
 
-    def _draw_border(self) -> None:
+    def _draw_border(self, margin_bot: int) -> None:
         win = self.win
         page = self.page
 
-        draw_border(win, page.margin_bot)
+        draw_border(win, margin_bot)
 
         items = []
         items_attr_values = []
@@ -386,9 +386,7 @@ class ScreenBuffer(ScreenBufferProto):
         if page.hl is not None:
             match_hint = f'MATCHES: {page.hl.nmatches}'
             items.append(match_hint)
-            items_attr_values.append(
-                (len(match_hint), curses.A_BOLD, 2)
-            )
+            items_attr_values.append((len(match_hint), curses.A_BOLD, 2))
 
         if isinstance(page, Screen):
             header = truncate(page.selector.dictionary.header(), curses.COLS - 8)
@@ -413,7 +411,7 @@ class ScreenBuffer(ScreenBufferProto):
         if btext is None:
             return
 
-        y = curses.LINES - page.margin_bot - 1
+        y = curses.LINES - margin_bot - 1
         x = curses.COLS - len(btext) - 3
         try:
             win.addstr(y, x, f'╴{btext}╶')
@@ -462,28 +460,26 @@ class ScreenBuffer(ScreenBufferProto):
         self.win.erase()
 
         page = self.page
-        if page.margin_bot < self.bar_margin:
+        if self.bar_margin > page.margin_bot:
             page.margin_bot = self.bar_margin
 
         initial_margin = page.margin_bot
-        if initial_margin < self.status.height:
+        if self.status.height > initial_margin:
             page.margin_bot = self.status.height
 
-        self._draw_border()
+        page.draw()
+        self._draw_border(page.margin_bot)
         if not self.status.draw_if_available() and self.bar_margin:
             self._draw_fkey_bar()
-
-        page.draw()
 
         page.margin_bot = initial_margin
 
     def resize(self) -> None:
         curses.update_lines_cols()
 
+        self.help_pager.resize()
         for screen in self.screens:
             screen.resize()
-
-        self.help_pager.resize()
 
         self.win.clearok(True)
 
@@ -789,7 +785,9 @@ def curses_main(stdscr: curses._CursesWindow) -> None:
 
         elif c == b'?':
             screenbuf.bar_margin = (screenbuf.bar_margin + 1) % 2
-            screenbuf.page.margin_bot = screenbuf.bar_margin
+            screenbuf.help_pager.margin_bot = screenbuf.bar_margin
+            for screen in screenbuf.screens:
+                screen.margin_bot = screenbuf.bar_margin
 
         elif c in (b'q', b'Q', b'^X'):
             if not screenbuf.page_back():

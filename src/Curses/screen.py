@@ -302,25 +302,23 @@ class ScreenHighlight(NamedTuple):
 
 
 class Screen:
-    HEADER_PAD = 1
-
     def __init__(self, win: curses._CursesWindow, dictionary: Dictionary) -> None:
         self.win = win
         self.selector = EntrySelector(dictionary)
 
-        # self.margin_bot is needed for `self.screen_height`
+        # self.margin_bot is needed for `self.page_height`
         self.margin_bot = 0
-        self.columns, self.column_width = _layout(dictionary, self.screen_height)
+        self.columns, self.column_width = _layout(dictionary, self.page_height)
         self.hl: ScreenHighlight | None = None
         self._scroll = 0
 
     @property
-    def screen_height(self) -> int:
-        r = curses.LINES - Screen.HEADER_PAD - self.margin_bot - 1
+    def page_height(self) -> int:
+        r = curses.LINES - 2*BORDER_PAD - self.margin_bot
         return r if r > 0 else 0
 
     def _scroll_end(self) -> int:
-        r = max(map(len, self.columns)) - self.screen_height
+        r = max(map(len, self.columns)) - self.page_height
         return r if r > 0 else 0
 
     def adjust_scroll_past_eof(self) -> None:
@@ -331,12 +329,12 @@ class Screen:
     def draw(self) -> None:
         win = self.win
         contents = self.selector.dictionary.contents
-        screen_height = self.screen_height
+        page_height = self.page_height
 
         vline_x = BORDER_PAD + self.column_width
         try:
             for _ in range(len(self.columns) - 1):
-                win.vline(Screen.HEADER_PAD, vline_x, 0, screen_height)
+                win.vline(BORDER_PAD, vline_x, 0, page_height)
                 vline_x += self.column_width + 1
         except curses.error:  # window too small
             return
@@ -347,7 +345,7 @@ class Screen:
         text_x = BORDER_PAD + COLUMN_MARGIN
         for col_i, column in enumerate(self.columns):
             for y, line_i in enumerate(
-                    range(self._scroll, self._scroll + screen_height), 1
+                    range(self._scroll, self._scroll + page_height), BORDER_PAD
             ):
                 try:
                     op_index, text, attrs = column[line_i]
@@ -391,14 +389,14 @@ class Screen:
     def resize(self) -> None:
         self.columns, self.column_width = _layout(
             self.selector.dictionary,
-            self.screen_height
+            self.page_height
         )
         self.adjust_scroll_past_eof()
         if self.hl is not None:
             self.hlsearch(self.hl.phrase)
 
     def mark_box_at(self, y: int, x: int) -> None:
-        if y < Screen.HEADER_PAD or y >= curses.LINES - 1 - self.margin_bot:
+        if y < BORDER_PAD or y >= curses.LINES - 1 - self.margin_bot:
             return
 
         contents = self.selector.dictionary.contents
@@ -417,9 +415,13 @@ class Screen:
 
             click_range_x += self.column_width + 1
 
-    KEYBOARD_SELECTOR_CHARS = b'1234567890!@#$%^&*()'
-    def mark_box_by_selector(self, s: bytes) -> None:
-        self.selector.toggle_by_def_index(self.KEYBOARD_SELECTOR_CHARS.index(s) + 1)
+    def mark_box_by_selector(self, s: bytes) -> bool:
+        try:
+            self.selector.toggle_by_def_index(b'1234567890!@#$%^&*()'.index(s) + 1)
+        except ValueError:
+            return False
+        else:
+            return True
 
     def deselect_all(self) -> None:
         self.selector.clear_selection()
@@ -441,10 +443,10 @@ class Screen:
         self._scroll = 0
 
     def page_down(self) -> None:
-        self.move_down(self.screen_height - 2)
+        self.move_down(self.page_height - 2)
 
     def page_up(self) -> None:
-        self.move_up(self.screen_height - 2)
+        self.move_up(self.page_height - 2)
 
     def hlsearch(self, s: str) -> int:
         # `hlsearch()` is entirely dependent on the output of
@@ -522,12 +524,10 @@ class Screen:
         b'N': hl_prev,
     }
 
+    # Returns whether the key was recognized.
     def dispatch(self, key: bytes) -> bool:
         if key in self.ACTIONS:
             self.ACTIONS[key](self)
             return True
-        if key in self.KEYBOARD_SELECTOR_CHARS:
-            self.mark_box_by_selector(key)
-            return True
 
-        return False
+        return self.mark_box_by_selector(key)

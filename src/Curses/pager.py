@@ -35,12 +35,12 @@ class Pager:
         self._line = 0
 
     @property
-    def screen_height(self) -> int:
-        r = curses.LINES - self.margin_bot - BORDER_PAD - 1
+    def page_height(self) -> int:
+        r = curses.LINES - 2*BORDER_PAD - self.margin_bot
         return r if r > 0 else 0
 
     def _vscroll_end(self) -> int:
-        r = len(self._buf) - self.screen_height
+        r = len(self._buf) - self.page_height
         return r if r > 0 else 0
 
     def adjust_scroll_past_eof(self) -> None:
@@ -57,7 +57,7 @@ class Pager:
         elif self._line <= 0:
             return '<TOP>'
         else:
-            return f' {(self._line + self.screen_height) / len(self._buf):.0%} '
+            return f' {(self._line + self.page_height) / len(self._buf):.0%} '
 
     def draw(self) -> None:
         if curses.COLS < CURSES_COLS_MIN_VALUE:
@@ -67,7 +67,7 @@ class Pager:
         width = curses.COLS - 2*BORDER_PAD
 
         hl_attr = Color.heed | HIGHLIGHT
-        for y, line_i in enumerate(range(self._line, self._line + self.screen_height), BORDER_PAD):
+        for y, line_i in enumerate(range(self._line, self._line + self.page_height), BORDER_PAD):
             try:
                 line, attrs = self._buf[line_i]
             except IndexError:
