@@ -105,16 +105,13 @@ def make_card(selection: DictionarySelection) -> Card:
     phrase = selection.phrase.phrase
     hide_phrase_in = prepare_hide_func(phrase)
 
-    definitions: list[str] = []
+    definitions = []
     examples = []
     for i, op in enumerate(selection.definitions, 1):
-        if op.label:
-            definition = f'{{{op.label}}} {op.definition}'
+        if config['hidedef']:
+            definition = hide_phrase_in(op.definition)
         else:
             definition = op.definition
-
-        if config['hidedef']:
-            definition = hide_phrase_in(definition)
 
         definition = _html_quote(definition)
         if config['formatdefs']:
@@ -128,7 +125,8 @@ def make_card(selection: DictionarySelection) -> Card:
         if op.examples:
             examples.append(
                 '<br>'.join(
-                    _html_quote(hide_phrase_in(x) if config['hideexsen'] else x)
+                    f'<small>({i})</small> '
+                    f'{_html_quote(hide_phrase_in(x) if config["hideexsen"] else x)}'
                     for x in op.examples
                 )
             )
