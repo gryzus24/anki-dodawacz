@@ -574,11 +574,26 @@ class ScreenBuffer(ScreenBufferProto):
 
     def find_in_page(self) -> None:
         self.status.clear()
+
         with self.extra_margin(not self.bar_margin):
             typed = Prompt(self, 'Find in page: ').run()
         if typed is None or not typed:
             return
-        if not self.page.hlsearch(typed):
+
+        if self.page.hlsearch(typed):
+            assert self.page.hl is not None
+            # Go to the first match if there were matches, but they were
+            # outside of the current visible region, otherwise - do not move
+            # - there was enough visual feedback.
+            # Doing it this way seems more intuitive than what `less` does,
+            # because it emphasizes that *something* matches, but the
+            # edge case of jumping backwards (if we are anywhere but on <TOP>
+            # of the page) might be annoying.
+            # TODO: better way?
+            if not self.page.is_hl_in_view():
+                self.page.go_top()
+                self.page.hl_next()
+        else:
             self.status.error('Nothing matches', repr(typed))
 
     ACTIONS = {

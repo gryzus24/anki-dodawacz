@@ -169,6 +169,15 @@ class Pager:
                 self._line = line_i
                 return
 
+    def is_hl_in_view(self) -> bool:
+        if self.hl is None:
+            return False
+        for i in range(self._line, self._line + self.page_height):
+            if i in self.hl.hl:
+                return True
+
+        return False
+
     ACTIONS: dict[bytes, Callable[[Pager], None]] = {
         b'j': move_down,  b'^N': move_down, b'KEY_DOWN': move_down,
         b'k': move_up,    b'^P': move_up,   b'KEY_UP': move_up,

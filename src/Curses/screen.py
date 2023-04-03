@@ -511,6 +511,16 @@ class Screen:
                     self._scroll = i
                     return
 
+    def is_hl_in_view(self) -> bool:
+        if self.hl is None:
+            return False
+        for i in range(self._scroll, self._scroll + self.page_height):
+            for hlmap in self.hl.hl:
+                if i in hlmap:
+                    return True
+
+        return False
+
     ACTIONS: dict[bytes, Callable[[Screen], None]] = {
         b'^J': hl_clear, b'^M': hl_clear,
         b'd': deselect_all,
