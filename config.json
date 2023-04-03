@@ -6,7 +6,7 @@
   "etym": true,
   "formatdefs": true,
   "hidedef": true,
-  "hideexsen": true,
+  "hideexsen": false,
   "hidepreps": false,
   "hides": "___",
   "hidesyn": true,
