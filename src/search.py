@@ -52,22 +52,17 @@ def _query(key: dictkey_t, query: str) -> Dictionary:
         return result
 
 
-class QueryError(NamedTuple):
-    key:  str
-    info: str
-
-
 def _qthread(
         query: str,
         key: dictkey_t,
         keyid: int,
         success: dict[int, Dictionary],
-        err: dict[int, QueryError]
+        err: dict[int, str]
 ) -> None:
     try:
         success[keyid] = _query(key, query)
     except (DictionaryError, ConnectionError) as e:
-        err[keyid] = QueryError(key, str(e))
+        err[keyid] = str(e)
 
 
 def _perror_threaded_query(
@@ -76,7 +71,7 @@ def _perror_threaded_query(
         keys: list[dictkey_t]
 ) -> list[Dictionary] | None:
     success: dict[int, Dictionary] = {}
-    err: dict[int, QueryError] = {}
+    err: dict[int, str] = {}
     threads = []
     for keyid, key in enumerate(keys):
         try:
@@ -100,7 +95,7 @@ def _perror_threaded_query(
         if keyid in success:
             result.append(success[keyid])
         elif keyid in err:
-            status.error(err[keyid].info)
+            status.error(err[keyid])
         else:
             raise AssertionError('unreachable')
 

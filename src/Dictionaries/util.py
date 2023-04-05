@@ -29,7 +29,9 @@ else:
     del __version__
 
 import urllib3
-from urllib3.exceptions import ConnectTimeoutError, NewConnectionError
+from urllib3.exceptions import ConnectTimeoutError
+from urllib3.exceptions import MaxRetryError
+from urllib3.exceptions import NewConnectionError
 
 http = urllib3.PoolManager(
     timeout=10,
@@ -45,11 +47,13 @@ def request_soup(
 ) -> BeautifulSoup:
     try:
         r = http.request_encode_url('GET', url, fields=fields, **kw)  # type: ignore[no-untyped-call]
+    except MaxRetryError:
+        raise ConnectionError('connection error: max retries exceeded')
     except Exception as e:
         if isinstance(e.__context__, NewConnectionError):
-            raise ConnectionError('possibly no Internet connection')
+            raise ConnectionError('connection error: no Internet connection?')
         elif isinstance(e.__context__, ConnectTimeoutError):
-            raise ConnectionError('connection timed out')
+            raise ConnectionError('connection error: connection timed out')
         else:
             raise
 
