@@ -53,29 +53,30 @@ def _extract_ced(collins: Dictionary, query: str, ced) -> None:  # type: ignore[
         collins.add(PHRASE(phrase, phon))
         collins.add(AUDIO(audio))
 
-        phrase_tag = header_block.find('div', {'class': ('content', 'definitions', 'ced')}, recursive=False)
+        phrase_tag = header_block.find(
+            'div', {'class': ('content', 'definitions', 'ced')}, recursive=False
+        )
         if phrase_tag is None:
             raise DictionaryError('Collins: unexpected error: no phrase_tag')
 
         for hom_tag in phrase_tag.find_all('div', {'class': 'hom'}, recursive=False):
             label_tag = hom_tag.find('span', {'class': ('gramGrp', 'pos')}, recursive=False)
-            if label_tag is None:
-                label = ''
-            else:
-                label = label_tag.text.strip()
 
-            collins.add(LABEL(label, ''))
+            collins.add(
+                LABEL('' if label_tag is None else label_tag.text.strip(), '')
+            )
 
             sense_tags = hom_tag.find_all('div', {'class': 'sense'}, recursive=False)
             if not sense_tags:
-                raise DictionaryError('Collins: unexpected error: no sense_tags')
+                def_tag = hom_tag.find('div', {'class': 'def'}, recursive=False)
+                if def_tag is None:
+                    raise DictionaryError('Collins: unexpected error: no sense and def tags')
+                collins.add(DEF(def_tag.text.strip(), [], '', subdef=False))
+                continue
 
             for sense_tag in sense_tags:
                 label_tag = sense_tag.find('span', {'class': ('gramGrp', 'subc')}, recursive=False)
-                if label_tag is None:
-                    label = ''
-                else:
-                    label = label_tag.text.strip('( )')
+                label = '' if label_tag is None else label_tag.text.strip('( )')
 
                 subsense_tags = sense_tag.find_all('div', {'class': 'sense'}, recursive=False)
                 if subsense_tags:
@@ -87,6 +88,9 @@ def _extract_ced(collins: Dictionary, query: str, ced) -> None:  # type: ignore[
 
                     is_subdef = False
                     for subsense_tag in subsense_tags:
+                        sensenum_tag = subsense_tag.find('span', {'class': 'sensenum'}, recursive=False)
+                        if sensenum_tag is not None:
+                            sensenum_tag.decompose()
                         collins.add(DEF(subsense_tag.text.strip(), [], sense_lbl, is_subdef))
                         is_subdef = True
                     continue
@@ -112,7 +116,9 @@ def _extract_ced(collins: Dictionary, query: str, ced) -> None:  # type: ignore[
                 else:
                     definition = def_tag.text.strip()
 
-                    example_tags = sense_tag.find_all('div', {'class': ('cit', 'type-example', 'quote')}, recursive=False)
+                    example_tags = sense_tag.find_all(
+                        'div', {'class': ('cit', 'type-example', 'quote')}, recursive=False
+                    )
                     if example_tags:
                         examples = [f'‘{x.text.strip()}’' for x in example_tags]
                     else:
@@ -171,13 +177,23 @@ def _extract_cobuild(collins: Dictionary, query: str, cobuild) -> None:  # type:
 
     for hom_tag in cobuild.find_all('div', {'class': 'hom'}):
         label_tag = hom_tag.find('span', {'class': ('gramGrp', 'pos')}, recursive=False)
-        if label_tag is None:
-            label = ''
-        else:
-            label = label_tag.text.strip()
+        label = '' if label_tag is None else label_tag.text.strip()
 
         sense_tag = hom_tag.find('div', {'class': 'sense'}, recursive=False)
         if sense_tag is None:
+            def_tag = hom_tag.find('div', {'class': 'def'}, recursive=False)
+            if def_tag is not None:
+                collins.add(LABEL(label, ''))
+
+                example_tag = hom_tag.find('div', {'class': ('cit', 'type-example')}, recursive=False)
+                if example_tag is None:
+                    examples = []
+                else:
+                    examples = [f'‘{example_tag.text.strip()}’']
+
+                collins.add(DEF(def_tag.text.strip(), examples, '', subdef=False))
+                continue
+
             ref_tag = hom_tag.find('span', {'class': 'xr'}, recursive=False)
             if ref_tag is None:
                 ref_tag = hom_tag.find('a', {'class': ('xr', 'ref')}, recursive=False)
@@ -209,15 +225,14 @@ def _extract_cobuild(collins: Dictionary, query: str, cobuild) -> None:  # type:
 
             synonyms = f' ~ {", ".join(x.text.strip() for x in syn_tags)}.'
 
-        collins.add(LABEL('', ''))
-        collins.add(DEF(definition + synonyms, examples, label, subdef=False))
+        collins.add(LABEL(label, ''))
+        collins.add(DEF(definition + synonyms, examples, '', subdef=False))
 
 
 def ask_collins(query: str) -> Dictionary:
-    query = query.replace(' ', '-')
     soup = request_soup(
         'https://www.collinsdictionary.com/search',
-        {'dictCode': 'english', 'q': query}
+        {'dictCode': 'english', 'q': query.replace(' ', '-')}
     )
 
     collins = Dictionary()
