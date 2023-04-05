@@ -377,8 +377,8 @@ class Prompt:
             ACTIONS[b'KEY_BACKSPACE'] = backspace
             ACTIONS[b'^H'] = ctrl_backspace
 
-    COMPLETION_NEXT_KEYS = (b'^I', b'^P')
-    COMPLETION_PREV_KEYS = (b'KEY_BTAB', b'^N')
+    COMPLETION_NEXT_KEYS = (b'^I', b'^P', b'KEY_UP')
+    COMPLETION_PREV_KEYS = (b'KEY_BTAB', b'^N', b'KEY_DOWN')
 
     def _run(self, cmenu: CompletionMenu) -> str | None:
         entered_before_completion = self._entered
