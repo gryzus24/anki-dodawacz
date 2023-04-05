@@ -108,10 +108,13 @@ def make_card(selection: DictionarySelection) -> Card:
     definitions = []
     examples = []
     for i, op in enumerate(selection.definitions, 1):
-        if config['hidedef']:
-            definition = hide_phrase_in(op.definition)
+        if op.label and ' ' not in op.label:
+            definition = f'[{op.label}] {op.definition}'
         else:
             definition = op.definition
+
+        if config['hidedef']:
+            definition = hide_phrase_in(definition)
 
         definition = _html_quote(definition)
         if config['formatdefs']:
