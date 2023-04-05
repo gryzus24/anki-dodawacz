@@ -239,9 +239,16 @@ _textattr('SELECTION AND ANKI', curses.A_BOLD | curses.A_UNDERLINE),
 ' 1-9 !-)    select definition from 1 to 20, press 0 for the tenth definition',
 '            hold Shift for the remaining 11 to 20',
 ' a          play dictionary\'s audio file with mpv',
-' c          create card(s) from the selected definitions',
+' c C        create card(s)/card from the selected definitions',
 ' b          open recently added card(s) in the Anki card browser',
 ' d          deselect everything',
+'',
+' Difference between "c" and "C":',
+'  c - creates separate cards if the selected definitions belong to separate',
+'      phrases',
+'  C - creates one card',
+'      - definitions are added top to bottom',
+'      - phrase added is dictated by the first selected definition',
 '',
 )),
 _textattr('PROMPT', curses.A_BOLD | curses.A_UNDERLINE),
@@ -772,7 +779,9 @@ def curses_main(stdscr: curses._CursesWindow) -> None:
 
             screenbuf.status.clear()
 
-            selections = screenbuf.page.selector.dump_selection()
+            selections = screenbuf.page.selector.dump_selection(
+                respect_phrase_boundaries=c == b'c'
+            )
             if selections is None:
                 screenbuf.status.error('Nothing selected')
             else:

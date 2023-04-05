@@ -2,7 +2,9 @@ from __future__ import annotations
 
 import sys
 from dataclasses import dataclass
+from itertools import chain
 from typing import Callable
+from typing import Iterable
 from typing import NamedTuple
 from typing import Union
 
@@ -182,16 +184,14 @@ class EntrySelector:
             if isinstance(op, AUDIO)
         }
         if len(unique) == 1:
-            return unique.pop()
+            r = unique.pop()
+            return r if r.resource else None
         else:
             return None
 
-    def dump_selection(self) -> list[DictionarySelection] | None:
-        if not any(self._ptoggled.values()):
-            return None
-
-        result = []
-
+    def _retrieve_selection(self,
+            pgrouped: Iterable[tuple[int, Iterable[int]]]
+    ) -> list[DictionarySelection]:
         # If the dictionary has no AUDIO instruction toggled,
         # see if there is a common AUDIO instruction to the
         # whole dictionary and add it instead.
@@ -199,16 +199,20 @@ class EntrySelector:
 
         toggles = self._toggles
         contents = self.dictionary.contents
-        for pi, indices in self._pgrouped.items():
+
+        result = []
+        for pi, indices in pgrouped:
             if not toggles[pi]:
                 continue
 
             phrase: PHRASE = contents[pi]  # type: ignore[assignment]
             assert isinstance(phrase, PHRASE)
 
-            audio = etymology = pos = None
             definitions = []
             synonyms = []
+            audio: AUDIO | None = None
+            etymology: ETYM | None = None
+            pos: POS | None = None
             for i in indices:
                 if not toggles[i]:
                     continue
@@ -217,17 +221,20 @@ class EntrySelector:
                 if isinstance(op, DEF):
                     definitions.append(op)
                 elif isinstance(op, AUDIO):
-                    audio = op
+                    if audio is None:
+                        audio = op
                 elif isinstance(op, ETYM):
-                    etymology = op
+                    if etymology is None:
+                        etymology = op
                 elif isinstance(op, POS):
-                    pos = op
+                    if pos is None:
+                        pos = op
                 elif isinstance(op, SYN):
                     synonyms.append(op)
 
             result.append(
                 DictionarySelection(
-                    audio or unique_audio,
+                    audio if (audio and audio.resource) else unique_audio,
                     definitions,
                     etymology,
                     phrase,
@@ -237,6 +244,23 @@ class EntrySelector:
             )
 
         return result
+
+    def dump_selection(self,
+            respect_phrase_boundaries: bool
+    ) -> list[DictionarySelection] | None:
+        if not any(self._ptoggled.values()):
+            return None
+
+        if respect_phrase_boundaries:
+            return self._retrieve_selection(self._pgrouped.items())
+        else:
+            for pi in self._pgrouped:
+                if self._toggles[pi]:
+                    return self._retrieve_selection((
+                        (pi, chain.from_iterable(self._pgrouped.values())),
+                    ))
+
+            raise AssertionError('unreachable')
 
     def clear_selection(self) -> None:
         self._ptoggled = {k: 0 for k in self._ptoggled}
