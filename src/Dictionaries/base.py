@@ -9,6 +9,10 @@ from typing import NamedTuple
 from typing import Union
 
 
+# Magic shall be incremented on any changes made to the dataclasses.
+MAGIC = 0
+
+
 @dataclass(frozen=True)
 class DEF:
     definition: str

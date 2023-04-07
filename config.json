@@ -1,5 +1,6 @@
 {
   "audio": true,
+  "cachefile": false,
   "deck": "-",
   "dupescope": "deck",
   "duplicates": false,

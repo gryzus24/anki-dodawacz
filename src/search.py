@@ -1,15 +1,22 @@
 from __future__ import annotations
 
+import atexit
+import os
+import shelve
 import threading
 from typing import Callable
+from typing import Dict
 from typing import NamedTuple
 from typing import TYPE_CHECKING
+from typing import Union
 
 from src.data import config
+from src.data import DATA_DIR
 from src.data import dictkey_t
 from src.Dictionaries.ahd import ask_ahd
 from src.Dictionaries.base import Dictionary
 from src.Dictionaries.base import DictionaryError
+from src.Dictionaries.base import MAGIC
 from src.Dictionaries.collins import ask_collins
 from src.Dictionaries.farlex import ask_farlex
 from src.Dictionaries.wordnet import ask_wordnet
@@ -40,48 +47,104 @@ DICTIONARY_LOOKUP: dict[dictkey_t, Callable[[str], Dictionary]] = {
     'wordnet': ask_wordnet,
 }
 
-_cache: dict[tuple[dictkey_t, str], Dictionary] = {}
-def _query(key: dictkey_t, query: str) -> Dictionary:
+db_t = Union[shelve.DbfilenameShelf[Dictionary], Dict[str, Dictionary]]
+
+
+class _Cache:
+    def __init__(self) -> None:
+        self._path = os.path.join(DATA_DIR, f'dictionary_cache.{MAGIC}')
+        self._db: db_t | None = None
+
+    def _open_shelf(self) -> shelve.DbfilenameShelf[Dictionary] | None:
+        # We use features from the 4th protocol at max.
+        try:
+            return shelve.DbfilenameShelf(self._path, protocol=4)
+        except IOError:
+            return None
+
+    def _save(self) -> None:
+        if self._db is None:
+            return
+        if isinstance(self._db, shelve.DbfilenameShelf):
+            self._db.close()
+        elif config['cachefile']:
+            dbfile = self._open_shelf()
+            if dbfile is not None:
+                for key, dictionary in self._db.items():
+                    dbfile[key] = dictionary
+                dbfile.close()
+
+    @property
+    def db(self) -> tuple[db_t, bool]:
+        err = False
+        if self._db is None:
+            if config['cachefile']:
+                dbfile = self._open_shelf()
+                if dbfile is None:
+                    err = True
+                    self._db = {}
+                else:
+                    self._db = dbfile
+            else:
+                self._db = {}
+            atexit.register(self._save)
+        elif isinstance(self._db, dict) and config['cachefile']:
+            dbfile = self._open_shelf()
+            if dbfile is None:
+                err = True
+            else:
+                for key, dictionary in self._db.items():
+                    dbfile[key] = dictionary
+                self._db = dbfile
+
+        return self._db, err
+
+
+_cache = _Cache()
+def _query(key: dictkey_t, query: str, db: db_t) -> Dictionary:
     try:
-        return _cache[key, query]
+        return db[key + query]
     except KeyError:
         # Lookup might raise a DictionaryError or a ConnectionError.
         # Invalid results will not be cached.
         result = DICTIONARY_LOOKUP[key](query)
-        _cache[key, query] = result
+        db[key + query] = result
         return result
 
 
 def _qthread(
-        query: str,
         key: dictkey_t,
+        query: str,
         keyid: int,
         success: dict[int, Dictionary],
-        err: dict[int, str]
+        error: dict[int, str],
+        db: db_t
 ) -> None:
     try:
-        success[keyid] = _query(key, query)
+        success[keyid] = _query(key, query, db)
     except (DictionaryError, ConnectionError) as e:
-        err[keyid] = str(e)
+        error[keyid] = str(e)
 
 
-def _perror_threaded_query(
+def perror_threaded_query(
         status: StatusProto,
         query: str,
-        keys: list[dictkey_t]
+        keys: list[dictkey_t],
+        db: db_t
 ) -> list[Dictionary] | None:
     success: dict[int, Dictionary] = {}
-    err: dict[int, str] = {}
+    error: dict[int, str] = {}
     threads = []
+
     for keyid, key in enumerate(keys):
         try:
-            success[keyid] = _cache[key, query]
+            success[keyid] = db[key + query]
         except KeyError:
             # I hope it's ok to make them daemonic. It simplifies the handling
             # of SIGINT, but try-finally blocks don't run inside of urllib3.
             t = threading.Thread(
                 target=_qthread,
-                args=(query, key, keyid, success, err),
+                args=(key, query, keyid, success, error, db),
                 daemon=True
             )
             t.start()
@@ -94,8 +157,8 @@ def _perror_threaded_query(
     for keyid, _ in enumerate(keys):
         if keyid in success:
             result.append(success[keyid])
-        elif keyid in err:
-            status.error(err[keyid])
+        elif keyid in error:
+            status.error(error[keyid])
         else:
             raise AssertionError('unreachable')
 
@@ -111,27 +174,29 @@ class Query(NamedTuple):
     query_flags: list[str]
 
 
-def _perror_query(
+def perror_query(
         status: StatusProto,
         query: str,
-        key: dictkey_t
+        key: dictkey_t,
+        db: db_t
 ) -> list[Dictionary] | None:
     try:
-        return [_query(key, query)]
+        return [_query(key, query, db)]
     except (DictionaryError, ConnectionError) as e:
         status.error(str(e))
         return None
 
 
-def _perror_query_with_fallback(
+def perror_query_with_fallback(
         status: StatusProto,
         query: str,
         key: dictkey_t,
-        fallback_key: dictkey_t
+        fallback_key: dictkey_t,
+        db: db_t
 ) -> list[Dictionary] | None:
-    result = _perror_query(status, query, key)
+    result = perror_query(status, query, key, db)
     if result is None:
-        result = _perror_query(status, query, fallback_key)
+        result = perror_query(status, query, fallback_key, db)
 
     return result
 
@@ -182,26 +247,36 @@ def search(
         queries: list[Query]
 ) -> list[list[Dictionary] | None]:
     # TODO: Use threads for multiple queries like "a -c, b, c" etc.
-    #       We can do this by turning `_perror_threaded_query()` into a
+    #       We can do this by turning `perror_threaded_query()` into a
     #       generator that yields just before `Thread.join()`, we can then
     #       collect the return values of these generators here. Keep in mind
     #       that we want to minimize the number of requests and handle
     #       duplicate queries (or disallow them) so that we can avoid the race
     #       condition when accessing the `_cache` in parallel.
+
+    db, err = _cache.db
+    if err:
+        status.error(
+            'Cannot open cache file:',
+            'another instance of the program is using the cache'
+        )
+        status.attention('- you can disable \'cachefile\' option in Config or')
+        status.attention('- switch to the already running instance of the program')
+
     result = []
     for query, flags, _ in queries:
         if len(flags) == 0:
             if config['secondary'] == '-':
-                result.append(_perror_query(status, query, config['primary']))
+                result.append(perror_query(status, query, config['primary'], db))
             else:
                 result.append(
-                    _perror_query_with_fallback(
-                        status, query, config['primary'], config['secondary']
+                    perror_query_with_fallback(
+                        status, query, config['primary'], config['secondary'], db
                     )
                 )
         elif len(flags) == 1:
-            result.append(_perror_query(status, query, flags.pop()))
+            result.append(perror_query(status, query, flags.pop(), db))
         else:
-            result.append(_perror_threaded_query(status, query, flags))
+            result.append(perror_threaded_query(status, query, flags, db))
 
     return result

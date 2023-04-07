@@ -93,10 +93,11 @@ CONFIG_COLUMNS: list[Column] = [
             ]
         ),
         Section(
-            'History',
+            'History & Cache',
             [
-            Option('histsave', 'Save queries to the history file', bool),
-            Option('histshow', 'Show completion menu with entries from the history file', bool),
+            Option('histsave', 'Save queries to the history file (saved on program exit)', bool),
+            Option('histshow', 'Show completion menu with recent queries and queries from the history file', bool),
+            Option('cachefile', 'Cache and save dictionaries to disk (saved on program exit)', bool),
             ]
         )
     ]),
