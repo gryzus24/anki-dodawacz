@@ -279,7 +279,7 @@ def _layout(
         op = dictionary.contents[line.op_index]
         if (
                 i > column_break
-            and (isinstance(op, (DEF, ETYM)))
+            and (isinstance(op, (DEF, SYN, ETYM)))
             and cur < ncolumns - 1
             and i + 1 != len(lines)
             and line.op_index != lines[i + 1].op_index
