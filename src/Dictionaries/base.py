@@ -144,7 +144,7 @@ class EntrySelector:
     def is_toggled(self, index: int) -> bool:
         return self._toggles[index]
 
-    def find_phrase_index(self, index: int) -> int:
+    def phrase_index_for(self, index: int) -> int:
         if not self._ptoggled:
             raise ValueError('dictionary has no PHRASE entries')
 
@@ -154,11 +154,24 @@ class EntrySelector:
 
         raise ValueError(f'out of bounds: {len(self.dictionary.contents)=}, {index=}')
 
+    def is_phrase_index(self, index: int) -> bool:
+        return index in self._ptoggled
+
+    def audio_for_index(self, index: int) -> AUDIO | None:
+        contents = self.dictionary.contents
+
+        for i in self._pgrouped[self.phrase_index_for(index)]:
+            op = contents[i]
+            if isinstance(op, AUDIO):
+                return op
+
+        return None
+
     TOGGLEABLE = (DEF, SYN)
     SELECTABLE = (PHRASE, AUDIO, ETYM, POS)
 
     def _toggle(self, index: int) -> None:
-        pi = self.find_phrase_index(index)
+        pi = self.phrase_index_for(index)
         self._toggles[index] = not self._toggles[index]
         self._ptoggled[pi] += 1 if self._toggles[index] else -1
 

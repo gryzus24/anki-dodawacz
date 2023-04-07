@@ -238,7 +238,6 @@ _textattr('SELECTION AND ANKI', curses.A_BOLD | curses.A_UNDERLINE),
 *_text((
 ' 1-9 !-)    select definition from 1 to 20, press 0 for the tenth definition',
 '            hold Shift for the remaining 11 to 20',
-' a          play dictionary\'s audio file with mpv',
 ' c C        create card(s)/card from the selected definitions',
 ' b          open recently added card(s) in the Anki card browser',
 ' d          deselect everything',
@@ -251,11 +250,19 @@ _textattr('SELECTION AND ANKI', curses.A_BOLD | curses.A_UNDERLINE),
 '      - phrase added is dictated by the first selected definition',
 '',
 )),
+_textattr('AUDIO', curses.A_BOLD | curses.A_UNDERLINE),
+*_text((
+' Program requires "mpv" to be installed to play audio.',
+' You can click on a phrase entry to play its audio file.',
+'',
+' a          play the audio file of the first phrase entry',
+'',
+)),
 _textattr('PROMPT', curses.A_BOLD | curses.A_UNDERLINE),
 *_text((
 ' Prompt supports basic line editing.',
 ' Only special/notable shortcuts are listed.',
-' ',
+'',
 ' ^C ESC     exit without submitting',
 ' ^K ^U      delete everything from the cursor to the end/start of the line',
 ' ^T         delete everything except the word under the cursor',
@@ -740,7 +747,17 @@ def curses_main(stdscr: curses._CursesWindow) -> None:
                             curses.ungetch(curses.KEY_F1 + i)
                             break
                 elif isinstance(screenbuf.page, Screen):
-                    screenbuf.page.mark_box_at(y, x)
+                    if screenbuf.page.mark_box_at(y, x):
+                        continue
+                    if (index := screenbuf.page.dictionary_index_at(y, x)) is None:
+                        continue
+                    if screenbuf.page.selector.is_phrase_index(index):
+                        audio = screenbuf.page.selector.audio_for_index(index)
+                        if audio is not None and audio.resource:
+                            play_audio_url(audio.resource)
+                        else:
+                            screenbuf.status.clear()
+                            screenbuf.status.error('No audio for this entry')
             elif mouse_wheel_up(bstate):
                 screenbuf.page.move_up()
             elif mouse_wheel_down(bstate):

@@ -395,25 +395,35 @@ class Screen:
         if self.hl is not None:
             self.hlsearch(self.hl.phrase)
 
-    def mark_box_at(self, y: int, x: int) -> None:
+    def dictionary_index_at(self, y: int, x: int) -> int | None:
         if y < BORDER_PAD or y >= curses.LINES - 1 - self.margin_bot:
-            return
+            return None
 
-        contents = self.selector.dictionary.contents
-
-        click_range_x = BORDER_PAD
+        col_x = BORDER_PAD
         for column in self.columns:
-            if click_range_x <= x < click_range_x + self.column_width:
+            if col_x <= x < col_x + self.column_width:
                 assert self._scroll + y - 1 >= 0
                 try:
                     line = column[self._scroll + y - 1]
                 except IndexError:
-                    return
-                if isinstance(contents[line.op_index], self.selector.TOGGLEABLE):
-                    self.selector.toggle_by_index(line.op_index)
-                return
+                    return None
+                else:
+                    return line.op_index
 
-            click_range_x += self.column_width + 1
+            col_x += self.column_width + 1
+
+        return None
+
+    def mark_box_at(self, y: int, x: int) -> bool:
+        index = self.dictionary_index_at(y, x)
+        if index is None:
+            return False
+
+        if isinstance(self.selector.dictionary.contents[index], self.selector.TOGGLEABLE):
+            self.selector.toggle_by_index(index)
+            return True
+        else:
+            return False
 
     def mark_box_by_selector(self, s: bytes) -> bool:
         try:
@@ -422,6 +432,16 @@ class Screen:
             return False
         else:
             return True
+
+    def audio_for_phrase_index_at(self, y: int, x: int) -> AUDIO | None:
+        index = self.dictionary_index_at(y, x)
+        if index is None:
+            return None
+
+        if self.selector.is_phrase_index(index):
+            return self.selector.audio_for_index(index)
+        else:
+            return None
 
     def deselect_all(self) -> None:
         self.selector.clear_selection()
