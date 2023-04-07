@@ -6,7 +6,6 @@ import functools
 from typing import Callable
 from typing import Iterator
 from typing import NamedTuple
-from typing import Type
 
 import src.anki as anki
 from src.Curses.color import Color
@@ -28,7 +27,7 @@ from src.data import configval_t
 class Option(NamedTuple):
     key:         configkey_t
     description: str
-    constraint:  Type[bool] | list[str] | Callable[[], list[str]] | None
+    constraint:  type[bool] | list[str] | Callable[[], list[str]] | None
     # `strict`: option can be set only if it is contained within `constraint`.
     strict:      bool = False
 

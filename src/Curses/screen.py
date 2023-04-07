@@ -4,7 +4,6 @@ import curses
 from typing import Callable
 from typing import Iterator
 from typing import NamedTuple
-from typing import Type
 from typing import TYPE_CHECKING
 
 from src.Curses.color import Color
@@ -230,8 +229,8 @@ def format_dictionary(dictionary: Dictionary, column_width: int) -> list[ParsedL
     return result
 
 
-def currently_selected_ops() -> tuple[Type[op_t], ...]:
-    result: list[Type[op_t]] = [PHRASE]
+def currently_selected_ops() -> tuple[type[op_t], ...]:
+    result: list[type[op_t]] = [PHRASE]
     if config['audio']:
         result.append(AUDIO)
     if config['pos']:
