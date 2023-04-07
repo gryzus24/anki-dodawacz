@@ -70,7 +70,7 @@ class DictionaryError(Exception):
 
 
 class Dictionary:
-    __slots__ = 'contents'
+    __slots__ = ('contents',)
 
     def __init__(self, contents: list[op_t] | None = None) -> None:
         self.contents = contents or []
@@ -85,6 +85,9 @@ class Dictionary:
                 sys.stdout.write(f'{len(str(rel_def_i)) * " "} {op}\n')
         sys.stdout.write('\n')
         return f'{type(self).__name__}({self.contents})'
+
+    def add(self, op: op_t) -> None:
+        self.contents.append(op)
 
     def header(self) -> str:
         assert isinstance(self.contents[0], HEADER)
@@ -101,9 +104,6 @@ class Dictionary:
 
     def audio_urls(self) -> list[str]:
         return [op.resource for op in self.contents if isinstance(op, AUDIO)]
-
-    def add(self, op: op_t) -> None:
-        self.contents.append(op)
 
     def count(self, key: Callable[[op_t], bool]) -> int:
         return sum(map(key, self.contents))
