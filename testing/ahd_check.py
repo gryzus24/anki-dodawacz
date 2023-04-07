@@ -25,6 +25,8 @@ import sys
 from typing import Final
 from typing import Iterable
 from typing import Literal
+from typing import Dict
+from typing import List
 from typing import Sequence
 from typing import TYPE_CHECKING
 
@@ -127,7 +129,7 @@ def is_funny_iter(it: Iterable[str]) -> bool:
     return False
 
 
-raport_t = dict[str, dict[str, dict[str, dict[str, list[str]]]]]  # type: ignore[misc]
+raport_t = Dict[str, Dict[str, Dict[str, Dict[str, List[str]]]]]
 
 
 def run_check(logger: Logger, dictionary: Dictionary, word: str, raport: raport_t) -> None:
