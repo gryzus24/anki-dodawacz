@@ -263,7 +263,7 @@ class EntrySelector:
         return result
 
     def dump_selection(self,
-            respect_phrase_boundaries: bool
+            *, respect_phrase_boundaries: bool
     ) -> list[DictionarySelection] | None:
         if not any(self._ptoggled.values()):
             return None

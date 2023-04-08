@@ -33,7 +33,7 @@ COLUMN_MARGIN = 1
 
 class Wrapper:
     # TODO: Add justify.
-    def __init__(self, textwidth: int):
+    def __init__(self, textwidth: int) -> None:
         self.textwidth = textwidth
         self._cur = 0
 

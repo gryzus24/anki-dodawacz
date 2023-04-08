@@ -59,7 +59,7 @@ class _Cache:
         # We use features from the 4th protocol at max.
         try:
             return shelve.DbfilenameShelf(self._path, protocol=4)
-        except IOError:
+        except OSError:
             return None
 
     def _save(self) -> None:

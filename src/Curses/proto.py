@@ -1,9 +1,12 @@
 from __future__ import annotations
 
 import contextlib
-import curses
 from typing import Iterator
 from typing import Protocol
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    import curses
 
 
 class StatusProto(Protocol):
