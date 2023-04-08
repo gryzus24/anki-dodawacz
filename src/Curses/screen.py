@@ -432,16 +432,6 @@ class Screen:
         else:
             return True
 
-    def audio_for_phrase_index_at(self, y: int, x: int) -> AUDIO | None:
-        index = self.dictionary_index_at(y, x)
-        if index is None:
-            return None
-
-        if self.selector.is_phrase_index(index):
-            return self.selector.audio_for_index(index)
-        else:
-            return None
-
     def deselect_all(self) -> None:
         self.selector.clear_selection()
 

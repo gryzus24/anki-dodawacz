@@ -106,9 +106,6 @@ class Dictionary:
         assert r
         return r
 
-    def audio_urls(self) -> list[str]:
-        return [op.resource for op in self.contents if isinstance(op, AUDIO)]
-
     def count(self, key: Callable[[op_t], bool]) -> int:
         return sum(map(key, self.contents))
 

@@ -37,12 +37,12 @@ from src.Curses.proto import ScreenBufferProto
 from src.Curses.proto import StatusProto
 from src.Curses.screen import Screen
 from src.Curses.util import Attr
-from src.Curses.util import CURSES_COLS_MIN_VALUE
-from src.Curses.util import HIGHLIGHT
 from src.Curses.util import clipboard_or_selection
 from src.Curses.util import compose_attrs
+from src.Curses.util import CURSES_COLS_MIN_VALUE
 from src.Curses.util import draw_border
 from src.Curses.util import hide_cursor
+from src.Curses.util import HIGHLIGHT
 from src.Curses.util import mouse_left_click
 from src.Curses.util import mouse_wheel_click
 from src.Curses.util import mouse_wheel_down
@@ -53,9 +53,10 @@ from src.data import config
 from src.data import config_save
 from src.data import DATA_DIR
 from src.data import WINDOWS
+from src.Dictionaries.base import AUDIO
 
 if TYPE_CHECKING:
-    from src.Dictionaries.base import Dictionary
+    from src.Dictionaries.base import EntrySelector
 
 
 class StatusLine(NamedTuple):
@@ -255,7 +256,8 @@ _textattr('AUDIO', curses.A_BOLD | curses.A_UNDERLINE),
 ' Program requires "mpv" to be installed to play audio.',
 ' You can click on a phrase entry to play its audio file.',
 '',
-' a          play the audio file of the first phrase entry',
+' a          play the audio file that would be added with the card',
+'            if you decided to create one',
 '',
 )),
 _textattr('PROMPT', curses.A_BOLD | curses.A_UNDERLINE),
@@ -628,16 +630,27 @@ class ScreenBuffer(ScreenBufferProto):
         return False
 
 
-def perror_play_audio(status: Status, dictionary: Dictionary) -> None:
-    urls = dictionary.audio_urls()
-    if not urls:
-        status.error(f'Could not play audio ({dictionary.header()}):', 'no audio')
-        return
+def perror_play_audio(status: Status, selector: EntrySelector) -> None:
+    audio = None
+    for i, op in enumerate(selector.dictionary.contents):
+        if isinstance(op, AUDIO) and op.resource:
+            if selector.is_toggled(i):
+                audio = op
+                break
+            elif audio is None:
+                audio = op
+    else:
+        if audio is None:
+            status.error(
+                f'Could not play audio ({selector.dictionary.header()}):',
+                'no audio'
+            )
+            return
 
     curses.flushinp()
     try:
         # TODO: handle multiple audio urls.
-        play_audio_url(urls[0])
+        play_audio_url(audio.resource)
     except (ValueError, LookupError) as e:
         status.error('Could not play audio:', str(e))
 
@@ -774,10 +787,7 @@ def curses_main(stdscr: curses._CursesWindow) -> None:
 
         elif c in (b'a', b'A'):
             if isinstance(screenbuf.page, Screen):
-                perror_play_audio(
-                    screenbuf.status,
-                    screenbuf.page.selector.dictionary
-                )
+                perror_play_audio(screenbuf.status, screenbuf.page.selector)
         elif c in (b'b', b'B'):
             try:
                 anki.invoke(
