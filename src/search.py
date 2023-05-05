@@ -260,8 +260,9 @@ def search(
             'Cannot open cache file:',
             'another instance of the program is using the cache'
         )
-        status.attention('- you can disable \'cachefile\' option in Config or')
-        status.attention('- switch to the already running instance of the program')
+        status.attention('- you can switch to the other instance or')
+        status.attention('- close it and continue using this one, alternatively')
+        status.attention('- disable the \'cachefile\' option in the F2 Config')
 
     result = []
     for query, flags, _ in queries:
