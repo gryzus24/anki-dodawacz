@@ -68,11 +68,16 @@ def _extract_ced(collins: Dictionary, query: str, ced) -> None:  # type: ignore[
 
             sense_tags = hom_tag.find_all('div', {'class': 'sense'}, recursive=False)
             if not sense_tags:
-                def_tag = hom_tag.find('div', {'class': 'def'}, recursive=False)
-                if def_tag is None:
-                    raise DictionaryError('Collins: unexpected error: no sense and def tags')
-                collins.add(DEF(def_tag.text.strip(), [], '', subdef=False))
-                continue
+                idm_tag = hom_tag.find('div', {'class': 'type-idm'}, recursive=False)
+                if idm_tag is None:
+                    tags = hom_tag.find_all(('div', 'span'), {'class': ('def', 'xr')})
+                    if not tags:
+                        raise DictionaryError('Collins: unexpected error: no sense, def or xr tags')
+                    for tag in tags:
+                        collins.add(DEF(tag.text.strip(), [], '', subdef=False))
+                    continue
+                else:
+                    sense_tags = idm_tag.find_all('div', {'class': 'sense'}, recursive=False)
 
             for sense_tag in sense_tags:
                 label_tag = sense_tag.find('span', {'class': ('gramGrp', 'subc')}, recursive=False)
@@ -175,7 +180,15 @@ def _extract_cobuild(collins: Dictionary, query: str, cobuild) -> None:  # type:
     collins.add(PHRASE(phrase, phon))
     collins.add(AUDIO(audio))
 
-    for hom_tag in cobuild.find_all('div', {'class': 'hom'}):
+    hom_tags = cobuild.find_all('div', {'class': 'hom'})
+    if not hom_tags:
+        tag = cobuild.find('a', {'class': 'xr'})
+        if tag is None:
+            raise DictionaryError('Collins: unexpected error: no hom nor xr tags')
+        collins.add(DEF(tag.text.strip(), [], '', subdef=False))
+        return
+
+    for hom_tag in hom_tags:
         label_tag = hom_tag.find('span', {'class': ('gramGrp', 'pos')}, recursive=False)
         label = '' if label_tag is None else label_tag.text.strip()
 
