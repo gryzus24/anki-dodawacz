@@ -140,10 +140,15 @@ def _extract_ced(collins: Dictionary, query: str, ced) -> None:  # type: ignore[
             for drv_tag in derivs_tag.find_all('span', {'class': ('form', 'type-drv')}):
                 orth_tag = drv_tag.find('span', {'class': 'orth'}, recursive=False)
                 if orth_tag is None:
-                    raise DictionaryError('Collins: unexpected error: no orth_tag within drv_tag')
+                    # 'jowl'
+                    pos = drv_tag.text.strip()
+                    phon = ''
+                else:
+                    pos = orth_tag.extract().text.strip()
+                    # what's left is considered 'phon'.
+                    phon = drv_tag.text.strip()
 
-                pos = orth_tag.extract().text.strip()
-                result.append((pos, drv_tag.text.strip()))
+                result.append((pos, phon))
 
             collins.add(POS(result))
 
