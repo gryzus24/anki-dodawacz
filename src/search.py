@@ -270,8 +270,15 @@ def search(
             if config['secondary'] == '-':
                 result.append(perror_query(status, query, config['primary'], db))
             else:
+                cached = []
+                for key in DICTIONARY_LOOKUP:
+                    try:
+                        cached.append(db[key + query])
+                    except KeyError:
+                        continue
+
                 result.append(
-                    perror_query_with_fallback(
+                    cached or perror_query_with_fallback(
                         status, query, config['primary'], config['secondary'], db
                     )
                 )
