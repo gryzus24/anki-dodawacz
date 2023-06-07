@@ -360,15 +360,44 @@ class ScreenBuffer(ScreenBufferProto):
 
                 phrases = dictionary.unique_phrases()
                 for phrase in phrases:
-                    if phrase.casefold().startswith(query.query.casefold()):
-                        self.history.add_entry(phrase)
+                    p = phrase.lower()
+                    q = query.query.lower()
+
+                    # Rules here are a little bit arbitrary, but suffice it to
+                    # say that the goal of history is to store the query that
+                    # resulted in a successful lookup and to be easily
+                    # tab-completable.
+                    if p.startswith(q):
+                        if p.isalpha():
+                            # User probably forgot to complete the query.
+                            # E.g. q: 'gullib' -> p: 'gullible'.
+                            # Adding 'phrase' as it is the correct one.
+                            # Even though the incorrect query has been cached :/
+                            self.history.add_entry(phrase)
+                        else:
+                            # It is probably a multi-word query.
+                            # Adding 'query' as 'phrase' might be surprisingly
+                            # long.
+                            self.history.add_entry(query.query)
+                        break
+                    elif q.startswith(p):
+                        # User probably queried the derived form of a word.
+                        # E.g. q: 'maliciously' -> p: 'malicious'
+                        # Adding 'query' as it is the cached one and not really
+                        # incorrect. Also, user probably expects it to be saved
+                        # in this case.
+                        self.history.add_entry(query.query)
                         break
                 else:
-                    # Get rid of any possible commas
-                    # as they interfere with tab completion.
-                    self.history.add_entry(
-                        f'{phrases[0].replace(",", " ")} #{query.query}'
-                    )
+                    # Here, phrase does not really match the query.
+                    # I.e. its not easily tab-completable.
+                    # Let queried dictionary be the judge of correctness, but
+                    # also add user's query as it is probably "correct enough".
+
+                    # We have no idea what 'phrase' contains, it might contain
+                    # commas and they interefere with tab completion.
+                    self.history.add_entry(phrases[0].replace(',', ' '))
+                    self.history.add_entry(query.query)
 
         if not screens:
             return
