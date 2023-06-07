@@ -124,7 +124,7 @@ CONFIG_COLUMNS: list[Column] = [
             [
             Option('toipa', 'Translate AH Dictionary phonetic spelling into IPA', bool, strict=True),
             Option('shortetyms', 'Shorten and simplify etymologies in AH Dictionary', bool, strict=True),
-            Option('nohelp', 'Hide the F-key help bar by default', bool, strict=True),
+            Option('nohelp', 'Hide the F-key help bar on program startup', bool, strict=True),
             ]
         )
     ]),

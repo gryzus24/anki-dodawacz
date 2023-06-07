@@ -119,6 +119,8 @@ class CompletionMenu:
             return False
 
         if s in self._seen:
+            # Don't bother removing and adding if 's' is the same as the most
+            # recently added entry (its position won't change).
             if self._entries[0] == s:
                 return False
 

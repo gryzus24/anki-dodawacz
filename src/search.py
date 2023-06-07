@@ -56,8 +56,8 @@ class _Cache:
         self._db: db_t | None = None
 
     def _open_shelf(self) -> shelve.DbfilenameShelf[Dictionary] | None:
-        # We use features from the 4th protocol at max.
         try:
+            # We use features from the 4th protocol at max.
             return shelve.DbfilenameShelf(self._path, protocol=4)
         except OSError:
             return None

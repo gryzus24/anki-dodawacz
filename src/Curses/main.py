@@ -218,7 +218,7 @@ _textattr('SEARCH', curses.A_BOLD | curses.A_UNDERLINE),
 '  -c, -compare     query "-primary" and "-secondary" one after the other,',
 '                   expands to "-ahd -farlex" by default',
 '  -all             query all dictionaries,',
-f'                   expands to "-{", -".join(search.DICTIONARY_LOOKUP)}"',
+f'                   expands to "-{" -".join(search.DICTIONARY_LOOKUP)}"',
 '',
 f' To make multiple queries at once separate them with a "{search.QUERY_SEPARATOR}".',
 ' You can also use multiple search options at once.',
@@ -342,16 +342,14 @@ class ScreenBuffer(ScreenBufferProto):
             return
 
         try:
-            resolved_queries = search.search(
-                StatusEcho(self, self.status), queries
-            )
+            results = search.search(StatusEcho(self, self.status), queries)
         except KeyboardInterrupt:
             return
 
         screens = []
 
-        assert len(queries) == len(resolved_queries)
-        for query, dictionaries in zip(queries, resolved_queries):
+        assert len(queries) == len(results)
+        for query, dictionaries in zip(queries, results):
             if dictionaries is None:
                 continue
 
