@@ -414,6 +414,7 @@ class Screen:
 
         return None
 
+    # return: True if a box has been toggled, False otherwise.
     def mark_box_at(self, y: int, x: int) -> bool:
         index = self.dictionary_index_at(y, x)
         if index is None:
@@ -425,6 +426,7 @@ class Screen:
         else:
             return False
 
+    # return: True if a box has been toggled, False otherwise.
     def mark_box_by_selector(self, s: bytes) -> bool:
         try:
             self.selector.toggle_by_def_index(b'1234567890!@#$%^&*()'.index(s) + 1)

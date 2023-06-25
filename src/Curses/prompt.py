@@ -117,6 +117,7 @@ class CompletionMenu:
     def has_completions(self) -> bool:
         return bool(self._completions)
 
+    # return: True if the order of entries has changed, False otherwise.
     def add_entry(self, s: str) -> bool:
         if not s:
             return False

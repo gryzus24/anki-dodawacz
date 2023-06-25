@@ -102,6 +102,7 @@ class Status:
         else:
             self._ticks += 1
 
+    # return: True if status has been drawn, False otherwise.
     def draw_if_available(self) -> bool:
         if not self._buf or curses.LINES < 3:
             return False

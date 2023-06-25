@@ -256,6 +256,7 @@ class ConfigMenu(ScreenBufferProto):
         y = BORDER_PAD + DESCRIPTION_BOX_HEIGHT
         x = BORDER_PAD
 
+        # return: True if y is outside the drawing range, False otherwise.
         def CHECK_PLUS_Y(_n: int) -> bool:
             nonlocal y
             if y >= curses.LINES - self.margin_bot - 2:
@@ -377,6 +378,7 @@ class ConfigMenu(ScreenBufferProto):
         else:
             option.set_to(self._local_config, typed)
 
+    # return: True if any config option has changed, False otherwise.
     def apply_changes(self) -> bool:
         if self._local_config == config:
             return False
