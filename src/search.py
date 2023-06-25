@@ -6,6 +6,7 @@ import shelve
 import threading
 from typing import Callable
 from typing import Dict
+from typing import Mapping
 from typing import NamedTuple
 from typing import TYPE_CHECKING
 from typing import Union
@@ -26,7 +27,7 @@ if TYPE_CHECKING:
 
 QUERY_SEPARATOR = ','
 
-DICT_KEY_ALIASES: dict[str, dictkey_t] = {
+DICT_KEY_ALIASES: Mapping[str, dictkey_t] = {
     'ahd':     'ahd',
     'col':     'collins',
     'collins': 'collins',
@@ -40,7 +41,7 @@ DICT_KEY_ALIASES: dict[str, dictkey_t] = {
 # with identical dictionaries that were called with the same query
 # but different "dictionary flag", which acts as nothing more but
 # an alias.
-DICTIONARY_LOOKUP: dict[dictkey_t, Callable[[str], Dictionary]] = {
+DICTIONARY_LOOKUP: Mapping[dictkey_t, Callable[[str], Dictionary]] = {
     'ahd': ask_ahd,
     'collins': ask_collins,
     'farlex': ask_farlex,

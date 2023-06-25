@@ -3,6 +3,7 @@ from __future__ import annotations
 import curses
 from typing import Callable
 from typing import Iterator
+from typing import Mapping
 from typing import NamedTuple
 from typing import TYPE_CHECKING
 
@@ -530,7 +531,7 @@ class Screen:
 
         return False
 
-    ACTIONS: dict[bytes, Callable[[Screen], None]] = {
+    ACTIONS: Mapping[bytes, Callable[[Screen], None]] = {
         b'^J': hl_clear, b'^M': hl_clear,
         b'd': deselect_all,
         b'j': move_down, b'^N': move_down, b'KEY_DOWN': move_down,

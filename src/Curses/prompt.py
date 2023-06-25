@@ -3,6 +3,9 @@ from __future__ import annotations
 import curses
 from collections import defaultdict
 from collections import deque
+from typing import Callable
+from typing import ClassVar
+from typing import Mapping
 from typing import NamedTuple
 from typing import Sequence
 from typing import TYPE_CHECKING
@@ -352,7 +355,7 @@ class Prompt:
         self._entered = entered[left:right]
         self._cursor = len(self._entered)
 
-    ACTIONS = {
+    _A: ClassVar[dict[bytes, Callable[[Prompt], None]]] = {
         b'KEY_RESIZE': resize, b'^L': resize,
         b'KEY_LEFT': left,     b'^B': left,
         b'KEY_RIGHT': right,   b'^F': right,
@@ -365,19 +368,21 @@ class Prompt:
         b'^T': ctrl_t,
     }
     if WINDOWS:
-        ACTIONS[b'CTL_LEFT'] = ACTIONS[b'ALT_LEFT'] = ctrl_left
-        ACTIONS[b'CTL_RIGHT'] = ACTIONS[b'ALT_RIGHT'] = ctrl_right
-        ACTIONS[b'^H'] = backspace
-        ACTIONS[b'^?'] = ctrl_backspace
+        _A[b'CTL_LEFT'] = _A[b'ALT_LEFT'] = ctrl_left
+        _A[b'CTL_RIGHT'] = _A[b'ALT_RIGHT'] = ctrl_right
+        _A[b'^H'] = backspace
+        _A[b'^?'] = ctrl_backspace
     else:
-        ACTIONS[b'kLFT5'] = ACTIONS[b'kLFT3'] = ctrl_left
-        ACTIONS[b'kRIT5'] = ACTIONS[b'kRIT3'] = ctrl_right
+        _A[b'kLFT5'] = _A[b'kLFT3'] = ctrl_left
+        _A[b'kRIT5'] = _A[b'kRIT3'] = ctrl_right
         if ON_TERMUX:
-            ACTIONS[b'^?'] = backspace
-            ACTIONS[b'KEY_BACKSPACE'] = ctrl_backspace
+            _A[b'^?'] = backspace
+            _A[b'KEY_BACKSPACE'] = ctrl_backspace
         else:
-            ACTIONS[b'KEY_BACKSPACE'] = backspace
-            ACTIONS[b'^H'] = ctrl_backspace
+            _A[b'KEY_BACKSPACE'] = backspace
+            _A[b'^H'] = ctrl_backspace
+
+    ACTIONS: Mapping[bytes, Callable[[Prompt], None]] = _A
 
     COMPLETION_NEXT_KEYS = (b'^I', b'^P', b'KEY_UP')
     COMPLETION_PREV_KEYS = (b'KEY_BTAB', b'^N', b'KEY_DOWN')

@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import curses
 from typing import Callable
+from typing import Mapping
 from typing import NamedTuple
 from typing import TYPE_CHECKING
 
@@ -178,7 +179,7 @@ class Pager:
 
         return False
 
-    ACTIONS: dict[bytes, Callable[[Pager], None]] = {
+    ACTIONS: Mapping[bytes, Callable[[Pager], None]] = {
         b'j': move_down,  b'^N': move_down, b'KEY_DOWN': move_down,
         b'k': move_up,    b'^P': move_up,   b'KEY_UP': move_up,
         b'G': go_bottom,  b'KEY_END': go_bottom,

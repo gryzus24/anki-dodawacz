@@ -19,6 +19,7 @@ import os
 from typing import Callable
 from typing import Iterable
 from typing import Iterator
+from typing import Mapping
 from typing import NamedTuple
 from typing import Sequence
 from typing import TYPE_CHECKING
@@ -639,7 +640,7 @@ class ScreenBuffer(ScreenBufferProto):
         else:
             self.status.error('Nothing matches', repr(typed))
 
-    ACTIONS = {
+    ACTIONS: Mapping[bytes, Callable[[ScreenBuffer], None]] = {
         b'KEY_RESIZE': resize, b'^L': resize,
         b'l': next,     b'KEY_RIGHT': next,
         b'h': previous, b'KEY_LEFT': previous,
@@ -752,7 +753,7 @@ def perror_recheck_note(status: Status) -> None:
         status.writeln(f'{k:{k_offset}s}  {v or "?"}')
 
 
-SEARCH_ENTER_ACTIONS: dict[bytes, Callable[[Status], str | None]] = {
+SEARCH_ENTER_ACTIONS: Mapping[bytes, Callable[[Status], str | None]] = {
     b'p': perror_clipboard_or_selection,
     b'P': perror_currently_reviewed_phrase,
     b'/': lambda _: '',

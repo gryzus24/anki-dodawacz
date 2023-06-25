@@ -5,6 +5,7 @@ import curses
 import functools
 from typing import Callable
 from typing import Iterator
+from typing import Mapping
 from typing import NamedTuple
 
 import src.anki as anki
@@ -384,7 +385,7 @@ class ConfigMenu(ScreenBufferProto):
         Color.refresh(config)
         return True
 
-    ACTIONS: dict[bytes, Callable[[ConfigMenu], None]] = {
+    ACTIONS: Mapping[bytes, Callable[[ConfigMenu], None]] = {
         b'KEY_RESIZE': resize, b'^L': resize,
         b'j': move_down,  b'KEY_DOWN': move_down,
         b'k': move_up,    b'KEY_UP': move_up,
