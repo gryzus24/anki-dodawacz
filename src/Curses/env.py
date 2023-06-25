@@ -1,1 +1,0 @@
-LINES = COLS = 0

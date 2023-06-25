@@ -1,173 +1,115 @@
 from __future__ import annotations
 
 import curses
-from typing import NamedTuple, Callable
+from typing import Callable
+from typing import Mapping
+from typing import NamedTuple
+from typing import TYPE_CHECKING
 
-import src.Curses.env as env
-from src.Curses.colors import Color
-from src.Curses.prompt import Prompt
-from src.Curses.utils import BUTTON5_PRESSED, get_key, terminal_resize, truncate_if_needed
+from src.Curses.color import Color
+from src.Curses.util import BORDER_PAD
+from src.Curses.util import CURSES_COLS_MIN_VALUE
+from src.Curses.util import HIGHLIGHT
+from src.Curses.util import mouse_wheel_down
+from src.Curses.util import mouse_wheel_up
+from src.Curses.util import truncate
+
+if TYPE_CHECKING:
+    from src.Curses.util import Attr
 
 
 class PagerHighlight(NamedTuple):
-    hl_map: dict[int, list[int]]
+    hl: dict[int, list[int]]
     nmatches: int
     span: int
-
-
-class PagerStatus(NamedTuple):
-    message: str
-    expire: bool
 
 
 class Pager:
     def __init__(self,
             win: curses._CursesWindow,
-            contents: str, *,
-            hscroll_const: float = 0.67
+            buf: list[tuple[str, list[Attr]]]
     ) -> None:
-        self._buffer = Color.parse_ansi_str(contents)
-        self._height = len(self._buffer)
-        self._width = max(sum(map(lambda x: len(x[0]), line)) for line in self._buffer)
-        self._line = self._col = 0
-        self._hl: PagerHighlight | None = None
-        self._status: PagerStatus | None = None
-
         self.win = win
-        self.hscroll_const = hscroll_const
+        self.margin_bot = 0
+        self.hl: PagerHighlight | None = None
+        self._buf = buf
+        self._line = 0
 
     @property
-    def _hscroll_value(self) -> int:
-        return int(self.hscroll_const * env.COLS)
+    def page_height(self) -> int:
+        r = curses.LINES - 2*BORDER_PAD - self.margin_bot
+        return r if r > 0 else 0
 
     def _vscroll_end(self) -> int:
-        r = self._height - env.LINES
+        r = len(self._buf) - self.page_height
         return r if r > 0 else 0
 
-    def _hscroll_end(self) -> int:
-        r = self._width - env.COLS
-        return r if r > 0 else 0
+    def adjust_scroll_past_eof(self) -> None:
+        end_of_scroll = self._vscroll_end()
+        if self._line > end_of_scroll:
+            self._line = end_of_scroll
 
-    def _draw_hl(self, hl: PagerHighlight) -> None:
-        win = self.win
-        hl_attr = Color.heed | curses.A_REVERSE | curses.A_BOLD
-
-        for line_i in filter(
-            lambda x: x in hl.hl_map, range(self._line, self._line + env.LINES - 1)
-        ):
-            y = line_i - self._line
-            for x in hl.hl_map[line_i]:
-                x_with_offset = x - self._col
-                if x_with_offset < 0:
-                    # x_with_offset < 0 can be true only if self._col > 0
-                    # |re  <= highlight even if off-screen
-                    # /more
-                    partial = x_with_offset + hl.span
-                    if partial > 0:
-                        win.chgat(y, 0, partial, hl_attr)
-                else:
-                    try:
-                        win.chgat(y, x_with_offset, hl.span, hl_attr)
-                    except curses.error:  # window too small
-                        pass
-
-    def _draw_scroll_hint(self) -> None:
-        loc = f'{self._line},{self._col}'
-        if not self._line:
-            t = f'{loc} <TOP>'
-        elif self._line >= self._vscroll_end():
-            t = f'{loc} <END>'
+    def scroll_hint(self) -> str:
+        if self._line >= self._vscroll_end():
+            if self._line <= 0:
+                return '<ALL>'
+            else:
+                return '<END>'
+        elif self._line <= 0:
+            return '<TOP>'
         else:
-            perc = round((self._line + env.LINES) / len(self._buffer) * 100)
-            t = f'{loc}  {perc}% '
-
-        r = truncate_if_needed(t, env.COLS, fromleft=True)
-        if r is not None:
-            self.win.insstr(env.LINES - 1, env.COLS - len(r), r)
+            return f' {(self._line + self.page_height) / len(self._buf):.0%} '
 
     def draw(self) -> None:
-        if env.COLS < 2:
+        if curses.COLS < CURSES_COLS_MIN_VALUE:
             return
 
         win = self.win
-        win.erase()
+        width = curses.COLS - 2*BORDER_PAD
 
-        buffer_slice = self._buffer[self._line:self._line + env.LINES - 1]
-        if self._col:
-            for y, line in enumerate(buffer_slice):
-                # TODO: A cleaner way to draw with the col offset?
-                x = 0
-                void = self._col
-                try:
-                    for text, attr in line:
-                        for ch in text:
-                            if void:
-                                void -= 1
-                            else:
-                                win.addch(y, x, ch, attr)
-                                x += 1
-                except curses.error:  # window too small.
-                    pass
-        else:
-            for y, line in enumerate(buffer_slice):
-                for text, attr in reversed(line):
-                    win.insstr(y, 0, text, attr)
+        hl_attr = Color.heed | HIGHLIGHT
+        for y, line_i in enumerate(range(self._line, self._line + self.page_height), BORDER_PAD):
+            try:
+                line, attrs = self._buf[line_i]
+            except IndexError:
+                win.addch(y, 1, '~')
+                continue
 
-        if len(buffer_slice) < env.LINES - 1:
-            for y in range(len(buffer_slice), env.LINES - 1):
-                win.addch(y, 0, '~')
+            text = truncate(line, width)
+            if text is None:
+                return
 
-        if self._hl is not None:
-            self._draw_hl(self._hl)
+            win.addstr(y, BORDER_PAD, text)
+            for attr_i, span, attr in attrs:
+                if BORDER_PAD + attr_i + span > width:
+                    span = width - attr_i
+                    if span <= 0:
+                        break
+                win.chgat(y, BORDER_PAD + attr_i, span, attr)
 
-        self._draw_scroll_hint()
+            if (self.hl is None) or (line_i not in self.hl.hl):
+                continue
 
-        if self._status is not None:
-            s = truncate_if_needed(self._status.message, env.COLS, fromleft=True)
-            if s is not None:
-                try:
-                    self.win.addstr(env.LINES - 1, 0, s, curses.A_REVERSE)
-                except curses.error:  # bottom-right corner write
-                    pass
-                if self._status.expire:
-                    self._status = None
-
-        win.noutrefresh()
+            span = self.hl.span
+            for attr_i in self.hl.hl[line_i]:
+                if BORDER_PAD + attr_i + span > width:
+                    span = width - attr_i
+                    if span <= 0:
+                        break
+                win.chgat(y, BORDER_PAD + attr_i, span, hl_attr)
 
     def resize(self) -> None:
-        terminal_resize()
+        self.adjust_scroll_past_eof()
 
-        vbound = self._vscroll_end()
-        if self._line > vbound:
-            self._line = vbound
+    def move_down(self, n: int = 1) -> None:
+        if self._line < self._vscroll_end():
+            self._line += n
+            self.adjust_scroll_past_eof()
 
-        hbound = self._hscroll_end()
-        if self._col > hbound:
-            self._col = hbound
-
-        self.win.clearok(True)
-
-    def move_down(self, n: int = 2) -> None:
-        self._line += n
-        bound = self._vscroll_end()
-        if self._line > bound:
-            self._line = bound
-
-    def move_up(self, n: int = 2) -> None:
+    def move_up(self, n: int = 1) -> None:
         self._line -= n
         if self._line < 0:
             self._line = 0
-
-    def move_right(self, n: int | None = None) -> None:
-        self._col += n or self._hscroll_value
-        bound = self._hscroll_end()
-        if self._col > bound:
-            self._col = bound
-
-    def move_left(self, n: int | None = None) -> None:
-        self._col -= n or self._hscroll_value
-        if self._col < 0:
-            self._col = 0
 
     def go_bottom(self) -> None:
         self._line = self._vscroll_end()
@@ -176,23 +118,22 @@ class Pager:
         self._line = 0
 
     def page_down(self) -> None:
-        self.move_down(env.LINES - 2)
+        self.move_down(curses.LINES - 2)
 
     def page_up(self) -> None:
-        self.move_up(env.LINES - 2)
+        self.move_up(curses.LINES - 2)
 
-    def _get_highlights(self, s: str) -> PagerHighlight | None:
+    def hlsearch(self, s: str) -> int:
         against_lowercase = s.islower()
+
         hl_span = len(s)
 
-        result = {}
+        hlmap = {}
         nmatches = 0
-        for i, line in enumerate(self._buffer):
-            text = ''.join(x[0] for x in line)
+        for i, (text, _) in enumerate(self._buf):
             if against_lowercase:
                 text = text.lower()
-            # TODO: Maybe there is a more efficient way to get indices
-            #       of every occurrence of a substring?
+
             indices = []
             x = text.find(s)
             while ~x:
@@ -201,75 +142,74 @@ class Pager:
                 x = text.find(s, x + hl_span)
 
             if indices:
-                result[i] = indices
+                hlmap[i] = indices
 
-        if not nmatches:
-            return None
-
-        return PagerHighlight(result, nmatches, hl_span)
-
-    def hl_init(self, s: str) -> None:
-        self._hl = self._get_highlights(s)
-        if self._hl is None:
-            self._status = PagerStatus(f'PATTERN NOT FOUND: {s}', expire=True)
+        if nmatches:
+            self.hl = PagerHighlight(hlmap, nmatches, hl_span)
         else:
-            self._line = next(iter(self._hl.hl_map))
-            self._status = PagerStatus(f'MATCHES: {self._hl.nmatches}', expire=False)
+            self.hl = None
 
-    def hl_next(self, hl: PagerHighlight) -> None:
-        for line_i in hl.hl_map:
-            if line_i > self._line:
-                self._line = line_i
-                self._col = 0
-                return
-
-    def hl_prev(self, hl: PagerHighlight) -> None:
-        for line_i in reversed(hl.hl_map):
-            if line_i < self._line:
-                self._line = line_i
-                self._col = 0
-                return
+        return nmatches
 
     def hl_clear(self) -> None:
-        self._hl = self._status = None
+        self.hl = None
 
-    ACTIONS: dict[bytes, Callable[[Pager], None]] = {
-        b'KEY_RESIZE': resize, b'^L': resize,
+    def hl_next(self) -> None:
+        if self.hl is None:
+            return
+        for line_i in self.hl.hl:
+            if line_i > self._line:
+                self._line = line_i
+                return
+
+    def hl_prev(self) -> None:
+        if self.hl is None:
+            return
+        for line_i in reversed(self.hl.hl):
+            if line_i < self._line:
+                self._line = line_i
+                return
+
+    def is_hl_in_view(self) -> bool:
+        if self.hl is None:
+            return False
+        for i in range(self._line, self._line + self.page_height):
+            if i in self.hl.hl:
+                return True
+
+        return False
+
+    ACTIONS: Mapping[bytes, Callable[[Pager], None]] = {
         b'j': move_down,  b'^N': move_down, b'KEY_DOWN': move_down,
         b'k': move_up,    b'^P': move_up,   b'KEY_UP': move_up,
-        b'l': move_right, b'KEY_RIGHT': move_right,
-        b'h': move_left,  b'KEY_LEFT': move_left,
         b'G': go_bottom,  b'KEY_END': go_bottom,
         b'g': go_top,     b'KEY_HOME': go_top,
         b'KEY_NPAGE': page_down, b'KEY_SNEXT': page_down,
         b'KEY_PPAGE': page_up,   b'KEY_SPREVIOUS': page_up,
+        b'n': hl_next,
+        b'N': hl_prev,
+        b'^J': hl_clear, b'^M': hl_clear,
     }
+
+    def dispatch(self, key: bytes) -> bool:
+        if key in self.ACTIONS:
+            self.ACTIONS[key](self)
+            return True
+
+        return False
 
     def run(self) -> None:
         while True:
             self.draw()
-            curses.doupdate()
 
-            c = curses.keyname(get_key(self.win))
+            c = curses.keyname(self.win.getch())
             if c in (b'q', b'Q', b'^X'):
                 return
             elif c in Pager.ACTIONS:
                 Pager.ACTIONS[c](self)
             elif c == b'KEY_MOUSE':
                 _, x, y, _, bstate = curses.getmouse()
-                if bstate & curses.BUTTON4_PRESSED:
-                    self.move_up()
-                elif bstate & BUTTON5_PRESSED:
-                    self.move_down()
-            elif c == b'/':
-                typed = Prompt(self, self.win, '/').run()
-                if typed is not None and typed:
-                    self.hl_init(typed)
-            elif self._hl is not None:
-                if c == b'n':
-                    self.hl_next(self._hl)
-                elif c == b'N':
-                    self.hl_prev(self._hl)
-                elif c in (b'^J', b'^M'):
-                    self.hl_clear()
-
+                if mouse_wheel_up(bstate):
+                    self.move_up(3)
+                elif mouse_wheel_down(bstate):
+                    self.move_down(3)

@@ -1,6 +1,6 @@
 import pytest
 
-from src.Dictionaries.audio_dictionaries import diki_audio
+from src.Dictionaries.diki import diki_audio
 
 # British English pronunciation
 gb = 'https://www.diki.pl/images-common/en/mp3/'

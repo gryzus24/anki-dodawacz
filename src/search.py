@@ -1,81 +1,169 @@
 from __future__ import annotations
 
-import functools
-from itertools import repeat
-from typing import Sequence, NamedTuple, TYPE_CHECKING
+import atexit
+import os
+import shelve
+import threading
+from typing import Callable
+from typing import Dict
+from typing import Mapping
+from typing import NamedTuple
+from typing import TYPE_CHECKING
+from typing import Union
 
-import src.ffmpeg_interface as ffmpeg
-from src.Dictionaries.ahdictionary import ask_ahdictionary
-from src.Dictionaries.dictionary_base import Dictionary
-from src.Dictionaries.dictionary_base import DictionaryError
-from src.Dictionaries.dictionary_base import filter_dictionary
+from src.data import config
+from src.data import DATA_DIR
+from src.data import dictkey_t
+from src.Dictionaries.ahd import ask_ahd
+from src.Dictionaries.base import Dictionary
+from src.Dictionaries.base import DictionaryError
+from src.Dictionaries.base import MAGIC
+from src.Dictionaries.collins import ask_collins
 from src.Dictionaries.farlex import ask_farlex
 from src.Dictionaries.wordnet import ask_wordnet
-from src.colors import Color
-from src.data import config
 
 if TYPE_CHECKING:
-    from src.proto import WriterInterface
+    from src.Curses.proto import StatusProto
 
+QUERY_SEPARATOR = ','
 
-DICT_FLAG_TO_QUERY_KEY = {
-    'ahd': 'ahd',
-    'i': 'farlex', 'farlex': 'farlex',
-    'wnet': 'wordnet', 'wordnet': 'wordnet',
+DICT_KEY_ALIASES: Mapping[str, dictkey_t] = {
+    'ahd':     'ahd',
+    'col':     'collins',
+    'collins': 'collins',
+    'i':       'farlex',
+    'farlex':  'farlex',
+    'wnet':    'wordnet',
+    'wordnet': 'wordnet',
 }
+
 # Every dictionary has its individual key to avoid cluttering cache
 # with identical dictionaries that were called with the same query
 # but different "dictionary flag", which acts as nothing more but
 # an alias.
-DICTIONARY_LOOKUP = {
-    'ahd': ask_ahdictionary,
+DICTIONARY_LOOKUP: Mapping[dictkey_t, Callable[[str], Dictionary]] = {
+    'ahd': ask_ahd,
+    'collins': ask_collins,
     'farlex': ask_farlex,
     'wordnet': ask_wordnet,
 }
-@functools.lru_cache(maxsize=None)
-def query_dictionary(key: str, query: str) -> Dictionary:
-    # Lookup might raise a DictionaryError or a ConnectionError.
-    # Only successful queries will be cached.
-    return DICTIONARY_LOOKUP[key](query)
+
+db_t = Union[shelve.DbfilenameShelf[Dictionary], Dict[str, Dictionary]]
 
 
-def get_dictionaries(
-        writer: WriterInterface, query: str, flags: Sequence[str] | None = None
-) -> list[Dictionary] | None:
-    if flags is None or not flags:
-        flags = [config['-dict']]
+class _Cache:
+    def __init__(self) -> None:
+        self._path = os.path.join(DATA_DIR, f'dictionary_cache.{MAGIC}')
+        self._db: db_t | None = None
 
-    # Ideally `none_keys` would be static and kept throughout searches like
-    # "phrase1, phrase1, phrase1", but in normal, non-malicious (źdź,źdź,źdź...),
-    # usage it is never needed, because nobody really queries the same thing
-    # multiple times that is also not in the dictionary.
-    none_keys = set()
-    result = []
-    for flag in flags:
-        key = DICT_FLAG_TO_QUERY_KEY[flag]
-        if key not in none_keys:
-            try:
-                result.append(query_dictionary(key, query))
-            except DictionaryError as e:
-                none_keys.add(key)
-                writer.writeln(str(e))
-            except ConnectionError as e:
-                writer.writeln(str(e))
-                return None
+    def _open_shelf(self) -> shelve.DbfilenameShelf[Dictionary] | None:
+        try:
+            # We use features from the 4th protocol at max.
+            return shelve.DbfilenameShelf(self._path, protocol=4)
+        except OSError:
+            return None
 
-    if result:
-        return result
-    if config['-dict2'] == '-':
-        return None
-    fallback_key = DICT_FLAG_TO_QUERY_KEY[config['-dict2']]
-    if fallback_key in none_keys:
-        return None
+    def _save(self) -> None:
+        if self._db is None:
+            return
+        if isinstance(self._db, shelve.DbfilenameShelf):
+            self._db.close()
+        elif config['cachefile']:
+            dbfile = self._open_shelf()
+            if dbfile is not None:
+                for key, dictionary in self._db.items():
+                    dbfile[key] = dictionary
+                dbfile.close()
 
-    writer.writeln(f'{Color.heed}Querying the fallback dictionary...')
+    @property
+    def db(self) -> tuple[db_t, bool]:
+        err = False
+        if self._db is None:
+            if config['cachefile']:
+                dbfile = self._open_shelf()
+                if dbfile is None:
+                    err = True
+                    self._db = {}
+                else:
+                    self._db = dbfile
+            else:
+                self._db = {}
+            atexit.register(self._save)
+        elif isinstance(self._db, dict) and config['cachefile']:
+            dbfile = self._open_shelf()
+            if dbfile is None:
+                err = True
+            else:
+                for key, dictionary in self._db.items():
+                    dbfile[key] = dictionary
+                self._db = dbfile
+
+        return self._db, err
+
+
+_cache = _Cache()
+def _query(key: dictkey_t, query: str, db: db_t) -> Dictionary:
     try:
-        result.append(query_dictionary(fallback_key, query))
+        return db[key + query]
+    except KeyError:
+        # Lookup might raise a DictionaryError or a ConnectionError.
+        # Invalid results will not be cached.
+        result = DICTIONARY_LOOKUP[key](query)
+        db[key + query] = result
+        return result
+
+
+def _qthread(
+        key: dictkey_t,
+        query: str,
+        keyid: int,
+        success: dict[int, Dictionary],
+        error: dict[int, str],
+        db: db_t
+) -> None:
+    try:
+        success[keyid] = _query(key, query, db)
     except (DictionaryError, ConnectionError) as e:
-        writer.writeln(str(e))
+        error[keyid] = str(e)
+
+
+def perror_threaded_query(
+        status: StatusProto,
+        query: str,
+        keys: list[dictkey_t],
+        db: db_t
+) -> list[Dictionary] | None:
+    success: dict[int, Dictionary] = {}
+    error: dict[int, str] = {}
+    threads = []
+
+    for keyid, key in enumerate(keys):
+        try:
+            success[keyid] = db[key + query]
+        except KeyError:
+            # I hope it's ok to make them daemonic. It simplifies the handling
+            # of SIGINT, but try-finally blocks don't run inside of urllib3.
+            t = threading.Thread(
+                target=_qthread,
+                args=(key, query, keyid, success, error, db),
+                daemon=True
+            )
+            t.start()
+            threads.append(t)
+
+    for t in threads:
+        t.join()
+
+    result = []
+    for keyid, _ in enumerate(keys):
+        if keyid in success:
+            result.append(success[keyid])
+        elif keyid in error:
+            status.error(error[keyid])
+        else:
+            raise AssertionError('unreachable')
+
+    if not result:
         return None
 
     return result
@@ -83,111 +171,121 @@ def get_dictionaries(
 
 class Query(NamedTuple):
     query:       str
-    sentence:    str
-    dict_flags:  list[str]
+    dict_flags:  list[dictkey_t]
     query_flags: list[str]
-    record:      bool
 
 
-class QuerySettings:
-    __slots__ = 'queries', 'user_sentence', 'recording_filename'
-
-    def __init__(self, queries: list[Query], user_sentence: str, recording_filename: str) -> None:
-        self.queries = queries
-        self.user_sentence = user_sentence
-        self.recording_filename = recording_filename
-
-    def __repr__(self) -> str:
-        return (
-            f'{type(self).__name__}('
-            f'queries={self.queries!r}, '
-            f'user_sentence={self.user_sentence!r}, '
-            f'recording_filename={self.recording_filename!r})'
-        )
-
-
-def parse_query(full_query: str) -> list[Query] | None:
-    separators = ',;'
-    chars_to_strip = ' ' + separators
-
-    full_query = full_query.strip(chars_to_strip)
-    if not full_query:
+def perror_query(
+        status: StatusProto,
+        query: str,
+        key: dictkey_t,
+        db: db_t
+) -> list[Dictionary] | None:
+    try:
+        return [_query(key, query, db)]
+    except (DictionaryError, ConnectionError) as e:
+        status.error(str(e))
         return None
 
+
+def perror_query_with_fallback(
+        status: StatusProto,
+        query: str,
+        key: dictkey_t,
+        fallback_key: dictkey_t,
+        db: db_t
+) -> list[Dictionary] | None:
+    result = perror_query(status, query, key, db)
+    if result is None:
+        result = perror_query(status, query, fallback_key, db)
+
+    return result
+
+
+def parse(s: str) -> list[Query] | None:
+    to_strip = QUERY_SEPARATOR + ' '
+
+    s = s.strip(to_strip)
+    if not s:
+        return None
+    s = ' '.join(s.split())
+
     result = []
-    for field in max(map(str.split, repeat(full_query), separators), key=len):
-        field = field.strip(chars_to_strip)
+    for field in s.split(QUERY_SEPARATOR):
+        field = field.strip(to_strip)
         if not field:
             continue
 
         query, *flags = field.split(' -')
-        emph_start = query.find('<')
-        emph_stop = query.rfind('>')
-        if ~emph_start and ~emph_stop and emph_start < emph_stop:
-            sentence = (
-                    query[:emph_start]
-                    + '{{' + query[emph_start + 1:emph_stop] + '}}'
-                    + query[emph_stop + 1:]
-            )
-            query = query[emph_start + 1:emph_stop]
-        else:
-            sentence = ''
 
-        dict_flags = []
+        dict_flags: list[dictkey_t] = []
         query_flags = []
-        record = False
         for flag in flags:
             flag = flag.strip(' -')
             if not flag:
                 continue
 
-            if flag in {'rec', 'record'}:
-                record = True
-            elif flag in DICT_FLAG_TO_QUERY_KEY:
-                dict_flags.append(flag)
-            elif flag in {'c', 'compare'}:
-                d1, d2 = config['-dict'], config['-dict2']
-                if d1 in DICT_FLAG_TO_QUERY_KEY:
-                    dict_flags.append(d1)
-                if d2 in DICT_FLAG_TO_QUERY_KEY:
-                    dict_flags.append(d2)
+            if flag in DICT_KEY_ALIASES:
+                dict_flags.append(DICT_KEY_ALIASES[flag])
+            elif flag in ('c', 'compare'):
+                dict_flags.append(config['primary'])
+
+                # `secondary` might be set to '-'. Do the membership check.
+                if config['secondary'] in DICTIONARY_LOOKUP:
+                    dict_flags.append(config['secondary'])  # type: ignore[arg-type]
+            elif flag == 'all':
+                dict_flags.extend(DICTIONARY_LOOKUP)
             else:
                 query_flags.append(flag)
 
-        result.append(
-            Query(query.strip(), sentence, dict_flags, query_flags, record)
-        )
+        result.append(Query(query, list(dict.fromkeys(dict_flags)), query_flags))
 
     return result
 
 
-def search_dictionaries(writer: WriterInterface, s: str) -> tuple[list[Dictionary], QuerySettings] | None:
-    parsed = parse_query(s)
-    if parsed is None:
-        return None
+def search(
+        status: StatusProto,
+        queries: list[Query]
+) -> list[list[Dictionary] | None]:
+    # TODO: Use threads for multiple queries like "a -c, b, c" etc.
+    #       We can do this by turning `perror_threaded_query()` into a
+    #       generator that yields just before `Thread.join()`, we can then
+    #       collect the return values of these generators here. Keep in mind
+    #       that we want to minimize the number of requests and handle
+    #       duplicate queries (or disallow them) so that we can avoid the race
+    #       condition when accessing the `_cache` in parallel.
 
-    dictionaries: list[Dictionary] = []
-    recorded = False
-    user_sentence = recording_filename = ''
-    valid_queries = []
-    for query in parsed:
-        if query.sentence and not user_sentence:
-            user_sentence = query.sentence
-        if query.record and not recorded:
-            recording_filename = ffmpeg.capture_audio(query.query)
-            recorded = True
+    db, err = _cache.db
+    if err:
+        status.error(
+            'Cannot open cache file:',
+            'another instance of the program is using the cache'
+        )
+        status.attention('- you can switch to the other instance or')
+        status.attention('- close it and continue using this one, alternatively')
+        status.attention('- disable the \'cachefile\' option in the F2 Config')
 
-        dicts = get_dictionaries(writer, query.query, query.dict_flags)
-        if dicts is not None:
-            valid_queries.append(query)
-            if query.query_flags:
-                dictionaries.extend(
-                    map(filter_dictionary, dicts, repeat(query.query_flags))
-                )
+    result = []
+    for query, flags, _ in queries:
+        if len(flags) == 0:
+            if config['secondary'] == '-':
+                result.append(perror_query(status, query, config['primary'], db))
             else:
-                dictionaries.extend(dicts)
+                cached = []
+                for key in DICTIONARY_LOOKUP:
+                    try:
+                        cached.append(db[key + query])
+                    except KeyError:
+                        continue
 
-    if not dictionaries:
-        return None
+                result.append(
+                    cached or perror_query_with_fallback(
+                        status, query, config['primary'], config['secondary'], db
+                    )
+                )
+        elif len(flags) == 1:
+            result.append(perror_query(status, query, flags.pop(), db))
+        else:
+            result.append(perror_threaded_query(status, query, flags, db))
 
-    return dictionaries, QuerySettings(valid_queries, user_sentence, recording_filename)
+    return result

@@ -1,12 +1,24 @@
 from __future__ import annotations
 
 from itertools import filterfalse
-from typing import Any, Callable, Iterable, TypeVar
+from typing import Any
+from typing import Callable
+from typing import Iterable
+from typing import TypeVar
 
-from src.Dictionaries.dictionary_base import Dictionary, DictionaryError
-from src.Dictionaries.utils import request_soup
-from src.colors import Color, R
 from src.data import config
+from src.Dictionaries.base import AUDIO
+from src.Dictionaries.base import DEF
+from src.Dictionaries.base import Dictionary
+from src.Dictionaries.base import DictionaryError
+from src.Dictionaries.base import ETYM
+from src.Dictionaries.base import HEADER
+from src.Dictionaries.base import LABEL
+from src.Dictionaries.base import NOTE
+from src.Dictionaries.base import PHRASE
+from src.Dictionaries.base import POS
+from src.Dictionaries.base import SYN
+from src.Dictionaries.util import request_soup
 
 AHD_IPA_translation = str.maketrans({
     'ă': 'æ',   'ā': 'eɪ',  'ä': 'ɑː',
@@ -113,7 +125,7 @@ def _get_phrase_inflections(content: list[Any]) -> str:
     return ' * '.join(result)
 
 
-def _get_def_and_exsen(s: str) -> tuple[str, str]:
+def _get_def_and_exsen(s: str) -> tuple[str, list[str]]:
     _def, _, _exsen = s.partition(':')
     _def, _, _ = _def.partition('See Usage Note')
     _def, _, _ = _def.partition('See Table')
@@ -124,9 +136,9 @@ def _get_def_and_exsen(s: str) -> tuple[str, str]:
     _def += f' {sep.strip()}{tail}'.rstrip()
     _exsen = _exsen.strip()
     if _exsen:
-        _exsen = '<br>'.join(f"‘{x.strip()}’" for x in _exsen.split(';'))
-
-    return _def, _exsen
+        return _def, [f"‘{x.strip()}’" for x in _exsen.split(';')]
+    else:
+        return _def, []
 
 
 T = TypeVar('T')
@@ -164,24 +176,20 @@ def _shorten_etymology(_input: str) -> str:
 #
 # American Heritage Dictionary
 ##
-def ask_ahdictionary(query: str) -> Dictionary:
+def ask_ahd(query: str) -> Dictionary:
     query = query.strip(' \'";')
     if not query:
-        raise DictionaryError(f'{Color.err}Invalid query')
+        raise DictionaryError(f'Invalid query {query!r}')
 
     soup = request_soup('https://www.ahdictionary.com/word/search.html', {'q': query})
 
     try:
-        if soup.find('div', {'id': 'results'}).text == 'No word definition found':
-            raise DictionaryError(
-                f'{Color.err}Could not find {R}"{query}"{Color.err} in AH Dictionary'
-            )
+        if soup.find('div', {'id': 'results'}).text == 'No word definition found':  # type: ignore[union-attr]
+            raise DictionaryError(f'AHD: {query!r} not found')
     except AttributeError:
-        raise DictionaryError(
-            f'{Color.err}ahdictionary.com might be down:\n{R}{soup.prettify()}'
-        )
+        raise DictionaryError('AHD: ahdictionary.com might be down')
 
-    ahd = Dictionary(name='ahd')
+    ahd = Dictionary()
 
     before_phrase = True
     for td in soup.find_all('td'):
@@ -196,25 +204,25 @@ def ask_ahdictionary(query: str) -> Dictionary:
         header = header.replace('(', ' (').replace(')', ') ')
         phrase, phon_spell = _extract_phrase_and_phonetic_spelling(header)
 
-        if config['-toipa']:
+        if config['toipa']:
             phon_spell = _translate_ahd_to_ipa(phon_spell, th)
         else:
             phon_spell = _fix_stress_and_remove_private_symbols(phon_spell)
 
         if before_phrase:
             before_phrase = False
-            ahd.add('HEADER', 'AH Dictionary')
+            ahd.add(HEADER('AH Dictionary'))
             if phrase.lower() != query.lower():
-                ahd.add('NOTE', 'Showing results for:')
+                ahd.add(NOTE('Showing results for:'))
         else:
-            ahd.add('HEADER', '')
+            ahd.add(HEADER(''))
 
-        ahd.add('PHRASE', phrase, phon_spell)
+        ahd.add(PHRASE(phrase, phon_spell))
 
         # Gather audio urls
         audio_url = td.find('a', {'target': '_blank'})
         if audio_url is not None:
-            ahd.add('AUDIO', 'https://www.ahdictionary.com' + audio_url['href'].strip())
+            ahd.add(AUDIO('https://www.ahdictionary.com' + audio_url['href'].strip()))
 
         for labeled_block in td.find_all('div', class_='pseg', recursive=False):
             # Gather part of speech labels
@@ -225,7 +233,7 @@ def ask_ahdictionary(query: str) -> Dictionary:
             )
             # Gather phrase tense inflections
             inflections = _get_phrase_inflections(labeled_block.contents[1:])
-            ahd.add('LABEL', labels, inflections)
+            ahd.add(LABEL(labels, inflections))
 
             # Add definitions and labels
             for def_block in labeled_block.find_all(
@@ -239,7 +247,7 @@ def ask_ahdictionary(query: str) -> Dictionary:
                     label_tag = def_block.find('i', recursive=False)
                     def_label = '' if label_tag is None else label_tag.text.strip()
 
-                def_type = 'DEF'
+                is_subdef = False
                 for subdef in sd_tags:
                     tag_text = subdef.text.strip()
                     # 6 DEF of "mid" is a false positive here.
@@ -267,14 +275,14 @@ def ask_ahdictionary(query: str) -> Dictionary:
 
                     def_label = def_label.replace(f'{phrase}s ', f'{phrase}s ~ ')
 
-                    ahd.add(def_type, *_get_def_and_exsen(tag_text), def_label.strip())
+                    ahd.add(DEF(*_get_def_and_exsen(tag_text), def_label.strip(), is_subdef))
 
                     # exhausted
-                    def_type = 'SUBDEF'
+                    is_subdef = True
                     def_label = ''
 
         # Add parts of speech
-        td_pos = []
+        pos_pairs: list[tuple[str, str]] = []
         for runseg in td.find_all('div', class_='runseg', recursive=False):
             # removing ',' makes parts of speech with multiple spelling variants get
             # their phonetic spelling correctly detected
@@ -283,53 +291,53 @@ def ask_ahdictionary(query: str) -> Dictionary:
 
             pos = _fix_stress_and_remove_private_symbols(pos)
 
-            if config['-toipa']:
+            if config['toipa']:
                 # this is very general, I have no idea how to differentiate these correctly
                 th = 'ð' if pos.startswith('th') else 'θ'
                 phon_spell = _translate_ahd_to_ipa(phon_spell, th)
             else:
                 phon_spell = _fix_stress_and_remove_private_symbols(phon_spell)
 
-            td_pos.append(f'{pos}|{phon_spell}')
-        if td_pos:
-            ahd.add('POS', *td_pos)
+            pos_pairs.append((pos, phon_spell))
+        if pos_pairs:
+            ahd.add(POS(pos_pairs))
 
         # Add etymologies
         etymology = td.find('div', class_='etyseg', recursive=False)
         if etymology is not None:
             etym = etymology.text.strip()
-            if config['-shortetyms']:
-                ahd.add('ETYM', _shorten_etymology(etym.strip('[]')))
+            if config['shortetyms']:
+                ahd.add(ETYM(_shorten_etymology(etym.strip('[]'))))
             else:
-                ahd.add('ETYM', etym)
+                ahd.add(ETYM(etym))
 
         # Add idioms
         idioms = td.find_all('div', class_='idmseg', recursive=False)
         if idioms:
-            ahd.add('HEADER', 'Idioms')
+            ahd.add(HEADER('Idioms'))
             for i, idiom_block in enumerate(idioms):
                 b_tags = idiom_block.find_all('b', recursive=False)
                 phrase = ' '.join(filter(None, map(lambda x: x.text.strip(), b_tags)))
                 phrase = '/'.join(map(str.strip, phrase.split('/')))
 
                 if i:
-                    ahd.add('LABEL', '', '')
-                ahd.add('PHRASE', phrase, '')
+                    ahd.add(LABEL('', ''))
+                ahd.add(PHRASE(phrase, ''))
                 for def_block in idiom_block.find_all(
                     'div', class_=('ds-list', 'ds-single'), recursive=False
                 ):
                     sd_tags = def_block.find_all('div', class_='sds-list', recursive=False)
                     if not sd_tags:
                         _, _, tag_text = def_block.text.strip().lstrip('1234567890. ').rpartition('   ')
-                        ahd.add('DEF', *_get_def_and_exsen(tag_text), '')
+                        ahd.add(DEF(*_get_def_and_exsen(tag_text), '', subdef=False))
                     else:
-                        def_type = 'DEF'
+                        is_subdef = False
                         for subdef in sd_tags:
                             _, _, tag_text = subdef.text.strip().partition(' ')
-                            ahd.add(def_type, *_get_def_and_exsen(tag_text), '')
+                            ahd.add(DEF(*_get_def_and_exsen(tag_text), '', is_subdef))
 
                             # exhausted
-                            def_type = 'SUBDEF'
+                            is_subdef = True
 
         # Add synonyms
         ##
@@ -362,12 +370,12 @@ def ask_ahdictionary(query: str) -> Dictionary:
                 if tag_text:
                     other_tags.append(_tag)
 
-        ahd.add('HEADER', 'Synonyms')
+        ahd.add(HEADER('Synonyms'))
         # Let it fail if `other_tags` is empty for now.
         temp_examples = other_tags[0].text.split(';')
         if len(temp_examples) == len(provided_synonyms):
-            _examples = '<br>'.join(f"‘{x.strip()}’" for x in temp_examples)
-            ahd.add('SYN', ', '.join(provided_synonyms), gloss, _examples)
+            _examples = [f"‘{x.strip()}’" for x in temp_examples]
+            ahd.add(SYN(', '.join(provided_synonyms), gloss, _examples))
             continue
 
         # TODO:
@@ -394,7 +402,7 @@ def ask_ahdictionary(query: str) -> Dictionary:
 
             if tag_text.strip(',').lower() in provided_synonyms or force_synonym:
                 if synonyms and (gloss or examples):
-                    ahd.add('SYN', ', '.join(synonyms), gloss, '<br>'.join(examples))
+                    ahd.add(SYN(', '.join(synonyms), gloss, examples))
                     gloss, synonyms, examples = '', [], []
                 synonyms.append(tag_text.strip(',').lower())
                 force_synonym = False
@@ -410,11 +418,11 @@ def ask_ahdictionary(query: str) -> Dictionary:
                             sentence = f"‘{sentence.strip()}’"
                         examples.append(sentence)
                     if synonyms and (gloss or examples):
-                        ahd.add('SYN', ', '.join(synonyms), gloss, '<br>'.join(examples))
+                        ahd.add(SYN(', '.join(synonyms), gloss, examples))
                     gloss, synonyms, examples = '', [word.lower()], []
                 elif word.endswith(','):
                     if synonyms and (gloss or examples):
-                        ahd.add('SYN', ', '.join(synonyms), gloss, '<br>'.join(examples))
+                        ahd.add(SYN(', '.join(synonyms), gloss, examples))
                     gloss, synonyms, examples = '', [tag_text.strip(',').lower()], []
                 else:
                     if tag_text[0].isalpha():
@@ -422,6 +430,6 @@ def ask_ahdictionary(query: str) -> Dictionary:
                     examples.append(tag_text)
 
         if synonyms and (gloss or examples):
-            ahd.add('SYN', ', '.join(synonyms), gloss, '<br>'.join(examples))
+            ahd.add(SYN(', '.join(synonyms), gloss, examples))
 
     return ahd
