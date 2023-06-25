@@ -819,9 +819,9 @@ def curses_main(stdscr: curses._CursesWindow) -> None:
                             screenbuf.status.clear()
                             screenbuf.status.error('No audio for this entry')
             elif mouse_wheel_up(bstate):
-                screenbuf.page.move_up()
+                screenbuf.page.move_up(3)
             elif mouse_wheel_down(bstate):
-                screenbuf.page.move_down()
+                screenbuf.page.move_down(3)
             elif mouse_wheel_click(bstate):
                 pretype = perror_clipboard_or_selection(screenbuf.status)
                 if pretype is not None:

@@ -210,6 +210,6 @@ class Pager:
             elif c == b'KEY_MOUSE':
                 _, x, y, _, bstate = curses.getmouse()
                 if mouse_wheel_up(bstate):
-                    self.move_up()
+                    self.move_up(3)
                 elif mouse_wheel_down(bstate):
-                    self.move_down()
+                    self.move_down(3)
