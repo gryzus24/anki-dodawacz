@@ -51,7 +51,7 @@ def _lookup_prepare(elements: deque[str]) -> defaultdict[str, list[str]]:
 class CompletionMenu:
     def __init__(self,
             win: curses._CursesWindow,
-            entries: deque[str] | None = None,
+            entries: deque[str] | None = None
     ) -> None:
         self.win = win
         self._entries = entries or deque()
@@ -196,7 +196,8 @@ class Prompt:
             prompt: str = '', *,
             pretype: str = '',
             exiting_bspace: bool = True,
-            completion_separator: str | None = None
+            completion_separator: str | None = None,
+            up_arrow_entries: deque[str] | None = None
     ) -> None:
         self.screenbuf = screenbuf
         self.win = screenbuf.win
@@ -205,6 +206,8 @@ class Prompt:
         self.completion_separator = completion_separator
         self._cursor = len(pretype)
         self._entered = pretype
+        self._up_arrow_entries = up_arrow_entries or deque()
+        self._up_arrow_i: int | None = None
 
     def draw(self) -> None:
         if curses.COLS < CURSES_COLS_MIN_VALUE:
@@ -385,8 +388,8 @@ class Prompt:
 
     ACTIONS: Mapping[bytes, Callable[[Prompt], None]] = _A
 
-    COMPLETION_NEXT_KEYS = (b'^I', b'^P', b'KEY_UP')
-    COMPLETION_PREV_KEYS = (b'KEY_BTAB', b'^N', b'KEY_DOWN')
+    COMPLETION_NEXT_KEYS = (b'^I', b'^P')
+    COMPLETION_PREV_KEYS = (b'KEY_BTAB', b'^N')
 
     def _run(self, cmenu: CompletionMenu) -> str | None:
         entered_before_completion = self._entered
@@ -410,6 +413,30 @@ class Prompt:
 
             elif (key := curses.keyname(c)) in Prompt.ACTIONS:
                 Prompt.ACTIONS[key](self)
+                cmenu.complete(self.current_word())
+
+            elif key == b'KEY_UP':
+                if not self._up_arrow_entries:
+                    continue
+                if self._up_arrow_i is None:
+                    self._up_arrow_i = 0
+                elif self._up_arrow_i < len(self._up_arrow_entries) - 1:
+                    self._up_arrow_i += 1
+
+                self.clear_insert(self._up_arrow_entries[self._up_arrow_i])
+                cmenu.complete(self.current_word())
+
+            elif key == b'KEY_DOWN':
+                if not self._up_arrow_entries or self._up_arrow_i is None:
+                    continue
+                if self._up_arrow_i <= 0:
+                    self._up_arrow_i = None
+                    entry = ''
+                else:
+                    self._up_arrow_i -= 1
+                    entry = self._up_arrow_entries[self._up_arrow_i]
+
+                self.clear_insert(entry)
                 cmenu.complete(self.current_word())
 
             elif (

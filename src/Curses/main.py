@@ -16,6 +16,7 @@ import atexit
 import contextlib
 import functools
 import os
+from collections import deque
 from typing import Callable
 from typing import Iterable
 from typing import Iterator
@@ -288,12 +289,24 @@ class QueryHistory:
         self.win = win
         self.path = path
         self._save_func_registered = False
+        self._up_arrow_entries: deque[str] = deque()
 
     @functools.cached_property
     def cmenu(self) -> CompletionMenu:
         return CompletionMenu.from_file(self.win, self.path)
 
-    def add_entry(self, s: str) -> None:
+    @property
+    def up_arrow_entries(self) -> deque[str]:
+        return self._up_arrow_entries
+
+    def add_up_arrow_entry(self, s: str) -> None:
+        try:
+            self._up_arrow_entries.remove(s)
+        except ValueError:
+            pass
+        self._up_arrow_entries.appendleft(s)
+
+    def add_cmenu_entry(self, s: str) -> None:
         if self.cmenu.add_entry(s) and not self._save_func_registered:
             atexit.register(self.cmenu.save_entries, self.path)
             self._save_func_registered = True
@@ -334,15 +347,20 @@ class ScreenBuffer(ScreenBufferProto):
                 self,
                 'Search: ',
                 pretype=pretype,
-                completion_separator=search.QUERY_SEPARATOR
+                completion_separator=search.QUERY_SEPARATOR,
+                up_arrow_entries=self.history.up_arrow_entries
             ).run(self.history.cmenu if config['histshow'] else None)
-        if typed is None or not typed.strip():
+        if typed is None:
+            return
+        typed = typed.strip()
+        if not typed:
             return
 
         queries = search.parse(typed)
         if queries is None:
             return
 
+        self.history.add_up_arrow_entry(typed)
         try:
             results = search.search(StatusEcho(self, self.status), queries)
         except KeyboardInterrupt:
@@ -375,12 +393,12 @@ class ScreenBuffer(ScreenBufferProto):
                             # E.g. q: 'gullib' -> p: 'gullible'.
                             # Adding 'phrase' as it is the correct one.
                             # Even though the incorrect query has been cached :/
-                            self.history.add_entry(phrase)
+                            self.history.add_cmenu_entry(phrase)
                         else:
                             # It is probably a multi-word query.
                             # Adding 'query' as 'phrase' might be surprisingly
                             # long.
-                            self.history.add_entry(query.query)
+                            self.history.add_cmenu_entry(query.query)
                         break
                     elif q.startswith(p):
                         # User probably queried the derived form of a word.
@@ -388,7 +406,7 @@ class ScreenBuffer(ScreenBufferProto):
                         # Adding 'query' as it is the cached one and not really
                         # incorrect. Also, user probably expects it to be saved
                         # in this case.
-                        self.history.add_entry(query.query)
+                        self.history.add_cmenu_entry(query.query)
                         break
                 else:
                     # Here, phrase does not really match the query.
@@ -398,8 +416,8 @@ class ScreenBuffer(ScreenBufferProto):
 
                     # We have no idea what 'phrase' contains, it might contain
                     # commas and they interefere with tab completion.
-                    self.history.add_entry(phrases[0].replace(',', ' '))
-                    self.history.add_entry(query.query)
+                    self.history.add_cmenu_entry(phrases[0].replace(',', ' '))
+                    self.history.add_cmenu_entry(query.query)
 
         if not screens:
             return
