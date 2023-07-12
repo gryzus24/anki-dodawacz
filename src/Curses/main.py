@@ -350,10 +350,7 @@ class ScreenBuffer(ScreenBufferProto):
                 completion_separator=search.QUERY_SEPARATOR,
                 up_arrow_entries=self.history.up_arrow_entries
             ).run(self.history.cmenu if config['histshow'] else None)
-        if typed is None:
-            return
-        typed = typed.strip()
-        if not typed:
+        if typed is None or not (typed := typed.strip()):
             return
 
         queries = search.parse(typed)
@@ -597,11 +594,9 @@ class ScreenBuffer(ScreenBufferProto):
         else:
             with self.extra_margin(not self.bar_margin):
                 typed = Prompt(self, 'Choose deck: ', exiting_bspace=False).run(decks)
-            if typed is None or not typed.strip():
+            if typed is None or not (chosen_deck := typed.strip()):
                 st.error('Cancelled, input lost')
                 return
-
-            chosen_deck = typed.strip()
 
         try:
             collection_paths = anki.collection_media_paths()
@@ -616,11 +611,9 @@ class ScreenBuffer(ScreenBufferProto):
                 typed = Prompt(
                     self, 'Choose collection: ', exiting_bspace=False
                 ).run(collection_paths)
-            if typed is None or not typed.strip():
+            if typed is None or not (chosen_collection_path := typed.strip()):
                 st.error('Cancelled, input lost')
                 return
-
-            chosen_collection_path = typed.strip()
 
         config['note'] = chosen_model
         config['deck'] = chosen_deck
@@ -734,7 +727,7 @@ def ask_yes_no(
         f'{prompt_name} [{"Y/n" if default else "y/N"}]: ',
         exiting_bspace=False
     ).run()
-    if typed is None or not typed.strip():
+    if typed is None or not (typed := typed.strip()):
         return default
 
     return {
@@ -745,7 +738,7 @@ def ask_yes_no(
         'true': True, 'false': False,
         'y':    True, 'n':     False,
         'yes':  True, 'no':    False,
-    }.get(typed.strip().lower(), False)
+    }.get(typed.lower(), False)
 
 
 def perror_recheck_note(status: Status) -> None:
@@ -835,6 +828,7 @@ def curses_main(stdscr: curses._CursesWindow) -> None:
         elif c in (b'a', b'A'):
             if isinstance(screenbuf.page, Screen):
                 perror_play_audio(screenbuf.status, screenbuf.page.selector)
+
         elif c in (b'b', b'B'):
             try:
                 anki.invoke(

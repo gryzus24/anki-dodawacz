@@ -366,10 +366,7 @@ class ConfigMenu(ScreenBufferProto):
                 exiting_bspace=False
             ).run(completions)
 
-        if typed is None:
-            return
-        typed = typed.strip()
-        if not typed:
+        if typed is None or not (typed := typed.strip()):
             return
 
         if option.strict:
