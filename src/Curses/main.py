@@ -285,15 +285,15 @@ _textattr('MISCELLANEOUS', curses.A_BOLD | curses.A_UNDERLINE),
 
 
 class QueryHistory:
-    def __init__(self, win: curses._CursesWindow, path: str) -> None:
+    def __init__(self, win: curses._CursesWindow, hist_path: str) -> None:
         self.win = win
-        self.path = path
-        self._save_func_registered = False
+        self._hist_path = hist_path
+        self._hist_save_func_registered = False
         self._up_arrow_entries: deque[str] = deque()
 
     @functools.cached_property
     def cmenu(self) -> CompletionMenu:
-        return CompletionMenu.from_file(self.win, self.path)
+        return CompletionMenu.from_file(self.win, self._hist_path)
 
     @property
     def up_arrow_entries(self) -> deque[str]:
@@ -307,9 +307,9 @@ class QueryHistory:
         self._up_arrow_entries.appendleft(s)
 
     def add_cmenu_entry(self, s: str) -> None:
-        if self.cmenu.add_entry(s) and not self._save_func_registered:
-            atexit.register(self.cmenu.save_entries, self.path)
-            self._save_func_registered = True
+        if self.cmenu.add_entry(s) and not self._hist_save_func_registered:
+            atexit.register(self.cmenu.save_entries, self._hist_path)
+            self._hist_save_func_registered = True
 
 
 class ScreenBuffer(ScreenBufferProto):
