@@ -902,6 +902,10 @@ def main() -> None:
         curses.noecho()
         curses.mousemask(-1)
         curses.mouseinterval(0)
+        try:
+            curses.set_escdelay(1)  # added in Python 3.9
+        except AttributeError:
+            pass
 
         init_colors()
 
