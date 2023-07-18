@@ -883,6 +883,9 @@ def curses_main(stdscr: curses._CursesWindow) -> None:
             for screen in screenbuf.screens:
                 screen.margin_bot = screenbuf.bar_margin
 
+        elif c == b'^[':  #]
+            screenbuf.status.clear()
+
         elif c in (b'q', b'Q', b'^X'):
             if not screenbuf.page_back():
                 raise KeyboardInterrupt
