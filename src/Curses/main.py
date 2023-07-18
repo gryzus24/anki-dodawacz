@@ -892,6 +892,8 @@ def curses_main(stdscr: curses._CursesWindow) -> None:
 
 
 def main() -> None:
+    os.environ.setdefault('ESCDELAY', '10')
+
     stdscr = curses.initscr()
     try:
         hide_cursor()
@@ -902,10 +904,6 @@ def main() -> None:
         curses.noecho()
         curses.mousemask(-1)
         curses.mouseinterval(0)
-        try:
-            curses.set_escdelay(1)  # added in Python 3.9
-        except AttributeError:
-            pass
 
         init_colors()
 
