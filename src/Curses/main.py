@@ -727,7 +727,9 @@ def ask_yes_no(
         f'{prompt_name} [{"Y/n" if default else "y/N"}]: ',
         exiting_bspace=False
     ).run()
-    if typed is None or not (typed := typed.strip()):
+    if typed is None:
+        return False
+    if not (typed := typed.strip()):
         return default
 
     return {
