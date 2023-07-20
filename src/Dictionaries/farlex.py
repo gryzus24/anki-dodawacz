@@ -6,44 +6,48 @@ from src.Dictionaries.base import DictionaryError
 from src.Dictionaries.base import HEADER
 from src.Dictionaries.base import LABEL
 from src.Dictionaries.base import PHRASE
-from src.Dictionaries.util import request_soup
+from src.Dictionaries.util import ex_quote
+from src.Dictionaries.util import parse_response
+from src.Dictionaries.util import prepare_checks
+from src.Dictionaries.util import try_request
 
 
 def ask_farlex(query: str) -> Dictionary:
-    soup = request_soup('https://idioms.thefreedictionary.com/' + query)
+    soup = parse_response(
+        try_request('https://idioms.thefreedictionary.com/' + query)
+    )
 
-    relevant_content = soup.find('section', {'data-src': 'FarlexIdi'})
-    if relevant_content is None:
+    section_farlex_idi = soup.find('.//section[@data-src="FarlexIdi"]')
+    if section_farlex_idi is None:
         raise DictionaryError(f'Farlex: {query!r} not found')
 
     farlex = Dictionary()
+    check_text, check_tail = prepare_checks('Farlex')
+    lstrip_chars = '1234567890. '
 
-    last_phrase = ''
-    content_blocks = relevant_content.find_all('div', class_=('ds-single', 'ds-list'), recursive=False)  # type: ignore[union-attr]
     farlex.add(HEADER('Farlex Idioms'))
-    for content_block in content_blocks:
-        # Gather idiom phrases
-        idiom_phrase = content_block.find_previous_sibling('h2').text.strip()
-        if last_phrase != idiom_phrase:
-            last_phrase = idiom_phrase
-            farlex.add(PHRASE(idiom_phrase, ''))  # no phonetic spelling
+    for tag in section_farlex_idi.iter('h2', 'div'):
+        if tag.tag == 'h2':
+            farlex.add(PHRASE(check_text(tag), ''))  # no phonetic spelling
+        elif tag.attrib['class'] in ('ds-single', 'ds-list'):
+            i_tag = tag.find('./i')
+            if i_tag is None:
+                label = ''
+                definition = check_text(tag).lstrip(lstrip_chars)
+            elif tag.text is None or not tag.text.lstrip(lstrip_chars):
+                label = check_text(i_tag)
+                definition = check_tail(i_tag)
+            else:
+                label = ''
+                definition = tag.text
+                for i_i_tag in tag.iter('i'):
+                    definition += check_text(i_i_tag) + check_tail(i_i_tag)
 
-        # Gather definitions
-        definition = content_block.find('span', class_='illustration', recursive=False)
-        # definition can be None if there are no examples
-        if definition is None:
-            definition = content_block.text.lstrip('1234567890.').strip()
-        else:
-            definition = definition.previous_element.lstrip('1234567890.').strip()
-
-        # Gather idiom examples
-        found_examples = content_block.find_all('span', class_='illustration', recursive=False)
-        if found_examples:
-            examples = [f'‘{e.text.strip()}’' for e in found_examples]
-        else:
-            examples = []
-
-        farlex.add(DEF(definition, examples, '', subdef=False))
-        farlex.add(LABEL('', ''))
+            examples = [
+                ex_quote(check_text(x))
+                for x in tag.findall('./span[@class="illustration"]')
+            ]
+            farlex.add(DEF(definition, examples, label, subdef=False))
+            farlex.add(LABEL('', ''))  # padding
 
     return farlex
