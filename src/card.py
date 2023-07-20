@@ -156,7 +156,7 @@ def make_card(selection: DictionarySelection) -> Card:
 
 
 def _save_audio(url: str) -> str:
-    audio_bytes = http.urlopen('GET', url).data  # type: ignore[no-untyped-call]
+    audio_bytes = http.urlopen('GET', url).data
 
     mediadir_path = os.path.expanduser(
         AUDIO_DIR if config['mediadir'] == '-' else config['mediadir']

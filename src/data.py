@@ -51,7 +51,7 @@ config_t = TypedDict(
         'c.pos':      str,
         'c.sign':     str,
         'c.success':  str,
-        'c.syn':      str
+        'c.syn':      str,
     }
 )
 
@@ -65,10 +65,18 @@ configkey_t = Literal[
     'audio', 'cachefile', 'deck', 'dupescope', 'duplicates', 'etym',
     'formatdefs', 'hidedef', 'hideexsen', 'hidepreps', 'hides', 'hidesyn',
     'histsave', 'histshow', 'mediadir', 'nohelp', 'note', 'pos', 'primary',
-    'secondary', 'shortetyms', 'syn', 'tags', 'toipa', colorkey_t
+    'secondary', 'shortetyms', 'syn', 'tags', 'toipa', colorkey_t,
 ]
 
 configval_t = Union[bool, str]
+
+class note_t(TypedDict):
+    modelName: str
+    cardName:  str
+    css:       str
+    front:     str
+    back:      str
+    fields:    list[str]
 
 
 def config_save(c: config_t) -> None:

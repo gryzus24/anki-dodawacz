@@ -15,6 +15,7 @@ from src.data import config
 from src.data import DATA_DIR
 from src.data import LINUX
 from src.data import MAC
+from src.data import note_t
 from src.data import ROOT_DIR
 from src.data import WINDOWS
 from src.Dictionaries.util import http
@@ -113,7 +114,7 @@ def invoke(action: INVOKE_ACTIONS, **params: Any) -> Any:
 
     try:
         response = json.loads(
-            http.urlopen(  # type: ignore[no-untyped-call]
+            http.urlopen(
                 'POST',
                 'http://127.0.0.1:8765',
                 retries=False,
@@ -244,21 +245,21 @@ def add_card(card: Card) -> int:
 
 def add_custom_note(note_name: str) -> str:
     with open(os.path.join(ROOT_DIR, note_name)) as f:
-        note_config = json.load(f)
+        note: note_t = json.load(f)
 
     invoke(
         'createModel',
-        modelName=note_config['modelName'],
-        inOrderFields=note_config['fields'],
-        css=note_config['css'],
+        modelName=note['modelName'],
+        inOrderFields=note['fields'],
+        css=note['css'],
         cardTemplates=[{
-            'Name': note_config['cardName'],
-            'Front': note_config['front'],
-            'Back': note_config['back']
+            'Name': note['cardName'],
+            'Front': note['front'],
+            'Back': note['back']
         }]
     )
 
-    return note_config['modelName']
+    return note['modelName']
 
 
 def collection_media_paths() -> list[str]:
