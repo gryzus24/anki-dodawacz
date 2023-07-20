@@ -97,22 +97,24 @@ def parse_response(data: bytes) -> etree._Element:
     return p.close()
 
 
-def prepare_checks(
-        dictionary_name: str
-) -> tuple[Callable[[etree._Element], str], Callable[[etree._Element], str]]:
+def prepare_check_text(dictionary_name: str) -> Callable[[etree._Element], str | NoReturn]:
     def check_text(el: etree._Element) -> str | NoReturn:
         t = el.text
         if t is None:
             raise DictionaryError(f'ERROR: {dictionary_name}: no text: {el.tag!r} {el.attrib}')
         return t
 
+    return check_text
+
+
+def prepare_check_tail(dictionary_name: str) -> Callable[[etree._Element], str | NoReturn]:
     def check_tail(el: etree._Element) -> str | NoReturn:
         t = el.tail
         if t is None:
             raise DictionaryError(f'ERROR: {dictionary_name}: no tail: {el.tag!r} {el.attrib}')
         return t
 
-    return check_text, check_tail
+    return check_tail
 
 
 def ex_quote(s: str) -> str:
