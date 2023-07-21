@@ -1,4 +1,3 @@
 mypy
 pytest
 types-beautifulsoup4
-types-urllib3
