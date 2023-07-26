@@ -11,12 +11,11 @@ from src.Dictionaries.util import prepare_check_text
 from src.Dictionaries.util import try_request
 
 DICTIONARY = 'WordNet'
+DICTIONARY_URL = 'http://wordnetweb.princeton.edu/perl/webwn'
 
 
 def ask_wordnet(query: str) -> Dictionary:
-    soup = parse_response(
-        try_request('http://wordnetweb.princeton.edu/perl/webwn', {'s': query})
-    )
+    soup = parse_response(try_request(DICTIONARY_URL, {'s': query}))
 
     h3_tag = soup.find('.//h3')
     if h3_tag is None:

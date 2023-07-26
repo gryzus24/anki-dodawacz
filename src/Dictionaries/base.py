@@ -1,11 +1,11 @@
 from __future__ import annotations
 
-import sys
 from dataclasses import dataclass
 from itertools import chain
 from typing import Callable
 from typing import Iterable
 from typing import NamedTuple
+from typing import TextIO
 from typing import Union
 
 
@@ -79,15 +79,17 @@ class Dictionary:
     def __init__(self, contents: list[op_t] | None = None) -> None:
         self.contents = contents or []
 
-    def __repr__(self) -> str:
-        rel_def_i = 0
+    def _pretty_repr_to_file(self, file: TextIO) -> None:
+        def_i = 0
         for op in self.contents:
             if isinstance(op, DEF):
-                rel_def_i += 1
-                sys.stdout.write(f'{rel_def_i} {op}\n')
+                def_i += 1
+                file.write(f'{def_i} {op}\n')
             else:
-                sys.stdout.write(f'{len(str(rel_def_i)) * " "} {op}\n')
-        sys.stdout.write('\n')
+                file.write(f'{len(str(def_i)) * " "} {op}\n')
+        file.write('\n')
+
+    def __repr__(self) -> str:
         return f'{type(self).__name__}({self.contents})'
 
     def add(self, op: op_t) -> None:
