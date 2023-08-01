@@ -97,25 +97,33 @@ def parse_response(data: bytes) -> etree._Element:
     return p.close()
 
 
-def prepare_check_text(dictionary_name: str) -> Callable[[etree._Element], str | NoReturn]:
+def prepare_check_text(dictionary_name: str) -> Callable[[etree._Element], str]:
     def check_text(el: etree._Element) -> str | NoReturn:
-        t = el.text
-        if t is None:
-            raise DictionaryError(f'ERROR: {dictionary_name}: no text: {el.tag!r} {el.attrib}')
-        return t
+        text = el.text
+        if text is None:
+            raise DictionaryError(
+                f'ERROR: {dictionary_name}: no text: {el.tag!r} {el.attrib} tail: {el.tail!r}'
+            )
+        return text
 
     return check_text
 
 
-def prepare_check_tail(dictionary_name: str) -> Callable[[etree._Element], str | NoReturn]:
+def prepare_check_tail(dictionary_name: str) -> Callable[[etree._Element], str]:
     def check_tail(el: etree._Element) -> str | NoReturn:
-        t = el.tail
-        if t is None:
-            raise DictionaryError(f'ERROR: {dictionary_name}: no tail: {el.tag!r} {el.attrib}')
-        return t
+        tail = el.tail
+        if tail is None:
+            raise DictionaryError(
+                f'ERROR: {dictionary_name}: no tail: {el.tag!r} {el.attrib} text: {el.text!r}'
+            )
+        return tail
 
     return check_tail
 
 
-def ex_quote(s: str) -> str:
+def all_text(el: etree._Element) -> str:
+    return ''.join(etree.ElementTextIterator(el))
+
+
+def quote_example(s: str) -> str:
     return f'‘{s}’'

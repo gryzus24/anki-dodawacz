@@ -6,20 +6,19 @@ from src.Dictionaries.base import DictionaryError
 from src.Dictionaries.base import HEADER
 from src.Dictionaries.base import LABEL
 from src.Dictionaries.base import PHRASE
-from src.Dictionaries.util import ex_quote
 from src.Dictionaries.util import parse_response
 from src.Dictionaries.util import prepare_check_tail
 from src.Dictionaries.util import prepare_check_text
+from src.Dictionaries.util import quote_example
 from src.Dictionaries.util import try_request
 
 DICTIONARY = 'Farlex'
+DICTIONARY_URL = 'https://idioms.thefreedictionary.com'
 LSTRIP_CHARS = '1234567890. '
 
 
 def ask_farlex(query: str) -> Dictionary:
-    soup = parse_response(
-        try_request('https://idioms.thefreedictionary.com/' + query)
-    )
+    soup = parse_response(try_request(f'{DICTIONARY_URL}/{query}'))
 
     section_farlex_idi = soup.find('.//section[@data-src="FarlexIdi"]')
     if section_farlex_idi is None:
@@ -48,7 +47,7 @@ def ask_farlex(query: str) -> Dictionary:
                     definition += check_text(i_i_tag) + check_tail(i_i_tag)
 
             examples = [
-                ex_quote(check_text(x))
+                quote_example(check_text(x))
                 for x in tag.findall('./span[@class="illustration"]')
             ]
             farlex.add(DEF(definition, examples, label, subdef=False))

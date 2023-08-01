@@ -34,6 +34,7 @@ if os.path.basename(sys.path[0]) == 'testing':
     sys.path[0] = os.path.dirname(sys.path[0])
 
 from src.Dictionaries.ahd import ask_ahd
+from src.Dictionaries.ahd import create_dictionary
 from src.Dictionaries.base import DEF
 from src.Dictionaries.base import DictionaryError
 from src.Dictionaries.base import LABEL
@@ -185,15 +186,15 @@ def run_check(logger: Logger, dictionary: Dictionary, word: str, raport: raport_
                     'WARNING', 'DEF', 'definition', 'case',
                     msg='definition starts with a lowercase letter'
                 )
-            if '  ' in op.definition:
+            if len(op.definition) != len(op.definition.strip()):
                 REP(
                     'WARNING', 'DEF', 'definition', 'spaces',
-                    msg='double spaces in definitions'
+                    msg='unstripped definition'
                 )
-            if '  ' in ' '.join(op.examples):
+            if len(' '.join(op.examples)) != len(' '.join(op.examples).strip()):
                 REP(
                     'WARNING', 'DEF', 'examples', 'spaces',
-                    msg='double spaces in examples'
+                    msg='unstripped examples'
                 )
             if 'See ' in ' '.join(op.examples):
                 REP(
@@ -400,54 +401,95 @@ def load_raport(path: str) -> raport_t:
     return result
 
 
+class DictionaryFilePath:
+    __slots__ = ('path', 'basename', 'html')
+
+    def __init__(self, path: str):
+        self.path = path
+        self.basename = os.path.basename(path)
+        with open(path, 'rb') as f:
+            self.html = f.read()
+
 
 def main(args: argparse.Namespace) -> int:
     logger = Logger(args.loglevel)
-
-    words: Sequence[str] | set[str]
-    words = load_words(logger, args.words)
-
-    cached_words = load_cachefile(args.cachefile)
     raport = load_raport(args.raportfile)
 
-    words -= cached_words
-    if not words:
-        logger.msg(
-            WARN,
-            None,
-            f'{args.words!r} has no words that are not already in {args.cachefile!r}'
-        )
-        if not cached_words:
-            logger.msg(ERROR, None, 'No words to test, exiting...')
-            return 1
+    if os.path.isdir(args.file):
+        logger.msg(WARN, None, 'Loading files...')
+        dictionary_files = [
+            DictionaryFilePath(os.path.join(args.file, x))
+            for x in os.listdir(args.file)
+        ]
+        dictionary_files.sort(key=lambda x: x.html)
+        seen = set()
 
-        logger.msg(
-            WARN,
-            None,
-            f'** Rerunning a sample from {args.cachefile!r} **'
-        )
-        words = cached_words
+        logger.msg(WARN, None, 'Running tests...')
+        try:
+            with open('responses.txt', 'w') as f:
+                for file in dictionary_files:
+                    try:
+                        ahd = create_dictionary(file.html, file.basename)
+                    except DictionaryError as e:
+                        logger.msg(ERROR, file.path, str(e))
+                    else:
+                        if not ahd.contents:
+                            continue
+                        t = tuple(ahd.unique_phrases())
+                        if t in seen:
+                            continue
+                        else:
+                            seen.add(t)
+                            ahd._pretty_repr_to_file(f)
+                            run_check(logger, ahd, file.basename, raport)
+                            f.write('\n')
+        finally:
+            with open(args.raportfile, 'w') as f:
+                json.dump(raport, f, indent=1, ensure_ascii=False)
+    else:
+        words: Sequence[str] | set[str]
+        words = load_words(logger, args.file)
 
-    if args.samplesize < len(words):
-        words = random.sample(tuple(words), args.samplesize)
+        cached_words = load_cachefile(args.cachefile)
 
-    logger.header_alignment = max(map(len, words))
+        words -= cached_words
+        if not words:
+            logger.msg(
+                WARN,
+                None,
+                f'{args.file!r} has no words that are not already in {args.cachefile!r}'
+            )
+            if not cached_words:
+                logger.msg(ERROR, None, 'No words to test, exiting...')
+                return 1
 
-    try:
-        for word in words:
-            try:
-                ahd = ask_ahd(word)
-            except DictionaryError as e:
-                logger.msg(ERROR, word, str(e))
-            else:
-                run_check(logger, ahd, word, raport)
-                cached_words.add(word)
-    finally:
-        with open(args.cachefile, 'w') as f:
-            f.write('\n'.join(sorted(cached_words)))
+            logger.msg(
+                WARN,
+                None,
+                f'** Rerunning a sample from {args.cachefile!r} **'
+            )
+            words = cached_words
 
-        with open(args.raportfile, 'w') as f:
-            json.dump(raport, f, indent=1, ensure_ascii=False)
+        if args.samplesize < len(words):
+            words = random.sample(tuple(words), args.samplesize)
+
+        logger.header_alignment = max(map(len, words))
+
+        try:
+            for word in words:
+                try:
+                    ahd = ask_ahd(word)
+                except DictionaryError as e:
+                    logger.msg(ERROR, word, str(e))
+                else:
+                    run_check(logger, ahd, word, raport)
+                    cached_words.add(word)
+        finally:
+            with open(args.cachefile, 'w') as f:
+                f.write('\n'.join(sorted(cached_words)))
+
+            with open(args.raportfile, 'w') as f:
+                json.dump(raport, f, indent=1, ensure_ascii=False)
 
     return 0
 
@@ -460,8 +502,14 @@ if __name__ == '__main__':
         formatter_class=argparse.RawTextHelpFormatter
     )
     parser.add_argument(
-        'words',
-        help='newline delimited text file or directly iterable JSON'
+        'file',
+        help=textwrap.dedent(
+            """\
+            if <file> is a regular file, it is expected to be a newline
+                delimited text file or a directly iterable JSON file
+            if <file> is a directory, it is expected to be populated with
+                files containing AHD responses as served by the website"""
+        )
     )
     parser.add_argument(
         '--loglevel',
@@ -482,8 +530,8 @@ if __name__ == '__main__':
         default='cache.ahd',
         help=textwrap.dedent(
             """\
-            file where words are appended after having been checked
-            (default: ./cache.ahd)"""
+            file where words from a regular <file> are appended after
+            having been checked (default: ./cache.ahd)"""
         )
     )
     parser.add_argument(
@@ -503,7 +551,7 @@ if __name__ == '__main__':
         default=80,
         help=textwrap.dedent(
             """\
-            size of a random sample of words to test from <words>
+            size of a random sample of words to test from a regular <file>
             (default: 80)"""
         )
     )
