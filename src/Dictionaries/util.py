@@ -71,27 +71,6 @@ def request_soup(
     return BeautifulSoup(r.data.decode(), 'lxml')
 
 
-def _req(
-        url: str, fields: dict[str, str] | None = None, **kw: Any
-) -> str:
-    try:
-        r = http.request_encode_url('GET', url, fields=fields, **kw)
-    except MaxRetryError:
-        raise ConnectionError('connection error: max retries exceeded')
-    except Exception as e:
-        if isinstance(e.__context__, NewConnectionError):
-            raise ConnectionError('connection error: no Internet connection?')
-        elif isinstance(e.__context__, ConnectTimeoutError):
-            raise ConnectionError('connection error: connection timed out')
-        else:
-            raise
-
-    # At the moment only WordNet uses other than UTF-8 encoding (iso-8859-1),
-    # so as long as there are no decoding problems we'll use UTF-8.
-    return r.data.decode()
-    # return BeautifulSoup(r.data.decode(), 'lxml')
-
-
 def try_request(
         url: str,
         fields: Mapping[str, str | bytes] | None = None,
@@ -118,7 +97,7 @@ def parse_response(data: bytes) -> etree._Element:
     return p.close()
 
 
-def prepare_check_text(dictionary_name: str) -> Callable[[etree._Element], str | NoReturn]:
+def prepare_check_text(dictionary_name: str) -> Callable[[etree._Element], str]:
     def check_text(el: etree._Element) -> str | NoReturn:
         text = el.text
         if text is None:
@@ -130,7 +109,7 @@ def prepare_check_text(dictionary_name: str) -> Callable[[etree._Element], str |
     return check_text
 
 
-def prepare_check_tail(dictionary_name: str) -> Callable[[etree._Element], str | NoReturn]:
+def prepare_check_tail(dictionary_name: str) -> Callable[[etree._Element], str]:
     def check_tail(el: etree._Element) -> str | NoReturn:
         tail = el.tail
         if tail is None:

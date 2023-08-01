@@ -1,13 +1,10 @@
 from __future__ import annotations
 
 from itertools import filterfalse
-from typing import Any
 from typing import Callable
 from typing import Iterable
 from typing import TYPE_CHECKING
 from typing import TypeVar
-
-from bs4 import BeautifulSoup
 
 from src.data import config
 from src.Dictionaries.base import AUDIO
@@ -21,7 +18,6 @@ from src.Dictionaries.base import NOTE
 from src.Dictionaries.base import PHRASE
 from src.Dictionaries.base import POS
 from src.Dictionaries.base import SYN
-from src.Dictionaries.util import _req
 from src.Dictionaries.util import all_text
 from src.Dictionaries.util import parse_response
 from src.Dictionaries.util import prepare_check_text
@@ -48,7 +44,37 @@ AHD_TO_IPA_TABLE = str.maketrans({
 })
 
 
-def _ahd_to_ipa(s: str, th: str) -> str:
+def _fix_stress_and_remove_private_symbols(s: str) -> str:
+    return s.replace('′', 'ˌ').replace('', '.').replace('', 'o͞o').replace('', 'o͝o')
+
+
+def _fix_commas(s: str) -> str:
+    return s.replace(',', ', ').replace('  ', ' ').replace(' ,', ',')
+
+
+def _remove_dots(s: str) -> str:
+    return s.replace('·', '').replace('•', '')
+
+
+def _is_one_word(s: str) -> bool:
+    return bool(s) and not s.count(' ')
+
+
+def _split_examples(s: str) -> list[str]:
+    return [quote_example(x.strip()) for x in s.split(';')]
+
+
+T = TypeVar('T')
+def _separate(i: Iterable[T], pred: Callable[[T], bool]) -> tuple[list[T], list[T]]:
+    return list(filter(pred, i)), list(filterfalse(pred, i))
+
+
+def _add_syn(ahd: Dictionary, synonyms: list[str], gloss: str, examples: list[str]) -> int:
+    ahd.add(SYN(', '.join(map(str.lower, synonyms)), gloss, examples))
+    return len(synonyms)
+
+
+def ahd_to_ipa(s: str, th: str) -> str:
     # AHD has its own phonetic alphabet that can be translated into IPA.
     # diphthongs and combinations of more than one letter.
     s = s.replace('ch', 'tʃ')                      \
@@ -65,109 +91,7 @@ def _ahd_to_ipa(s: str, th: str) -> str:
     return s.replace('', '.').replace('′', 'ˌ').replace('-', 'ˈ')
 
 
-def _fix_stress_and_remove_private_symbols(s: str) -> str:
-    return s.replace('′', 'ˌ').replace('', '.').replace('', 'o͞o').replace('', 'o͝o')
-
-
-def _fix_commas(s: str) -> str:
-    return s.replace(',', ', ').replace('  ', ' ').replace(' ,', ',')
-
-
-def _remove_dots(s: str) -> str:
-    return s.replace('·', '').replace('•', '')
-
-
-def _extract_phrase_and_phonetic_spelling(s: str) -> tuple[str, str]:
-    _phrase = []
-    _phon_spell = []
-
-    # in phonetic spelling
-    _in = False
-    s = s.strip()
-    for elem in s.split():
-        _elem = elem.strip(',').replace('·', '')
-        if not _elem or _elem.isnumeric():
-            continue
-
-        if _in:
-            _phon_spell.append(elem)
-            if _elem.endswith(')'):
-                _in = False
-            continue
-
-        if _elem.isascii():
-            # Not every phonetic spelling contains non-ascii characters, e.g. "crowd".
-            # So we have to make an educated guess.
-            if _elem.startswith('(') and s.endswith(')'):
-                _phon_spell.append(elem)
-                _in = True
-            else:
-                _phrase.append(elem)
-        else:
-            if _elem.startswith('('):
-                _phon_spell.append(elem)
-                if not _elem.endswith(')'):
-                    _in = True
-            else:
-                _phrase.append(elem)
-
-    return (
-        ' '.join(_phrase).replace('·', '').replace('•', ''),
-        ' '.join(_phon_spell).strip(' ,')
-    )
-
-
-def _get_phrase_inflections(content: list[Any]) -> str:
-    parsed_cl = [
-        x.string.strip(', ') for x in content
-        if x.string is not None
-        and x.string.strip(', ')
-        and ('<b>' in str(x) or x.string.strip(', ') in ('or', 'also'))
-    ]
-    skip_next = False
-    result: list[str] = []
-    for i, elem in enumerate(parsed_cl):
-        if elem == 'or' and result:  # `and result` because of "gift-wrap"
-            result.pop()
-            result.append(' '.join((parsed_cl[i-1], parsed_cl[i], parsed_cl[i+1])))
-            skip_next = True
-        elif elem == 'also':
-            try:
-                result.append(' '.join((parsed_cl[i], parsed_cl[i+1])))
-            except IndexError:  # "decerebrate"
-                pass
-            else:
-                skip_next = True
-        else:
-            if skip_next:
-                skip_next = False
-                continue
-            result.append(elem)
-    return ' * '.join(result)
-
-
-def _get_def_and_exsen(s: str) -> tuple[str, list[str]]:
-    _def, _, _exsen = s.partition(':')
-    _def, _, _ = _def.partition('See Usage Note')
-    _def, _, _ = _def.partition('See Table')
-    _def = _def.strip(' .') + '.'
-
-    _exsen, _, _ = _exsen.partition('See Usage Note')
-    _exsen, sep, tail = _exsen.partition('See Synonyms')
-    _def += f' {sep.strip()}{tail}'.rstrip()
-    _exsen = _exsen.strip()
-    if _exsen:
-        return _def, [f"‘{x.strip()}’" for x in _exsen.split(';')]
-    else:
-        return _def, []
-
-
-T = TypeVar('T')
-def _separate(i: Iterable[T], pred: Callable[[T], bool]) -> tuple[list[T], list[T]]:
-    return list(filter(pred, i)), list(filterfalse(pred, i))
-
-
-def _shorten_ahd_etymology(s: str) -> str:
+def shorten_ahd_etymology(s: str) -> str:
     if ',' not in s:
         return s
 
@@ -194,7 +118,7 @@ def _shorten_ahd_etymology(s: str) -> str:
     return ' ← '.join(result)
 
 
-def extract_pseg_label(ahd: Dictionary, tag: etree._Element, _: int) -> None:
+def extract_label_from_pseg(ahd: Dictionary, tag: etree._Element) -> None:
     labels = inflections = ''
     before_b_or_a_tag = True
     for chld in tag:
@@ -229,7 +153,10 @@ def extract_pseg_label(ahd: Dictionary, tag: etree._Element, _: int) -> None:
     ))
 
 
-def extract_pvseg_phrase(ahd: Dictionary, tag: etree._Element, tag_indx: int) -> None:
+def extract_phrase_and_label_from_pvseg(
+        ahd: Dictionary,
+        tag: etree._Element, tag_indx: int
+) -> None:
     phrase_tags = [x for x in tag if x.tag in ('b', 'span')]
     if not phrase_tags:
         raise DictionaryError(f'ERROR: {DICTIONARY}: no <b> tags in pvseg')
@@ -247,100 +174,71 @@ def extract_pvseg_phrase(ahd: Dictionary, tag: etree._Element, tag_indx: int) ->
         ahd.add(LABEL(all_text(i_tag), ''))
 
 
-def process_pseglike_tags(
+def extract_definitions_from_pseg(
         ahd: Dictionary,
-        tags: Iterable[etree._Element],
-        per_tag_cb: Callable[[Dictionary, etree._Element, int], None]
+        tag: etree._Element
 ) -> None:
-    for i, tag in enumerate(tags):
-        per_tag_cb(ahd, tag, i)
+    is_subdef = False
+    for ds in tag.iterchildren('div'):
+        sd_tags = ds.findall('./div[@class="sds-list"]')
+        if sd_tags:
+            i_tag = ds.find('./i')
+            label = '' if i_tag is None else (i_tag.text or '')
+        else:
+            # make ds the only sd_tag
+            sd_tags.append(ds)
+            label = ''
 
-        for ds in tag.iterchildren('div'):
-            sd_tags = ds.findall('./div[@class="sds-list"]')
-            if sd_tags:
-                i_tag = ds.find('./i')
-                label = '' if i_tag is None else (i_tag.text or '')
+        is_subdef = False
+        for sd in sd_tags:
+            s = sd.text or ''
+            ds_single = sd.attrib['class'] == 'ds-single'
+            b_seen = False
+
+            for chld in sd:
+                if chld.tag == 'i':
+                    if s.strip():
+                        s += all_text(chld)
+                    else:
+                        label += all_text(chld)
+                    s += chld.tail or ''
+                elif chld.tag == 'b':
+                    if ds_single or s.strip():
+                        s += all_text(chld) + (chld.tail or '')
+                    elif not b_seen:
+                        b_seen = True
+                        s += chld.tail or ''
+                    else:
+                        s += all_text(chld) + (chld.tail or '')
+                else:
+                    s += all_text(chld) + (chld.tail or '')
+
+
+            definition, sep, example_s = s.partition(':')
+
+            if sep:
+                definition = definition.strip() + '.'
+                example_s, sep, tail = example_s.partition(' See ')
+                examples = _split_examples(example_s)
             else:
-                # make ds the only sd_tag
-                sd_tags.append(ds)
-                label = ''
+                definition, sep, tail = definition.partition(' See ')
+                examples = []
 
-            is_subdef = False
-            for sd in sd_tags:
-                definition = sd.text or ''
-                examples: list[str] = []
-                for chld in sd:
-                    if chld.tag == 'i':
-                        # TODO: Sometimes examples are given without the <font>
-                        #       immediately in the <i>. E.g. "all", "but for"
-                        if definition.rstrip().endswith(':'):
-                            examples.extend(_split_examples(all_text(chld)))
-                        elif definition.strip():
-                            definition += all_text(chld)
-                        else:
-                            # there is occasional whitespace in those
-                            label = all_text(chld).strip()
-                        definition += chld.tail or ''
-                    elif chld.tag == 'b':
-                        t = all_text(chld).strip()
-                        # is an index? e.g. '1. 2. a. b.' etc.
-                        if t.endswith('.'):
-                            definition += chld.tail or ''
-                        elif not definition.strip():
-                            label += (' ' if label else '') + t
-                            definition += chld.tail or ''
-                        else:
-                            definition += t + (chld.tail or '')
-                    elif chld.tag == 'span':
-                        definition += (chld.text or '') + (chld.tail or '')
-                    elif chld.tag == 'font':
-                        # is some other tag directly inside?
-                        if chld.text is None:
-                            t = all_text(chld).strip()
-                            # is a quote?
-                            if examples:
-                                if t.startswith('('):  #)
-                                    examples[-1] += ' ' + t
-                                elif (chld.tail or '').strip() == ').':
-                                    # works around issue where parens are outside
-                                    # the <font> tag. E.g. 10th def of "answer"
-                                    examples[-1] += f' ({t}).'
-                                else:
-                                    examples.extend(_split_examples(t))
-                            else:
-                                examples.extend(_split_examples(t))
-                        else:
-                            definition += chld.text + (chld.tail or '')
-                    elif chld.tag in ('a', 'sub'):
-                        definition += all_text(chld) + (chld.tail or '')
+            # TODO: Display tables and notes, so that we can
+            #       include them in definitions.
+            if sep and not tail.startswith(('Table', 'Usage', 'Note')):
+                definition = definition + sep + tail
 
-                # TODO: handle 'See ... at' notes properly. E.g. "an"
-                ahd.add(DEF(
-                    ' '.join(definition.strip('(:. ').split()) + '.',  #)
-                    examples,
-                    label,
-                    is_subdef
-                ))
+            definition = definition.strip('. ') + '.'
 
-                # exhausted
-                is_subdef = True
-                label = ''
+            ahd.add(DEF(definition, examples, label.strip(), is_subdef))
+
+            # exhausted
+            is_subdef = True
+            label = ''
 
 
-def _is_one_word(s: str) -> bool:
-    return bool(s) and not s.count(' ')
-
-
-def _split_examples(s: str) -> list[str]:
-    return [quote_example(x.strip()) for x in s.split(';')]
-
-
-def _add_syn(ahd: Dictionary, synonyms: list[str], gloss: str, examples: list[str]) -> int:
-    ahd.add(SYN(', '.join(map(str.lower, synonyms)), gloss, examples))
-    return len(synonyms)
-
-
-def process_syntx_tag(ahd: Dictionary, syntx: etree._Element) -> None:
+def extract_synonyms_from_syntx(ahd: Dictionary, syntx: etree._Element) -> None:
     all_synonyms = []
     for chld in syntx:
         if chld.tag in ('b', 'a'):
@@ -523,7 +421,7 @@ def create_dictionary(html: bytes, query: str) -> Dictionary:
         phon = phon.strip().replace(')(', ') (')
 
         if config['toipa']:
-            phon = _ahd_to_ipa(phon, th_substitute)
+            phon = ahd_to_ipa(phon, th_substitute)
         else:
             phon = _fix_stress_and_remove_private_symbols(phon)
 
@@ -545,11 +443,9 @@ def create_dictionary(html: bytes, query: str) -> Dictionary:
             audio_url = ''
 
         # -- Main definitions --
-        process_pseglike_tags(
-            ahd,
-            rtseg.findall('../div[@class="pseg"]'),
-            extract_pseg_label
-        )
+        for pseg in rtseg.findall('../div[@class="pseg"]'):
+            extract_label_from_pseg(ahd, pseg)
+            extract_definitions_from_pseg(ahd, pseg)
 
         # -- Parts of speech --
         pos_pairs: list[tuple[str, str]] = []
@@ -577,7 +473,7 @@ def create_dictionary(html: bytes, query: str) -> Dictionary:
             if config['toipa']:
                 # TODO: Better way to pick the correct th substitute.
                 th = 'ð' if pos.startswith('th') else 'θ'
-                _phon = _ahd_to_ipa(_phon, th)
+                _phon = ahd_to_ipa(_phon, th)
             else:
                 _phon = _fix_stress_and_remove_private_symbols(_phon)
 
@@ -591,7 +487,7 @@ def create_dictionary(html: bytes, query: str) -> Dictionary:
         if etyseg is not None:
             etym = all_text(etyseg).strip()
             if config['shortetyms']:
-                ahd.add(ETYM(_shorten_ahd_etymology(etym.strip('[ ]'))))
+                ahd.add(ETYM(shorten_ahd_etymology(etym.strip('[ ]'))))
             else:
                 ahd.add(ETYM(etym))
 
@@ -599,13 +495,17 @@ def create_dictionary(html: bytes, query: str) -> Dictionary:
         pvsegs = rtseg.findall('../div[@class="pvseg"]')
         if pvsegs:
             ahd.add(HEADER('Phrasal Verbs'))
-            process_pseglike_tags(ahd, pvsegs, extract_pvseg_phrase)
+            for i, pvseg in enumerate(pvsegs):
+                extract_phrase_and_label_from_pvseg(ahd, pvseg, i)
+                extract_definitions_from_pseg(ahd, pvseg)
 
         # -- Idioms --
         idmsegs = rtseg.findall('../div[@class="idmseg"]')
         if idmsegs:
             ahd.add(HEADER('Idioms'))
-            process_pseglike_tags(ahd, idmsegs, extract_pvseg_phrase)
+            for i, idmseg in enumerate(idmsegs):
+                extract_phrase_and_label_from_pvseg(ahd, idmseg, i)
+                extract_definitions_from_pseg(ahd, idmseg)
 
         # -- Synonyms --
         syntx = rtseg.find('../div[@class="syntx"]')
@@ -615,287 +515,17 @@ def create_dictionary(html: bytes, query: str) -> Dictionary:
             if audio_url:
                 ahd.add(AUDIO(audio_url))
             ahd.add(LABEL('', ''))
-            process_syntx_tag(ahd, syntx)
+            extract_synonyms_from_syntx(ahd, syntx)
 
     return ahd
 
 
-#
-# American Heritage Dictionary
-##
-def bs4_create_dictionary(html: str, query: str) -> Dictionary:
-    soup = BeautifulSoup(html, 'lxml')
-
-    try:
-        if soup.find('div', {'id': 'results'}).text == 'No word definition found':  # type: ignore[union-attr]
-            raise DictionaryError(f'AHD: {query!r} not found')
-    except AttributeError:
-        raise DictionaryError('AHD: ahdictionary.com might be down')
-
-    ahd = Dictionary()
-
-    before_phrase = True
-    for td in soup.find_all('td'):
-        header = td.find('div', class_='rtseg', recursive=False)
-        if header is None:  # if there are more tables present, e.g. Bible
-            continue
-
-        # AHD uses italicized "th" to represent 'ð' and normal "th" to represent 'θ',
-        # distinction is important if we want to translate AHD to IPA somewhat accurately.
-        th = 'ð' if header.find('i') else 'θ'
-        header, _, _ = header.text.partition('\n')
-        header = header.replace('(', ' (').replace(')', ') ')
-        phrase, phon_spell = _extract_phrase_and_phonetic_spelling(header)
-
-        if config['toipa']:
-            phon_spell = _ahd_to_ipa(phon_spell, th)
-        else:
-            phon_spell = _fix_stress_and_remove_private_symbols(phon_spell)
-
-        if before_phrase:
-            before_phrase = False
-            ahd.add(HEADER('AH Dictionary'))
-            if phrase.lower() != query.lower():
-                ahd.add(NOTE('Showing results for:'))
-        else:
-            ahd.add(HEADER(''))
-
-        ahd.add(PHRASE(phrase, phon_spell))
-
-        # Gather audio urls
-        audio_url = td.find('a', {'target': '_blank'})
-        if audio_url is not None:
-            ahd.add(AUDIO(DICTIONARY_URL + audio_url['href'].strip()))
-
-        for labeled_block in td.find_all('div', class_='pseg', recursive=False):
-            # Gather part of speech labels
-            label_tags = labeled_block.find_all('i', recursive=False)
-            labels = ' '.join(
-                x for x in map(lambda y: y.text.strip(), label_tags)
-                if x and x != 'th'
-            )
-            # Gather phrase tense inflections
-            inflections = _get_phrase_inflections(labeled_block.contents[1:])
-            ahd.add(LABEL(labels, inflections))
-
-            # Add definitions and labels
-            for def_block in labeled_block.find_all(
-                'div', class_=('ds-list', 'ds-single'), recursive=False
-            ):
-                sd_tags = def_block.find_all('div', class_='sds-list', recursive=False)
-                if not sd_tags:
-                    sd_tags.append(def_block)
-                    def_label = ''
-                else:
-                    label_tag = def_block.find('i', recursive=False)
-                    def_label = '' if label_tag is None else label_tag.text.strip()
-
-                is_subdef = False
-                for subdef in sd_tags:
-                    tag_text = subdef.text.strip()
-                    # 6 DEF of "mid" is a false positive here.
-                    # TODO: fix stripping of letters and numbers (no regex, too slow)
-                    if tag_text.find('.') < 3:
-                        tag_text = tag_text.lstrip('abcdefghijklmnop1234567890').lstrip('. ')
-                    if not def_label:
-                        sentinel_tag = subdef.find('b', recursive=False)
-                        if sentinel_tag is not None:
-                            while True:
-                                # Order of if statements matters.
-                                sentinel_tag = sentinel_tag.next_sibling
-                                if sentinel_tag is None:
-                                    def_label, _, tag_text = tag_text.rpartition('   ')
-                                    break
-                                elif sentinel_tag.name == 'i':
-                                    _, def_label, tag_text = tag_text.partition(sentinel_tag.text.strip())
-                                    tag_text = tag_text.strip()
-                                    break
-                                elif sentinel_tag.text.strip():
-                                    def_label, _, tag_text = tag_text.rpartition('   ')
-                                    break
-                        else:
-                            def_label, _, tag_text = tag_text.rpartition('   ')
-
-                    def_label = def_label.replace(f'{phrase}s ', f'{phrase}s ~ ')
-
-                    ahd.add(DEF(*_get_def_and_exsen(tag_text), def_label.strip(), is_subdef))
-
-                    # exhausted
-                    is_subdef = True
-                    def_label = ''
-
-        # Add parts of speech
-        pos_pairs: list[tuple[str, str]] = []
-        for runseg in td.find_all('div', class_='runseg', recursive=False):
-            # removing ',' makes parts of speech with multiple spelling variants get
-            # their phonetic spelling correctly detected
-            runseg = runseg.text.replace('(', ' (').replace(')', ') ')
-            pos, phon_spell = _extract_phrase_and_phonetic_spelling(runseg)
-
-            pos = _fix_stress_and_remove_private_symbols(pos)
-
-            if config['toipa']:
-                # this is very general, I have no idea how to differentiate these correctly
-                th = 'ð' if pos.startswith('th') else 'θ'
-                phon_spell = _ahd_to_ipa(phon_spell, th)
-            else:
-                phon_spell = _fix_stress_and_remove_private_symbols(phon_spell)
-
-            pos_pairs.append((pos, phon_spell))
-        if pos_pairs:
-            ahd.add(POS(pos_pairs))
-
-        # Add etymologies
-        etymology = td.find('div', class_='etyseg', recursive=False)
-        if etymology is not None:
-            etym = etymology.text.strip()
-            if config['shortetyms']:
-                ahd.add(ETYM(_shorten_ahd_etymology(etym.strip('[]'))))
-            else:
-                ahd.add(ETYM(etym))
-
-        # Add idioms
-        idioms = td.find_all('div', class_='idmseg', recursive=False)
-        if idioms:
-            ahd.add(HEADER('Idioms'))
-            for i, idiom_block in enumerate(idioms):
-                b_tags = idiom_block.find_all('b', recursive=False)
-                phrase = ' '.join(filter(None, map(lambda x: x.text.strip(), b_tags)))
-                phrase = '/'.join(map(str.strip, phrase.split('/')))
-
-                if i:
-                    ahd.add(LABEL('', ''))
-                ahd.add(PHRASE(phrase, ''))
-                for def_block in idiom_block.find_all(
-                    'div', class_=('ds-list', 'ds-single'), recursive=False
-                ):
-                    sd_tags = def_block.find_all('div', class_='sds-list', recursive=False)
-                    if not sd_tags:
-                        _, _, tag_text = def_block.text.strip().lstrip('1234567890. ').rpartition('   ')
-                        ahd.add(DEF(*_get_def_and_exsen(tag_text), '', subdef=False))
-                    else:
-                        is_subdef = False
-                        for subdef in sd_tags:
-                            _, _, tag_text = subdef.text.strip().partition(' ')
-                            ahd.add(DEF(*_get_def_and_exsen(tag_text), '', is_subdef))
-
-                            # exhausted
-                            is_subdef = True
-
-        # Add synonyms
-        ##
-        syn_block = td.find('div', class_='syntx', recursive=False)
-        if syn_block is None:
-            continue
-
-        _tag = syn_block.find('b', recursive=False)
-        if _tag is None or 'Synonyms' not in _tag.text.strip():
-            continue
-
-        gloss = ''
-        provided_synonyms, other_tags = [], []
-        getting_synonyms = True
-        while True:
-            _tag = _tag.next_sibling
-            if _tag is None or _tag.name == 'div':
-                break
-            tag_text = _tag.text.strip()
-            if getting_synonyms:
-                tn = _tag.name
-                if tn == 'b' or tn == 'a':
-                    tag_text = tag_text.strip(' ,')
-                    if tag_text:
-                        provided_synonyms.append(tag_text.lower())
-                elif tn is None:
-                    gloss = tag_text
-                    getting_synonyms = False
-            else:
-                if tag_text:
-                    other_tags.append(_tag)
-
-        ahd.add(HEADER('Synonyms'))
-        # Let it fail if `other_tags` is empty for now.
-        temp_examples = other_tags[0].text.split(';')
-        if len(temp_examples) == len(provided_synonyms):
-            _examples = [f"‘{x.strip()}’" for x in temp_examples]
-            ahd.add(SYN(', '.join(provided_synonyms), gloss, _examples))
-            continue
-
-        # TODO:
-        #  - Correctly differentiate between authors and `See Also Synonyms at`
-        #    whilst extracting the latter
-        #  - Extract antonyms
-        #  - Make it less messy?  Thanks AHD.
-        gloss = ''
-        synonyms: list[str] = []
-        examples: list[str] = []
-        force_synonym = False
-        for tag in other_tags:
-            tag_text = tag.text.strip()
-            tn = tag.name
-            if (tn is None or tn == 'a') and tag_text[0] == '(' and tag_text.endswith(').'):
-                examples[-1] += ' ' + tag_text
-                continue
-            elif tn != 'i':
-                if tag_text == 'and':
-                    force_synonym = True
-                elif tn is None and not gloss.endswith((':', '.')):
-                    gloss = gloss.strip() + tag_text.strip('()')
-                continue
-
-            if tag_text.strip(',').lower() in provided_synonyms or force_synonym:
-                if synonyms and (gloss or examples):
-                    ahd.add(SYN(', '.join(synonyms), gloss, examples))
-                    gloss, synonyms, examples = '', [], []
-                synonyms.append(tag_text.strip(',').lower())
-                force_synonym = False
-            else:
-                sentence, _, word = tag_text.rpartition(' ')
-                word = word.strip().lower()
-                if (  # if word.isalpha(), consider it a synonym
-                    word in provided_synonyms or
-                    (word.isalpha() and tag_text.rpartition('.')[2].strip().lower() == word)
-                ):
-                    if sentence:
-                        if sentence[0].isalpha():
-                            sentence = f"‘{sentence.strip()}’"
-                        examples.append(sentence)
-                    if synonyms and (gloss or examples):
-                        ahd.add(SYN(', '.join(synonyms), gloss, examples))
-                    gloss, synonyms, examples = '', [word.lower()], []
-                elif word.endswith(','):
-                    if synonyms and (gloss or examples):
-                        ahd.add(SYN(', '.join(synonyms), gloss, examples))
-                    gloss, synonyms, examples = '', [tag_text.strip(',').lower()], []
-                else:
-                    if tag_text[0].isalpha():
-                        tag_text = f"‘{tag_text.strip()}’"
-                    examples.append(tag_text)
-
-        if synonyms and (gloss or examples):
-            ahd.add(SYN(', '.join(synonyms), gloss, examples))
-
-    return ahd
-
-
-def bs4_ask_ahd(query: str) -> Dictionary:
+def ask_ahd(query: str) -> Dictionary:
     query = query.strip(' \'";')
     if not query:
-        raise DictionaryError(f'AHD: invalid query {query!r}')
-
-    html = _req(f'{DICTIONARY_URL}/word/search.html', {'q': query})
-
-    return bs4_create_dictionary(html, query)
-
-
-def lxml_ask_ahd(query: str) -> Dictionary:
-    query = query.strip(' \'";')
-    if not query:
-        raise DictionaryError(f'AHD: invalid query {query!r}')
+        raise DictionaryError(f'{DICTIONARY}: invalid query {query!r}')
 
     # x: 0-85, y: 0-39
     html = try_request(f'{DICTIONARY_URL}/word/search.html', {'q': query})
 
     return create_dictionary(html, query)
-
-ask_ahd = lxml_ask_ahd
