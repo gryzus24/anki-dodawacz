@@ -75,6 +75,9 @@ class Pager:
                 win.addch(y, 1, '~')
                 continue
 
+            if not line:
+                continue
+
             text = truncate(line, width)
             if text is None:
                 return

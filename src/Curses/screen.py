@@ -352,6 +352,9 @@ class Screen:
                 except IndexError:
                     continue
 
+                if not text:
+                    continue
+
                 if self.selector.is_toggled(op_index):
                     op = contents[op_index]
                     if isinstance(op, self.selector.TOGGLEABLE):
