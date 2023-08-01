@@ -1,4 +1,7 @@
-lib/
+*.log
 *.pyc
-cache.ahd
-raport.ahd
+*.stats
+*.svg
+lib/
+testing/*.ahd
+testing/*.txt
