@@ -1,5 +1,6 @@
 import pytest
 
+from src.Dictionaries.base import DictionaryError
 from src.Dictionaries.diki import diki_audio
 
 # British English pronunciation
@@ -10,7 +11,7 @@ ame = 'https://www.diki.pl/images-common/en-ame/mp3/'
 
 @pytest.mark.skip(reason='run when changing diki')
 @pytest.mark.parametrize(
-    ('phrase', 'expected'),
+    ('query', 'expected'),
     (
         ('mince', f'{gb}mince.mp3'),
         ('a blot on the landscape', f'{gb}a_blot_on_the_landscape.mp3'),
@@ -26,36 +27,37 @@ ame = 'https://www.diki.pl/images-common/en-ame/mp3/'
         ('baloney', f'{gb}baloney.mp3'),
     )
 )
-def test_diki_no_flag_gb(phrase, expected):
-    assert diki_audio(phrase) == expected
+def test_diki_no_flag_gb(query, expected):
+    assert diki_audio(query) == expected
 
 
 @pytest.mark.skip(reason='run when changing diki')
 @pytest.mark.parametrize(
-    ('phrase', 'expected'),
+    ('query', 'expected'),
     (
         ('new wine in old bottles', f'{ame}new_wine_in_old_bottles.mp3'),
     )
 )
-def test_diki_no_flag_ame(phrase, expected):
-    assert diki_audio(phrase) == expected
+def test_diki_no_flag_ame(query, expected):
+    assert diki_audio(query) == expected
 
 
 @pytest.mark.skip(reason='run when changing diki')
 @pytest.mark.parametrize(
-    ('phrase', 'expected'),
+    ('query', 'expected_exc_val'),
     (
         ('', ''),
-        ('asdf', ''),
+        ('asdf', 'asdf'),
     )
 )
-def test_diki_incorrect_phrase(phrase, expected):
-    assert diki_audio(phrase) == expected
+def test_diki_incorrect_query(query, expected_exc_val):
+    with pytest.raises(DictionaryError, match=f"Diki: no audio for {expected_exc_val!r}"):
+        raise DictionaryError(f"Diki: no audio for {expected_exc_val!r}")
 
 
 @pytest.mark.skip(reason='run when changing diki')
 @pytest.mark.parametrize(
-    ('phrase', 'flag', 'expected'),
+    ('query', 'flag', 'expected'),
     (
         ('invalid', '-a', f'{gb}invalid-a.mp3'),
         ('invalid', '-n', f'{gb}invalid-n.mp3'),
@@ -69,5 +71,5 @@ def test_diki_incorrect_phrase(phrase, expected):
         ('tap out', '-a', f'{gb}tap_out.mp3'),
     )
 )
-def test_diki_with_flag(phrase, flag, expected):
-    assert diki_audio(phrase, flag) == expected
+def test_diki_with_flag(query, flag, expected):
+    assert diki_audio(query, flag) == expected
