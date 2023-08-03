@@ -4,6 +4,7 @@ import contextlib
 import curses
 import functools
 from typing import Callable
+from typing import get_args
 from typing import Iterator
 from typing import Mapping
 from typing import NamedTuple
@@ -23,6 +24,10 @@ from src.data import config_save
 from src.data import config_t
 from src.data import configkey_t
 from src.data import configval_t
+
+
+def _config_typeof(key: str) -> list[str]:
+    return list(get_args(config_t.__annotations__[key]))
 
 
 class Option(NamedTuple):
@@ -109,15 +114,15 @@ CONFIG_COLUMNS: list[Column] = [
             Option('deck', 'Deck used for adding cards', functools.partial(anki.invoke, 'deckNames')),
             Option('mediadir', 'Path to the media directory', anki.collection_media_paths),
             Option('duplicates', 'Allow duplicates', bool),
-            Option('dupescope', 'Look for duplicates in deck/collection', ['deck', 'collection'], strict=True),
+            Option('dupescope', 'Look for duplicates in deck/collection', _config_typeof('dupescope'), strict=True),
             Option('tags', 'Anki tags (comma separated list)', None),
             ]
         ),
         Section(
             'Sources',
             [
-            Option('primary', 'Dictionary queried by default', ['ahd', 'collins', 'farlex', 'wordnet'], strict=True),
-            Option('secondary', 'Dictionary queried if first query fails', ['ahd', 'collins', 'farlex', 'wordnet', '-'], strict=True),
+            Option('primary', 'Dictionary queried by default', _config_typeof('primary'), strict=True),
+            Option('secondary', 'Dictionary queried if first query fails', _config_typeof('secondary'), strict=True),
             ]
         ),
         Section(
