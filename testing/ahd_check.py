@@ -22,11 +22,11 @@ import json
 import os
 import random
 import sys
+from typing import Dict
 from typing import Final
 from typing import Iterable
-from typing import Literal
-from typing import Dict
 from typing import List
+from typing import Literal
 from typing import Sequence
 from typing import TYPE_CHECKING
 
