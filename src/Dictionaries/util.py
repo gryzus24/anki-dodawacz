@@ -125,5 +125,9 @@ def all_text(el: etree._Element) -> str:
     return ''.join(etree.ElementTextIterator(el))
 
 
+def full_strip(s: str) -> str:
+    return ' '.join(s.split())
+
+
 def quote_example(s: str) -> str:
     return f'‘{s}’'

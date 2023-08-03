@@ -19,6 +19,7 @@ from src.Dictionaries.base import PHRASE
 from src.Dictionaries.base import POS
 from src.Dictionaries.base import SYN
 from src.Dictionaries.util import all_text
+from src.Dictionaries.util import full_strip
 from src.Dictionaries.util import parse_response
 from src.Dictionaries.util import prepare_check_text
 from src.Dictionaries.util import quote_example
@@ -148,7 +149,7 @@ def extract_label_from_pseg(ahd: Dictionary, tag: etree._Element) -> None:
                 inflections += (chld.text or '') + chld.tail
 
     ahd.add(LABEL(
-        ' '.join(labels.replace('.', '. ').split()),
+        full_strip(labels.replace('.', '. ')),
         inflections.replace(',', ' * ').replace('  ', ' ')
     ))
 
@@ -165,7 +166,7 @@ def extract_phrase_and_label_from_pvseg(
         ahd.add(LABEL('', ''))
 
     ahd.add(PHRASE(
-        ' '.join(''.join(all_text(x) + (x.tail or '') for x in phrase_tags).split()),
+        full_strip(''.join(all_text(x) + (x.tail or '') for x in phrase_tags)),
         ''
     ))
 
@@ -212,7 +213,6 @@ def extract_definitions_from_pseg(
                         s += all_text(chld) + (chld.tail or '')
                 else:
                     s += all_text(chld) + (chld.tail or '')
-
 
             definition, sep, example_s = s.partition(':')
 
