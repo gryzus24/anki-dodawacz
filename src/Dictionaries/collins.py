@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import sys
+
 from src.Dictionaries.base import AUDIO
 from src.Dictionaries.base import DEF
 from src.Dictionaries.base import Dictionary
@@ -10,7 +12,7 @@ from src.Dictionaries.base import LABEL
 from src.Dictionaries.base import NOTE
 from src.Dictionaries.base import PHRASE
 from src.Dictionaries.base import POS
-from src.Dictionaries.util import request_soup
+from src.Dictionaries.util import try_request
 
 
 def _extract_phon_and_audio(tag) -> tuple[str, str]:  # type: ignore[no-untyped-def]
@@ -248,12 +250,38 @@ def _extract_cobuild(collins: Dictionary, query: str, cobuild) -> None:  # type:
 
 
 def ask_collins(query: str) -> Dictionary:
-    soup = request_soup(
-        'https://www.collinsdictionary.com/search',
-        {'dictCode': 'english', 'q': query.replace(' ', '-')}
-    )
+    # beautifulsoup4 is bloated and slow, lxml.etree is far superior.
+    # Only Collins uses bs4 currently. To avoid paying the import time
+    # penalty on startup, import it here inline.
+
+    # Silence warnings if soupsieve is not installed, which is good
+    # because its bloated "css parse" slows down import time even more.
+    try:
+        sys.stderr = None  # type: ignore[assignment]
+        from bs4 import BeautifulSoup, __version__  # type: ignore[attr-defined]
+    finally:
+        sys.stderr = sys.__stderr__
+
+    if (*map(int, __version__.split('.')),) < (4, 10, 0):
+        sys.stderr.write(
+             '----------------------------------------------------------------\n'
+             'Your version of beautifulsoup is out of date, please update:\n'
+             'pip install -U beautifulsoup4\n'
+             'If you are using a virtual environment, you can safely uninstall\n'
+             'the soupsieve package to slightly speed up program startup:\n'
+             'pip uninstall soupsieve\n'
+        )
+        raise SystemExit
 
     collins = Dictionary()
+
+    soup = BeautifulSoup(
+        try_request(
+            'https://www.collinsdictionary.com/search',
+            {'dictCode': 'english', 'q': query.replace(' ', '-')}
+        ).decode(),
+        'lxml'
+    )
 
     cobuild = soup.find('div', {'data-type-block': 'definition.title.type.cobuild'})
     if cobuild is not None:
