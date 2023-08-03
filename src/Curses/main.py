@@ -215,6 +215,7 @@ _textattr('SEARCH', curses.A_BOLD | curses.A_UNDERLINE),
 ' Extra search options:',
 '  -ahd             query AH Dictionary',
 '  -col, -collins   query Collins',
+'  -pl, -diki       query Diki (PL)'
 '  -i, -farlex      query Farlex Idioms',
 '  -wnet, -wordnet  query WordNet',
 '  -c, -compare     query "-primary" and "-secondary" one after the other,',

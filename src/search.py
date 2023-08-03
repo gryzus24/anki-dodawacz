@@ -19,6 +19,7 @@ from src.Dictionaries.base import Dictionary
 from src.Dictionaries.base import DictionaryError
 from src.Dictionaries.base import MAGIC
 from src.Dictionaries.collins import ask_collins
+from src.Dictionaries.diki import ask_diki
 from src.Dictionaries.farlex import ask_farlex
 from src.Dictionaries.wordnet import ask_wordnet
 
@@ -31,6 +32,8 @@ DICT_KEY_ALIASES: Mapping[str, dictkey_t] = {
     'ahd':     'ahd',
     'col':     'collins',
     'collins': 'collins',
+    'pl':      'diki',
+    'diki':    'diki',
     'i':       'farlex',
     'farlex':  'farlex',
     'wnet':    'wordnet',
@@ -44,6 +47,7 @@ DICT_KEY_ALIASES: Mapping[str, dictkey_t] = {
 DICTIONARY_LOOKUP: Mapping[dictkey_t, Callable[[str], Dictionary]] = {
     'ahd': ask_ahd,
     'collins': ask_collins,
+    'diki': ask_diki,
     'farlex': ask_farlex,
     'wordnet': ask_wordnet,
 }

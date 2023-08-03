@@ -7,7 +7,7 @@ from typing import Literal
 from typing import TypedDict
 from typing import Union
 
-dictkey_t = Literal['ahd', 'collins', 'farlex', 'wordnet']
+dictkey_t = Literal['ahd', 'collins', 'diki', 'farlex', 'wordnet']
 
 config_t = TypedDict(
     'config_t',
