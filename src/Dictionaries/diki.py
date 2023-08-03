@@ -345,7 +345,6 @@ def create_dictionary(html: bytes, query: str) -> Dictionary:
             diki.add(LABEL('' ,''))
             diki.add(HEADER('Related Expressions'))
             for sec in sections:
-
                 sec_clas = sec.attrib['class']
                 if sec_clas == 'partOfSpeechSectionHeader':
                     label = all_text(sec).strip()
@@ -359,11 +358,31 @@ def create_dictionary(html: bytes, query: str) -> Dictionary:
     return diki
 
 
-def ask_diki(query: str) -> Dictionary:
+def _ask_diki(query: str, dictpart: str) -> Dictionary:
     return create_dictionary(
         try_request(
-            f'{DICTIONARY_URL}/slownik-angielskiego',
+            f'{DICTIONARY_URL}/slownik-{dictpart}kiego',
             {'q': query.replace(' ', '+')}
         ),
         query
     )
+
+
+def ask_diki_english(query: str) -> Dictionary:
+    return _ask_diki(query, 'angiels')
+
+
+def ask_diki_french(query: str) -> Dictionary:
+    return _ask_diki(query, 'francus')
+
+
+def ask_diki_german(query: str) -> Dictionary:
+    return _ask_diki(query, 'niemiec')
+
+
+def ask_diki_italian(query: str) -> Dictionary:
+    return _ask_diki(query, 'wlos')
+
+
+def ask_diki_spanish(query: str) -> Dictionary:
+    return _ask_diki(query, 'hiszpans')

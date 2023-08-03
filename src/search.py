@@ -19,7 +19,11 @@ from src.Dictionaries.base import Dictionary
 from src.Dictionaries.base import DictionaryError
 from src.Dictionaries.base import MAGIC
 from src.Dictionaries.collins import ask_collins
-from src.Dictionaries.diki import ask_diki
+from src.Dictionaries.diki import ask_diki_english
+from src.Dictionaries.diki import ask_diki_french
+from src.Dictionaries.diki import ask_diki_german
+from src.Dictionaries.diki import ask_diki_italian
+from src.Dictionaries.diki import ask_diki_spanish
 from src.Dictionaries.farlex import ask_farlex
 from src.Dictionaries.wordnet import ask_wordnet
 
@@ -32,8 +36,16 @@ DICT_KEY_ALIASES: Mapping[str, dictkey_t] = {
     'ahd':     'ahd',
     'col':     'collins',
     'collins': 'collins',
-    'pl':      'diki',
-    'diki':    'diki',
+    'den':     'diki-en',
+    'diki-en': 'diki-en',
+    'dfr':     'diki-fr',
+    'diki-fr': 'diki-fr',
+    'dde':     'diki-de',
+    'diki-de': 'diki-de',
+    'dit':     'diki-it',
+    'diki-it': 'diki-it',
+    'des':     'diki-es',
+    'diki-es': 'diki-es',
     'i':       'farlex',
     'farlex':  'farlex',
     'wnet':    'wordnet',
@@ -47,10 +59,16 @@ DICT_KEY_ALIASES: Mapping[str, dictkey_t] = {
 DICTIONARY_LOOKUP: Mapping[dictkey_t, Callable[[str], Dictionary]] = {
     'ahd': ask_ahd,
     'collins': ask_collins,
-    'diki': ask_diki,
+    'diki-en': ask_diki_english,
+    'diki-fr': ask_diki_french,
+    'diki-de': ask_diki_german,
+    'diki-it': ask_diki_italian,
+    'diki-es': ask_diki_spanish,
     'farlex': ask_farlex,
     'wordnet': ask_wordnet,
 }
+
+MONOLINGUAL_DICTIONARIES = [x for x in DICTIONARY_LOOKUP if 'diki' not in x]
 
 db_t = Union[shelve.DbfilenameShelf[Dictionary], Dict[str, Dictionary]]
 
@@ -238,7 +256,7 @@ def parse(s: str) -> list[Query] | None:
                 if config['secondary'] in DICTIONARY_LOOKUP:
                     dict_flags.append(config['secondary'])  # type: ignore[arg-type]
             elif flag == 'all':
-                dict_flags.extend(DICTIONARY_LOOKUP)
+                dict_flags.extend(MONOLINGUAL_DICTIONARIES)
             else:
                 query_flags.append(flag)
 
