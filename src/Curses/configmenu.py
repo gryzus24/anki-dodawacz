@@ -26,7 +26,7 @@ from src.data import configkey_t
 from src.data import configval_t
 
 
-def _config_typeof(key: str) -> list[str]:
+def _configv_annotations(key: str) -> list[str]:
     return list(get_args(config_t.__annotations__[key]))
 
 
@@ -79,84 +79,158 @@ class Column(NamedTuple):
         raise AssertionError(f'unreachable: {i}')
 
 
-_colors = list(COLOR_NAME_TO_COLOR)
+_COLORS = list(COLOR_NAME_TO_COLOR)
 
 CONFIG_COLUMNS: list[Column] = [
-    Column([
-        Section(
-            'Cards',
-            [
-            Option('audio', 'Add audio', bool),
-            Option('pos', 'Add parts of speech', bool),
-            Option('etym', 'Add etymologies', bool),
-            Option('formatdefs', 'Add HTML formatting to definitions', bool),
-            Option('hidedef', 'Replace target word with `-hides` in definitions', bool),
-            Option('hidesyn', 'Replace target word with `-hides` in synonyms', bool),
-            Option('hideexsen', 'Replace target word with `-hides` in example sentences', bool),
-            Option('hidepreps', 'Replace all prepositions with `-hides`', bool),
-            Option('hides', 'Sequence of characters to use as target word replacement', ['___', '...', '———']),
-            ]
+Column([
+    Section(
+        'Cards',
+        [
+        Option('audio', 'Add audio', bool),
+        Option('pos', 'Add parts of speech', bool),
+        Option('etym', 'Add etymologies', bool),
+        Option('formatdefs', 'Add HTML formatting to definitions', bool),
+        Option(
+            'hidedef',
+            'Replace target word with `-hides` in definitions',
+            bool
         ),
-        Section(
-            'History & Cache',
-            [
-            Option('histsave', 'Save queries to the history file (saved on program exit)', bool),
-            Option('histshow', 'Show completion menu with recent queries and queries from the history file', bool),
-            Option('cachefile', 'Cache and save dictionaries to disk (saved on program exit)', bool),
-            ]
-        )
-    ]),
-    Column([
-        Section(
-            'Anki-connect',
-            [
-            Option('note', 'Note used for adding cards', functools.partial(anki.invoke, 'modelNames')),
-            Option('deck', 'Deck used for adding cards', functools.partial(anki.invoke, 'deckNames')),
-            Option('mediadir', 'Path to the media directory', anki.collection_media_paths),
-            Option('duplicates', 'Allow duplicates', bool),
-            Option('dupescope', 'Look for duplicates in deck/collection', _config_typeof('dupescope'), strict=True),
-            Option('tags', 'Anki tags (comma separated list)', None),
-            ]
+        Option(
+            'hidesyn',
+            'Replace target word with `-hides` in synonyms',
+            bool
         ),
-        Section(
-            'Sources',
-            [
-            Option('primary', 'Dictionary queried by default', _config_typeof('primary'), strict=True),
-            Option('secondary', 'Dictionary queried if first query fails', _config_typeof('secondary'), strict=True),
-            ]
+        Option(
+            'hideexsen',
+            'Replace target word with `-hides` in example sentences',
+            bool
         ),
-        Section(
-            'Miscellaneous',
-            [
-            Option('toipa', 'Translate AH Dictionary phonetic spelling into IPA', bool, strict=True),
-            Option('shortetyms', 'Shorten and simplify etymologies in AH Dictionary', bool, strict=True),
-            Option('nohelp', 'Hide the F-key help bar on program startup', bool, strict=True),
-            ]
-        )
-    ]),
-    Column([
-        Section(
-            'Colors',
-            [
-            Option('c.def1', 'Color of odd definitions', _colors, strict=True),
-            Option('c.def2', 'Color of even definitions', _colors, strict=True),
-            Option('c.delimit', 'Color of delimiters', _colors, strict=True),
-            Option('c.err', 'Color of error indicators', _colors, strict=True),
-            Option('c.etym', 'Color of etymologies', _colors, strict=True),
-            Option('c.exsen', 'Color of example sentences', _colors, strict=True),
-            Option('c.heed', 'Color of attention indicators', _colors, strict=True),
-            Option('c.index', 'Color of definition indices', _colors, strict=True),
-            Option('c.infl', 'Color of inflections', _colors, strict=True),
-            Option('c.label', 'Color of labels', _colors, strict=True),
-            Option('c.phon', 'Color of phonologies', _colors, strict=True),
-            Option('c.phrase', 'Color of phrases', _colors, strict=True),
-            Option('c.pos', 'Color of parts of speech', _colors, strict=True),
-            Option('c.sign', 'Color of main definition signs', _colors, strict=True),
-            Option('c.success', 'Color of success indicators', _colors, strict=True),
-            Option('c.syn', 'Color of synonyms', _colors, strict=True),
-            ]
-        )
-    ])
+        Option(
+            'hidepreps',
+            'Replace all prepositions with `-hides`',
+            bool
+        ),
+        Option(
+            'hides',
+            'Sequence of characters to use as target word replacement',
+            ['___', '...', '———']
+        ),
+        ]
+    ),
+    Section(
+        'History & Cache',
+        [
+        Option(
+            'histsave',
+            'Save queries to the history file (saved on program exit)',
+            bool
+        ),
+        Option(
+            'histshow',
+            'Show completion menu with recent queries and queries from the history file',
+            bool
+        ),
+        Option(
+            'cachefile',
+            'Cache and save dictionaries to disk (saved on program exit)',
+            bool
+        ),
+        ]
+    )
+]),
+Column([
+    Section(
+        'Anki-connect',
+        [
+        Option(
+            'note',
+            'Note used for adding cards',
+            functools.partial(anki.invoke, 'modelNames')
+        ),
+        Option(
+            'deck',
+            'Deck used for adding cards',
+            functools.partial(anki.invoke, 'deckNames')
+        ),
+        Option(
+            'mediadir',
+            'Path to the media directory',
+            anki.collection_media_paths
+        ),
+        Option('duplicates', 'Allow duplicates', bool),
+        Option(
+            'dupescope',
+            'Look for duplicates in deck/collection',
+            _configv_annotations('dupescope'),
+            strict=True
+        ),
+        Option('tags', 'Anki tags (comma separated list)', None),
+        ]
+    ),
+    Section(
+        'Sources',
+        [
+        Option(
+            'primary',
+            'Dictionary queried by default',
+            _configv_annotations('primary'),
+            strict=True
+        ),
+        Option(
+            'secondary',
+            'Dictionary queried if first query fails',
+            _configv_annotations('secondary'),
+            strict=True
+        ),
+        ]
+    ),
+    Section(
+        'Miscellaneous',
+        [
+        Option(
+            'toipa',
+            'Translate AH Dictionary phonetic spelling into IPA',
+            bool,
+            strict=True
+        ),
+        Option(
+            'shortetyms',
+            'Shorten and simplify etymologies in AH Dictionary',
+            bool,
+            strict=True
+        ),
+        Option(
+            'nohelp',
+            'Hide the F-key help bar on program startup',
+            bool,
+            strict=True
+        ),
+        ]
+    )
+]),
+Column([
+    Section(
+        'Colors',
+        [
+        Option('c.def1', 'Color of odd definitions', _COLORS, strict=True),
+        Option('c.def2', 'Color of even definitions', _COLORS, strict=True),
+        Option('c.delimit', 'Color of delimiters', _COLORS, strict=True),
+        Option('c.err', 'Color of error indicators', _COLORS, strict=True),
+        Option('c.etym', 'Color of etymologies', _COLORS, strict=True),
+        Option('c.exsen', 'Color of example sentences', _COLORS, strict=True),
+        Option('c.heed', 'Color of attention indicators', _COLORS, strict=True),
+        Option('c.index', 'Color of definition indices', _COLORS, strict=True),
+        Option('c.infl', 'Color of inflections', _COLORS, strict=True),
+        Option('c.label', 'Color of labels', _COLORS, strict=True),
+        Option('c.phon', 'Color of phonologies', _COLORS, strict=True),
+        Option('c.phrase', 'Color of phrases', _COLORS, strict=True),
+        Option('c.pos', 'Color of parts of speech', _COLORS, strict=True),
+        Option('c.sign', 'Color of main definition signs', _COLORS, strict=True),
+        Option('c.success', 'Color of success indicators', _COLORS, strict=True),
+        Option('c.syn', 'Color of synonyms', _COLORS, strict=True),
+        ]
+    )
+])
 ]
 
 OPTION_KEY_MIN_WIDTH   = 13
@@ -245,7 +319,9 @@ class ConfigMenu(ScreenBufferProto):
 
     def draw(self) -> None:
         if curses.COLS < self.min_x or curses.LINES < self.min_y:
-            raise ValueError(f'window too small (need at least {self.min_x}x{self.min_y})')
+            raise ValueError(
+                f'window too small (need at least {self.min_x}x{self.min_y})'
+            )
 
         win = self.win
         win.erase()
