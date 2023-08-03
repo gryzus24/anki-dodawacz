@@ -44,7 +44,7 @@ from urllib3.exceptions import NewConnectionError
 http = urllib3.PoolManager(
     timeout=10,
     headers={
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; rv:111.0) Gecko/20100101 Firefox/111.0',
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; rv:109.0) Gecko/20100101 Firefox/116.0',
         'Accept-Encoding': 'gzip'
     }
 )
