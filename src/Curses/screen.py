@@ -88,12 +88,15 @@ def wrap(
 
     # skipping preceding spaces to avoid line breaks
     # if there is not enough space for single words.
-    while s[brk_i] == ' ':
-        brk_i += 1
-
-    brk_i = s.find(' ', brk_i + 1)
-    if brk_i == -1:
+    try:
+        while s[brk_i] == ' ':
+            brk_i += 1
+    except IndexError:
         brk_i = 0
+    else:
+        brk_i = s.find(' ', brk_i + 1)
+        if brk_i == -1:
+            brk_i = 0
 
     break_line = word_cannot_fit = brk_i > width
     overflow = False
