@@ -282,12 +282,13 @@ def format_dictionary(dictionary: Dictionary, width: int) -> list[FLine]:
                     (len(op.definition), Color.def1 if index % 2 else Color.def2),
                 ), width, indent=indent)
 
+            predent = (indent_weight + index_len + 1) * ' '
             for example in op.examples:
-                wrap(result, i, ' ' + example,
+                wrap(result, i, predent + example,
                     (
-                        (1, 0),
+                        (len(predent), 0),
                         (len(example), Color.exsen),
-                    ), width, indent=indent)
+                    ), width, indent=indent or ' ')
 
         elif isinstance(op, NOTE):
             buf = f'> {op.note}'
