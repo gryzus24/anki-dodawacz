@@ -60,6 +60,11 @@ def wrap(
         column_width: int, *,
         indent: str = ''
 ) -> None:
+    # displaying '\n' and '\r' is undesirable
+    for c in '\n\r':
+        if c in s:
+            s = s.replace(c, ' ')
+
     s_len = len(s)
 
     # fast path
