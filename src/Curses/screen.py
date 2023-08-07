@@ -268,15 +268,18 @@ def format_dictionary(dictionary: Dictionary, width: int) -> list[FLine]:
 
         elif isinstance(op, SYN):
             index += 1
-            indent = (indent_weight + 2) * ' '
+            index_len = len(str(index))
+            indent = (indent_weight + index_len + 2) * ' '
 
             wrap(result, i, op.synonyms,
                 ((len(op.synonyms), Color.syn),),
                 width)
 
-            wrap(result, i, f': {op.definition}',
+            wrap(result, i, f'>{index} {op.definition}',
                 (
-                    (len(op.definition) + 2, Color.def1 if index % 2 else Color.def2),
+                    (1, Color.sign),
+                    (index_len + 1, Color.index),
+                    (len(op.definition), Color.def1 if index % 2 else Color.def2),
                 ), width, indent=indent)
 
             for example in op.examples:
