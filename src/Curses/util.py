@@ -105,7 +105,11 @@ class Attr(NamedTuple):
     attr: int
 
 
-def compose_attrs(elements: Iterable[tuple[int, int, int]], *, width: int, start: int = 0) -> list[Attr]:
+def compose_attrs(
+        elements: Iterable[tuple[int, int, int]], *,
+        width: int,
+        start: int = 0
+) -> list[Attr]:
     attrs = []
     index = start
     for span, attr, gap in elements:
