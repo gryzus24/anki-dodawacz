@@ -297,7 +297,8 @@ def create_dictionary(html: bytes, query: str) -> Dictionary:
         note_is_header = True
         for entity in l_entities:
             for chld in entity:
-                chld_clas = chld.attrib['class']
+                # Some interactive elements are not marked with "class", e.g. "be".
+                chld_clas = chld.get('class')
                 if chld_clas == 'hws':
                     h1 = chld.find('./h1')
                     if h1 is None:
