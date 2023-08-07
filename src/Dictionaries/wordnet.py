@@ -47,7 +47,7 @@ def ask_wordnet(query: str) -> Dictionary:
                     SYN(
                         syn.strip(),
                         f'({gloss.strip()})',
-                        [x.strip() for x in examples.split(';')],
+                        [x for x in map(str.strip, examples.split(';')) if x],
                     )
                 )
 
