@@ -11,9 +11,9 @@ from typing import NamedTuple
 from typing import TYPE_CHECKING
 from typing import Union
 
-from src.data import config
 from src.data import DATA_DIR
 from src.data import dictkey_t
+from src.data import getconf
 from src.Dictionaries.ahd import ask_ahd
 from src.Dictionaries.base import Dictionary
 from src.Dictionaries.base import DictionaryError
@@ -90,7 +90,7 @@ class _Cache:
             return
         if isinstance(self._db, shelve.DbfilenameShelf):
             self._db.close()
-        elif config['cachefile']:
+        elif getconf('cachefile'):
             dbfile = self._open_shelf()
             if dbfile is not None:
                 for key, dictionary in self._db.items():
@@ -101,7 +101,7 @@ class _Cache:
     def db(self) -> tuple[db_t, bool]:
         err = False
         if self._db is None:
-            if config['cachefile']:
+            if getconf('cachefile'):
                 dbfile = self._open_shelf()
                 if dbfile is None:
                     err = True
@@ -111,7 +111,7 @@ class _Cache:
             else:
                 self._db = {}
             atexit.register(self._save)
-        elif isinstance(self._db, dict) and config['cachefile']:
+        elif isinstance(self._db, dict) and getconf('cachefile'):
             dbfile = self._open_shelf()
             if dbfile is None:
                 err = True
@@ -135,7 +135,7 @@ def _query(key: dictkey_t, query: str, db: db_t) -> Dictionary:
         return result
 
 
-def _qthread(
+def _query_thread(
         key: dictkey_t,
         query: str,
         keyid: int,
@@ -166,7 +166,7 @@ def perror_threaded_query(
             # I hope it's ok to make them daemonic. It simplifies the handling
             # of SIGINT, but try-finally blocks don't run inside of urllib3.
             t = threading.Thread(
-                target=_qthread,
+                target=_query_thread,
                 args=(key, query, keyid, success, error, db),
                 daemon=True
             )
@@ -250,11 +250,11 @@ def parse(s: str) -> list[Query] | None:
             if flag in DICT_KEY_ALIASES:
                 dict_flags.append(DICT_KEY_ALIASES[flag])
             elif flag in ('c', 'compare'):
-                dict_flags.append(config['primary'])
+                dict_flags.append(getconf('primary'))
 
                 # `secondary` might be set to '-'. Do the membership check.
-                if config['secondary'] in DICTIONARY_LOOKUP:
-                    dict_flags.append(config['secondary'])  # type: ignore[arg-type]
+                if getconf('secondary') in DICTIONARY_LOOKUP:
+                    dict_flags.append(getconf('secondary'))  # type: ignore[arg-type]
             elif flag == 'all':
                 dict_flags.extend(MONOLINGUAL_DICTIONARIES)
             else:
@@ -290,8 +290,9 @@ def search(
     result = []
     for query, flags, _ in queries:
         if len(flags) == 0:
-            if config['secondary'] == '-':
-                result.append(perror_query(status, query, config['primary'], db))
+            fallback_key = getconf('secondary')
+            if fallback_key == '-':
+                result.append(perror_query(status, query, getconf('primary'), db))
             else:
                 cached = []
                 for key in DICTIONARY_LOOKUP:
@@ -302,7 +303,7 @@ def search(
 
                 result.append(
                     cached or perror_query_with_fallback(
-                        status, query, config['primary'], config['secondary'], db
+                        status, query, getconf('primary'), fallback_key, db
                     )
                 )
         elif len(flags) == 1:

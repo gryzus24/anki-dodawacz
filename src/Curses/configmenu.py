@@ -19,6 +19,7 @@ from src.Curses.util import BORDER_PAD
 from src.Curses.util import draw_border
 from src.Curses.util import HIGHLIGHT
 from src.Curses.util import truncate
+from src.data import _defaults
 from src.data import config
 from src.data import config_save
 from src.data import config_t
@@ -45,7 +46,10 @@ class Option(NamedTuple):
         c[self.key] = val
 
     def get_from(self, c: config_t) -> configval_t:
-        return c[self.key]
+        try:
+            return c[self.key]
+        except KeyError:
+            return _defaults[self.key]
 
 
 class Section(NamedTuple):

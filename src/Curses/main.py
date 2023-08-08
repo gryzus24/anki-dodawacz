@@ -52,6 +52,7 @@ from src.Curses.util import mouse_wheel_up
 from src.Curses.util import play_audio_url
 from src.Curses.util import truncate
 from src.data import config
+from src.data import getconf
 from src.data import config_save
 from src.data import DATA_DIR
 from src.data import WINDOWS
@@ -329,7 +330,7 @@ class ScreenBuffer(ScreenBufferProto):
         self.status = Status(win, persistence=7)
         self.history = QueryHistory(win, os.path.join(DATA_DIR, 'history.txt'))
         self.page: Screen | Pager = self.help_pager
-        self.bar_margin: int = not config['nohelp']
+        self.bar_margin: int = not getconf('nohelp')
 
     @contextlib.contextmanager
     def extra_margin(self, n: int) -> Iterator[None]:
@@ -354,7 +355,7 @@ class ScreenBuffer(ScreenBufferProto):
                 pretype=pretype,
                 completion_separator=search.QUERY_SEPARATOR,
                 up_arrow_entries=self.history.up_arrow_entries
-            ).run(self.history.cmenu if config['histshow'] else None)
+            ).run(self.history.cmenu if getconf('histshow') else None)
         if typed is None or not (typed := typed.strip()):
             return
 
@@ -377,7 +378,7 @@ class ScreenBuffer(ScreenBufferProto):
 
             for dictionary in dictionaries:
                 screens.append(Screen(self.win, dictionary))
-                if not config['histsave']:
+                if not getconf('histsave'):
                     continue
 
                 phrases = dictionary.unique_phrases()
@@ -429,7 +430,7 @@ class ScreenBuffer(ScreenBufferProto):
     def search_prompt(self, *, pretype: str = '') -> None:
         self.status.clear()
         self._search_prompt(' '.join(pretype.split()))
-        if config['histshow']:
+        if getconf('histshow'):
             self.history.cmenu.deactivate()
 
     def page_back(self) -> bool:
@@ -750,7 +751,7 @@ def ask_yes_no(
 
 def perror_recheck_note(status: Status) -> None:
     try:
-        model = anki.models.get_model(config['note'], recheck=True)
+        model = anki.models.get_model(getconf('note'), recheck=True)
     except anki.AnkiError as e:
         status.error('Recheck-note failed:', str(e))
         return
@@ -763,7 +764,7 @@ def perror_recheck_note(status: Status) -> None:
         if v is not None and len(v) > v_offset:
             v_offset = len(v)
 
-    status.writeln('Note:', config['note'])
+    status.writeln('Note:', getconf('note'))
     status.writeln('')
     status.writeln(f'{"Anki field":{k_offset}s}  Assigned')
     status.writeln(f'{k_offset * "-"}  {v_offset * "-"}')

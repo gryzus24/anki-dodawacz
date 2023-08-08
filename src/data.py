@@ -1,9 +1,11 @@
 from __future__ import annotations
 
+import copy
 import json
 import os
 import sys
 from typing import Literal
+from typing import overload
 from typing import TypedDict
 from typing import Union
 
@@ -58,20 +60,21 @@ config_t = TypedDict(
     }
 )
 
+bool_configkey_t = Literal[
+    'audio', 'cachefile', 'duplicates', 'etym', 'formatdefs', 'hidedef',
+    'hideexsen', 'hidepreps', 'hidesyn', 'histsave', 'histshow', 'nohelp',
+    'pos', 'shortetyms', 'syn', 'toipa'
+]
 colorkey_t = Literal[
     'c.def1', 'c.def2', 'c.delimit', 'c.err', 'c.etym', 'c.exsen', 'c.heed',
     'c.index', 'c.infl', 'c.label', 'c.phon', 'c.phrase', 'c.pos', 'c.sign',
     'c.success', 'c.syn',
 ]
+str_configkey_t = Literal['deck', 'hides', 'mediadir', 'note', 'tags', colorkey_t]
 
-configkey_t = Literal[
-    'audio', 'cachefile', 'deck', 'dupescope', 'duplicates', 'etym',
-    'formatdefs', 'hidedef', 'hideexsen', 'hidepreps', 'hides', 'hidesyn',
-    'histsave', 'histshow', 'mediadir', 'nohelp', 'note', 'pos', 'primary',
-    'secondary', 'shortetyms', 'syn', 'tags', 'toipa', colorkey_t,
-]
+configkey_t = Literal[bool_configkey_t, str_configkey_t, 'dupescope', 'primary', 'secondary']
+configval_t = Union[bool, str, Literal['deck', 'collection'], dictkey_t, Literal[dictkey_t, '-']]
 
-configval_t = Union[bool, str]
 
 class note_t(TypedDict):
     modelName: str
@@ -80,6 +83,23 @@ class note_t(TypedDict):
     front:     str
     back:      str
     fields:    list[str]
+
+
+@overload
+def getconf(key: bool_configkey_t) -> bool: ...
+@overload
+def getconf(key: str_configkey_t) -> str: ...
+@overload
+def getconf(key: Literal['dupescope']) -> Literal['deck', 'collection']: ...
+@overload
+def getconf(key: Literal['primary']) -> dictkey_t: ...
+@overload
+def getconf(key: Literal['secondary']) -> Literal[dictkey_t, '-']: ...
+def getconf(key: configkey_t) -> configval_t:
+    try:
+        return config[key]
+    except KeyError:
+        return _defaults[key]
 
 
 def config_save(c: config_t) -> None:
@@ -116,5 +136,9 @@ try:
         config: config_t = json.load(f)
 except FileNotFoundError:
     with open(os.path.join(ROOT_DIR, 'config.json')) as f:
-        config = json.load(f)
+        _defaults: config_t = json.load(f)
+    config = copy.deepcopy(_defaults)
     config_save(config)
+else:
+    with open(os.path.join(ROOT_DIR, 'config.json')) as f:
+        _defaults = json.load(f)

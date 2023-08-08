@@ -11,8 +11,8 @@ from typing import TYPE_CHECKING
 
 from urllib3.exceptions import NewConnectionError
 
-from src.data import config
 from src.data import DATA_DIR
+from src.data import getconf
 from src.data import LINUX
 from src.data import MAC
 from src.data import note_t
@@ -130,10 +130,10 @@ def invoke(action: INVOKE_ACTIONS, **params: Any) -> Any:
 
     err = err.lower()
     if err.startswith('model was not found:'):
-        raise AnkiError('could not find note: ' + config['note'])
+        raise AnkiError('could not find note: ' + getconf('note'))
 
     elif err.startswith('deck was not found'):
-        raise AnkiError('could not find deck: ' + config['deck'])
+        raise AnkiError('could not find deck: ' + getconf('deck'))
 
     elif err.startswith('cannot create note because it is empty'):
         raise FirstFieldEmptyError('first field empty')
@@ -159,7 +159,7 @@ def currently_reviewed_phrase() -> str:
         key = key.lower()
         for scheme in PHRASE_SCHEMES:
             if scheme in key:
-                return value['value']
+                return value['value']  # type: ignore[no-any-return]
 
     raise AnkiError('could not find a "Phrase-like" field')
 
@@ -215,25 +215,25 @@ def _add_card(model_name: str, card: Card, model: dict[str, cardkey_t | None]) -
         if ckey is not None
     }
     if not fields:
-        raise IncompatibleModelError(f'note {config["note"]} has no compatible fields, try rechecking (F4)')
+        raise IncompatibleModelError(f'note {getconf("note")} has no compatible fields, try rechecking (F4)')
 
     return invoke(
         'addNote',
         note={
-            'deckName': config['deck'],
+            'deckName': getconf('deck'),
             'modelName': model_name,
             'fields': fields,
             'options': {
-                'allowDuplicate': config['duplicates'],
-                'duplicateScope': config['dupescope']
+                'allowDuplicate': getconf('duplicates'),
+                'duplicateScope': getconf('dupescope')
             },
-            'tags': config['tags'].split(',')
+            'tags': getconf('tags').split(',')
         }
     )
 
 
 def add_card(card: Card) -> int:
-    model_name = config['note']
+    model_name = getconf('note')
 
     try:
         return _add_card(model_name, card, models.get_model(model_name))

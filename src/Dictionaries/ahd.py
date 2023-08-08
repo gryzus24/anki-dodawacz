@@ -6,7 +6,7 @@ from typing import Iterable
 from typing import TYPE_CHECKING
 from typing import TypeVar
 
-from src.data import config
+from src.data import getconf
 from src.Dictionaries.base import AUDIO
 from src.Dictionaries.base import DEF
 from src.Dictionaries.base import Dictionary
@@ -420,7 +420,7 @@ def create_dictionary(html: bytes, query: str) -> Dictionary:
         phrase = _fix_commas(_remove_dots(phrase.strip()))
         phon = phon.strip().replace(')(', ') (')
 
-        if config['toipa']:
+        if getconf('toipa'):
             phon = ahd_to_ipa(phon, th_substitute)
         else:
             phon = _fix_stress_and_remove_private_symbols(phon)
@@ -470,7 +470,7 @@ def create_dictionary(html: bytes, query: str) -> Dictionary:
             pos = _fix_stress_and_remove_private_symbols(_remove_dots(pos).strip())
             _phon = _phon.strip(', ')
 
-            if config['toipa']:
+            if getconf('toipa'):
                 # TODO: Better way to pick the correct th substitute.
                 th = 'ð' if pos.startswith('th') else 'θ'
                 _phon = ahd_to_ipa(_phon, th)
@@ -486,7 +486,7 @@ def create_dictionary(html: bytes, query: str) -> Dictionary:
         etyseg = rtseg.find('../div[@class="etyseg"]')
         if etyseg is not None:
             etym = all_text(etyseg).strip()
-            if config['shortetyms']:
+            if getconf('shortetyms'):
                 ahd.add(ETYM(shorten_ahd_etymology(etym.strip('[ ]'))))
             else:
                 ahd.add(ETYM(etym))

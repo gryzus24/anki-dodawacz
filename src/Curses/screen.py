@@ -13,7 +13,7 @@ from src.Curses.util import BORDER_PAD
 from src.Curses.util import compose_attrs
 from src.Curses.util import HIGHLIGHT
 from src.Curses.util import truncate
-from src.data import config
+from src.data import getconf
 from src.Dictionaries.base import AUDIO
 from src.Dictionaries.base import DEF
 from src.Dictionaries.base import EntrySelector
@@ -318,11 +318,11 @@ def format_dictionary(dictionary: Dictionary, width: int) -> list[FLine]:
 
 def currently_selected_ops() -> tuple[type[op_t], ...]:
     result: list[type[op_t]] = [PHRASE]
-    if config['audio']:
+    if getconf('audio'):
         result.append(AUDIO)
-    if config['pos']:
+    if getconf('pos'):
         result.append(POS)
-    if config['etym']:
+    if getconf('etym'):
         result.append(ETYM)
 
     return tuple(result)
@@ -572,7 +572,8 @@ class Screen:
 
                 indices = []
                 x = text.find(s)
-                while ~x:
+                # NOTE: On Python 3.11+ `x != -1` is finally faster than `~x`
+                while x != -1:
                     nmatches += 1
                     indices.append(x)
                     x = text.find(s, x + len(s))

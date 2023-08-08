@@ -10,7 +10,7 @@ from typing import TypedDict
 
 import src.anki as anki
 from src.data import AUDIO_DIR
-from src.data import config
+from src.data import getconf
 from src.Dictionaries.base import DictionaryError
 from src.Dictionaries.diki import diki_audio
 from src.Dictionaries.util import http
@@ -70,10 +70,10 @@ def _hide(target: str, words: Iterable[str], mask: str) -> str:
 
 def prepare_hide_func(phrase: str) -> Callable[[str], str]:
     words_to_hide = set(phrase.lower().split()) - DO_NOT_HIDE
-    if not config['hidepreps']:
+    if not getconf('hidepreps'):
         words_to_hide -= PREPOSITIONS
 
-    return functools.partial(_hide, words=words_to_hide, mask=config['hides'])
+    return functools.partial(_hide, words=words_to_hide, mask=getconf('hides'))
 
 
 FORMAT_STYLES = (
@@ -107,18 +107,18 @@ def make_card(selection: DictionarySelection) -> Card:
 
     phrase = selection.PHRASE.phrase
     hide_phrase_in = prepare_hide_func(phrase)
-    hidedef = config['hidedef']
-    hidesyn = config['hidesyn']
-    hideexsen = config['hideexsen']
-    formatdefs = config['formatdefs']
+    hidedef = getconf('hidedef')
+    hidesyn = getconf('hidesyn')
+    hideexsen = getconf('hideexsen')
+    formatdefs = getconf('formatdefs')
 
     definitions = []
     examples = []
-    for i, op in enumerate(selection.DEF, 1):
-        if op.label and ' ' not in op.label:
-            definition = f'[{op.label}] {op.definition}'
+    for i, def_op in enumerate(selection.DEF, 1):
+        if def_op.label and ' ' not in def_op.label:
+            definition = f'[{def_op.label}] {def_op.definition}'
         else:
-            definition = op.definition
+            definition = def_op.definition
         if hidedef:
             definition = hide_phrase_in(definition)
         definition = _html_quote(definition)
@@ -126,12 +126,12 @@ def make_card(selection: DictionarySelection) -> Card:
             definition = _format(definition, i)
         definitions.append(definition)
 
-        if op.examples:
+        if def_op.examples:
             examples.append(
                 '<br>'.join(
                     f'<small>({i})</small> '
                     f'{_html_quote(hide_phrase_in(x) if hideexsen else x)}'
-                    for x in op.examples
+                    for x in def_op.examples
                 )
             )
 
@@ -142,23 +142,23 @@ def make_card(selection: DictionarySelection) -> Card:
         ]
     else:
         synonyms = []
-        for i, op in enumerate(selection.SYN, 1):
-            definition = hide_phrase_in(op.definition) if hidedef else op.definition
+        for i, syn_op in enumerate(selection.SYN, 1):
+            definition = hide_phrase_in(syn_op.definition) if hidedef else syn_op.definition
             definition = _html_quote(definition)
             if formatdefs:
                 definition = _format(definition, i)
             definitions.append(definition)
 
-            syns = hide_phrase_in(op.synonyms) if hidesyn else op.synonyms
+            syns = hide_phrase_in(syn_op.synonyms) if hidesyn else syn_op.synonyms
             syns = _html_quote(syns)
             synonyms.append(f'<small>({i})</small> {syns}')
 
-            if op.examples:
+            if syn_op.examples:
                 examples.append(
                     '<br>'.join(
                         f'<small>({i})</small> '
                         f'{_html_quote(hide_phrase_in(x) if hideexsen else x)}'
-                        for x in op.examples
+                        for x in syn_op.examples
                     )
                 )
 
@@ -167,12 +167,12 @@ def make_card(selection: DictionarySelection) -> Card:
     card['PHRASE'] = _html_quote(phrase)
     card['EXSEN'] = '<br>'.join(examples)
 
-    if config['pos'] and selection.POS is not None:
+    if getconf('pos') and selection.POS is not None:
         card['POS'] = '<br>'.join(
             _html_quote(f'{pos}  {extra}') for pos, extra in selection.POS.pos
         )
 
-    if config['etym'] and selection.ETYM is not None:
+    if getconf('etym') and selection.ETYM is not None:
         card['ETYM'] = _html_quote(selection.ETYM.etymology)
 
     return card
@@ -182,7 +182,7 @@ def _save_audio(url: str) -> str:
     audio_bytes = http.urlopen('GET', url).data
 
     mediadir_path = os.path.expanduser(
-        AUDIO_DIR if config['mediadir'] == '-' else config['mediadir']
+        AUDIO_DIR if getconf('mediadir') == '-' else getconf('mediadir')
     )
     _, _, filename = url.rpartition('/')
 
@@ -225,7 +225,7 @@ def create_and_add_card(
     nids = []
     for selection in selections:
         card = make_card(selection)
-        if config['audio']:
+        if getconf('audio'):
             card['AUDIO'] = _perror_save_audio(status, selection)
 
         try:

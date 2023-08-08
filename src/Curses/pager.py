@@ -139,7 +139,7 @@ class Pager:
 
             indices = []
             x = text.find(s)
-            while ~x:
+            while x != -1:
                 nmatches += 1
                 indices.append(x)
                 x = text.find(s, x + hl_span)
