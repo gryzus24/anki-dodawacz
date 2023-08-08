@@ -113,12 +113,12 @@ class Dictionary:
 
 
 class DictionarySelection(NamedTuple):
-    audio:       AUDIO | None
-    definitions: list[DEF]
-    etymology:   ETYM | None
-    phrase:      PHRASE
-    pos:         POS | None
-    synonyms:    list[SYN]
+    AUDIO:  AUDIO | None
+    DEF:    list[DEF]
+    ETYM:   ETYM | None
+    PHRASE: PHRASE
+    POS:    POS | None
+    SYN:    list[SYN]
 
 
 class EntrySelector:

@@ -82,9 +82,12 @@ FORMAT_STYLES = (
     ('<small style="opacity: 0.4;">', '</small>'),
     ('<small style="opacity: 0.2;"><sub>', '</sub></small>')
 )
-def _format(s: str, index: int, style: tuple[str, str]) -> str:
-    left, right = style
-    return f'{left}<small style="color: #4EAA72;">{index}.</small> {s}{right}'
+def _format(s: str, number: int) -> str:
+    try:
+        left, right = FORMAT_STYLES[number - 1]
+    except IndexError:
+        left, right = FORMAT_STYLES[-1]
+    return f'{left}<small style="color: #4EAA72;">{number}.</small> {s}{right}'
 
 
 def _html_quote(s: str) -> str:
@@ -102,55 +105,75 @@ def make_card(selection: DictionarySelection) -> Card:
         'AUDIO':  '',
     }
 
-    phrase = selection.phrase.phrase
+    phrase = selection.PHRASE.phrase
     hide_phrase_in = prepare_hide_func(phrase)
+    hidedef = config['hidedef']
+    hidesyn = config['hidesyn']
+    hideexsen = config['hideexsen']
+    formatdefs = config['formatdefs']
 
     definitions = []
     examples = []
-    for i, op in enumerate(selection.definitions, 1):
+    for i, op in enumerate(selection.DEF, 1):
         if op.label and ' ' not in op.label:
             definition = f'[{op.label}] {op.definition}'
         else:
             definition = op.definition
-
-        if config['hidedef']:
+        if hidedef:
             definition = hide_phrase_in(definition)
-
         definition = _html_quote(definition)
-        if config['formatdefs']:
-            try:
-                style = FORMAT_STYLES[i - 1]
-            except IndexError:
-                style = FORMAT_STYLES[-1]
-            definition = _format(definition, i, style)
-
+        if formatdefs:
+            definition = _format(definition, i)
         definitions.append(definition)
+
         if op.examples:
             examples.append(
                 '<br>'.join(
                     f'<small>({i})</small> '
-                    f'{_html_quote(hide_phrase_in(x) if config["hideexsen"] else x)}'
+                    f'{_html_quote(hide_phrase_in(x) if hideexsen else x)}'
                     for x in op.examples
                 )
             )
 
+    if definitions:
+        synonyms = [
+            _html_quote(hide_phrase_in(x) if hidesyn else x)
+            for x in (f'{x.definition} {x.synonyms}' for x in selection.SYN)
+        ]
+    else:
+        synonyms = []
+        for i, op in enumerate(selection.SYN, 1):
+            definition = hide_phrase_in(op.definition) if hidedef else op.definition
+            definition = _html_quote(definition)
+            if formatdefs:
+                definition = _format(definition, i)
+            definitions.append(definition)
+
+            syns = hide_phrase_in(op.synonyms) if hidesyn else op.synonyms
+            syns = _html_quote(syns)
+            synonyms.append(f'<small>({i})</small> {syns}')
+
+            if op.examples:
+                examples.append(
+                    '<br>'.join(
+                        f'<small>({i})</small> '
+                        f'{_html_quote(hide_phrase_in(x) if hideexsen else x)}'
+                        for x in op.examples
+                    )
+                )
+
     card['DEF'] = '<br>'.join(definitions)
+    card['SYN'] = '<br>'.join(synonyms)
+    card['PHRASE'] = _html_quote(phrase)
     card['EXSEN'] = '<br>'.join(examples)
 
-    card['SYN'] = '<br>'.join(
-        _html_quote(hide_phrase_in(x) if config['hidesyn'] else x)
-        for x in (f'{x.definition} {x.synonyms}' for x in selection.synonyms)
-    )
-
-    card['PHRASE'] = _html_quote(phrase)
-
-    if config['pos'] and selection.pos is not None:
+    if config['pos'] and selection.POS is not None:
         card['POS'] = '<br>'.join(
-            _html_quote(f'{pos}  {infl}') for pos, infl in selection.pos.pos
+            _html_quote(f'{pos}  {extra}') for pos, extra in selection.POS.pos
         )
 
-    if config['etym'] and selection.etymology is not None:
-        card['ETYM'] = _html_quote(selection.etymology.etymology)
+    if config['etym'] and selection.ETYM is not None:
+        card['ETYM'] = _html_quote(selection.ETYM.etymology)
 
     return card
 
@@ -176,9 +199,9 @@ def _perror_save_audio(
         status: StatusProto,
         selection: DictionarySelection
 ) -> str:
-    phrase = selection.phrase.phrase
+    phrase = selection.PHRASE.phrase
 
-    if selection.audio is None:
+    if selection.AUDIO is None:
         try:
             url = diki_audio(phrase)
         except DictionaryError as e:
@@ -186,7 +209,7 @@ def _perror_save_audio(
             status.attention(f'No audio available for {phrase!r}')
             return ''
     else:
-        url = selection.audio.resource
+        url = selection.AUDIO.resource
 
     try:
         return _save_audio(url)
