@@ -59,8 +59,10 @@ SCHEME_TO_FIELD: tuple[tuple[str, cardkey_t], ...] = (
 
     ('pos',      'POS'),
     ('part',     'POS'),
+    ('deriv',    'POS'),
     ('części',   'POS'),
     ('czesci',   'POS'),
+    ('deryw',    'POS'),
 
     ('etym',     'ETYM'),
 
