@@ -57,31 +57,33 @@ def wrap(
         op_indx: int,
         s: str,
         hls: Sequence[tuple[int, int]],
-        column_width: int, *,
+        width: int, *,
+        predent: str = '',
         indent: str = ''
 ) -> None:
     # displaying '\n' and '\r' is undesirable
-    for c in '\n\r':
-        if c in s:
-            s = s.replace(c, ' ')
+    if '\n' in s:
+        s = s.replace('\n', ' ')
+    if '\r' in s:
+        s = s.replace('\r', ' ')
 
     s_len = len(s)
+    cur_indent = predent
+    cur_indent_len = len(predent)
 
     # fast path
-    if s_len <= column_width:
-        attr_i = 0
+    if s_len <= width - cur_indent_len:
         attrs = []
+        _attr_i = cur_indent_len
         for span, attr in hls:
-            attrs.append(Attr(attr_i, span, attr))
-            attr_i += span
+            attrs.append(Attr(_attr_i, span, attr))
+            _attr_i += span
 
-        dest.append(FLine(op_indx, s, attrs))
+        dest.append(FLine(op_indx, predent + s, attrs))
         return
 
-    cur_indent = ''
-    hl_i = attr_i = line_i = brk_i = cur_indent_len = 0
     indent_len = len(indent)
-    width = column_width
+    hl_i = attr_i = line_i = brk_i = 0
 
     span_left, attr = hls[hl_i]
     attrs = []
@@ -180,21 +182,30 @@ def format_dictionary(dictionary: Dictionary, width: int) -> list[FLine]:
             sign = ' ' if op.subdef else '>'
             label = '{' + op.label + '} ' if op.label else ''
 
-            wrap(result, i, f'{sign}{index} {label}{op.definition}',
-                (
-                    (1, Color.sign),
-                    (index_len + 1, Color.index),
-                    (len(label), Color.label),
-                    (len(op.definition), Color.def1 if index % 2 else Color.def2)
-                ), width, indent=indent)
+            buf = f'{sign}{index} {label}{op.definition}'
+            hls = [
+                (1, Color.sign),
+                (index_len + 1, Color.index),
+                (len(label), Color.label),
+                (len(op.definition) + 1, Color.def1 if index % 2 else Color.def2)
+            ]
+            nexamples = len(op.examples)
+            if nexamples == 1:
+                example = op.examples[0]
+                if len(buf) + 2 + len(example) <= width or indent_weight:
+                    buf += '  ' + example
+                    hls.append((1 + len(example), Color.exsen))
+                    nexamples -= 1
 
-            predent = (indent_weight + index_len + 1) * ' '
-            for example in op.examples:
-                wrap(result, i, predent + example,
-                    (
-                        (len(predent), 0),
-                        (len(example), Color.exsen)
-                    ), width, indent=indent or ' ')
+            wrap(result, i, buf, hls, width, indent=indent)
+
+            if nexamples:
+                predent = (indent_weight + index_len + 1) * ' '
+                for example in op.examples:
+                    wrap(result, i, example,
+                        (
+                            (len(example), Color.exsen),
+                        ), width, predent=predent, indent=indent or ' ')
 
         elif isinstance(op, LABEL):
             result.append(FLine(i, '', []))
@@ -204,8 +215,8 @@ def format_dictionary(dictionary: Dictionary, width: int) -> list[FLine]:
             if op.extra:
                 wrap(result, i, f'{op.label}  {op.extra}',
                     (
-                        (len(op.label) + 2, Color.label),
-                        (len(op.extra), Color.infl)
+                        (len(op.label) + 1, Color.label),
+                        (1 + len(op.extra), Color.infl)
                     ), width)
             else:
                 wrap(result, i, op.label,
@@ -216,8 +227,8 @@ def format_dictionary(dictionary: Dictionary, width: int) -> list[FLine]:
             if op.extra:
                 wrap(result, i, f'{op.phrase}  {op.extra}',
                     (
-                        (len(op.phrase) + 2, Color.phrase),
-                        (len(op.extra), Color.phon)
+                        (len(op.phrase) + 1, Color.phrase),
+                        (1 + len(op.extra), Color.phon)
                     ), width)
             else:
                 wrap(result, i, op.phrase,
@@ -262,8 +273,8 @@ def format_dictionary(dictionary: Dictionary, width: int) -> list[FLine]:
             for pos, phon in op.pos:
                 wrap(result, i, f'{pos}  {phon}',
                     (
-                        (len(pos) + 2, Color.pos),
-                        (len(phon), Color.phon)
+                        (len(pos) + 1, Color.pos),
+                        (1 + len(phon), Color.phon)
                     ), width)
 
         elif isinstance(op, SYN):
