@@ -388,6 +388,88 @@ def layout(
     return columns, column_width
 
 
+class Cursor:
+    def __init__(self, selector: EntrySelector, columns: list[list[FLine]]) -> None:
+        self._ncolumns = len(columns)
+        self._col = self._cur_indx = 0
+
+        self._col_cur_lineof = []
+        self._col_indx_to_cur = []
+
+        contents = selector.dictionary.contents
+        for col in columns:
+            _cur_lineof = {}
+            _indx_to_cur = []
+            for i, line in enumerate(col):
+                if (
+                        line.op_indx not in _cur_lineof
+                    and isinstance(contents[line.op_indx], selector.TOGGLEABLE)
+                ):
+                    _indx_to_cur.append(line.op_indx)
+                    _cur_lineof[line.op_indx] = i
+
+            self._col_cur_lineof.append(_cur_lineof)
+            self._col_indx_to_cur.append(_indx_to_cur)
+
+
+    def cur(self) -> int:
+        return self._col_indx_to_cur[self._col][self._cur_indx]
+
+    def line_at_cur(self) -> int:
+        return self._col_cur_lineof[self._col][self.cur()]
+
+    def line_at_next_cur_down(self) -> int | None:
+        try:
+            next_cur = self._col_indx_to_cur[self._col][self._cur_indx + 1]
+        except IndexError:
+            return None
+
+        return self._col_cur_lineof[self._col][next_cur]
+
+    def down(self) -> bool:
+        end = len(self._col_cur_lineof[self._col]) - 1
+        if self._cur_indx < end:
+            self._cur_indx += 1
+            return True
+        else:
+            return False
+
+    def up(self) -> bool:
+        if self._cur_indx > 0:
+            self._cur_indx -= 1
+            return True
+        else:
+            return False
+
+    def right(self) -> None:
+        if self._col < self._ncolumns - 1:
+            cur_line = self.line_at_cur()
+
+            self._col += 1
+            lineof = self._col_cur_lineof[self._col]
+            for i, line in enumerate(lineof.values()):
+                if line > cur_line:
+                    self._cur_indx = i
+                    self.up()
+                    break
+            else:
+                self._cur_indx = len(lineof) - 1
+
+    def left(self) -> None:
+        if self._col > 0:
+            cur_line = self.line_at_cur()
+
+            self._col -= 1
+            lineof = self._col_cur_lineof[self._col]
+            for i, line in enumerate(lineof.values()):
+                if line > cur_line:
+                    self._cur_indx = i
+                    self.up()
+                    break
+            else:
+                self._cur_indx = len(lineof) - 1
+
+
 class ScreenHighlight(NamedTuple):
     hl: list[dict[int, list[int]]]
     nmatches: int
@@ -405,10 +487,12 @@ class Screen:
         self.selector = EntrySelector(dictionary)
 
         # self.margin_bot is needed for `self.page_height`
-        self.margin_bot = 0
+        self._scroll = self.margin_bot = 0
         self.columns, self.column_width = layout(dictionary, self.page_height)
         self.hl: ScreenHighlight | None = None
-        self._scroll = 0
+
+        self.vmode = False
+        self.cursor = Cursor(self.selector, self.columns)
 
     @property
     def page_height(self) -> int:
@@ -437,6 +521,7 @@ class Screen:
         except curses.error:  # window too small
             return
 
+        cur = self.cursor.cur()
         selected_ops = currently_selected_ops()
         hl_attr = Color.heed | HIGHLIGHT
 
@@ -446,17 +531,18 @@ class Screen:
                     range(self._scroll, self._scroll + page_height), BORDER_PAD
             ):
                 try:
-                    op_index, text, attrs = column[line_i]
+                    op_i, text, attrs = column[line_i]
                 except IndexError:
                     continue
 
                 if not text:
                     continue
 
-                if self.selector.is_toggled(op_index):
-                    op = contents[op_index]
+
+                if self.selector.is_toggled(op_i):
+                    op = contents[op_i]
                     if isinstance(op, self.selector.TOGGLEABLE):
-                        selection_hl = curses.A_STANDOUT
+                        selection_hl = Color.heed | curses.A_STANDOUT
                     elif isinstance(op, selected_ops):
                         selection_hl = curses.A_BOLD
                     else:
@@ -464,9 +550,14 @@ class Screen:
                 else:
                     selection_hl = 0
 
+                if self.vmode and op_i == cur:
+                    selection_hl |= HIGHLIGHT
+
+                win.addstr(y, text_x, text)
                 try:
-                    win.addstr(y, text_x, text, selection_hl)
                     for i, span, attr in attrs:
+                        if self.selector.is_toggled(op_i) and isinstance(contents[op_i], self.selector.TOGGLEABLE):
+                            attr = attr
                         win.chgat(y, text_x + i, span, attr | selection_hl)
                 except curses.error:  # window too small
                     return
@@ -492,9 +583,40 @@ class Screen:
             self.selector.dictionary,
             self.page_height
         )
-        self.adjust_scroll_past_eof()
         if self.hl is not None:
             self.hlsearch(self.hl.phrase)
+
+        self.cursor = Cursor(self.selector, self.columns)
+        self.adjust_scroll_past_eof()
+
+    def vmode_toggle(self) -> None:
+        self.vmode = not self.vmode
+
+    def cursor_down(self) -> None:
+        if not self.vmode:
+            self.move_down()
+        elif self.cursor.down():
+            cur_line = self.cursor.line_at_next_cur_down()
+            if cur_line is None:
+                self._scroll = self._scroll_end()
+            elif cur_line > (end := self._scroll + self.page_height):
+                self._scroll += cur_line - end
+
+    def cursor_up(self) -> None:
+        if not self.vmode:
+            self.move_up()
+        elif self.cursor.up():
+            cur_line = self.cursor.line_at_cur()
+            if cur_line < self._scroll:
+                self._scroll = cur_line
+
+    def cursor_right(self) -> None:
+        if self.vmode:
+            self.cursor.right()
+
+    def cursor_left(self) -> None:
+        if self.vmode:
+            self.cursor.left()
 
     def dictionary_index_at(self, y: int, x: int) -> int | None:
         if y < BORDER_PAD or y >= curses.LINES - 1 - self.margin_bot:
@@ -636,16 +758,21 @@ class Screen:
         return False
 
     ACTIONS: Mapping[bytes, Callable[[Screen], None]] = {
-        b'^J': hl_clear, b'^M': hl_clear,
+        b'v': vmode_toggle,
+        b'j': cursor_down,        b'KEY_DOWN': cursor_down,
+        b'k': cursor_up,          b'KEY_UP': cursor_up,
         b'd': deselect_all,
-        b'j': move_down, b'^N': move_down, b'KEY_DOWN': move_down,
-        b'k': move_up,   b'^P': move_up,   b'KEY_UP': move_up,
-        b'G': go_bottom, b'KEY_END': go_bottom,
-        b'g': go_top,    b'KEY_HOME': go_top,
-        b'KEY_NPAGE': page_down, b'KEY_SNEXT': page_down,
-        b'KEY_PPAGE': page_up,   b'KEY_SPREVIOUS': page_up,
+        b'l': cursor_right,       b'KEY_RIGHT': cursor_right,
+        b'h': cursor_left,        b'KEY_LEFT': cursor_left,
+        b'J': move_down,          b'^N': move_down,
+        b'K': move_up,            b'^P': move_up,
+        b'G': go_bottom,          b'KEY_END': go_bottom,
+        b'g': go_top,             b'KEY_HOME': go_top,
+        b'KEY_NPAGE': page_down,  b'KEY_SNEXT': page_down,
+        b'KEY_PPAGE': page_up,    b'KEY_SPREVIOUS': page_up,
         b'n': hl_next,
         b'N': hl_prev,
+        b'^J': hl_clear,          b'^M': hl_clear,
     }
 
     # Returns whether the key was recognized.
