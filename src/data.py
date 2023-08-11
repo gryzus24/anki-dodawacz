@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import copy
 import json
 import os
 import sys
@@ -137,7 +136,7 @@ try:
 except FileNotFoundError:
     with open(os.path.join(ROOT_DIR, 'config.json')) as f:
         _defaults: config_t = json.load(f)
-    config = copy.deepcopy(_defaults)
+    config = _defaults.copy()
     config_save(config)
 else:
     with open(os.path.join(ROOT_DIR, 'config.json')) as f:
