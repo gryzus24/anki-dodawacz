@@ -549,16 +549,26 @@ class ScreenBuffer(ScreenBufferProto):
 
         self.win.clearok(True)
 
-    def next(self) -> None:
+    def next_page(self) -> None:
         if self.screens and isinstance(self.page, Screen):
             if self._screen_i < len(self.screens) - 1:
                 self._screen_i += 1
             self.page = self.screens[self._screen_i]
 
-    def previous(self) -> None:
+    def prev_page(self) -> None:
         if self.screens and isinstance(self.page, Screen):
             if self._screen_i > 0:
                 self._screen_i -= 1
+            self.page = self.screens[self._screen_i]
+
+    def cycle_next_page(self) -> None:
+        if self.screens and isinstance(self.page, Screen):
+            self._screen_i = (self._screen_i + 1) % len(self.screens)
+            self.page = self.screens[self._screen_i]
+
+    def cycle_prev_page(self) -> None:
+        if self.screens and isinstance(self.page, Screen):
+            self._screen_i = (self._screen_i - 1) % len(self.screens)
             self.page = self.screens[self._screen_i]
 
     def toggle_help(self) -> None:
@@ -644,27 +654,29 @@ class ScreenBuffer(ScreenBufferProto):
 
         if self.page.hlsearch(typed):
             assert self.page.hl is not None
-            # Go to the first match if there were matches, but they were
-            # outside of the current visible region, otherwise - do not move
-            # - there was enough visual feedback.
+            # Go to the first match if there were matches, but outside of
+            # the currently visible region, otherwise - do not move - there
+            # was enough visual feedback.
             # Doing it this way seems more intuitive than what `less` does,
             # because it emphasizes that *something* matches, but the
             # edge case of jumping backwards (if we are anywhere but on <TOP>
             # of the page) might be annoying.
             # TODO: better way?
             if not self.page.is_hl_in_view():
-                self.page.go_top()
+                self.page.view_top()
                 self.page.hl_next()
         else:
             self.status.error('Nothing matches', repr(typed))
 
     ACTIONS: Mapping[bytes, Callable[[ScreenBuffer], None]] = {
-        b'KEY_RESIZE': resize, b'^L': resize,
-        b'l': next,     b'KEY_RIGHT': next,
-        b'h': previous, b'KEY_LEFT': previous,
+        b'KEY_RESIZE': resize,           b'^L': resize,
+        b'L': next_page,
+        b'^I': cycle_next_page,
+        b'H': prev_page,
+        b'KEY_BTAB': cycle_prev_page,
         b'KEY_F(1)': toggle_help,
         b'KEY_F(3)': anki_configuration,
-        b'^F': find_in_page, b'KEY_F(4)': find_in_page
+        b'KEY_F(4)': find_in_page,       b'^F': find_in_page,
     }
     def dispatch(self, key: bytes) -> bool:
         if self.page.dispatch(key):
@@ -810,7 +822,7 @@ def curses_main(stdscr: curses._CursesWindow) -> None:
                 elif isinstance(screenbuf.page, Screen):
                     if screenbuf.page.mark_box_at(y, x):
                         continue
-                    if (index := screenbuf.page.dictionary_index_at(y, x)) is None:
+                    if (index := screenbuf.page.dictionary_op_i_at(y, x)) is None:
                         continue
                     if screenbuf.page.selector.is_phrase_index(index):
                         audio = screenbuf.page.selector.audio_for_index(index)

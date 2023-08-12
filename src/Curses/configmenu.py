@@ -10,6 +10,7 @@ from typing import Mapping
 from typing import NamedTuple
 
 import src.anki as anki
+from src.Curses.color import ATTR_NAME_TO_ATTR
 from src.Curses.color import Color
 from src.Curses.color import COLOR_NAME_TO_COLOR
 from src.Curses.prompt import Prompt
@@ -32,11 +33,12 @@ def _configv_annotations(key: str) -> list[str]:
 
 
 class Option(NamedTuple):
-    key:         configkey_t
-    description: str
-    constraint:  type[bool] | list[str] | Callable[[], list[str]] | None
+    key:                  configkey_t
+    description:          str
+    constraint:           type[bool] | list[str] | Callable[[], list[str]] | None
+    completion_separator: str | None = None
     # `strict`: option can be set only if it is contained within `constraint`.
-    strict:      bool = False
+    strict:               bool = False
 
     @property
     def basename(self) -> str:
@@ -83,7 +85,7 @@ class Column(NamedTuple):
         raise AssertionError(f'unreachable: {i}')
 
 
-_COLORS = list(COLOR_NAME_TO_COLOR)
+_CATTRS = list(COLOR_NAME_TO_COLOR) + list(ATTR_NAME_TO_ATTR)
 
 CONFIG_COLUMNS: list[Column] = [
 Column([
@@ -216,22 +218,25 @@ Column([
     Section(
         'Colors',
         [
-        Option('c.def1', 'Color of odd definitions', _COLORS, strict=True),
-        Option('c.def2', 'Color of even definitions', _COLORS, strict=True),
-        Option('c.delimit', 'Color of delimiters', _COLORS, strict=True),
-        Option('c.err', 'Color of error indicators', _COLORS, strict=True),
-        Option('c.etym', 'Color of etymologies', _COLORS, strict=True),
-        Option('c.exsen', 'Color of example sentences', _COLORS, strict=True),
-        Option('c.heed', 'Color of attention indicators', _COLORS, strict=True),
-        Option('c.index', 'Color of definition indices', _COLORS, strict=True),
-        Option('c.infl', 'Color of inflections', _COLORS, strict=True),
-        Option('c.label', 'Color of labels', _COLORS, strict=True),
-        Option('c.phon', 'Color of phonologies', _COLORS, strict=True),
-        Option('c.phrase', 'Color of phrases', _COLORS, strict=True),
-        Option('c.pos', 'Color of parts of speech', _COLORS, strict=True),
-        Option('c.sign', 'Color of main definition signs', _COLORS, strict=True),
-        Option('c.success', 'Color of success indicators', _COLORS, strict=True),
-        Option('c.syn', 'Color of synonyms', _COLORS, strict=True),
+        Option('c.cursor',    'Color of virtual cursor',         _CATTRS, completion_separator=' '),
+        Option('c.def1',      'Color of odd definitions',        _CATTRS, completion_separator=' '),
+        Option('c.def2',      'Color of even definitions',       _CATTRS, completion_separator=' '),
+        Option('c.delimit',   'Color of delimiters',             _CATTRS, completion_separator=' '),
+        Option('c.err',       'Color of error indicators',       _CATTRS, completion_separator=' '),
+        Option('c.etym',      'Color of etymologies',            _CATTRS, completion_separator=' '),
+        Option('c.exsen',     'Color of example sentences',      _CATTRS, completion_separator=' '),
+        Option('c.heed',      'Color of attention indicators',   _CATTRS, completion_separator=' '),
+        Option('c.hl',        'Color of "Find in page" matches', _CATTRS, completion_separator=' '),
+        Option('c.index',     'Color of definition indices',     _CATTRS, completion_separator=' '),
+        Option('c.infl',      'Color of inflections',            _CATTRS, completion_separator=' '),
+        Option('c.label',     'Color of labels',                 _CATTRS, completion_separator=' '),
+        Option('c.phon',      'Color of phonologies',            _CATTRS, completion_separator=' '),
+        Option('c.phrase',    'Color of phrases',                _CATTRS, completion_separator=' '),
+        Option('c.pos',       'Color of parts of speech',        _CATTRS, completion_separator=' '),
+        Option('c.selection', 'Color of selections',             _CATTRS, completion_separator=' '),
+        Option('c.sign',      'Color of main definition signs',  _CATTRS, completion_separator=' '),
+        Option('c.success',   'Color of success indicators',     _CATTRS, completion_separator=' '),
+        Option('c.syn',       'Color of synonyms',               _CATTRS, completion_separator=' '),
         ]
     )
 ])
@@ -295,7 +300,7 @@ class ConfigMenu(ScreenBufferProto):
                 Attr(
                     0,
                     min(len(val), max_attr_span),
-                    Color.get_color(self._local_config, option.key)  # type: ignore[arg-type]
+                    Color.color(self._local_config, option.key)  # type: ignore[arg-type]
                 )
             )
         else:
@@ -448,7 +453,8 @@ class ConfigMenu(ScreenBufferProto):
             typed = Prompt(
                 self,
                 f'New value ({"listed" if option.strict else "arbitrary"}): ',
-                exiting_bspace=False
+                exiting_bspace=False,
+                completion_separator=option.completion_separator
             ).run(completions)
 
         if typed is None or not (typed := typed.strip()):
@@ -464,7 +470,7 @@ class ConfigMenu(ScreenBufferProto):
     def apply_changes(self) -> bool:
         if self._local_config == config:
             return False
-        config.update(self._local_config)  # type: ignore[typeddict-item]
+        config.update(self._local_config)
         config_save(config)
         Color.refresh(config)
         return True
