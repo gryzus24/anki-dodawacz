@@ -124,10 +124,10 @@ class Pager:
         self._line = 0
 
     def page_down(self) -> None:
-        self.move_down(curses.LINES - 2)
+        self.move_down(self.page_height - 2)
 
     def page_up(self) -> None:
-        self.move_up(curses.LINES - 2)
+        self.move_up(self.page_height - 2)
 
     def hlsearch(self, s: str) -> int:
         against_lowercase = s.islower()
@@ -186,11 +186,11 @@ class Pager:
         return False
 
     ACTIONS: Mapping[bytes, Callable[[Pager], None]] = {
-        b'j': move_down,         b'^N': move_down,         b'KEY_DOWN': move_down,
-        b'k': move_up,           b'^P': move_up,           b'KEY_UP': move_up,
+        b'j': move_down,         b'J': move_down, b'^N': move_down, b'KEY_DOWN': move_down,
+        b'k': move_up,           b'K': move_up,   b'^P': move_up,   b'KEY_UP': move_up,
         b'G': view_bottom,       b'KEY_END': view_bottom,
         b'g': view_top,          b'KEY_HOME': view_top,
-        b'KEY_NPAGE': page_down, b'KEY_SNEXT': page_down,
+        b'KEY_NPAGE': page_down, b'KEY_SNEXT': page_down, b' ': page_down,
         b'KEY_PPAGE': page_up,   b'KEY_SPREVIOUS': page_up,
         b'n': hl_next,
         b'N': hl_prev,
