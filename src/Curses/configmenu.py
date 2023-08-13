@@ -35,10 +35,19 @@ def _configv_annotations(key: str) -> list[str]:
 class Option(NamedTuple):
     key:                  configkey_t
     description:          str
+
+    # If strict=False, constraint specifies completion entries as passed to
+    #                  Prompt where possible.
+    # If strict=True, constraint specifies what values can be set for an option.
     constraint:           type[bool] | list[str] | Callable[[], list[str]] | None
-    completion_separator: str | None = None
-    # `strict`: option can be set only if it is contained within `constraint`.
     strict:               bool = False
+
+    # completion_separator, as passed to Prompt.
+    completion_separator: str | None = None
+
+    # If clear_prompt=True, Prompt will be instantiated with pretype='',
+    # otherwise pretype will have the value of an option that is being edited.
+    clear_prompt:         bool = True
 
     @property
     def basename(self) -> str:
@@ -85,7 +94,9 @@ class Column(NamedTuple):
         raise AssertionError(f'unreachable: {i}')
 
 
-_CATTRS = list(COLOR_NAME_TO_COLOR) + list(ATTR_NAME_TO_ATTR)
+_COLOR_OPTS = (
+    list(COLOR_NAME_TO_COLOR) + list(ATTR_NAME_TO_ATTR), False, ' ', False
+)
 
 CONFIG_COLUMNS: list[Column] = [
 Column([
@@ -170,7 +181,12 @@ Column([
             _configv_annotations('dupescope'),
             strict=True
         ),
-        Option('tags', 'Anki tags (comma separated list)', None),
+        Option(
+            'tags',
+            'Anki tags (comma separated list)',
+            None,
+            clear_prompt=False
+        ),
         ]
     ),
     Section(
@@ -196,20 +212,17 @@ Column([
         Option(
             'toipa',
             'Translate AH Dictionary phonetic spelling into IPA',
-            bool,
-            strict=True
+            bool
         ),
         Option(
             'shortetyms',
             'Shorten and simplify etymologies in AH Dictionary',
-            bool,
-            strict=True
+            bool
         ),
         Option(
             'nohelp',
             'Hide the F-key help bar on program startup',
-            bool,
-            strict=True
+            bool
         ),
         ]
     )
@@ -218,25 +231,25 @@ Column([
     Section(
         'Colors',
         [
-        Option('c.cursor',    'Color of virtual cursor',         _CATTRS, completion_separator=' '),
-        Option('c.def1',      'Color of odd definitions',        _CATTRS, completion_separator=' '),
-        Option('c.def2',      'Color of even definitions',       _CATTRS, completion_separator=' '),
-        Option('c.delimit',   'Color of delimiters',             _CATTRS, completion_separator=' '),
-        Option('c.err',       'Color of error indicators',       _CATTRS, completion_separator=' '),
-        Option('c.etym',      'Color of etymologies',            _CATTRS, completion_separator=' '),
-        Option('c.exsen',     'Color of example sentences',      _CATTRS, completion_separator=' '),
-        Option('c.heed',      'Color of attention indicators',   _CATTRS, completion_separator=' '),
-        Option('c.hl',        'Color of "Find in page" matches', _CATTRS, completion_separator=' '),
-        Option('c.index',     'Color of definition indices',     _CATTRS, completion_separator=' '),
-        Option('c.infl',      'Color of inflections',            _CATTRS, completion_separator=' '),
-        Option('c.label',     'Color of labels',                 _CATTRS, completion_separator=' '),
-        Option('c.phon',      'Color of phonologies',            _CATTRS, completion_separator=' '),
-        Option('c.phrase',    'Color of phrases',                _CATTRS, completion_separator=' '),
-        Option('c.pos',       'Color of parts of speech',        _CATTRS, completion_separator=' '),
-        Option('c.selection', 'Color of selections',             _CATTRS, completion_separator=' '),
-        Option('c.sign',      'Color of main definition signs',  _CATTRS, completion_separator=' '),
-        Option('c.success',   'Color of success indicators',     _CATTRS, completion_separator=' '),
-        Option('c.syn',       'Color of synonyms',               _CATTRS, completion_separator=' '),
+        Option('c.cursor',    'Color of virtual cursor',         *_COLOR_OPTS),
+        Option('c.def1',      'Color of odd definitions',        *_COLOR_OPTS),
+        Option('c.def2',      'Color of even definitions',       *_COLOR_OPTS),
+        Option('c.delimit',   'Color of delimiters',             *_COLOR_OPTS),
+        Option('c.err',       'Color of error indicators',       *_COLOR_OPTS),
+        Option('c.etym',      'Color of etymologies',            *_COLOR_OPTS),
+        Option('c.exsen',     'Color of example sentences',      *_COLOR_OPTS),
+        Option('c.heed',      'Color of attention indicators',   *_COLOR_OPTS),
+        Option('c.hl',        'Color of "Find in page" matches', *_COLOR_OPTS),
+        Option('c.index',     'Color of definition indices',     *_COLOR_OPTS),
+        Option('c.infl',      'Color of inflections',            *_COLOR_OPTS),
+        Option('c.label',     'Color of labels',                 *_COLOR_OPTS),
+        Option('c.phon',      'Color of phonologies',            *_COLOR_OPTS),
+        Option('c.phrase',    'Color of phrases',                *_COLOR_OPTS),
+        Option('c.pos',       'Color of parts of speech',        *_COLOR_OPTS),
+        Option('c.selection', 'Color of selections',             *_COLOR_OPTS),
+        Option('c.sign',      'Color of main definition signs',  *_COLOR_OPTS),
+        Option('c.success',   'Color of success indicators',     *_COLOR_OPTS),
+        Option('c.syn',       'Color of synonyms',               *_COLOR_OPTS),
         ]
     )
 ])
@@ -453,6 +466,7 @@ class ConfigMenu(ScreenBufferProto):
             typed = Prompt(
                 self,
                 f'New value ({"listed" if option.strict else "arbitrary"}): ',
+                pretype='' if option.clear_prompt else val,
                 exiting_bspace=False,
                 completion_separator=option.completion_separator
             ).run(completions)
