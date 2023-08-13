@@ -575,7 +575,7 @@ class Screen:
         self.selector = EntrySelector(dictionary)
 
         # self.margin_bot is needed for `self.page_height`
-        self._scroll = self.margin_bot = 0
+        self.margin_bot = self._scroll = 0
         self.columns, self.column_width = layout(dictionary, self.page_height)
         self.hl: ScreenHighlight | None = None
 
@@ -592,9 +592,9 @@ class Screen:
         return r if r > 0 else 0
 
     def check_scroll_after_eof(self) -> None:
-        end_of_scroll = self._scroll_end()
-        if self._scroll > end_of_scroll:
-            self._scroll = end_of_scroll
+        end = self._scroll_end()
+        if self._scroll > end:
+            self._scroll = end
 
     def bring_cursor_to_view(self) -> None:
         cur_line = self.cursor.line_at_cur()
@@ -647,22 +647,25 @@ class Screen:
 
                 win.addstr(y, text_x, text)
 
-                sel_attr = 0
-                if self.selector.is_toggled(op_i):
-                    op = contents[op_i]
-                    if isinstance(op, self.selector.TOGGLEABLE):
-                        sel_attr |= Color.selection
-                    elif isinstance(op, selected_ops):
-                        sel_attr |= curses.A_BOLD
-
                 if self.vmode and op_i == cur:
-                    sel_attr = Color.cursor
+                    t = Color.cursor
                     for i, span, attr in attrs:
                         attr &= ~curses.A_INVIS  # 'show on hover' effect
-                        win.chgat(y, text_x + i, span, sel_attr | attr)
+                        win.chgat(y, text_x + i, span, t | attr)
                 else:
+                    if self.selector.is_toggled(op_i):
+                        op = contents[op_i]
+                        if isinstance(op, self.selector.TOGGLEABLE):
+                            t = Color.selection
+                        elif isinstance(op, selected_ops):
+                            t = curses.A_BOLD
+                        else:
+                            t = 0
+                    else:
+                        t = 0
+
                     for i, span, attr in attrs:
-                        win.chgat(y, text_x + i, span, sel_attr | attr)
+                        win.chgat(y, text_x + i, span, t | attr)
 
                 if self.hl is None:
                     continue

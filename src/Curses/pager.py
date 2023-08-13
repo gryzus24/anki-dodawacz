@@ -29,10 +29,9 @@ class Pager:
             buf: list[tuple[str, list[Attr]]]
     ) -> None:
         self.win = win
-        self.margin_bot = 0
+        self.margin_bot = self._scroll = 0
         self.hl: PagerHighlight | None = None
         self._buf = buf
-        self._line = 0
 
     @property
     def page_height(self) -> int:
@@ -43,21 +42,21 @@ class Pager:
         r = len(self._buf) - self.page_height
         return r if r > 0 else 0
 
-    def adjust_scroll_past_eof(self) -> None:
-        end_of_scroll = self._vscroll_end()
-        if self._line > end_of_scroll:
-            self._line = end_of_scroll
+    def check_scroll_after_eof(self) -> None:
+        end = self._vscroll_end()
+        if self._scroll > end:
+            self._scroll = end
 
     def scroll_hint(self) -> str:
-        if self._line >= self._vscroll_end():
-            if self._line <= 0:
+        if self._scroll >= self._vscroll_end():
+            if self._scroll <= 0:
                 return '<ALL>'
             else:
                 return '<END>'
-        elif self._line <= 0:
+        elif self._scroll <= 0:
             return '<TOP>'
         else:
-            return f' {(self._line + self.page_height) / len(self._buf):.0%} '
+            return f' {(self._scroll + self.page_height) / len(self._buf):.0%} '
 
     def draw(self) -> None:
         if curses.COLS < CURSES_COLS_MIN_VALUE:
@@ -68,7 +67,7 @@ class Pager:
 
         hl_attr = Color.hl
         for y, line_i in enumerate(
-                range(self._line, self._line + self.page_height), BORDER_PAD
+                range(self._scroll, self._scroll + self.page_height), BORDER_PAD
         ):
             try:
                 line, attrs = self._buf[line_i]
@@ -105,23 +104,23 @@ class Pager:
                     win.chgat(y, BORDER_PAD + hl_i, span, hl_attr)
 
     def resize(self) -> None:
-        self.adjust_scroll_past_eof()
+        self.check_scroll_after_eof()
 
     def move_down(self, n: int = 1) -> None:
-        if self._line < self._vscroll_end():
-            self._line += n
-            self.adjust_scroll_past_eof()
+        if self._scroll < self._vscroll_end():
+            self._scroll += n
+            self.check_scroll_after_eof()
 
     def move_up(self, n: int = 1) -> None:
-        self._line -= n
-        if self._line < 0:
-            self._line = 0
+        self._scroll -= n
+        if self._scroll < 0:
+            self._scroll = 0
 
     def view_bottom(self) -> None:
-        self._line = self._vscroll_end()
+        self._scroll = self._vscroll_end()
 
     def view_top(self) -> None:
-        self._line = 0
+        self._scroll = 0
 
     def page_down(self) -> None:
         self.move_down(self.page_height - 2)
@@ -164,22 +163,22 @@ class Pager:
         if self.hl is None:
             return
         for line_i in self.hl.hl:
-            if line_i > self._line:
-                self._line = line_i
+            if line_i > self._scroll:
+                self._scroll = line_i
                 return
 
     def hl_prev(self) -> None:
         if self.hl is None:
             return
         for line_i in reversed(self.hl.hl):
-            if line_i < self._line:
-                self._line = line_i
+            if line_i < self._scroll:
+                self._scroll = line_i
                 return
 
     def is_hl_in_view(self) -> bool:
         if self.hl is None:
             return False
-        for i in range(self._line, self._line + self.page_height):
+        for i in range(self._scroll, self._scroll + self.page_height):
             if i in self.hl.hl:
                 return True
 
