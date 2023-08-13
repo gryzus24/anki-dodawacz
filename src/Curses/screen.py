@@ -515,9 +515,13 @@ class Cursor:
         return self._change_columns(-1)
 
     def go_bottom(self) -> None:
+        if self._cur_indx != self._last_cur_indx:
+            self._invalidate_phantom_cur_indices()
         self._cur_indx = self._last_cur_indx
 
     def go_top(self) -> None:
+        if self._cur_indx != 0:
+            self._invalidate_phantom_cur_indices()
         self._cur_indx = 0
 
     def _cur_indx_by_cur(self, cur_to_find: int) -> int:
