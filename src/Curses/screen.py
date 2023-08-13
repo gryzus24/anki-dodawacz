@@ -652,7 +652,7 @@ class Screen:
                         sel_attr |= curses.A_BOLD
 
                 if self.vmode and op_i == cur:
-                    sel_attr |= Color.cursor
+                    sel_attr = Color.cursor
                     for i, span, attr in attrs:
                         attr &= ~curses.A_INVIS  # 'show on hover' effect
                         win.chgat(y, text_x + i, span, sel_attr | attr)
