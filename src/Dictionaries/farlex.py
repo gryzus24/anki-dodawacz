@@ -32,7 +32,7 @@ def ask_farlex(query: str) -> Dictionary:
     for tag in section_farlex_idi.iter('h2', 'div'):
         if tag.tag == 'h2':
             farlex.add(PHRASE(check_text(tag), ''))  # no phonetic spelling
-        elif tag.attrib['class'] in ('ds-single', 'ds-list'):
+        elif (tag_clas := tag.get('class')) in ('ds-single', 'ds-list'):
             i_tag = tag.find('./i')
             if i_tag is None:
                 label = ''
@@ -52,5 +52,9 @@ def ask_farlex(query: str) -> Dictionary:
             ]
             farlex.add(DEF(definition, examples, label, subdef=False))
             farlex.add(LABEL('', ''))  # padding
+        elif tag.tag == 'div' and tag_clas is None:
+            i_tag = tag.find('./i')
+            if i_tag is not None:
+                farlex.add(LABEL(check_text(i_tag), ''))
 
     return farlex
