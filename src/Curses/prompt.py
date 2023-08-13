@@ -16,6 +16,7 @@ from src.Curses.util import CURSES_COLS_MIN_VALUE
 from src.Curses.util import hide_cursor
 from src.Curses.util import mouse_right_click
 from src.Curses.util import mouse_wheel_click
+from src.Curses.util import norm_wch
 from src.Curses.util import show_cursor
 from src.Curses.util import truncate
 from src.data import ON_TERMUX
@@ -63,10 +64,7 @@ class CompletionMenu:
         self._scroll = 0
 
     @classmethod
-    def from_file(cls,
-            win: curses._CursesWindow,
-            path: str
-    ) -> CompletionMenu:
+    def from_file(cls, win: curses._CursesWindow, path: str) -> CompletionMenu:
         try:
             with open(path) as f:
                 entries = deque(map(str.strip, f))
@@ -359,37 +357,37 @@ class Prompt:
         self._entered = entered[left:right]
         self._cursor = len(self._entered)
 
-    _A: ClassVar[dict[bytes, Callable[[Prompt], None]]] = {
-        b'KEY_RESIZE': resize, b'^L': resize,
-        b'KEY_LEFT': left,     b'^B': left,
-        b'KEY_RIGHT': right,   b'^F': right,
-        b'KEY_HOME': home,     b'^A': home,
-        b'KEY_END': end,       b'^E': end,
-        b'KEY_DC': delete,     b'^D': delete,
-        b'^W': ctrl_backspace,
-        b'^K': ctrl_k,
-        b'^U': ctrl_u,
-        b'^T': ctrl_t,
+    _A: ClassVar[dict[str, Callable[[Prompt], None]]] = {
+        'KEY_RESIZE': resize, '^L': resize,
+        'KEY_LEFT': left,     '^B': left,
+        'KEY_RIGHT': right,   '^F': right,
+        'KEY_HOME': home,     '^A': home,
+        'KEY_END': end,       '^E': end,
+        'KEY_DC': delete,     '^D': delete,
+        '^W': ctrl_backspace,
+        '^K': ctrl_k,
+        '^U': ctrl_u,
+        '^T': ctrl_t,
     }
     if WINDOWS:
-        _A[b'CTL_LEFT'] = _A[b'ALT_LEFT'] = ctrl_left
-        _A[b'CTL_RIGHT'] = _A[b'ALT_RIGHT'] = ctrl_right
-        _A[b'^H'] = backspace
-        _A[b'^?'] = ctrl_backspace
+        _A['CTL_LEFT'] = _A['ALT_LEFT'] = ctrl_left
+        _A['CTL_RIGHT'] = _A['ALT_RIGHT'] = ctrl_right
+        _A['^H'] = backspace
+        _A['^?'] = ctrl_backspace
     else:
-        _A[b'kLFT5'] = _A[b'kLFT3'] = ctrl_left
-        _A[b'kRIT5'] = _A[b'kRIT3'] = ctrl_right
+        _A['kLFT5'] = _A['kLFT3'] = ctrl_left
+        _A['kRIT5'] = _A['kRIT3'] = ctrl_right
         if ON_TERMUX:
-            _A[b'^?'] = backspace
-            _A[b'KEY_BACKSPACE'] = ctrl_backspace
+            _A['^?'] = backspace
+            _A['KEY_BACKSPACE'] = ctrl_backspace
         else:
-            _A[b'KEY_BACKSPACE'] = backspace
-            _A[b'^H'] = ctrl_backspace
+            _A['KEY_BACKSPACE'] = backspace
+            _A['^H'] = ctrl_backspace
 
-    ACTIONS: Mapping[bytes, Callable[[Prompt], None]] = _A
+    ACTIONS: Mapping[str, Callable[[Prompt], None]] = _A
 
-    COMPLETION_NEXT_KEYS = (b'^I', b'^P')
-    COMPLETION_PREV_KEYS = (b'KEY_BTAB', b'^N')
+    COMPLETION_NEXT_KEYS = ('^I', '^P')
+    COMPLETION_PREV_KEYS = ('KEY_BTAB', '^N')
 
     def _run(self, cmenu: CompletionMenu) -> str | None:
         entered_before_completion = self._entered
@@ -406,16 +404,16 @@ class Prompt:
 
             self.draw()
 
-            c = self.win.getch()
-            if 32 <= c <= 126:  # printable
-                self.insert(chr(c))
+            key, cntrl_char = norm_wch(self.win.get_wch())
+            if not cntrl_char:
+                self.insert(key)
                 cmenu.complete(self.current_word())
 
-            elif (key := curses.keyname(c)) in Prompt.ACTIONS:
+            elif key in Prompt.ACTIONS:
                 Prompt.ACTIONS[key](self)
                 cmenu.complete(self.current_word())
 
-            elif key == b'KEY_UP':
+            elif key == 'KEY_UP':
                 if not self._up_arrow_entries:
                     continue
                 if self._up_arrow_i is None:
@@ -426,7 +424,7 @@ class Prompt:
                 self.clear_insert(self._up_arrow_entries[self._up_arrow_i])
                 cmenu.complete(self.current_word())
 
-            elif key == b'KEY_DOWN':
+            elif key == 'KEY_DOWN':
                 if not self._up_arrow_entries or self._up_arrow_i is None:
                     continue
                 if self._up_arrow_i <= 0:
@@ -466,7 +464,7 @@ class Prompt:
                         + r.completion
                     )
 
-            elif key == b'KEY_MOUSE':
+            elif key == 'KEY_MOUSE':
                 bstate = curses.getmouse()[4]
                 if mouse_wheel_click(bstate):
                     try:
@@ -480,18 +478,17 @@ class Prompt:
                     self.clear()
                     return ret
 
-            elif key in (b'^J', b'^M'):  # ^M: Enter on Windows
+            elif key in {'^J', '^M'}:  # ^M: Enter on Windows
                 ret = self._entered
                 self.clear()
                 return ret
 
-            elif key in (b'^C', b'^\\', b'^['):  #]
+            elif key in {'^C', '^\\', '^['}:  #]
                 if cmenu.cur is None:
                     return None
                 else:
                     self.clear_insert(entered_before_completion)
                     cmenu.complete(self.current_word())
-
 
     def run(self, c: CompletionMenu | Sequence[str] | None = None) -> str | None:
         if isinstance(c, CompletionMenu):

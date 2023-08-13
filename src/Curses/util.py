@@ -173,3 +173,18 @@ def show_cursor() -> None:
         curses.curs_set(1)
     except curses.error:  # not supported by the terminal
         pass
+
+
+# return: bool: is a control character?
+def norm_wch(wch: str | int) -> tuple[str, bool]:
+    if isinstance(wch, int):
+        return (curses.keyname(wch).decode(), True)
+
+    if len(wch) == 1:
+        o = ord(wch)
+        if o <= 31:
+            return ('^' + chr(o + 64), True)
+        elif o == 0x7f:
+            return ('^?', True)
+
+    return (wch, False)

@@ -853,11 +853,11 @@ def curses_main(stdscr: curses._CursesWindow) -> None:
             if pretype is not None:
                 screenbuf.search_prompt(pretype=pretype)
 
-        elif c in (b'a', b'A'):
+        elif c in {b'a', b'A'}:
             if isinstance(screenbuf.page, Screen):
                 perror_play_audio(screenbuf.status, screenbuf.page.selector)
 
-        elif c in (b'b', b'B'):
+        elif c in {b'b', b'B'}:
             try:
                 anki.invoke(
                     'guiBrowse',
@@ -869,7 +869,7 @@ def curses_main(stdscr: curses._CursesWindow) -> None:
             except anki.AnkiError as e:
                 screenbuf.status.error('Could not open the card browser:', str(e))
 
-        elif c in (b'c', b'C'):
+        elif c in {b'c', b'C'}:
             if not isinstance(screenbuf.page, Screen):
                 continue
 
@@ -912,7 +912,7 @@ def curses_main(stdscr: curses._CursesWindow) -> None:
         elif c == b'^[':  #]
             screenbuf.status.clear()
 
-        elif c in (b'q', b'Q', b'^X'):
+        elif c in {b'q', b'Q', b'^X'}:
             if not screenbuf.page_back():
                 raise KeyboardInterrupt
 
