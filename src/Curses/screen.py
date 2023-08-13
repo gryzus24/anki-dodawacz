@@ -924,12 +924,6 @@ class Screen:
             self.cursor.go_top()
         self.view_top()
 
-    def key_enter(self) -> None:
-        if self.vmode:
-            self.mark_box_at_cursor()
-        else:
-            self.hl_clear()
-
     def key_space(self) -> None:
         if self.vmode:
             self.mark_box_at_cursor()
@@ -947,6 +941,7 @@ class Screen:
         b'v': vmode_toggle,
         b'n': hl_next,
         b'N': hl_prev,
+        b'^J': hl_clear, b'^M': hl_clear,
 
         b'j': key_down,   b'KEY_DOWN': key_down,
         b'k': key_up,     b'KEY_UP': key_up,
@@ -954,7 +949,6 @@ class Screen:
         b'h': key_left,   b'KEY_LEFT': key_left,
         b'G': key_end,    b'KEY_END': key_end,
         b'g': key_home,   b'KEY_HOME': key_home,
-        b'^J': key_enter, b'^M': key_enter,
         b' ': key_space,
     }
 

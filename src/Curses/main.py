@@ -246,7 +246,7 @@ f' To make multiple queries at once separate them with a "{search.QUERY_SEPARATO
 'SELECTION AND ANKI @bold underline',
 ' 1-9        select definitions from 1 to 9, press 0 for the tenth definition',
 ' in (V) mode: @bold',
-'  s Enter   select definition under the cursor',
+'  s         select definition under the cursor',
 '  Space     select definition and move cursor to the next one',
 '',
 ' c C        create card(s)/card from the selected definitions',
