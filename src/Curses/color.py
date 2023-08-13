@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import curses
 
+from src.data import _defaults
 from src.data import colorkey_t
 from src.data import config
 from src.data import config_t
@@ -83,7 +84,7 @@ class _Color:
         try:
             parts = c[key]
         except KeyError:
-            return 0
+            parts = _defaults[key]
 
         attr = 0
         for part in parts.lower().split():
