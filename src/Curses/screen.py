@@ -780,18 +780,21 @@ class Screen:
     def page_up(self) -> None:
         self.move_up(self.page_height - 2)
 
-    def cursor_down(self) -> None:
-        if self.cursor.down():
-            cur_line = self.cursor.line_at_next_cur_down()
-            if cur_line > (end := self._scroll + self.page_height):
-                self._scroll += cur_line - end
-            elif cur_line < self._scroll:
+    def cursor_down(self) -> bool:
+        r = self.cursor.down()
+        if r:
+            next_cur_line = self.cursor.line_at_next_cur_down()
+            if next_cur_line > (end := self._scroll + self.page_height):
+                self._scroll += next_cur_line - end
+            elif self.cursor.line_at_cur() < self._scroll:
                 self.cursor.go_to_cur_at_line_after(self._scroll)
         else:
             self._scroll = self._scroll_end()
+        return r
 
-    def cursor_up(self) -> None:
-        if self.cursor.up():
+    def cursor_up(self) -> bool:
+        r = self.cursor.up()
+        if r:
             cur_line = self.cursor.line_at_cur()
             if cur_line < self._scroll:
                 self._scroll = cur_line
@@ -799,14 +802,19 @@ class Screen:
                 self.cursor.go_to_cur_at_line_before(end)
         else:
             self._scroll = 0
+        return r
 
-    def cursor_right(self) -> None:
-        if self.cursor.right():
+    def cursor_right(self) -> bool:
+        r = self.cursor.right()
+        if r:
             self.bring_cursor_to_view()
+        return r
 
-    def cursor_left(self) -> None:
-        if self.cursor.left():
+    def cursor_left(self) -> bool:
+        r = self.cursor.left()
+        if r:
             self.bring_cursor_to_view()
+        return r
 
     def hlsearch(self, s: str) -> int:
         # `hlsearch()` is entirely dependent on the output of
@@ -921,7 +929,7 @@ class Screen:
     def key_space(self) -> None:
         if self.vmode:
             self.mark_box_at_cursor()
-            if not self.cursor.down() and self.cursor.right():
+            if not self.cursor_down() and self.cursor_right():
                 self.cursor.go_to_cur_at_line_after(0)
                 self._scroll = 0
 
