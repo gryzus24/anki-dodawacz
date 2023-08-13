@@ -9,7 +9,6 @@ from typing import TYPE_CHECKING
 from src.Curses.color import Color
 from src.Curses.util import BORDER_PAD
 from src.Curses.util import CURSES_COLS_MIN_VALUE
-from src.Curses.util import HIGHLIGHT
 from src.Curses.util import mouse_wheel_down
 from src.Curses.util import mouse_wheel_up
 from src.Curses.util import truncate
@@ -67,12 +66,14 @@ class Pager:
         win = self.win
         width = curses.COLS - 2*BORDER_PAD
 
-        hl_attr = Color.heed | HIGHLIGHT
-        for y, line_i in enumerate(range(self._line, self._line + self.page_height), BORDER_PAD):
+        hl_attr = Color.hl
+        for y, line_i in enumerate(
+                range(self._line, self._line + self.page_height), BORDER_PAD
+        ):
             try:
                 line, attrs = self._buf[line_i]
             except IndexError:
-                win.addch(y, 1, '~')
+                win.addch(y, BORDER_PAD, '~')
                 continue
 
             if not line:
@@ -90,16 +91,18 @@ class Pager:
                         break
                 win.chgat(y, BORDER_PAD + attr_i, span, attr)
 
-            if (self.hl is None) or (line_i not in self.hl.hl):
+            if self.hl is None:
                 continue
 
-            span = self.hl.span
-            for attr_i in self.hl.hl[line_i]:
-                if BORDER_PAD + attr_i + span > width:
-                    span = width - attr_i
-                    if span <= 0:
-                        break
-                win.chgat(y, BORDER_PAD + attr_i, span, hl_attr)
+            hlindices = self.hl.hl
+            if line_i in hlindices:
+                span = self.hl.span
+                for hl_i in hlindices[line_i]:
+                    if BORDER_PAD + hl_i + span > width:
+                        span = width - hl_i
+                        if span <= 0:
+                            break
+                    win.chgat(y, BORDER_PAD + hl_i, span, hl_attr)
 
     def resize(self) -> None:
         self.adjust_scroll_past_eof()
@@ -114,17 +117,17 @@ class Pager:
         if self._line < 0:
             self._line = 0
 
-    def go_bottom(self) -> None:
+    def view_bottom(self) -> None:
         self._line = self._vscroll_end()
 
-    def go_top(self) -> None:
+    def view_top(self) -> None:
         self._line = 0
 
     def page_down(self) -> None:
-        self.move_down(curses.LINES - 2)
+        self.move_down(self.page_height - 2)
 
     def page_up(self) -> None:
-        self.move_up(curses.LINES - 2)
+        self.move_up(self.page_height - 2)
 
     def hlsearch(self, s: str) -> int:
         against_lowercase = s.islower()
@@ -183,15 +186,15 @@ class Pager:
         return False
 
     ACTIONS: Mapping[bytes, Callable[[Pager], None]] = {
-        b'j': move_down,  b'^N': move_down, b'KEY_DOWN': move_down,
-        b'k': move_up,    b'^P': move_up,   b'KEY_UP': move_up,
-        b'G': go_bottom,  b'KEY_END': go_bottom,
-        b'g': go_top,     b'KEY_HOME': go_top,
-        b'KEY_NPAGE': page_down, b'KEY_SNEXT': page_down,
+        b'j': move_down,         b'J': move_down, b'^N': move_down, b'KEY_DOWN': move_down,
+        b'k': move_up,           b'K': move_up,   b'^P': move_up,   b'KEY_UP': move_up,
+        b'G': view_bottom,       b'KEY_END': view_bottom,
+        b'g': view_top,          b'KEY_HOME': view_top,
+        b'KEY_NPAGE': page_down, b'KEY_SNEXT': page_down, b' ': page_down,
         b'KEY_PPAGE': page_up,   b'KEY_SPREVIOUS': page_up,
         b'n': hl_next,
         b'N': hl_prev,
-        b'^J': hl_clear, b'^M': hl_clear,
+        b'^J': hl_clear,         b'^M': hl_clear,
     }
 
     def dispatch(self, key: bytes) -> bool:

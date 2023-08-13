@@ -18,7 +18,6 @@ import functools
 import os
 from collections import deque
 from typing import Callable
-from typing import Iterable
 from typing import Iterator
 from typing import Mapping
 from typing import NamedTuple
@@ -30,6 +29,7 @@ import src.search as search
 from src.__version__ import __version__
 from src.card import create_and_add_card
 from src.Curses.color import Color
+from src.Curses.color import ATTR_NAME_TO_ATTR
 from src.Curses.color import init_colors
 from src.Curses.configmenu import ConfigMenu
 from src.Curses.pager import Pager
@@ -167,53 +167,67 @@ class StatusEcho(StatusProto):
         self._refresh()
 
 
-def _textattr(s: str, attr: int) -> tuple[str, list[Attr]]:
-    return (s, [Attr(0, len(s), attr)])
+def _make_help(lines: list[str]) -> list[tuple[str, list[Attr]]]:
+    result = []
+    for line in lines:
+        if ' @' in line:
+            text, _, attr_s = line.partition(' @')
+            attr = 0
+            for part in attr_s.split():
+                if part in ATTR_NAME_TO_ATTR:
+                    attr |= ATTR_NAME_TO_ATTR[part]
+            result.append((text, [Attr(0, len(text), attr)]))
+        else:
+            result.append((line, []))
+
+    return result
 
 
-def _text(t: Iterable[str]) -> list[tuple[str, list[Attr]]]:
-    return [(x, []) for x in t]
-
-
-HELP_TEXT = [
-_textattr(f'Ankidodawacz v{__version__}', curses.A_BOLD),
-*_text((
+HELP = _make_help([
+f'Ankidodawacz v{__version__} @bold',
 '',
 ' Press / to enter dictionary search.',
 ' Press ^F or F4 to search for something on this page.',
 '',
-'This program uses VI style keybindings for navigation and supports basic',
-'mouse functions like left click select, scroll wheel paste and right click',
-'submit.',
+'This program uses VI style keybindings for navigation',
+'and supports basic mouse functions like left click select,',
+'scroll wheel paste and right click submit.',
 '',
 'The ^ symbol denotes "Ctrl".  E.g. ^C means Ctrl-c.',
 '',
-)),
-_textattr('NAVIGATION', curses.A_BOLD | curses.A_UNDERLINE),
-*_text((
+'NAVIGATION @bold underline',
 ' ^C         exit',
 ' q ^X       go back - exit eventually',
-' j ^N       move down',
-' k ^P       move up',
-' l h        go to the next/previous screen',
-' PgUp PgDn  page up and page down',
+' J ^N       move view down',
+' K ^P       move view up',
+' PgUp PgDn  move view up/down by page height',
 '            (on some terminals you have to hold Shift for it to work)',
 ' g Home     go to the top of the page',
 ' G End      go to the bottom of the page',
 '',
-)),
-_textattr('SEARCH', curses.A_BOLD | curses.A_UNDERLINE),
-*_text((
+' PAGER @bold',
+'  j k       move view down/up',
+'  Space     move view down by page height',
+'',
+' DICTIONARY SCREEN ONLY KEYBINDS @bold',
+'  v         toggle between normal (N) mode and virtual cursor (V) mode',
+'  j         (N) move view down, (V) move cursor down',
+'  k         (N) move view up,   (V) move cursor up',
+'  h l       (V) move cursor to the column on the left/right',
+'  L H       go to the next/previous dictionary tab',
+'  Tab       cycle through dictionary tabs',
+'',
+'SEARCH @bold underline',
 ' /          open the search prompt',
 ' p wheel    insert the content of primary selection (via xsel or xclip)',
 '            or clipboard (on Windows) into the search prompt',
-' P          insert the content of the "Phrase" field from the currently',
-'            reviewed Anki card',
+' P          insert the content of the "Phrase" field from',
+'            the currently reviewed Anki card',
 '',
 ' To make use of extra options, like querying additional dictionaries,',
 ' follow your query with -[OPTION].  E.g. "[QUERY] -c"',
 '',
-' Extra search options:',
+' Extra search options: @bold',
 '  -ahd             query AH Dictionary',
 '  -col, -collins   query Collins',
 '  -den, -diki-en   query Diki English',
@@ -230,46 +244,42 @@ f'                   expands to "-{" -".join(search.MONOLINGUAL_DICTIONARIES)}"'
 '',
 f' To make multiple queries at once separate them with a "{search.QUERY_SEPARATOR}".',
 ' You can also use multiple search options at once.',
+' Resulting dictionaries will be opened in separate tabs.',
 ' E.g.  [QUERY] -wnet, [QUERY2] -ahd -col -i, [QUERY3]...',
 '',
-)),
-_textattr('FIND IN PAGE', curses.A_BOLD | curses.A_UNDERLINE),
-*_text((
-' Search is case sensitive if there is at least one uppercase letter present,',
-' i.e. "smartcase search".',
+'FIND IN PAGE @bold underline',
+' Search is case sensitive if there is at least one uppercase',
+' letter present, i.e. "smartcase search".',
 '',
-' ^F F4      open the "find" prompt',
+' ^F F4      open the "Find in page" prompt',
 ' n N        go to the next/previous match',
 ' ^J Enter   clear all matches',
 '',
-)),
-_textattr('SELECTION AND ANKI', curses.A_BOLD | curses.A_UNDERLINE),
-*_text((
-' 1-9 !-)    select definition from 1 to 20, press 0 for the tenth definition',
-'            hold Shift for the remaining 11 to 20',
+'SELECTION AND ANKI @bold underline',
+' 1-9        select definitions from 1 to 9, press 0 for the tenth definition',
+' in (V) mode: @bold',
+'  s Enter   select definition under the cursor',
+'  Space     select definition and move cursor to the next one',
+'',
 ' c C        create card(s)/card from the selected definitions',
 ' b          open recently added card(s) in the Anki card browser',
 ' d          deselect everything',
 '',
-' Difference between "c" and "C":',
-'  c - creates separate cards if the selected definitions belong to separate',
-'      phrases',
+' Difference between "c" and "C": @bold',
+'  c - creates separate cards if the selected definitions belong',
+'      to separate phrases',
 '  C - creates one card',
 '      - definitions are added top to bottom',
 '      - phrase added is dictated by the first selected definition',
 '',
-)),
-_textattr('AUDIO', curses.A_BOLD | curses.A_UNDERLINE),
-*_text((
+'AUDIO @bold underline',
 ' "mpv" is required to be installed to play audio.',
 ' You can click on a phrase entry to play its audio file.',
 '',
 ' a          play the audio file that would be added with the card',
 '            if you decided to create one',
 '',
-)),
-_textattr('PROMPT', curses.A_BOLD | curses.A_UNDERLINE),
-*_text((
+'PROMPT @bold underline',
 ' Prompt supports basic line editing.',
 ' Only special/notable shortcuts are listed.',
 '',
@@ -277,17 +287,14 @@ _textattr('PROMPT', curses.A_BOLD | curses.A_UNDERLINE),
 ' ^K ^U      delete everything from the cursor to the end/start of the line',
 ' ^T         delete everything except the word under the cursor',
 '',
-)),
-_textattr('MISCELLANEOUS', curses.A_BOLD | curses.A_UNDERLINE),
-*_text((
+'MISCELLANEOUS @bold underline',
 ' Tab        tab complete - move up the list',
 ' ^P ^N      tab complete - move up/down the list',
 ' ^L         redraw the screen (if it gets corrupted somehow)',
 ' F5         recheck note (if you have changed note\'s field layout in Anki)',
 ' ?          hide the F-key help bar',
 ' Esc        clear the status bar',
-)),
-]
+])
 
 
 class QueryHistory:
@@ -324,7 +331,7 @@ class ScreenBuffer(ScreenBufferProto):
             screens: Sequence[Screen] | None = None
     ) -> None:
         self.win = win
-        self.help_pager = Pager(win, HELP_TEXT)
+        self.help_pager = Pager(win, HELP)
         self.screens = screens or []
         self._screen_i = 0
         self.status = Status(win, persistence=7)
@@ -549,16 +556,26 @@ class ScreenBuffer(ScreenBufferProto):
 
         self.win.clearok(True)
 
-    def next(self) -> None:
+    def next_page(self) -> None:
         if self.screens and isinstance(self.page, Screen):
             if self._screen_i < len(self.screens) - 1:
                 self._screen_i += 1
             self.page = self.screens[self._screen_i]
 
-    def previous(self) -> None:
+    def prev_page(self) -> None:
         if self.screens and isinstance(self.page, Screen):
             if self._screen_i > 0:
                 self._screen_i -= 1
+            self.page = self.screens[self._screen_i]
+
+    def cycle_next_page(self) -> None:
+        if self.screens and isinstance(self.page, Screen):
+            self._screen_i = (self._screen_i + 1) % len(self.screens)
+            self.page = self.screens[self._screen_i]
+
+    def cycle_prev_page(self) -> None:
+        if self.screens and isinstance(self.page, Screen):
+            self._screen_i = (self._screen_i - 1) % len(self.screens)
             self.page = self.screens[self._screen_i]
 
     def toggle_help(self) -> None:
@@ -644,27 +661,29 @@ class ScreenBuffer(ScreenBufferProto):
 
         if self.page.hlsearch(typed):
             assert self.page.hl is not None
-            # Go to the first match if there were matches, but they were
-            # outside of the current visible region, otherwise - do not move
-            # - there was enough visual feedback.
+            # Go to the first match if there were matches, but outside of
+            # the currently visible region, otherwise - do not move - there
+            # was enough visual feedback.
             # Doing it this way seems more intuitive than what `less` does,
             # because it emphasizes that *something* matches, but the
             # edge case of jumping backwards (if we are anywhere but on <TOP>
             # of the page) might be annoying.
             # TODO: better way?
             if not self.page.is_hl_in_view():
-                self.page.go_top()
+                self.page.view_top()
                 self.page.hl_next()
         else:
             self.status.error('Nothing matches', repr(typed))
 
     ACTIONS: Mapping[bytes, Callable[[ScreenBuffer], None]] = {
-        b'KEY_RESIZE': resize, b'^L': resize,
-        b'l': next,     b'KEY_RIGHT': next,
-        b'h': previous, b'KEY_LEFT': previous,
+        b'KEY_RESIZE': resize,           b'^L': resize,
+        b'L': next_page,
+        b'^I': cycle_next_page,
+        b'H': prev_page,
+        b'KEY_BTAB': cycle_prev_page,
         b'KEY_F(1)': toggle_help,
         b'KEY_F(3)': anki_configuration,
-        b'^F': find_in_page, b'KEY_F(4)': find_in_page
+        b'KEY_F(4)': find_in_page,       b'^F': find_in_page,
     }
     def dispatch(self, key: bytes) -> bool:
         if self.page.dispatch(key):
@@ -810,7 +829,7 @@ def curses_main(stdscr: curses._CursesWindow) -> None:
                 elif isinstance(screenbuf.page, Screen):
                     if screenbuf.page.mark_box_at(y, x):
                         continue
-                    if (index := screenbuf.page.dictionary_index_at(y, x)) is None:
+                    if (index := screenbuf.page.dictionary_op_i_at(y, x)) is None:
                         continue
                     if screenbuf.page.selector.is_phrase_index(index):
                         audio = screenbuf.page.selector.audio_for_index(index)
