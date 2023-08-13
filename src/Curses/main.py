@@ -22,7 +22,6 @@ from typing import Iterator
 from typing import Mapping
 from typing import NamedTuple
 from typing import Sequence
-from typing import TYPE_CHECKING
 
 import src.anki as anki
 import src.search as search
@@ -56,10 +55,6 @@ from src.data import getconf
 from src.data import config_save
 from src.data import DATA_DIR
 from src.data import WINDOWS
-from src.Dictionaries.base import AUDIO
-
-if TYPE_CHECKING:
-    from src.Dictionaries.base import EntrySelector
 
 
 class StatusLine(NamedTuple):
@@ -696,27 +691,11 @@ class ScreenBuffer(ScreenBufferProto):
         return False
 
 
-def perror_play_audio(status: Status, selector: EntrySelector) -> None:
-    audio = None
-    for i, op in enumerate(selector.dictionary.contents):
-        if isinstance(op, AUDIO) and op.resource:
-            if selector.is_toggled(i):
-                audio = op
-                break
-            elif audio is None:
-                audio = op
-    else:
-        if audio is None:
-            status.error(
-                f'Could not play audio ({selector.dictionary.header()}):',
-                'no audio'
-            )
-            return
-
+def perror_play_audio(status: Status, url: str) -> None:
     curses.flushinp()
     try:
         # TODO: handle multiple audio urls.
-        play_audio_url(audio.resource)
+        play_audio_url(url)
     except (ValueError, LookupError) as e:
         status.error('Could not play audio:', str(e))
 
@@ -835,7 +814,7 @@ def curses_main(stdscr: curses._CursesWindow) -> None:
                     if screenbuf.page.selector.is_phrase_index(index):
                         audio = screenbuf.page.selector.audio_for_index(index)
                         if audio is not None and audio.resource:
-                            play_audio_url(audio.resource)
+                            perror_play_audio(screenbuf.status, audio.resource)
                         else:
                             screenbuf.status.clear()
                             screenbuf.status.error('No audio for this entry')
@@ -855,7 +834,12 @@ def curses_main(stdscr: curses._CursesWindow) -> None:
 
         elif c in {b'a', b'A'}:
             if isinstance(screenbuf.page, Screen):
-                perror_play_audio(screenbuf.status, screenbuf.page.selector)
+                audio = screenbuf.page.selector.get_first_or_toggled_audio()
+                if audio is None:
+                    screenbuf.status.clear()
+                    screenbuf.status.error('No audio')
+                else:
+                    perror_play_audio(screenbuf.status, audio.resource)
 
         elif c in {b'b', b'B'}:
             try:

@@ -194,7 +194,7 @@ class EntrySelector:
                     self._toggle(i)
                     return
 
-    def find_unique_audio(self) -> AUDIO | None:
+    def get_audio_if_unique(self) -> AUDIO | None:
         unique = {
             op for op in self.dictionary.contents
             if isinstance(op, AUDIO)
@@ -205,13 +205,25 @@ class EntrySelector:
         else:
             return None
 
+    def get_first_or_toggled_audio(self) -> AUDIO | None:
+        audio = None
+        for i, op in enumerate(self.dictionary.contents):
+            if isinstance(op, AUDIO) and op.resource:
+                if self.is_toggled(i):
+                    audio = op
+                    break
+                elif audio is None:
+                    audio = op
+
+        return audio
+
     def _retrieve_selection(self,
             pgrouped: Iterable[tuple[int, Iterable[int]]]
     ) -> list[DictionarySelection]:
         # If the dictionary has no AUDIO instruction toggled,
         # see if there is a common AUDIO instruction to the
         # whole dictionary and add it instead.
-        unique_audio = self.find_unique_audio()
+        unique_audio = self.get_audio_if_unique()
 
         toggles = self._toggles
         contents = self.dictionary.contents
