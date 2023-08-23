@@ -63,8 +63,15 @@ def clipboard_or_selection() -> str:
     raise ValueError(f'{"Clipboard" if WINDOWS else "Primary selection"} is empty')
 
 
+class Mpv:
+    __slots__ = ('proc', 'url')
+    def __init__(self, proc: Popen[bytes], url: str) -> None:
+        self.proc = proc
+        self.url = url
+
+
 _mpv_cmd = None
-def play_audio_url(url: str) -> None:
+def start_mpv_play_url(mpv: Mpv | None, url: str) -> Mpv:
     global _mpv_cmd
     if _mpv_cmd is None:
         _mpv_cmd = shutil.which('mpv')
@@ -73,18 +80,15 @@ def play_audio_url(url: str) -> None:
                 'Could not find mpv in ' + ('%PATH%' if WINDOWS else '$PATH')
             )
 
-    with Popen(
-        (_mpv_cmd,
+    proc = Popen((
+        _mpv_cmd,
          '--no-terminal',
          '--force-window=no',
          '--audio-display=no',
-         url)
-    ) as p:
-        rc = p.wait()
-        if rc == 2:
-            raise ValueError(f'Bad url: {url!r}')
-        elif rc:
-            raise ValueError(f'Something failed: exit code: {rc}, url: {url!r}')
+         url
+    ))
+
+    return Mpv(proc, url)
 
 
 def draw_border(win: curses._CursesWindow, margin_bot: int) -> None:

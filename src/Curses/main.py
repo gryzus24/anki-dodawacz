@@ -15,6 +15,7 @@ except ImportError:
 import atexit
 import contextlib
 import functools
+import subprocess
 import os
 from collections import deque
 from typing import Callable
@@ -41,6 +42,7 @@ from src.Curses.util import Attr
 from src.Curses.util import clipboard_or_selection
 from src.Curses.util import compose_attrs
 from src.Curses.util import CURSES_COLS_MIN_VALUE
+from src.Curses.util import Mpv
 from src.Curses.util import draw_border
 from src.Curses.util import hide_cursor
 from src.Curses.util import HIGHLIGHT
@@ -48,7 +50,7 @@ from src.Curses.util import mouse_left_click
 from src.Curses.util import mouse_wheel_click
 from src.Curses.util import mouse_wheel_down
 from src.Curses.util import mouse_wheel_up
-from src.Curses.util import play_audio_url
+from src.Curses.util import start_mpv_play_url
 from src.Curses.util import truncate
 from src.data import config
 from src.data import getconf
@@ -691,13 +693,36 @@ class ScreenBuffer(ScreenBufferProto):
         return False
 
 
-def perror_play_audio(status: Status, url: str) -> None:
+def perror_play_audio(mpv: Mpv | None, status: Status, url: str) -> Mpv | None:
     curses.flushinp()
+
+    if mpv is not None:
+        try:
+            rc = mpv.proc.wait(0.4)
+        except subprocess.TimeoutExpired:
+            # process did not exit within 0.4s
+            return mpv
+
+        if rc == 2:
+            if url == mpv.url:
+                status.error(f'mpv: bad url: {url!r}')
+                return mpv
+
+            status.error(f'mpv: previous url was bad: {mpv.url!r}')
+        elif rc:
+            if url == mpv.url:
+                status.error(f'mpv: exit code: {rc}, (both) url: {url!r}')
+                return mpv
+
+            status.error(f'mpv: exit code: {rc}, (previous) url: {mpv.url!r}')
+
     try:
         # TODO: handle multiple audio urls.
-        play_audio_url(url)
+        mpv = start_mpv_play_url(mpv, url)
     except (ValueError, LookupError) as e:
         status.error('Could not play audio:', str(e))
+
+    return mpv
 
 
 def perror_clipboard_or_selection(status: Status) -> str | None:
@@ -783,6 +808,7 @@ def curses_main(stdscr: curses._CursesWindow) -> None:
     screenbuf = ScreenBuffer(stdscr)
     configmenu = ConfigMenu(stdscr)
     recent_nids: list[int] | None = None
+    mpv = None
 
     while True:
         screenbuf.status.tick()
@@ -813,11 +839,11 @@ def curses_main(stdscr: curses._CursesWindow) -> None:
                         continue
                     if screenbuf.page.selector.is_phrase_index(index):
                         audio = screenbuf.page.selector.audio_for_index(index)
-                        if audio is not None and audio.resource:
-                            perror_play_audio(screenbuf.status, audio.resource)
-                        else:
+                        if audio is None or not audio.resource:
                             screenbuf.status.clear()
                             screenbuf.status.error('No audio for this entry')
+                        else:
+                            mpv = perror_play_audio(mpv, screenbuf.status, audio.resource)
             elif mouse_wheel_up(bstate):
                 screenbuf.page.move_up(3)
             elif mouse_wheel_down(bstate):
@@ -839,7 +865,7 @@ def curses_main(stdscr: curses._CursesWindow) -> None:
                     screenbuf.status.clear()
                     screenbuf.status.error('No audio')
                 else:
-                    perror_play_audio(screenbuf.status, audio.resource)
+                    mpv = perror_play_audio(mpv, screenbuf.status, audio.resource)
 
         elif c in {b'b', b'B'}:
             try:
