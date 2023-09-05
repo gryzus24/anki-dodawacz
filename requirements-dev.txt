@@ -1,3 +1,4 @@
+lxml-stubs
 mypy
 pytest
 types-beautifulsoup4
