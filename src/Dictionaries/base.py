@@ -140,32 +140,6 @@ class EntrySelector:
             else:
                 self._pgrouped[last_i].append(i)
 
-    def is_toggled(self, index: int) -> bool:
-        return self._toggles[index]
-
-    def phrase_index_for(self, index: int) -> int:
-        if not self._ptoggled:
-            raise ValueError('dictionary has no PHRASE entries')
-
-        for pi in reversed(self._ptoggled):
-            if index >= pi:
-                return pi
-
-        raise ValueError(f'out of bounds: {len(self.dictionary.contents)=}, {index=}')
-
-    def is_phrase_index(self, index: int) -> bool:
-        return index in self._ptoggled
-
-    def audio_for_index(self, index: int) -> AUDIO | None:
-        contents = self.dictionary.contents
-
-        for i in self._pgrouped[self.phrase_index_for(index)]:
-            op = contents[i]
-            if isinstance(op, AUDIO):
-                return op
-
-        return None
-
     TOGGLEABLE = (DEF, SYN)
     SELECTABLE = (PHRASE, AUDIO, ETYM, POS)
 
@@ -179,13 +153,13 @@ class EntrySelector:
             if isinstance(contents[i], self.SELECTABLE):
                 self._toggles[i] = bool(self._ptoggled[pi])
 
-    def toggle_by_index(self, index: int) -> None:
+    def toggle_index(self, index: int) -> None:
         if not isinstance(self.dictionary.contents[index], self.TOGGLEABLE):
             raise ValueError(f'{index=} does not point to a toggleable entry')
 
         self._toggle(index)
 
-    def toggle_by_def_index(self, index: int) -> None:
+    def toggle_def_index(self, index: int) -> None:
         current = 0
         for i, op in enumerate(self.dictionary.contents):
             if isinstance(op, self.TOGGLEABLE):
@@ -193,6 +167,32 @@ class EntrySelector:
                 if current == index:
                     self._toggle(i)
                     return
+
+    def is_toggled(self, index: int) -> bool:
+        return self._toggles[index]
+
+    def is_phrase_index(self, index: int) -> bool:
+        return index in self._ptoggled
+
+    def phrase_index_for(self, index: int) -> int:
+        if not self._ptoggled:
+            raise ValueError('dictionary has no PHRASE entries')
+
+        for pi in reversed(self._ptoggled):
+            if index >= pi:
+                return pi
+
+        raise ValueError(f'out of bounds: {len(self.dictionary.contents)=}, {index=}')
+
+    def get_audio_for_index(self, index: int) -> AUDIO | None:
+        contents = self.dictionary.contents
+
+        for i in self._pgrouped[self.phrase_index_for(index)]:
+            op = contents[i]
+            if isinstance(op, AUDIO):
+                return op
+
+        return None
 
     def get_audio_if_unique(self) -> AUDIO | None:
         unique = {

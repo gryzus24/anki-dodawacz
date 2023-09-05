@@ -745,7 +745,7 @@ class Screen:
 
         contents = self.selector.dictionary.contents
         if isinstance(contents[op_i], self.selector.TOGGLEABLE):
-            self.selector.toggle_by_index(op_i)
+            self.selector.toggle_index(op_i)
             return True
         else:
             return False
@@ -753,14 +753,14 @@ class Screen:
     # return: True if a box has been toggled, False otherwise.
     def mark_box_by_number(self, s: bytes) -> bool:
         try:
-            self.selector.toggle_by_def_index(b'1234567890'.index(s) + 1)
+            self.selector.toggle_def_index(b'1234567890'.index(s) + 1)
         except ValueError:
             return False
         else:
             return True
 
     def mark_box_at_cursor(self) -> None:
-        self.selector.toggle_by_index(self.cursor.cur())
+        self.selector.toggle_index(self.cursor.cur())
 
     def deselect_all(self) -> None:
         self.selector.clear_selection()

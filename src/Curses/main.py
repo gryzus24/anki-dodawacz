@@ -838,7 +838,7 @@ def curses_main(stdscr: curses._CursesWindow) -> None:
                     if (index := screenbuf.page.dictionary_op_i_at(y, x)) is None:
                         continue
                     if screenbuf.page.selector.is_phrase_index(index):
-                        audio = screenbuf.page.selector.audio_for_index(index)
+                        audio = screenbuf.page.selector.get_audio_for_index(index)
                         if audio is None or not audio.resource:
                             screenbuf.status.clear()
                             screenbuf.status.error('No audio for this entry')
