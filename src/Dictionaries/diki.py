@@ -253,7 +253,7 @@ def create_dictionary(html: bytes, query: str) -> Dictionary:
         suggestion_tag = soup.find('.//div[@class="dictionarySuggestions"]')
         msg = f'{DICTIONARY}: {query!r} not found'
         if suggestion_tag is not None:
-            a_tags = suggestion_tag.findall('./a')
+            a_tags = suggestion_tag.findall('.//a')
             if not a_tags:
                 raise DictionaryError(f'ERROR: {DICTIONARY}: no a tags in suggestions')
 
