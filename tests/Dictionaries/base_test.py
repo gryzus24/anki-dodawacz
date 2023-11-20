@@ -50,8 +50,8 @@ def test_dump_selection():
     d.add(pos_two)
 
     e = EntrySelector(d)
-    assert e.dump_selection(respect_phrase_boundaries=True) == None
-    assert e.dump_selection(respect_phrase_boundaries=False) == None
+    assert e.dump_selection(respect_phrase_boundaries=True) is None
+    assert e.dump_selection(respect_phrase_boundaries=False) is None
 
     e.toggle_def_index(1)
     assert e.dump_selection(respect_phrase_boundaries=True) == [
