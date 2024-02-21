@@ -873,7 +873,7 @@ def curses_main(stdscr: curses._CursesWindow) -> None:
                     'guiBrowse',
                     query=(
                         'added:1' if recent_nids is None
-                        else f'nid:{",".join(map(str, recent_nids))}'
+                        else f'deck:{getconf("deck")} nid:{",".join(map(str, recent_nids))}'
                     )
                 )
             except anki.AnkiError as e:
