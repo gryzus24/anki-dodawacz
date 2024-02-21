@@ -3,7 +3,6 @@ from __future__ import annotations
 import atexit
 from typing import Callable
 from typing import Mapping
-from typing import NoReturn
 
 import lxml.etree as etree
 import urllib3
@@ -50,7 +49,7 @@ def parse_response(data: bytes) -> etree._Element:
 
 
 def prepare_check_text(dictionary_name: str) -> Callable[[etree._Element], str]:
-    def check_text(el: etree._Element) -> str | NoReturn:
+    def check_text(el: etree._Element) -> str:
         text = el.text
         if text is None:
             raise DictionaryError(
@@ -62,7 +61,7 @@ def prepare_check_text(dictionary_name: str) -> Callable[[etree._Element], str]:
 
 
 def prepare_check_tail(dictionary_name: str) -> Callable[[etree._Element], str]:
-    def check_tail(el: etree._Element) -> str | NoReturn:
+    def check_tail(el: etree._Element) -> str:
         tail = el.tail
         if tail is None:
             raise DictionaryError(
