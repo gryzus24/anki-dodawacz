@@ -57,9 +57,8 @@ class CompletionMenu:
         self.win = win
         self._entries = entries or deque()
         self._completions: Sequence[str] = self._entries
-        self._seen = set(self._entries)
         self._lookup = _lookup_prepare(self._entries)
-        self._current_completion_str: str | None = None
+        self._completion_prefix: str | None = None
         self._cur: int | None = None
         self._scroll = 0
 
@@ -120,16 +119,16 @@ class CompletionMenu:
         if not s:
             return False
 
-        if s in self._seen:
-            # Don't bother removing and adding if 's' is the same as the most
-            # recently added entry (its position won't change).
-            if self._entries[0] == s:
-                return False
+        # Don't bother removing and adding if 's' is the same as the most
+        # recently added entry (its position won't change).
+        if self._entries and self._entries[0] == s:
+            return False
 
+        try:
             _lookup_remove(self._lookup, s)
             self._entries.remove(s)
-        else:
-            self._seen.add(s)
+        except ValueError:
+            pass
 
         _lookup_add(self._lookup, s)
         self._entries.appendleft(s)
@@ -141,10 +140,10 @@ class CompletionMenu:
         self._scroll = 0
 
         s = s.lstrip().lower()
-        if self._current_completion_str == s:
+        if self._completion_prefix == s:
             return
 
-        self._current_completion_str = s
+        self._completion_prefix = s
 
         if not s:
             self._completions = self._entries
@@ -159,7 +158,7 @@ class CompletionMenu:
     def deactivate(self) -> None:
         self._cur = None
         self._scroll = 0
-        self._current_completion_str = None
+        self._completion_prefix = None
         self._completions = self._entries
 
     def _select(self, forward: bool) -> SelectionResult:
@@ -170,7 +169,7 @@ class CompletionMenu:
             self._cur = (0 if forward else len(self._completions) - 1)
             completion = self._completions[self._cur]
             wrapped = False
-        elif self._cur == ((len(self._completions) - 1) if forward else 0):
+        elif self._cur == (len(self._completions) - 1 if forward else 0):
             self._cur = None
             completion = None
             wrapped = True
