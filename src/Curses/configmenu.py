@@ -276,7 +276,7 @@ class ConfigMenu(ScreenBufferProto):
         + (len(CONFIG_COLUMNS) - 1) * COLUMN_PAD
     )
 
-    def __init__(self, win: curses._CursesWindow) -> None:
+    def __init__(self, win: curses.window) -> None:
         self.win = win
         self.grid = CONFIG_COLUMNS
         self.min_y = self.CONFIG_MIN_HEIGHT + 2*BORDER_PAD + DESCRIPTION_BOX_HEIGHT

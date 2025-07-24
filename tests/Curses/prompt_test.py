@@ -12,7 +12,7 @@ stdscr = curses.initscr()
 
 
 class DummyScreenBuffer:
-    def __init__(self, win: curses._CursesWindow) -> None:
+    def __init__(self, win: curses.window) -> None:
         self.win = win
 
     @contextlib.contextmanager

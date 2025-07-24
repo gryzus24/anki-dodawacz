@@ -91,7 +91,7 @@ def start_mpv_play_url(mpv: Mpv | None, url: str) -> Mpv:
     return Mpv(proc, url)
 
 
-def draw_border(win: curses._CursesWindow, margin_bot: int) -> None:
+def draw_border(win: curses.window, margin_bot: int) -> None:
     try:
         win.move(curses.LINES - 1 - margin_bot, 0)
     except curses.error:

@@ -573,7 +573,7 @@ class ScreenHighlight(NamedTuple):
 
 
 class Screen:
-    def __init__(self, win: curses._CursesWindow, dictionary: Dictionary) -> None:
+    def __init__(self, win: curses.window, dictionary: Dictionary) -> None:
         self.win = win
         self.selector = EntrySelector(dictionary)
 

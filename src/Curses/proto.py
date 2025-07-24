@@ -18,7 +18,7 @@ class StatusProto(Protocol):
 
 
 class ScreenBufferProto(Protocol):
-    win: curses._CursesWindow
+    win: curses.window
     @contextlib.contextmanager
     def extra_margin(self, n: int) -> Iterator[None]: ...
     def draw(self) -> None: ...

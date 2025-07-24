@@ -257,13 +257,13 @@ def ask_collins(query: str) -> Dictionary:
     # Silence warnings if soupsieve is not installed, which is good
     # because its bloated "css parse" slows down import time even more.
     try:
-        sys.stderr = None  # type: ignore[assignment]
+        sys.stderr = None
         from bs4 import BeautifulSoup, __version__  # type: ignore[attr-defined]
     finally:
         sys.stderr = sys.__stderr__
 
     if (*map(int, __version__.split('.')),) < (4, 10, 0):
-        sys.stderr.write(
+        sys.stderr.write(  # type: ignore[union-attr]
              '----------------------------------------------------------------\n'
              'Your version of beautifulsoup is out of date, please update:\n'
              'pip install -U beautifulsoup4\n'

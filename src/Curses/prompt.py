@@ -51,7 +51,7 @@ def _lookup_prepare(elements: deque[str]) -> defaultdict[str, list[str]]:
 
 class CompletionMenu:
     def __init__(self,
-            win: curses._CursesWindow,
+            win: curses.window,
             entries: deque[str] | None = None
     ) -> None:
         self.win = win
@@ -63,7 +63,7 @@ class CompletionMenu:
         self._scroll = 0
 
     @classmethod
-    def from_file(cls, win: curses._CursesWindow, path: str) -> CompletionMenu:
+    def from_file(cls, win: curses.window, path: str) -> CompletionMenu:
         try:
             with open(path) as f:
                 entries = deque(map(str.strip, f))

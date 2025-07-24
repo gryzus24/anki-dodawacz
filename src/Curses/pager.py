@@ -25,7 +25,7 @@ class PagerHighlight(NamedTuple):
 
 class Pager:
     def __init__(self,
-            win: curses._CursesWindow,
+            win: curses.window,
             buf: list[tuple[str, list[Attr]]]
     ) -> None:
         self.win = win

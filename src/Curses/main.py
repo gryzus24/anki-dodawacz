@@ -66,7 +66,7 @@ class StatusLine(NamedTuple):
 
 
 class Status:
-    def __init__(self, win: curses._CursesWindow, *, persistence: int) -> None:
+    def __init__(self, win: curses.window, *, persistence: int) -> None:
         self.win = win
         self.persistence = persistence
         self._buf: list[StatusLine] = []
@@ -296,7 +296,7 @@ f' To make multiple queries at once separate them with a "{search.QUERY_SEPARATO
 
 
 class QueryHistory:
-    def __init__(self, win: curses._CursesWindow, hist_path: str) -> None:
+    def __init__(self, win: curses.window, hist_path: str) -> None:
         self.win = win
         self._hist_path = hist_path
         self._hist_save_func_registered = False
@@ -325,7 +325,7 @@ class QueryHistory:
 
 class ScreenBuffer(ScreenBufferProto):
     def __init__(self,
-            win: curses._CursesWindow,
+            win: curses.window,
             screens: Sequence[Screen] | None = None
     ) -> None:
         self.win = win
@@ -804,7 +804,7 @@ SEARCH_ENTER_ACTIONS: Mapping[bytes, Callable[[Status], str | None]] = {
 }
 
 
-def curses_main(stdscr: curses._CursesWindow) -> None:
+def curses_main(stdscr: curses.window) -> None:
     screenbuf = ScreenBuffer(stdscr)
     configmenu = ConfigMenu(stdscr)
     recent_nids: list[int] | None = None
