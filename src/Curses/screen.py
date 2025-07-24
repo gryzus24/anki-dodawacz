@@ -434,6 +434,9 @@ class Cursor:
             self._col_cur_lineof.append(_cur_lineof)
             self._col_indx_to_cur.append(_indx_to_cur)
 
+    def has_toggleable_entries(self) -> bool:
+        return any(self._col_cur_lineof)
+
     def cur(self) -> int:
         return self._col_indx_to_cur[self._col][self._cur_indx]
 
@@ -628,7 +631,11 @@ class Screen:
         except curses.error:  # window height too small
             return
 
-        cur = self.cursor.cur()
+        if self.vmode:
+            cur = self.cursor.cur()
+        else:
+            cur = -1
+
         selected_ops = currently_selected_ops()
         hl_attr = Color.hl
 
@@ -647,7 +654,7 @@ class Screen:
 
                 win.addstr(y, text_x, text)
 
-                if self.vmode and op_i == cur:
+                if op_i == cur:
                     t = Color.cursor
                     for i, span, attr in attrs:
                         attr &= ~curses.A_INVIS  # 'show on hover' effect
@@ -714,7 +721,7 @@ class Screen:
     def vmode_toggle(self) -> None:
         if self.vmode:
             self.vmode = False
-        else:
+        elif self.cursor.has_toggleable_entries():
             self.vmode = True
             self.bring_cursor_to_view()
 
