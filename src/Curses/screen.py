@@ -940,6 +940,8 @@ class Screen:
             if not self.cursor_down() and self.cursor_right():
                 self.cursor.go_to_cur_at_line_after(0)
                 self._scroll = 0
+        else:
+            self.page_down()
 
     ACTIONS: Mapping[bytes, Callable[[Screen], None]] = {
         b'J': move_down,          b'^N': move_down,
