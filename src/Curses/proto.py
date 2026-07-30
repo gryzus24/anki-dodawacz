@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import contextlib
-from typing import Iterator
+from typing import Generator
 from typing import Protocol
 from typing import TYPE_CHECKING
 
@@ -20,6 +20,6 @@ class StatusProto(Protocol):
 class ScreenBufferProto(Protocol):
     win: curses.window
     @contextlib.contextmanager
-    def extra_margin(self, n: int) -> Iterator[None]: ...
+    def extra_margin(self, n: int) -> Generator[None]: ...
     def draw(self) -> None: ...
     def resize(self) -> None: ...

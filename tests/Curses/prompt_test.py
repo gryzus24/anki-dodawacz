@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import contextlib
 import curses
-from typing import Iterator
+from typing import Generator
 
 import pytest
 
@@ -16,7 +16,7 @@ class DummyScreenBuffer:
         self.win = win
 
     @contextlib.contextmanager
-    def extra_margin(self, n: int) -> Iterator[None]:
+    def extra_margin(self, n: int) -> Generator[None]:
         yield
 
     def draw(self) -> None:

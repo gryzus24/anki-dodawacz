@@ -19,7 +19,7 @@ import subprocess
 import os
 from collections import deque
 from typing import Callable
-from typing import Iterator
+from typing import Generator
 from typing import Mapping
 from typing import NamedTuple
 from typing import Sequence
@@ -337,7 +337,7 @@ class ScreenBuffer(ScreenBufferProto):
         self.bar_margin: int = not getconf('nohelp')
 
     @contextlib.contextmanager
-    def extra_margin(self, n: int) -> Iterator[None]:
+    def extra_margin(self, n: int) -> Generator[None]:
         t = self.page.margin_bot
         self.page.margin_bot += n
         try:

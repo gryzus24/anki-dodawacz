@@ -4,8 +4,8 @@ import contextlib
 import curses
 import functools
 from typing import Callable
+from typing import Generator
 from typing import get_args
-from typing import Iterator
 from typing import Mapping
 from typing import NamedTuple
 
@@ -289,7 +289,7 @@ class ConfigMenu(ScreenBufferProto):
         self._col = self._line = 0
 
     @contextlib.contextmanager
-    def extra_margin(self, n: int) -> Iterator[None]:
+    def extra_margin(self, n: int) -> Generator[None]:
         t = self.margin_bot
         self.margin_bot += n
         try:
@@ -456,7 +456,7 @@ class ConfigMenu(ScreenBufferProto):
             completions = constraint
         elif callable(constraint):
             try:
-                completions = constraint()  # type: ignore[assignment]
+                completions = constraint()
             except Exception:
                 completions = [val]
         else:
