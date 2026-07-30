@@ -15,7 +15,7 @@ przy instalacji zaznacz "Add Python to PATH"
 2. pobierz i wyodrębnij [archiwum zip](https://github.com/gryzus24/anki-dodawacz/archive/refs/heads/main.zip) z programem
 3. otwórz terminal (Win+R "cmd" lub wpisz "cmd" do pola ścieżki eksploratora plików)
 4. przejdź do folderu z wyeksportowanym programem (np. `cd Pobrane\anki-dodawacz-main`)
-5. zainstaluj wymagane biblioteki: `pip install --no-deps -r requirements.txt windows-curses`
+5. zainstaluj wymagane biblioteki: `pip install -r requirements.txt windows-curses`
 6. uruchom program: `python ankidodawacz.py`<br>
 jeżeli masz szczęście, to program może uruchomić się bez wpisywania przedrostka `python`!
 
@@ -30,7 +30,7 @@ Większość dystrybucji GNU/Linuxa ma już zainstalowaną odpowiednią wersję 
 ```
 curl -sL https://github.com/gryzus24/anki-dodawacz/archive/refs/heads/main.tar.gz | tar xfz -
 cd anki-dodawacz-main
-pip install --no-deps -r requirements.txt -t lib
+pip install -r requirements.txt -t lib
 sudo make install
 ```
 

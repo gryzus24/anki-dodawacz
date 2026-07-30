@@ -15,7 +15,7 @@ during installation tick the "Add Python to PATH" box
 2. download and extract the [zip archive](https://github.com/gryzus24/anki-dodawacz/archive/refs/heads/main.zip)
 3. open the terminal (Win+R "cmd" or type "cmd" into the file manager's path box)
 4. cd into the extracted directory (e.g. `cd Downloads\anki-dodawacz-main`)
-5. install the required dependencies: `pip install --no-deps -r requirements.txt windows-curses`
+5. install the required dependencies: `pip install -r requirements.txt windows-curses`
 6. run the program: `python ankidodawacz.py`<br>
 if you are lucky it might even run without the `python` prefix!
 
@@ -30,7 +30,7 @@ Most GNU/Linux distributions come with Python preinstalled.
 ```
 curl -sL https://github.com/gryzus24/anki-dodawacz/archive/refs/heads/main.tar.gz | tar xfz -
 cd anki-dodawacz-main
-pip install --no-deps -r requirements.txt -t lib
+pip install -r requirements.txt -t lib
 sudo make install
 ```
 
