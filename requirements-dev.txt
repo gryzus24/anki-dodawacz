@@ -1,4 +1,3 @@
-lxml-stubs
+lxml-stubs==0.5.1
 mypy
 pytest
-types-beautifulsoup4

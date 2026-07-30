@@ -18,7 +18,6 @@ from src.Dictionaries.ahd import ask_ahd
 from src.Dictionaries.base import Dictionary
 from src.Dictionaries.base import DictionaryError
 from src.Dictionaries.base import MAGIC
-from src.Dictionaries.collins import ask_collins
 from src.Dictionaries.diki import ask_diki_english
 from src.Dictionaries.diki import ask_diki_french
 from src.Dictionaries.diki import ask_diki_german
@@ -34,8 +33,6 @@ QUERY_SEPARATOR = ','
 
 DICT_KEY_ALIASES: Mapping[str, dictkey_t] = {
     'ahd':     'ahd',
-    'col':     'collins',
-    'collins': 'collins',
     'den':     'diki-en',
     'diki-en': 'diki-en',
     'dfr':     'diki-fr',
@@ -58,7 +55,6 @@ DICT_KEY_ALIASES: Mapping[str, dictkey_t] = {
 # an alias.
 DICTIONARY_LOOKUP: Mapping[dictkey_t, Callable[[str], Dictionary]] = {
     'ahd': ask_ahd,
-    'collins': ask_collins,
     'diki-en': ask_diki_english,
     'diki-fr': ask_diki_french,
     'diki-de': ask_diki_german,

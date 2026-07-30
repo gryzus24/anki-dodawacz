@@ -9,7 +9,7 @@ from typing import TypedDict
 from typing import Union
 
 dictkey_t = Literal[
-    'ahd', 'collins', 'diki-en', 'diki-fr', 'diki-de', 'diki-it', 'diki-es',
+    'ahd', 'diki-en', 'diki-fr', 'diki-de', 'diki-it', 'diki-es',
     'farlex', 'wordnet'
 ]
 
