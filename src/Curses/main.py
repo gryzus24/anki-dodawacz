@@ -20,6 +20,7 @@ import os
 from collections import deque
 from typing import Callable
 from typing import Generator
+from typing import Iterator
 from typing import Mapping
 from typing import NamedTuple
 from typing import Sequence
@@ -132,10 +133,7 @@ class Status:
 
 
 class StatusEcho(StatusProto):
-    def __init__(self,
-            program: ProgramProto,
-            status: StatusProto
-    ) -> None:
+    def __init__(self, program: ProgramProto, status: StatusProto) -> None:
         self.program = program
         self.status = status
 
@@ -322,18 +320,47 @@ class QueryHistory:
             self._hist_save_func_registered = True
 
 
+class Screens:
+    def __init__(self, items: Sequence[Screen]) -> None:
+        self.items = items
+        self.i = 0
+
+    @property
+    def current(self) -> Screen:
+        return self.items[self.i]
+
+    def next(self, *, wrap: bool = False) -> None:
+        if self.items:
+            self.i += 1
+            if wrap:
+                self.i %= len(self.items)
+            else:
+                self.i = min(self.i, len(self.items) - 1)
+
+    def prev(self, *, wrap: bool = False) -> None:
+        if self.items:
+            self.i -= 1
+            if wrap:
+                self.i %= len(self.items)
+            else:
+                self.i = max(self.i, 0)
+
+    def __bool__(self) -> bool:
+        return bool(self.items)
+    def __len__(self) -> int:
+        return len(self.items)
+    def __iter__(self) -> Iterator[Screen]:
+        return iter(self.items)
+
+
 class Program(ProgramProto):
-    def __init__(self,
-            win: curses.window,
-            screens: Sequence[Screen] | None = None
-    ) -> None:
+    def __init__(self, win: curses.window) -> None:
         self.win = win
-        self.help_pager = Pager(win, HELP)
-        self.screens = screens or []
-        self._screen_i = 0
+        self.help = Pager(win, HELP)
+        self.screens = Screens([])
         self.status = Status(win, persistence=7)
         self.history = QueryHistory(win, os.path.join(DATA_DIR, 'history.txt'))
-        self.page: Screen | Pager = self.help_pager
+        self.page: Screen | Pager = self.help
         self.bar_margin = not getconf('nohelp')
 
     @contextlib.contextmanager
@@ -344,11 +371,6 @@ class Program(ProgramProto):
             yield
         finally:
             self.page.margin_bot = t
-
-    def _set_screens(self, screens: Sequence[Screen]) -> None:
-        self.page = screens[0]
-        self.screens = screens
-        self._screen_i = 0
 
     def _search_prompt(self, pretype: str) -> None:
         with self.extra_margin(not self.bar_margin):
@@ -425,10 +447,9 @@ class Program(ProgramProto):
                     self.history.add_cmenu_entry(phrases[0].replace(',', ' '))
                     self.history.add_cmenu_entry(query.query)
 
-        if not screens:
-            return
-
-        self._set_screens(screens)
+        if screens:
+            self.screens = Screens(screens)
+            self.page = self.screens.current
 
     def _draw_border(self, margin_bot: int) -> None:
         win = self.win
@@ -450,7 +471,7 @@ class Program(ProgramProto):
                 win.addstr(0, 2, f'[ {header} ]')
                 win.chgat(0, 4, len(header), Color.delimit | curses.A_BOLD)
             if len(self.screens) > 1:
-                screen_hint = f'{self._screen_i + 1}/{len(self.screens)}'
+                screen_hint = f'{self.screens.i + 1}/{len(self.screens)}'
                 items.append(screen_hint)
                 items_attr_values.append((len(screen_hint), curses.A_BOLD, 0))
         elif isinstance(page, Pager):
@@ -536,46 +557,32 @@ class Program(ProgramProto):
     def resize(self) -> None:
         curses.update_lines_cols()
 
-        self.help_pager.resize()
+        self.help.resize()
         for screen in self.screens:
             screen.resize()
 
         self.win.clearok(True)
 
-    def page_back(self) -> bool:
-        if self.screens and isinstance(self.page, Pager):
-            self.page = self.screens[self._screen_i]
-            return True
-        else:
+    def ask_yes_no(self, prompt_name: str, *, default: bool) -> bool:
+        typed = Prompt(
+            self,
+            f'{prompt_name} [{"Y/n" if default else "y/N"}]: ',
+            exiting_bspace=False
+        ).run()
+        if typed is None:
             return False
+        if not (typed := typed.strip()):
+            return default
 
-    def page_next(self) -> None:
-        if self.screens and isinstance(self.page, Screen):
-            if self._screen_i < len(self.screens) - 1:
-                self._screen_i += 1
-            self.page = self.screens[self._screen_i]
-
-    def page_prev(self) -> None:
-        if self.screens and isinstance(self.page, Screen):
-            if self._screen_i > 0:
-                self._screen_i -= 1
-            self.page = self.screens[self._screen_i]
-
-    def page_next_wraparound(self) -> None:
-        if self.screens and isinstance(self.page, Screen):
-            self._screen_i = (self._screen_i + 1) % len(self.screens)
-            self.page = self.screens[self._screen_i]
-
-    def page_prev_wraparound(self) -> None:
-        if self.screens and isinstance(self.page, Screen):
-            self._screen_i = (self._screen_i - 1) % len(self.screens)
-            self.page = self.screens[self._screen_i]
-
-    def toggle_help(self) -> None:
-        if self.screens and isinstance(self.page, Pager):
-            self.page = self.screens[self._screen_i]
-        else:
-            self.page = self.help_pager
+        return {
+            '1':    True, '0':     False,
+            'on':   True, 'off':   False,
+            't':    True,
+            'tak':  True, 'nie':   False,
+            'true': True, 'false': False,
+            'y':    True, 'n':     False,
+            'yes':  True, 'no':    False,
+        }.get(typed.lower(), False)
 
     def anki_configurator(self) -> None:
         st = self.status
@@ -590,7 +597,7 @@ class Program(ProgramProto):
         st.writeln('You will be offered options, you can press TAB to cycle through them.')
         st.writeln('')
 
-        expressing_desire_to_continue = ask_yes_no(self, 'Continue?', default=True)
+        expressing_desire_to_continue = self.ask_yes_no('Continue?', default=True)
         st.clear()
 
         if not expressing_desire_to_continue:
@@ -668,25 +675,6 @@ class Program(ProgramProto):
         else:
             self.status.error('Nothing matches', repr(typed))
 
-    ACTIONS: Mapping[bytes, Callable[[Program], None]] = {
-        b'KEY_RESIZE': resize,           b'^L': resize,
-        b'L': page_next,
-        b'^I': page_next_wraparound,
-        b'H': page_prev,
-        b'KEY_BTAB': page_prev_wraparound,
-        b'KEY_F(1)': toggle_help,
-        b'KEY_F(3)': anki_configurator,
-        b'KEY_F(4)': find_in_page,       b'^F': find_in_page,
-    }
-    def dispatch(self, key: bytes) -> bool:
-        if self.page.dispatch(key):
-            return True
-        if key in self.ACTIONS:
-            self.ACTIONS[key](self)
-            return True
-
-        return False
-
 
 def perror_play_audio(mpv: Mpv | None, status: Status, url: str) -> Mpv | None:
     curses.flushinp()
@@ -742,32 +730,6 @@ def perror_currently_reviewed_phrase(status: Status) -> str | None:
         return None
 
 
-def ask_yes_no(
-        program: ProgramProto,
-        prompt_name: str, *,
-        default: bool
-) -> bool:
-    typed = Prompt(
-        program,
-        f'{prompt_name} [{"Y/n" if default else "y/N"}]: ',
-        exiting_bspace=False
-    ).run()
-    if typed is None:
-        return False
-    if not (typed := typed.strip()):
-        return default
-
-    return {
-        '1':    True, '0':     False,
-        'on':   True, 'off':   False,
-        't':    True,
-        'tak':  True, 'nie':   False,
-        'true': True, 'false': False,
-        'y':    True, 'n':     False,
-        'yes':  True, 'no':    False,
-    }.get(typed.lower(), False)
-
-
 def perror_recheck_note(status: Status) -> None:
     try:
         model = anki.models.get_model(getconf('note'), recheck=True)
@@ -802,6 +764,7 @@ SEARCH_ENTER_ACTIONS: Mapping[bytes, Callable[[Status], str | None]] = {
 def curses_main(stdscr: curses.window) -> None:
     program = Program(stdscr)
     configmenu = ConfigMenu(stdscr)
+
     recent_nids: list[int] | None = None
     mpv = None
 
@@ -810,7 +773,7 @@ def curses_main(stdscr: curses.window) -> None:
         program.draw()
 
         c = curses.keyname(stdscr.getch())
-        if program.dispatch(c):
+        if program.page.dispatch(c):
             continue
 
         elif c == b'KEY_MOUSE':
@@ -875,24 +838,28 @@ def curses_main(stdscr: curses.window) -> None:
                 program.status.error('Could not open the card browser:', str(e))
 
         elif c in {b'c', b'C'}:
-            if not isinstance(program.page, Screen):
-                continue
+            if isinstance(program.page, Screen):
+                program.status.clear()
 
-            program.status.clear()
-
-            selections = program.page.selector.dump_selection(
-                respect_phrase_boundaries=c == b'c'
-            )
-            if selections is None:
-                program.status.error('Nothing selected')
-            else:
-                added_nids = create_and_add_card(
-                    StatusEcho(program, program.status),
-                    selections
+                selections = program.page.selector.dump_selection(
+                    respect_phrase_boundaries=c == b'c'
                 )
-                if added_nids:
-                    recent_nids = added_nids
-                program.page.deselect_all()
+                if selections is None:
+                    program.status.error('Nothing selected')
+                else:
+                    added_nids = create_and_add_card(
+                        StatusEcho(program, program.status),
+                        selections
+                    )
+                    if added_nids:
+                        recent_nids = added_nids
+                    program.page.deselect_all()
+
+        elif c == b'KEY_F(1)':
+            if program.screens and isinstance(program.page, Pager):
+                program.page = program.screens.current
+            else:
+                program.page = program.help
 
         elif c == b'KEY_F(2)':
             _l, _c = curses.LINES, curses.COLS
@@ -904,9 +871,18 @@ def curses_main(stdscr: curses.window) -> None:
             if configmenu.apply_changes() or curses.is_term_resized(_l, _c):
                 program.resize()
 
+        elif c == b'KEY_F(3)':
+            program.anki_configurator()
+
+        elif c in {b'KEY_F(4)', b'^F'}:
+            program.find_in_page()
+
         elif c == b'KEY_F(5)':
             program.status.clear()
             perror_recheck_note(program.status)
+
+        elif c in {b'KEY_RESIZE', b'^L'}:
+            program.resize()
 
         elif c == b'?':
             program.bar_margin = not program.bar_margin
@@ -915,8 +891,24 @@ def curses_main(stdscr: curses.window) -> None:
             program.status.clear()
 
         elif c in {b'q', b'Q', b'^X'}:
-            if not program.page_back():
+            if program.screens and isinstance(program.page, Pager):
+                program.page = program.screens.current
+            else:
                 raise KeyboardInterrupt
+
+        elif isinstance(program.page, Screen):
+            if c == b'L':
+                program.screens.next()
+            elif c == b'H':
+                program.screens.prev()
+            elif c == b'^I':
+                program.screens.next(wrap=True)
+            elif c == b'KEY_BTAB':
+                program.screens.prev(wrap=True)
+            else:
+                continue
+
+            program.page = program.screens.current
 
 
 def main() -> None:
