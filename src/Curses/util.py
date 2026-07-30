@@ -67,7 +67,7 @@ class Mpv:
 
 
 _mpv_cmd = None
-def start_mpv_play_url(mpv: Mpv | None, url: str) -> Mpv:
+def start_mpv_play_url(url: str) -> Mpv:
     global _mpv_cmd
     if _mpv_cmd is None:
         _mpv_cmd = shutil.which('mpv')

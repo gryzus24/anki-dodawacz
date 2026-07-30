@@ -139,7 +139,7 @@ def init_colors() -> None:
     # Unfortuantely, we cannot override pair 0 so that invoking color
     # pairs as `curses.color_pair(curses.COLOR_BLACK)` gives black.
     # COLOR_* are not intended to be used like that, but still.
-    for i in range(1, 16 if curses.COLORS >= 16 else curses.COLORS):
+    for i in range(1, min(16, curses.COLORS)):
         curses.init_pair(i, i, -1)
 
     Color.init(config, curses.COLORS)

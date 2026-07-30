@@ -334,7 +334,7 @@ class ScreenBuffer(ScreenBufferProto):
         self.status = Status(win, persistence=7)
         self.history = QueryHistory(win, os.path.join(DATA_DIR, 'history.txt'))
         self.page: Screen | Pager = self.help_pager
-        self.bar_margin: int = not getconf('nohelp')
+        self.bar_margin = not getconf('nohelp')
 
     @contextlib.contextmanager
     def extra_margin(self, n: int) -> Generator[None]:
@@ -345,7 +345,7 @@ class ScreenBuffer(ScreenBufferProto):
         finally:
             self.page.margin_bot = t
 
-    def _insert_screens(self, screens: Sequence[Screen]) -> None:
+    def _set_screens(self, screens: Sequence[Screen]) -> None:
         screens[0].margin_bot = self.page.margin_bot
         self.page = screens[0]
         self.screens = screens
@@ -429,7 +429,7 @@ class ScreenBuffer(ScreenBufferProto):
         if not screens:
             return
 
-        self._insert_screens(screens)
+        self._set_screens(screens)
 
     def search_prompt(self, *, pretype: str = '') -> None:
         self.status.clear()
@@ -530,8 +530,8 @@ class ScreenBuffer(ScreenBufferProto):
         self.win.erase()
 
         page = self.page
-        if self.bar_margin > page.margin_bot:
-            page.margin_bot = self.bar_margin
+        if self.bar_margin and not page.margin_bot:
+            page.margin_bot = 1
 
         initial_margin = page.margin_bot
         if self.status.height > initial_margin:
@@ -717,7 +717,7 @@ def perror_play_audio(mpv: Mpv | None, status: Status, url: str) -> Mpv | None:
 
     try:
         # TODO: handle multiple audio urls.
-        mpv = start_mpv_play_url(mpv, url)
+        mpv = start_mpv_play_url(url)
     except (ValueError, LookupError) as e:
         status.error('Could not play audio:', str(e))
 
@@ -913,7 +913,7 @@ def curses_main(stdscr: curses.window) -> None:
             perror_recheck_note(screenbuf.status)
 
         elif c == b'?':
-            screenbuf.bar_margin = (screenbuf.bar_margin + 1) % 2
+            screenbuf.bar_margin = not screenbuf.bar_margin
             screenbuf.help_pager.margin_bot = screenbuf.bar_margin
             for screen in screenbuf.screens:
                 screen.margin_bot = screenbuf.bar_margin
