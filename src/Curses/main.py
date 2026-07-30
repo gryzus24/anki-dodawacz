@@ -346,7 +346,6 @@ class Program(ProgramProto):
             self.page.margin_bot = t
 
     def _set_screens(self, screens: Sequence[Screen]) -> None:
-        screens[0].margin_bot = self.page.margin_bot
         self.page = screens[0]
         self.screens = screens
         self._screen_i = 0
@@ -523,12 +522,9 @@ class Program(ProgramProto):
         self.win.erase()
 
         page = self.page
-        if self.bar_margin and not page.margin_bot:
-            page.margin_bot = 1
-
         initial_margin = page.margin_bot
-        if self.status.height > initial_margin:
-            page.margin_bot = self.status.height
+
+        page.margin_bot += max(self.bar_margin, self.status.height)
 
         page.draw()
         self._draw_border(page.margin_bot)
@@ -914,9 +910,6 @@ def curses_main(stdscr: curses.window) -> None:
 
         elif c == b'?':
             program.bar_margin = not program.bar_margin
-            program.help_pager.margin_bot = program.bar_margin
-            for screen in program.screens:
-                screen.margin_bot = program.bar_margin
 
         elif c == b'^[':  #]
             program.status.clear()
