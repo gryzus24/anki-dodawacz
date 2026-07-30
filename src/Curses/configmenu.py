@@ -14,7 +14,7 @@ from src.Curses.color import ATTR_NAME_TO_ATTR
 from src.Curses.color import Color
 from src.Curses.color import COLOR_NAME_TO_COLOR
 from src.Curses.prompt import Prompt
-from src.Curses.proto import ScreenBufferProto
+from src.Curses.proto import ProgramProto
 from src.Curses.util import Attr
 from src.Curses.util import BORDER_PAD
 from src.Curses.util import draw_border
@@ -263,7 +263,7 @@ COLUMN_PAD             = 2
 SECTION_PAD            = 1
 
 
-class ConfigMenu(ScreenBufferProto):
+class ConfigMenu(ProgramProto):
     # 1st +1 - space for the header of the topmost section
     # 2nd +1 - space for the prompt
     CONFIG_MIN_HEIGHT = max(

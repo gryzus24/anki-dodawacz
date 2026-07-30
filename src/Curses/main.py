@@ -35,7 +35,7 @@ from src.Curses.configmenu import ConfigMenu
 from src.Curses.pager import Pager
 from src.Curses.prompt import CompletionMenu
 from src.Curses.prompt import Prompt
-from src.Curses.proto import ScreenBufferProto
+from src.Curses.proto import ProgramProto
 from src.Curses.proto import StatusProto
 from src.Curses.screen import Screen
 from src.Curses.util import Attr
@@ -133,15 +133,15 @@ class Status:
 
 class StatusEcho(StatusProto):
     def __init__(self,
-            screenbuf: ScreenBufferProto,
+            program: ProgramProto,
             status: StatusProto
     ) -> None:
-        self.screenbuf = screenbuf
+        self.program = program
         self.status = status
 
     def _refresh(self) -> None:
-        self.screenbuf.draw()
-        self.screenbuf.win.refresh()
+        self.program.draw()
+        self.program.win.refresh()
 
     def writeln(self, header: str, body: str | None = None) -> None:
         self.status.writeln(header, body)
@@ -322,7 +322,7 @@ class QueryHistory:
             self._hist_save_func_registered = True
 
 
-class ScreenBuffer(ScreenBufferProto):
+class Program(ProgramProto):
     def __init__(self,
             win: curses.window,
             screens: Sequence[Screen] | None = None
@@ -431,19 +431,6 @@ class ScreenBuffer(ScreenBufferProto):
 
         self._set_screens(screens)
 
-    def search_prompt(self, *, pretype: str = '') -> None:
-        self.status.clear()
-        self._search_prompt(' '.join(pretype.split()))
-        if getconf('histshow'):
-            self.history.cmenu.deactivate()
-
-    def page_back(self) -> bool:
-        if self.screens and isinstance(self.page, Pager):
-            self.page = self.screens[self._screen_i]
-            return True
-        else:
-            return False
-
     def _draw_border(self, margin_bot: int) -> None:
         win = self.win
         page = self.page
@@ -523,6 +510,12 @@ class ScreenBuffer(ScreenBufferProto):
         for index, span, attr in attrs:
             win.chgat(y, index, span, attr)
 
+    def search_prompt(self, *, pretype: str = '') -> None:
+        self.status.clear()
+        self._search_prompt(' '.join(pretype.split()))
+        if getconf('histshow'):
+            self.history.cmenu.deactivate()
+
     def draw(self) -> None:
         if curses.COLS < CURSES_COLS_MIN_VALUE:
             return
@@ -553,24 +546,31 @@ class ScreenBuffer(ScreenBufferProto):
 
         self.win.clearok(True)
 
-    def next_page(self) -> None:
+    def page_back(self) -> bool:
+        if self.screens and isinstance(self.page, Pager):
+            self.page = self.screens[self._screen_i]
+            return True
+        else:
+            return False
+
+    def page_next(self) -> None:
         if self.screens and isinstance(self.page, Screen):
             if self._screen_i < len(self.screens) - 1:
                 self._screen_i += 1
             self.page = self.screens[self._screen_i]
 
-    def prev_page(self) -> None:
+    def page_prev(self) -> None:
         if self.screens and isinstance(self.page, Screen):
             if self._screen_i > 0:
                 self._screen_i -= 1
             self.page = self.screens[self._screen_i]
 
-    def cycle_next_page(self) -> None:
+    def page_next_wraparound(self) -> None:
         if self.screens and isinstance(self.page, Screen):
             self._screen_i = (self._screen_i + 1) % len(self.screens)
             self.page = self.screens[self._screen_i]
 
-    def cycle_prev_page(self) -> None:
+    def page_prev_wraparound(self) -> None:
         if self.screens and isinstance(self.page, Screen):
             self._screen_i = (self._screen_i - 1) % len(self.screens)
             self.page = self.screens[self._screen_i]
@@ -581,11 +581,11 @@ class ScreenBuffer(ScreenBufferProto):
         else:
             self.page = self.help_pager
 
-    def anki_configuration(self) -> None:
+    def anki_configurator(self) -> None:
         st = self.status
         st.clear()
 
-        st.attention('Welcome to the Anki configuration!')
+        st.attention('Welcome to the Anki configurator!')
         st.writeln('First, make sure you have Anki up and running.')
         st.writeln('Then, you will need the Anki-Connect add-on installed, to do that,')
         st.writeln('insert 2055492159 into the Tools > Add-ons > Get Add-ons... text box')
@@ -672,14 +672,14 @@ class ScreenBuffer(ScreenBufferProto):
         else:
             self.status.error('Nothing matches', repr(typed))
 
-    ACTIONS: Mapping[bytes, Callable[[ScreenBuffer], None]] = {
+    ACTIONS: Mapping[bytes, Callable[[Program], None]] = {
         b'KEY_RESIZE': resize,           b'^L': resize,
-        b'L': next_page,
-        b'^I': cycle_next_page,
-        b'H': prev_page,
-        b'KEY_BTAB': cycle_prev_page,
+        b'L': page_next,
+        b'^I': page_next_wraparound,
+        b'H': page_prev,
+        b'KEY_BTAB': page_prev_wraparound,
         b'KEY_F(1)': toggle_help,
-        b'KEY_F(3)': anki_configuration,
+        b'KEY_F(3)': anki_configurator,
         b'KEY_F(4)': find_in_page,       b'^F': find_in_page,
     }
     def dispatch(self, key: bytes) -> bool:
@@ -747,12 +747,12 @@ def perror_currently_reviewed_phrase(status: Status) -> str | None:
 
 
 def ask_yes_no(
-        screenbuf: ScreenBufferProto,
+        program: ProgramProto,
         prompt_name: str, *,
         default: bool
 ) -> bool:
     typed = Prompt(
-        screenbuf,
+        program,
         f'{prompt_name} [{"Y/n" if default else "y/N"}]: ',
         exiting_bspace=False
     ).run()
@@ -804,67 +804,67 @@ SEARCH_ENTER_ACTIONS: Mapping[bytes, Callable[[Status], str | None]] = {
 
 
 def curses_main(stdscr: curses.window) -> None:
-    screenbuf = ScreenBuffer(stdscr)
+    program = Program(stdscr)
     configmenu = ConfigMenu(stdscr)
     recent_nids: list[int] | None = None
     mpv = None
 
     while True:
-        screenbuf.status.tick()
-        screenbuf.draw()
+        program.status.tick()
+        program.draw()
 
         c = curses.keyname(stdscr.getch())
-        if screenbuf.dispatch(c):
+        if program.dispatch(c):
             continue
 
         elif c == b'KEY_MOUSE':
             _, x, y, _, bstate = curses.getmouse()
             if mouse_left_click(bstate):
-                if screenbuf.bar_margin and y == curses.LINES - 1:
+                if program.bar_margin and y == curses.LINES - 1:
                     # Haven't found a good name for an API, so clicking
                     # the tiles on the function bar is inlined here.
                     end = -2
                     for i, (_, _, size) in enumerate(
-                            screenbuf.FKEY_BAR_TILE_COMPOSITION
+                            program.FKEY_BAR_TILE_COMPOSITION
                     ):
                         end += 2 + size
                         if end - size <= x < end:
                             curses.ungetch(curses.KEY_F1 + i)
                             break
-                elif isinstance(screenbuf.page, Screen):
-                    if screenbuf.page.mark_box_at(y, x):
+                elif isinstance(program.page, Screen):
+                    if program.page.mark_box_at(y, x):
                         continue
-                    if (index := screenbuf.page.dictionary_op_i_at(y, x)) is None:
+                    if (index := program.page.dictionary_op_i_at(y, x)) is None:
                         continue
-                    if screenbuf.page.selector.is_phrase_index(index):
-                        audio = screenbuf.page.selector.get_audio_for_index(index)
+                    if program.page.selector.is_phrase_index(index):
+                        audio = program.page.selector.get_audio_for_index(index)
                         if audio is None or not audio.resource:
-                            screenbuf.status.clear()
-                            screenbuf.status.error('No audio for this entry')
+                            program.status.clear()
+                            program.status.error('No audio for this entry')
                         else:
-                            mpv = perror_play_audio(mpv, screenbuf.status, audio.resource)
+                            mpv = perror_play_audio(mpv, program.status, audio.resource)
             elif mouse_wheel_up(bstate):
-                screenbuf.page.move_up(3)
+                program.page.move_up(3)
             elif mouse_wheel_down(bstate):
-                screenbuf.page.move_down(3)
+                program.page.move_down(3)
             elif mouse_wheel_click(bstate):
-                pretype = perror_clipboard_or_selection(screenbuf.status)
+                pretype = perror_clipboard_or_selection(program.status)
                 if pretype is not None:
-                    screenbuf.search_prompt(pretype=pretype)
+                    program.search_prompt(pretype=pretype)
 
         elif c in SEARCH_ENTER_ACTIONS:
-            pretype = SEARCH_ENTER_ACTIONS[c](screenbuf.status)
+            pretype = SEARCH_ENTER_ACTIONS[c](program.status)
             if pretype is not None:
-                screenbuf.search_prompt(pretype=pretype)
+                program.search_prompt(pretype=pretype)
 
         elif c in {b'a', b'A'}:
-            if isinstance(screenbuf.page, Screen):
-                audio = screenbuf.page.selector.get_first_or_toggled_audio()
+            if isinstance(program.page, Screen):
+                audio = program.page.selector.get_first_or_toggled_audio()
                 if audio is None:
-                    screenbuf.status.clear()
-                    screenbuf.status.error('No audio')
+                    program.status.clear()
+                    program.status.error('No audio')
                 else:
-                    mpv = perror_play_audio(mpv, screenbuf.status, audio.resource)
+                    mpv = perror_play_audio(mpv, program.status, audio.resource)
 
         elif c in {b'b', b'B'}:
             try:
@@ -876,53 +876,53 @@ def curses_main(stdscr: curses.window) -> None:
                     )
                 )
             except anki.AnkiError as e:
-                screenbuf.status.error('Could not open the card browser:', str(e))
+                program.status.error('Could not open the card browser:', str(e))
 
         elif c in {b'c', b'C'}:
-            if not isinstance(screenbuf.page, Screen):
+            if not isinstance(program.page, Screen):
                 continue
 
-            screenbuf.status.clear()
+            program.status.clear()
 
-            selections = screenbuf.page.selector.dump_selection(
+            selections = program.page.selector.dump_selection(
                 respect_phrase_boundaries=c == b'c'
             )
             if selections is None:
-                screenbuf.status.error('Nothing selected')
+                program.status.error('Nothing selected')
             else:
                 added_nids = create_and_add_card(
-                    StatusEcho(screenbuf, screenbuf.status),
+                    StatusEcho(program, program.status),
                     selections
                 )
                 if added_nids:
                     recent_nids = added_nids
-                screenbuf.page.deselect_all()
+                program.page.deselect_all()
 
         elif c == b'KEY_F(2)':
             _l, _c = curses.LINES, curses.COLS
             try:
                 configmenu.run(config)
             except ValueError as e:
-                screenbuf.status.error('F2 Config:', str(e))
+                program.status.error('F2 Config:', str(e))
 
             if configmenu.apply_changes() or curses.is_term_resized(_l, _c):
-                screenbuf.resize()
+                program.resize()
 
         elif c == b'KEY_F(5)':
-            screenbuf.status.clear()
-            perror_recheck_note(screenbuf.status)
+            program.status.clear()
+            perror_recheck_note(program.status)
 
         elif c == b'?':
-            screenbuf.bar_margin = not screenbuf.bar_margin
-            screenbuf.help_pager.margin_bot = screenbuf.bar_margin
-            for screen in screenbuf.screens:
-                screen.margin_bot = screenbuf.bar_margin
+            program.bar_margin = not program.bar_margin
+            program.help_pager.margin_bot = program.bar_margin
+            for screen in program.screens:
+                screen.margin_bot = program.bar_margin
 
         elif c == b'^[':  #]
-            screenbuf.status.clear()
+            program.status.clear()
 
         elif c in {b'q', b'Q', b'^X'}:
-            if not screenbuf.page_back():
+            if not program.page_back():
                 raise KeyboardInterrupt
 
 

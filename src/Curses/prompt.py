@@ -23,7 +23,7 @@ from src.data import ON_TERMUX
 from src.data import WINDOWS
 
 if TYPE_CHECKING:
-    from src.Curses.proto import ScreenBufferProto
+    from src.Curses.proto import ProgramProto
 
 COMPLETION_MENU_INDENT = 2
 
@@ -189,15 +189,15 @@ class CompletionMenu:
 
 class Prompt:
     def __init__(self,
-            screenbuf: ScreenBufferProto,
+            program: ProgramProto,
             prompt: str = '', *,
             pretype: str = '',
             exiting_bspace: bool = True,
             completion_separator: str | None = None,
             up_arrow_entries: deque[str] | None = None
     ) -> None:
-        self.screenbuf = screenbuf
-        self.win = screenbuf.win
+        self.program = program
+        self.win = program.win
         self.prompt = prompt
         self.exiting_bspace = exiting_bspace
         self.completion_separator = completion_separator
@@ -250,7 +250,7 @@ class Prompt:
         win.move(y, visual_cursor)
 
     def resize(self) -> None:
-        self.screenbuf.resize()
+        self.program.resize()
 
     def current_word(self) -> str:
         if self.completion_separator is None:
@@ -395,11 +395,11 @@ class Prompt:
 
         while True:
             if cmenu.has_completions():
-                with self.screenbuf.extra_margin(cmenu.height()):
-                    self.screenbuf.draw()
+                with self.program.extra_margin(cmenu.height()):
+                    self.program.draw()
                 cmenu.draw()
             else:
-                self.screenbuf.draw()
+                self.program.draw()
 
             self.draw()
 

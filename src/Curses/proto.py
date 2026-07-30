@@ -17,7 +17,7 @@ class StatusProto(Protocol):
     def clear(self) -> None: ...
 
 
-class ScreenBufferProto(Protocol):
+class ProgramProto(Protocol):
     win: curses.window
     @contextlib.contextmanager
     def extra_margin(self, n: int) -> Generator[None]: ...
