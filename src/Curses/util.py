@@ -18,10 +18,6 @@ CURSES_COLS_MIN_VALUE = 4
 
 BORDER_PAD = 1
 
-# Pythons < 3.10 and ncurses < 6 do not
-# define BUTTON5_PRESSED. (mouse wheel down)
-BUTTON5_PRESSED = 2097152
-
 HIGHLIGHT = curses.A_STANDOUT | curses.A_BOLD
 
 if WINDOWS:
@@ -151,7 +147,7 @@ def mouse_wheel_up(bstate: int) -> bool:
 
 
 def mouse_wheel_down(bstate: int) -> bool:
-    return bool(bstate & BUTTON5_PRESSED)
+    return bool(bstate & curses.BUTTON5_PRESSED)
 
 
 def truncate(s: str, n: int, *, fromleft: bool = False) -> str | None:

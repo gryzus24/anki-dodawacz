@@ -114,8 +114,7 @@ MAC = sys.platform.startswith('darwin')
 WINDOWS = os.name == 'nt'
 ON_TERMUX = os.environ.get('TERMUX_VERSION') is not None
 
-# os.path.abspath(__file__) for Python < 3.9 compatibility
-ROOT_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+ROOT_DIR = os.path.dirname(os.path.dirname(__file__))
 
 if WINDOWS:
     XDG_DATA_HOME = os.environ.get('LOCALAPPDATA')
