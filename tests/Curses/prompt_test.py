@@ -1,23 +1,19 @@
 from __future__ import annotations
 
-import contextlib
 import curses
-from typing import Generator
 
 import pytest
 
 from src.Curses.prompt import Prompt
+from src.Curses.proto import ProgramProto
 
 stdscr = curses.initscr()
 
 
-class DummyScreenBuffer:
+class DummyProgram(ProgramProto):
     def __init__(self, win: curses.window) -> None:
         self.win = win
-
-    @contextlib.contextmanager
-    def extra_margin(self, n: int) -> Generator[None]:
-        yield
+        self.margin_bot = 0
 
     def draw(self) -> None:
         pass
@@ -27,7 +23,7 @@ class DummyScreenBuffer:
 
 
 def make_test_prompt(pretype: str, cursor_index: int) -> Prompt:
-    prompt = Prompt(DummyScreenBuffer(stdscr), 'prompt:', pretype=pretype)
+    prompt = Prompt(DummyProgram(stdscr), 'prompt:', pretype=pretype)
     prompt._cursor = cursor_index
     return prompt
 

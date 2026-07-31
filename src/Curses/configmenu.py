@@ -1,10 +1,8 @@
 from __future__ import annotations
 
-import contextlib
 import curses
 import functools
 from typing import Callable
-from typing import Generator
 from typing import get_args
 from typing import Mapping
 from typing import NamedTuple
@@ -14,6 +12,7 @@ from src.Curses.color import ATTR_NAME_TO_ATTR
 from src.Curses.color import Color
 from src.Curses.color import COLOR_NAME_TO_COLOR
 from src.Curses.prompt import Prompt
+from src.Curses.proto import extra_margin
 from src.Curses.proto import ProgramProto
 from src.Curses.util import Attr
 from src.Curses.util import BORDER_PAD
@@ -53,9 +52,6 @@ class Option(NamedTuple):
     def basename(self) -> str:
         return self.key.rpartition('.')[2]
 
-    def set_to(self, c: config_t, val: configval_t) -> None:
-        c[self.key] = val
-
     def get_from(self, c: config_t) -> configval_t:
         try:
             return c[self.key]
@@ -72,8 +68,8 @@ class Column(NamedTuple):
     sections: list[Section]
 
     @property
-    def noptions(self) -> int:
-        return sum(len(x.options) for x in self.sections)
+    def nr_options(self) -> int:
+        return sum([len(x.options) for x in self.sections])
 
     def get_option(self, i: int) -> Option:
         for section in self.sections:
@@ -98,7 +94,7 @@ _COLOR_OPTS = (
     list(COLOR_NAME_TO_COLOR) + list(ATTR_NAME_TO_ATTR), False, ' ', False
 )
 
-CONFIG_COLUMNS: list[Column] = [
+CONFIG_COLUMNS = [
 Column([
     Section(
         'Cards',
@@ -267,7 +263,7 @@ class ConfigMenu(ProgramProto):
     # 1st +1 - space for the header of the topmost section
     # 2nd +1 - space for the prompt
     CONFIG_MIN_HEIGHT = max(
-        x.noptions + (1 + SECTION_PAD) * (len(x.sections) - 1)
+        x.nr_options + (1 + SECTION_PAD) * (len(x.sections) - 1)
         for x in CONFIG_COLUMNS
     ) + 1 + 1
 
@@ -287,15 +283,6 @@ class ConfigMenu(ProgramProto):
         self._local_config: config_t
         self._phantom_cursors = [0] * len(CONFIG_COLUMNS)
         self._col = self._line = 0
-
-    @contextlib.contextmanager
-    def extra_margin(self, n: int) -> Generator[None]:
-        t = self.margin_bot
-        self.margin_bot += n
-        try:
-            yield
-        finally:
-            self.margin_bot = t
 
     def _value_of_option(self, option: Option, max_attr_span: int) -> tuple[str, Attr]:
         val = option.get_from(self._local_config)
@@ -418,7 +405,7 @@ class ConfigMenu(ProgramProto):
         curses.update_lines_cols()
 
     def move_down(self) -> None:
-        if self._line < self.grid[self._col].noptions - 1:
+        if self._line < self.grid[self._col].nr_options - 1:
             self._line += 1
             self._phantom_cursors[self._col] += 1
 
@@ -444,7 +431,7 @@ class ConfigMenu(ProgramProto):
 
         if constraint is bool:
             assert isinstance(val, bool)
-            option.set_to(self._local_config, not val)
+            self._local_config[option.key] = not val
             return
 
         assert isinstance(val, str)
@@ -462,7 +449,7 @@ class ConfigMenu(ProgramProto):
         else:
             raise AssertionError('unreachable')
 
-        with self.extra_margin(1):
+        with extra_margin(self, 1):
             typed = Prompt(
                 self,
                 f'New value ({"listed" if option.strict else "arbitrary"}): ',
@@ -476,9 +463,9 @@ class ConfigMenu(ProgramProto):
 
         if option.strict:
             if typed in completions:
-                option.set_to(self._local_config, typed)
+                self._local_config[option.key] = typed
         else:
-            option.set_to(self._local_config, typed)
+            self._local_config[option.key] = typed
 
     # return: True if any config option has changed, False otherwise.
     def apply_changes(self) -> bool:

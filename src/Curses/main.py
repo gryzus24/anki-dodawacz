@@ -13,13 +13,11 @@ except ImportError:
     raise
 
 import atexit
-import contextlib
 import functools
 import subprocess
 import os
 from collections import deque
 from typing import Callable
-from typing import Generator
 from typing import Iterator
 from typing import Mapping
 from typing import NamedTuple
@@ -36,6 +34,7 @@ from src.Curses.configmenu import ConfigMenu
 from src.Curses.pager import Pager
 from src.Curses.prompt import CompletionMenu
 from src.Curses.prompt import Prompt
+from src.Curses.proto import extra_margin
 from src.Curses.proto import ProgramProto
 from src.Curses.proto import StatusProto
 from src.Curses.screen import Screen
@@ -133,7 +132,7 @@ class Status:
 
 
 class StatusEcho(StatusProto):
-    def __init__(self, program: ProgramProto, status: StatusProto) -> None:
+    def __init__(self, program: Program, status: StatusProto) -> None:
         self.program = program
         self.status = status
 
@@ -362,18 +361,10 @@ class Program(ProgramProto):
         self.history = QueryHistory(win, os.path.join(DATA_DIR, 'history.txt'))
         self.page: Screen | Pager = self.help
         self.bar_margin = not getconf('nohelp')
-
-    @contextlib.contextmanager
-    def extra_margin(self, n: int) -> Generator[None]:
-        t = self.page.margin_bot
-        self.page.margin_bot += n
-        try:
-            yield
-        finally:
-            self.page.margin_bot = t
+        self.margin_bot = 0
 
     def _search_prompt(self, pretype: str) -> None:
-        with self.extra_margin(not self.bar_margin):
+        with extra_margin(self, not self.bar_margin):
             typed = Prompt(
                 self,
                 'Search: ',
@@ -455,51 +446,49 @@ class Program(ProgramProto):
         win = self.win
         page = self.page
 
+        ITEMS_COLS  = curses.COLS - 4
+        HEADER_COLS = curses.COLS - 8
+
         draw_border(win, margin_bot)
 
         items = []
-        items_attr_values = []
+        items_attr_desc = []
 
         if page.hl is not None:
             match_hint = f'MATCHES: {page.hl.nmatches}'
             items.append(match_hint)
-            items_attr_values.append((len(match_hint), curses.A_BOLD, 2))
+            items_attr_desc.append((len(match_hint), curses.A_BOLD, 2))
 
         if isinstance(page, Screen):
-            header = truncate(page.selector.dictionary.header(), curses.COLS - 8)
+            header = truncate(page.selector.dictionary.header(), HEADER_COLS)
             if header is not None:
                 win.addstr(0, 2, f'[ {header} ]')
                 win.chgat(0, 4, len(header), Color.delimit | curses.A_BOLD)
             if len(self.screens) > 1:
                 screen_hint = f'{self.screens.i + 1}/{len(self.screens)}'
                 items.append(screen_hint)
-                items_attr_values.append((len(screen_hint), curses.A_BOLD, 0))
-        elif isinstance(page, Pager):
+                items_attr_desc.append((len(screen_hint), curses.A_BOLD, 0))
+        else:
             scroll_hint = page.scroll_hint()
             items.append(scroll_hint)
-            items_attr_values.append((len(scroll_hint), HIGHLIGHT, 0))
-        else:
-            raise AssertionError('unreachable')
+            items_attr_desc.append((len(scroll_hint), HIGHLIGHT, 0))
 
         if not items:
             return
 
-        btext = truncate('╶╴'.join(items), curses.COLS - 4)
-        if btext is None:
+        s = truncate('╶╴'.join(items), ITEMS_COLS)
+        if s is None:
             return
 
+        s = f'╴{s}╶'
         y = curses.LINES - margin_bot - 1
-        x = curses.COLS - len(btext) - 3
+        x = curses.COLS - len(s) - 1
         try:
-            win.addstr(y, x, f'╴{btext}╶')
+            win.addstr(y, x, s)
         except curses.error:  # window too small
             return
 
-        for i, span, attr in compose_attrs(
-                items_attr_values,
-                width=curses.COLS - 3,
-                start=1
-        ):
+        for i, span, attr in compose_attrs(items_attr_desc, end=ITEMS_COLS + 1, start=1):
             win.chgat(y, x + i, span, attr)
 
     FKEY_BAR_TILE_COMPOSITION = (
@@ -526,7 +515,7 @@ class Program(ProgramProto):
         except curses.error:  # lower right corner
             pass
 
-        attrs = compose_attrs(self.FKEY_BAR_TILE_COMPOSITION, width=curses.COLS)
+        attrs = compose_attrs(self.FKEY_BAR_TILE_COMPOSITION, end=curses.COLS)
         for index, span, attr in attrs:
             win.chgat(y, index, span, attr)
 
@@ -542,17 +531,14 @@ class Program(ProgramProto):
 
         self.win.erase()
 
-        page = self.page
-        initial_margin = page.margin_bot
-
-        page.margin_bot += max(self.bar_margin, self.status.height)
-
-        page.draw()
-        self._draw_border(page.margin_bot)
+        self.page.margin_bot = (
+            self.margin_bot
+            + max(self.bar_margin, self.status.height)
+        )
+        self.page.draw()
+        self._draw_border(self.page.margin_bot)
         if not self.status.draw_if_available() and self.bar_margin:
             self._draw_fkey_bar()
-
-        page.margin_bot = initial_margin
 
     def resize(self) -> None:
         curses.update_lines_cols()
@@ -615,7 +601,7 @@ class Program(ProgramProto):
         if len(decks) == 1:
             chosen_deck = decks.pop()
         else:
-            with self.extra_margin(not self.bar_margin):
+            with extra_margin(self, not self.bar_margin):
                 typed = Prompt(self, 'Choose deck: ', exiting_bspace=False).run(decks)
             if typed is None or not (chosen_deck := typed.strip()):
                 st.error('Cancelled, input lost')
@@ -630,7 +616,7 @@ class Program(ProgramProto):
         if len(collection_paths) == 1:
             chosen_collection_path = collection_paths.pop()
         else:
-            with self.extra_margin(not self.bar_margin):
+            with extra_margin(self, not self.bar_margin):
                 typed = Prompt(
                     self, 'Choose collection: ', exiting_bspace=False
                 ).run(collection_paths)
@@ -654,7 +640,7 @@ class Program(ProgramProto):
     def find_in_page(self) -> None:
         self.status.clear()
 
-        with self.extra_margin(not self.bar_margin):
+        with extra_margin(self, not self.bar_margin):
             typed = Prompt(self, 'Find in page: ').run()
         if typed is None or not typed:
             return

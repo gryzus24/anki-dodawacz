@@ -107,15 +107,15 @@ class Attr(NamedTuple):
 
 def compose_attrs(
         elements: Iterable[tuple[int, int, int]], *,
-        width: int,
+        end: int,
         start: int = 0
 ) -> list[Attr]:
     attrs = []
     index = start
     for span, attr, gap in elements:
-        if index + span > width:
-            if index < width:
-                attrs.append(Attr(index, width - index, attr))
+        if index + span > end:
+            if index < end:
+                attrs.append(Attr(index, end - index, attr))
             break
         else:
             attrs.append(Attr(index, span, attr))

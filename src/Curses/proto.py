@@ -17,9 +17,21 @@ class StatusProto(Protocol):
     def clear(self) -> None: ...
 
 
-class ProgramProto(Protocol):
+class Margined(Protocol):
+    margin_bot: int
+
+
+class ProgramProto(Margined):
     win: curses.window
-    @contextlib.contextmanager
-    def extra_margin(self, n: int) -> Generator[None]: ...
     def draw(self) -> None: ...
     def resize(self) -> None: ...
+
+
+@contextlib.contextmanager
+def extra_margin(self: Margined, n: int) -> Generator[None]:
+    t = self.margin_bot
+    self.margin_bot += n
+    try:
+        yield
+    finally:
+        self.margin_bot = t

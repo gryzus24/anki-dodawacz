@@ -11,6 +11,7 @@ from typing import Sequence
 from typing import TYPE_CHECKING
 
 from src.Curses.color import Color
+from src.Curses.proto import extra_margin
 from src.Curses.util import clipboard_or_selection
 from src.Curses.util import CURSES_COLS_MIN_VALUE
 from src.Curses.util import hide_cursor
@@ -395,7 +396,7 @@ class Prompt:
 
         while True:
             if cmenu.has_completions():
-                with self.program.extra_margin(cmenu.height()):
+                with extra_margin(self.program, cmenu.height()):
                     self.program.draw()
                 cmenu.draw()
             else:

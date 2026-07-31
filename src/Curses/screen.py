@@ -271,7 +271,7 @@ def format_dictionary(dictionary: Dictionary, width: int) -> list[FLine]:
                             (3, Color.delimit, 0),
                             (len(header), Color.delimit | curses.A_BOLD, 0),
                             (width, Color.delimit, 0),
-                        ), width=width
+                        ), end=width
                     )
             else:
                 buf = width * '─'
@@ -332,7 +332,7 @@ def format_dictionary(dictionary: Dictionary, width: int) -> list[FLine]:
                     (
                         (2, Color.heed | curses.A_BOLD, 0),
                         (len(op.note), curses.A_BOLD, 0),
-                    ), width=width
+                    ), end=width
                 )
                 result.append(FLine(i, buf, attrs))
             else:
