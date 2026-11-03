@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import atexit
+import os
 from typing import Callable
 from typing import Mapping
 
@@ -12,8 +13,14 @@ from urllib3.exceptions import NewConnectionError
 
 from src.Dictionaries.base import DictionaryError
 
+def _http_timeout() -> int:
+    r = os.environ.get('HTTP_TIMEOUT')
+    if r is not None and r.isdecimal():
+        return int(r)
+    return 3
+
 http = urllib3.PoolManager(
-    timeout=10,
+    timeout=_http_timeout(),
     headers={
         'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; rv:122.0) Gecko/20100101 Firefox/122.0',
         'Accept-Encoding': 'gzip'
