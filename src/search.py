@@ -64,7 +64,7 @@ DICTIONARY_LOOKUP: Mapping[dictkey_t, Callable[[str], Dictionary]] = {
     'wordnet': ask_wordnet,
 }
 
-MONOLINGUAL_DICTIONARIES = [x for x in DICTIONARY_LOOKUP if 'diki' not in x]
+MONOLINGUAL_DICTIONARIES: tuple[dictkey_t, ...] = ('ahd', 'farlex', 'wordnet')
 
 db_t = Union[shelve.DbfilenameShelf[Dictionary], Dict[str, Dictionary]]
 
