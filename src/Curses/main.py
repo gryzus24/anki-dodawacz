@@ -52,11 +52,11 @@ from src.Curses.util import mouse_wheel_down
 from src.Curses.util import mouse_wheel_up
 from src.Curses.util import start_mpv_play_url
 from src.Curses.util import truncate
-from src.data import config
-from src.data import getconf
-from src.data import config_save
-from src.data import DATA_DIR
+from src.data import HISTORY_FILE
 from src.data import WINDOWS
+from src.data import config
+from src.data import config_save
+from src.data import getconf
 
 
 class StatusLine(NamedTuple):
@@ -292,15 +292,14 @@ f' To make multiple queries at once separate them with a "{search.QUERY_SEPARATO
 
 
 class QueryHistory:
-    def __init__(self, win: curses.window, hist_path: str) -> None:
+    def __init__(self, win: curses.window) -> None:
         self.win = win
-        self._hist_path = hist_path
         self._hist_save_func_registered = False
         self._up_arrow_entries: deque[str] = deque()
 
     @functools.cached_property
     def cmenu(self) -> CompletionMenu:
-        return CompletionMenu.from_file(self.win, self._hist_path)
+        return CompletionMenu.from_file(self.win, HISTORY_FILE)
 
     @property
     def up_arrow_entries(self) -> deque[str]:
@@ -315,7 +314,7 @@ class QueryHistory:
 
     def add_cmenu_entry(self, s: str) -> None:
         if self.cmenu.add_entry(s) and not self._hist_save_func_registered:
-            atexit.register(self.cmenu.save_entries, self._hist_path)
+            atexit.register(self.cmenu.save_entries, HISTORY_FILE)
             self._hist_save_func_registered = True
 
 
@@ -358,7 +357,7 @@ class Program(ProgramProto):
         self.help = Pager(win, HELP)
         self.screens = Screens([])
         self.status = Status(win, persistence=7)
-        self.history = QueryHistory(win, os.path.join(DATA_DIR, 'history.txt'))
+        self.history = QueryHistory(win)
         self.page: Screen | Pager = self.help
         self.bar_margin = not getconf('nohelp')
         self.margin_bot = 0

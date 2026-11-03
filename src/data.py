@@ -127,6 +127,7 @@ else:
     )
     DATA_DIR = os.path.join(XDG_DATA_HOME, 'ankidodawacz')
 
+HISTORY_FILE = os.path.join(DATA_DIR, 'history.txt')
 AUDIO_DIR = os.path.join(DATA_DIR, 'Audio')
 
 # DATA_DIR is subsumed by AUDIO_DIR.
