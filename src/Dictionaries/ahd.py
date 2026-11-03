@@ -78,14 +78,16 @@ def _add_syn(ahd: Dictionary, synonyms: list[str], gloss: str, examples: list[st
 def ahd_to_ipa(s: str, th: str) -> str:
     # AHD has its own phonetic alphabet that can be translated into IPA.
     # diphthongs and combinations of more than one letter.
-    s = s.replace('ch', 'tʃ')                      \
-        .replace('sh', 'ʃ').replace('îr', 'ɪəɹ')   \
-        .replace('ng', 'ŋ').replace('ou', 'aʊ')    \
-        .replace('oi', 'ɔɪ').replace('ər', 'ɚ')    \
-        .replace('ûr', 'ɝ').replace('th', th)      \
-        .replace('âr', 'ɛəɹ').replace('zh', 'ʒ')   \
-        .replace('l', 'ɫ').replace('n', 'ən')    \
+    s = (
+        s.replace('ch', 'tʃ')
+        .replace('sh', 'ʃ').replace('îr', 'ɪəɹ')
+        .replace('ng', 'ŋ').replace('ou', 'aʊ')
+        .replace('oi', 'ɔɪ').replace('ər', 'ɚ')
+        .replace('ûr', 'ɝ').replace('th', th)
+        .replace('âr', 'ɛəɹ').replace('zh', 'ʒ')
+        .replace('l', 'ɫ').replace('n', 'ən')
         .replace('r', 'ʊəɹ').replace('ôr', 'ɔːr')
+    )
     # consonants, vowels, and single chars.
     s = s.translate(AHD_TO_IPA_TABLE)
     # stress and hyphenation

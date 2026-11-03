@@ -27,13 +27,14 @@ DICTIONARY_URL = 'https://www.diki.pl'
 
 
 def diki_audio(query: str, flag: str = '') -> str:
-    diki_phrase = query.lower()\
-        .replace('(', '').replace(')', '').replace("'", "") \
-        .replace(' or something', '')\
-        .replace('someone', 'somebody')\
-        .strip(' !?.')\
+    diki_phrase = (
+        query.lower()
+        .replace('(', '').replace(')', '').replace("'", "")
+        .replace(' or something', '')
+        .replace('someone', 'somebody')
+        .strip(' !?.')
         .replace(' ', '_')
-
+    )
     url = f'{DICTIONARY_URL}/images-common/en/mp3/{diki_phrase}{flag}.mp3'
     url_ame = f'{DICTIONARY_URL}/images-common/en-ame/mp3/{diki_phrase}{flag}.mp3'
 
